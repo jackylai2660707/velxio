@@ -2,25 +2,51 @@
 
 ## TL;DR
 
-✅ **Skeleton commit hecho** en `third-party/qemu-lcgamboa/` rama `feat/esp32p4-machine` (`d7969f43ec`). La machine `esp32p4` está registrada con el memory map completo del TRM, peripheral catch-all y stubs.
-✅ **CI auto-trigger** configurado para `feat/**` (`b5d2fd732d`).
-✅ **Build local exitoso** en WSL Ubuntu 24.04 (vía `wsl -u root` — saltea sudo). `qemu-system-riscv32` 41 MB compilado en `/root/qemu-p4-build/`.
-✅ **Smoke test verde**: machine registrada, init corre, CPU ejecuta. Phase 0 ✓.
+✅ **Skeleton commit** `d7969f43ec` — machine `esp32p4` registrada con memory map TRM Cap 7.
+✅ **CI auto-trigger** `b5d2fd732d` — `feat/**` dispara build-libqemu.
+✅ **Build + Phase 0 smoke** — machine init corre, CPU ejecuta.
+✅ **UART0 + `-bios` loader** `24e67a8852` — `Hi\n` end-to-end desde firmware RISC-V hand-rolled, confirmado en stdout.
 
-## Build + smoke test (verificados 2026-05-06)
+## Build + smoke tests (verificados 2026-05-06)
+
+### Phase 0 — machine registrada y CPU ejecutando
 
 ```
-=== TEST 1: machine listed ===
 $ qemu-system-riscv32 -M help | grep esp32
 esp32c3              Espressif ESP32-C3 machine
 esp32c3-picsimlab    Espressif ESP32-C3 machine
-esp32p4              Espressif ESP32-P4 (skeleton — Velxio fork, no peripherals yet)
+esp32p4              Espressif ESP32-P4 (Velxio fork — UART0 only)
 
-=== TEST 2: machine init runs ===
-$ qemu-system-riscv32 -M esp32p4 -nographic -monitor none
-[esp32p4] machine init complete (skeleton — no peripherals)
-Invalid read at addr 0x0, size 2, region '(null)', reason: rejected   ← CPU running, ROM empty (expected)
+$ qemu-system-riscv32 -M esp32p4 -nographic
+[esp32p4] machine init complete (UART0 wired)
+Invalid read at addr 0x0 ...   ← CPU corriendo, sin firmware (esperado)
 ```
+
+### Phase 1.A — UART end-to-end ("Hi" sale por stdout)
+
+Programa de 8 instrucciones RV32I hand-rolled (`/tmp/uart_test.bin` 32 bytes):
+
+```asm
+LUI t0, 0x500CA      # 0x500CA2B7
+ADDI t1, x0, 'H'     # 0x04800313
+SW t1, 0(t0)         # 0x0062A023  → write 'H' to UART0 FIFO
+ADDI t1, x0, 'i'     # 0x06900313
+SW t1, 0(t0)         # 0x0062A023
+ADDI t1, x0, '\n'    # 0x00A00313
+SW t1, 0(t0)         # 0x0062A023
+JAL x0, 0            # 0x0000006F  → loop forever
+```
+
+Generador en `/mnt/c/Users/000272869/AppData/Local/Temp/gen_uart_test.py`.
+
+```
+$ qemu-system-riscv32 -M esp32p4 -bios /tmp/uart_test.bin -nographic
+[esp32p4] loaded 32 bytes of BIOS '/tmp/uart_test.bin' at 0x4fc00000
+[esp32p4] machine init complete (UART0 wired)
+Hi
+```
+
+Pipeline validado: instrucción RISC-V → SW al MMIO UART0 (0x500CA000) → chardev backend → stdout host.
 
 Test 3 con `merged.bin` falla en `-drive if=mtd` porque la máquina aún no tiene SPI flash modelado. Eso llega cuando agreguemos `hw/ssi/esp32p4_spi.c`.
 
