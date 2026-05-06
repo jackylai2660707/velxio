@@ -1,0 +1,1713 @@
+- I Microprocessor and Master
+  - 1 High-Performance CPU
+    - 1.1 Overview
+    - 1.2 Features
+    - 1.3 Terminology
+    - 1.4 Address Map
+    - 1.5 Configuration and Status Registers (CSRs)
+      - 1.5.1 Register Summary
+      - 1.5.2 Register Description
+    - 1.6 RISC-V Standard ISA Extensions Support
+      - 1.6.1 M Extension
+        - 1.6.1.1 Overview
+        - 1.6.1.2 Functional Description
+      - 1.6.2 C Extension
+        - 1.6.2.1 Overview
+        - 1.6.2.2 Functional Description
+      - 1.6.3 F Extension
+        - 1.6.3.1 Overview
+        - 1.6.3.2 Functional Description
+        - 1.6.3.3 Initialization
+      - 1.6.4 Zc (Z) Extension
+        - 1.6.4.1 Overview
+        - 1.6.4.2 Functional Description
+        - 1.6.4.3 Zc Instructions
+        - 1.6.4.4 Limitations
+      - 1.6.5 Bit Manipulation (Zb) Extension
+        - 1.6.5.1 Overview
+        - 1.6.5.2 Functional Description
+      - 1.6.6 A Extension
+        - 1.6.6.1 Overview
+        - 1.6.6.2 Functional Description
+        - 1.6.6.3 Load-Reserve (LR.W) Instruction
+        - 1.6.6.4 Store-Conditional (SC.W) Instruction
+        - 1.6.6.5 AMO Instructions
+    - 1.7 Custom Instruction Extensions
+      - 1.7.1 Hardware Loop
+        - 1.7.1.1 Overview
+        - 1.7.1.2 Features
+        - 1.7.1.3 Functional Description
+        - 1.7.1.4 Instructions/Operations/Modes Supported in HWLP
+        - 1.7.1.5 HWLP Constraints
+        - 1.7.1.6 Register Summary
+        - 1.7.1.7 Register Description
+        - 1.7.1.8 HWLP Instructions
+      - 1.7.2 Processor Instruction Extension
+        - 1.7.2.1 Overview
+        - 1.7.2.2 Functional Description
+        - 1.7.2.3 Initialization, Context Switching, and Exceptions
+    - 1.8 Memory-Mapped Registers
+      - 1.8.1 Overview
+      - 1.8.2 Features
+      - 1.8.3 Functional Description
+    - 1.9 Interrupt Controller
+      - 1.9.1 Overview
+      - 1.9.2 CLIC
+        - 1.9.2.1 Overview
+        - 1.9.2.2 CLIC CSRs
+        - 1.9.2.3 Interrupt Mapping
+        - 1.9.2.4 CLIC Parameters
+        - 1.9.2.5 Interrupt Level and Priority Encoding
+        - 1.9.2.6 CLIC Memory-Mapped Register Summary
+        - 1.9.2.7 CLIC Memory-Mapped Register Description
+      - 1.9.3 Core-Local Interrupts (CLINT)
+        - 1.9.3.1 Overview
+        - 1.9.3.2 Features
+        - 1.9.3.3 Software Interrupt
+        - 1.9.3.4 Timer Counter and Interrupt
+        - 1.9.3.5 Register Summary
+        - 1.9.3.6 Register Description
+    - 1.10 Memory Protection Unit
+      - 1.10.1 Standard Physical Memory Protection
+        - 1.10.1.1 Overview
+        - 1.10.1.2 Features
+        - 1.10.1.3 Functional Description
+        - 1.10.1.4 Register Summary
+        - 1.10.1.5 Register Description
+      - 1.10.2 Custom Physical Memory Attribute (PMA) Checker
+        - 1.10.2.1 Overview
+        - 1.10.2.2 Features
+        - 1.10.2.3 Functional Description
+        - 1.10.2.4 Register Summary
+        - 1.10.2.5 Register Description
+    - 1.11 Debug and Trace Support
+      - 1.11.1 Debug
+        - 1.11.1.1 Overview
+        - 1.11.1.2 Features
+        - 1.11.1.3 Functional Description
+        - 1.11.1.4 JTAG Control
+        - 1.11.1.5 Register Summary
+        - 1.11.1.6 Register Description
+      - 1.11.2 Debug Halt Groups
+        - 1.11.2.1 Overview
+        - 1.11.2.2 Features
+        - 1.11.2.3 Functional Description
+        - 1.11.2.4 Register Summary
+        - 1.11.2.5 Register Description
+      - 1.11.3 Hardware Trigger
+        - 1.11.3.1 Overview
+        - 1.11.3.2 Features
+        - 1.11.3.3 Functional Description
+        - 1.11.3.4 Trigger Execution Flow
+        - 1.11.3.5 Register Summary
+        - 1.11.3.6 Register Description
+      - 1.11.4 Trace
+        - 1.11.4.1 Overview
+        - 1.11.4.2 Features
+        - 1.11.4.3 Functional Description
+    - 1.12 Performance
+      - 1.12.1 Branch Prediction
+        - 1.12.1.1 Overview
+        - 1.12.1.2 Features
+        - 1.12.1.3 Functional Description
+      - 1.12.2 RAS
+        - 1.12.2.1 Overview
+        - 1.12.2.2 Features
+        - 1.12.2.3 Functional Description
+      - 1.12.3 Control Status Register for Performance Configuration
+    - 1.13 Custom Features
+      - 1.13.1 Bus Error Response
+        - 1.13.1.1 Overview
+        - 1.13.1.2 Functional Description
+        - 1.13.1.3 Control Status Registers
+      - 1.13.2 Dedicated IO
+        - 1.13.2.1 Overview
+        - 1.13.2.2 Features
+        - 1.13.2.3 Functional Description
+        - 1.13.2.4 Register Summary
+        - 1.13.2.5 Register Description
+      - 1.13.3 RunStall Support
+        - 1.13.3.1 Overview
+        - 1.13.3.2 Functional Description
+        - 1.13.3.3 Register Summary
+      - 1.13.4 Debug Assist Information
+      - 1.13.5 Core Lock-up
+        - 1.13.5.1 Overview
+        - 1.13.5.2 Functional Description
+        - 1.13.5.3 Register Summary
+        - 1.13.5.4 Register Description
+      - 1.13.6 External Wakeup
+        - 1.13.6.1 Overview
+        - 1.13.6.2 Functional Description
+  - 2 RISC-V Trace Encoder (TRACE)
+    - 2.1 Terminology
+    - 2.2 Introduction
+    - 2.3 Features
+    - 2.4 Architectural Overview
+    - 2.5 Functional Description
+      - 2.5.1 Synchronization
+      - 2.5.2 Address Mode
+      - 2.5.3 Optional Sideband Signals
+      - 2.5.4 Filtering
+      - 2.5.5 Anchor Tag
+      - 2.5.6 Memory Writing Mode
+      - 2.5.7 Automatic Restart
+    - 2.6 Encoder Output Packets
+      - 2.6.1 Header
+      - 2.6.2 Index
+      - 2.6.3 Payload
+        - 2.6.3.1 Format 3 Packets
+        - 2.6.3.2 Format 2 Packets
+        - 2.6.3.3 Format 1 Packets
+    - 2.7 Interrupt
+    - 2.8 Programming Procedures
+      - 2.8.1 Encoder Option Configuration
+      - 2.8.2 Filter Configuration
+      - 2.8.3 Enable Encoder
+      - 2.8.4 Disable Encoder
+      - 2.8.5 Notify
+      - 2.8.6 Decode Data Packets
+      - 2.8.7 AHB Configuration
+      - 2.8.8 Software Retention
+    - 2.9 Register Summary
+    - 2.10 Registers
+  - 3 Low-Power CPU
+    - 3.1 Overview
+    - 3.2 Features
+    - 3.3 Configuration and Status Registers (CSRs)
+      - 3.3.1 Register Summary
+      - 3.3.2 Registers
+    - 3.4 Interrupts and Exceptions
+      - 3.4.1 Interrupts
+      - 3.4.2 Interrupt Handling
+      - 3.4.3 Exceptions
+    - 3.5 Debugging
+      - 3.5.1 Features
+      - 3.5.2 Functional Description
+      - 3.5.3 Register Summary
+      - 3.5.4 Registers
+    - 3.6 Hardware Trigger
+      - 3.6.1 Features
+      - 3.6.2 Functional Description
+      - 3.6.3 Trigger Execution Flow
+      - 3.6.4 Register Summary
+      - 3.6.5 Registers
+    - 3.7 Performance Counter
+    - 3.8 System Access
+      - 3.8.1 Memory Access
+      - 3.8.2 Peripheral Access
+    - 3.9 Event Task Matrix Feature
+    - 3.10 Sleep and Wake-Up Process
+      - 3.10.1 Features
+      - 3.10.2 Process
+      - 3.10.3 Wake-Up Sources
+      - 3.10.4 Sleep Rejection
+- II System DMA
+  - 4 GDMA Controller (GDMA-AHB, GDMA-AXI)
+    - 4.1 Overview
+    - 4.2 Features
+    - 4.3 Architecture
+    - 4.4 Functional Description
+      - 4.4.1 Linked List
+      - 4.4.2 Peripheral-to-Memory and Memory-to-Peripheral Data Transfer
+      - 4.4.3 Memory-to-Memory Data Transfer
+      - 4.4.4 Enabling GDMA
+      - 4.4.5 Linked List Reading Process
+      - 4.4.6 Interrupt Response Mechanism for GDMA-AXI Linked List Switching
+      - 4.4.7 EOF
+      - 4.4.8 Accessing Memory
+      - 4.4.9 Arbitration
+      - 4.4.10 Bus Error Response Information Logging
+      - 4.4.11 Automatic Clock Gating
+      - 4.4.12 CRC Calculation
+    - 4.5 Event Task Matrix Feature
+    - 4.6 Interrupts
+    - 4.7 Programming Procedures
+      - 4.7.1 Programming Procedures for GDMA's Transmit Channel
+      - 4.7.2 Programming Procedures for GDMA's Receive Channel
+      - 4.7.3 Programming Procedures for Memory-to-Memory Transfer
+      - 4.7.4 Programming Procedures for Channel Priority and Weight
+      - 4.7.5 Programming Procedures for CRC Calculation
+    - 4.8 Register Summary
+      - 4.8.1 GDMA-AHB Register Summary
+      - 4.8.2 GDMA-AXI Register Summary
+    - 4.9 Registers
+      - 4.9.1 GDMA-AHB Registers
+      - 4.9.2 GDMA-AXI Registers
+  - 5 VDMA Controller (VDMA)
+    - 5.1 Overview
+    - 5.2 Terminology
+    - 5.3 Features
+    - 5.4 Architectural Overview
+    - 5.5 Functional Description
+      - 5.5.1 Transfer Hierarchy
+      - 5.5.2 Arbitration Scheme
+        - 5.5.2.1 Read Arbiter
+        - 5.5.2.2 Write Arbiter
+      - 5.5.3 Handshaking Interface
+      - 5.5.4 Transfer Control
+        - 5.5.4.1 Single-Block Transfer
+        - 5.5.4.2 Multi-Block Transfer
+      - 5.5.5 Flow Controller
+      - 5.5.6 Channel Suspend and Resume
+      - 5.5.7 Channel Disable
+        - 5.5.7.1 Disabling a Suspended Channel Before Transfer Completion
+        - 5.5.7.2 Disabling a Non-suspended Channel Before Transfer Completion
+      - 5.5.8 Low-Power Technique
+        - 5.5.8.1 Low-Power Technique for DMA Channels
+        - 5.5.8.2 Low-Power Technique for Slave Bus Interface
+        - 5.5.8.3 Low-Power Technique for AXI Master Interface Channels
+        - 5.5.8.4 Global Low-Power Technique
+    - 5.6 Interrupts
+    - 5.7 Programming Procedures
+      - 5.7.1 Common Programming Procedures
+      - 5.7.2 Programming Procedures for Shadow-Register-Based Multi-Block Transfer
+      - 5.7.3 Programming Procedures for Linked-List-Based Multi-Block Transfer
+      - 5.7.4 Programming Procedures for Single-Block Transfer
+    - 5.8 Register Summary
+    - 5.9 Registers
+  - 6 2D-DMA Controller (2D-DMA)
+    - 6.1 Overview
+    - 6.2 Features
+    - 6.3 Architecture
+    - 6.4 Functional Description
+      - 6.4.1 Transfer Mode
+      - 6.4.2 Linked List
+      - 6.4.3 Padding in 2D-MOD1 Mode and DSCR-PORT Mode
+      - 6.4.4 Peripheral-to-Memory and Memory-to-Peripheral Data Transfer
+      - 6.4.5 Memory-to-Memory Data Transfer
+      - 6.4.6 Macroblock Reordering
+        - 6.4.6.1 Macroblock Reordering in TX Direction
+        - 6.4.6.2 Macroblock Reordering in RX Direction
+      - 6.4.7 Color Space Conversion
+      - 6.4.8 Enabling 2D-DMA
+      - 6.4.9 Linked List Reading Process
+      - 6.4.10 EOF
+      - 6.4.11 Accessing Memory
+      - 6.4.12 Arbitration
+    - 6.5 Event Task Matrix Feature
+    - 6.6 Interrupts
+    - 6.7 Programming Procedures
+      - 6.7.1 General Configurations for 2D-DMA
+      - 6.7.2 Mode-Specific Configurations for 2D-DMA
+      - 6.7.3 Configurations for 2D-DMA's Transmit Channel
+      - 6.7.4 Configurations for 2D-DMA's Receive Channel
+      - 6.7.5 Configurations for Memory-to-Memory Transfer
+      - 6.7.6 Configurations for Channel Priority and Weight
+      - 6.7.7 Resetting 2D-DMA While it Runs
+    - 6.8 Register Summary
+    - 6.9 Registers
+- III Memory Organization
+  - 7 System and Memory
+    - 7.1 Overview
+    - 7.2 Features
+    - 7.3 Functional Description
+      - 7.3.1 Address Mapping
+      - 7.3.2 Internal Memory
+      - 7.3.3 External Memory
+        - 7.3.3.1 External Memory Address Mapping
+        - 7.3.3.2 Cache
+        - 7.3.3.3 Cache Operations
+      - 7.3.4 DMA Address Space
+      - 7.3.5 Modules/Peripherals Address Mapping
+  - 8 eFuse Controller (EFUSE)
+    - 8.1 Overview
+    - 8.2 Features
+    - 8.3 Functional Description
+      - 8.3.1 Structure
+        - 8.3.1.1 [fielddesc:EFUSEWRDIS]EFUSE_WR_DIS
+        - 8.3.1.2 [fielddesc:EFUSERDDIS]EFUSE_RD_DIS
+        - 8.3.1.3 Data Storage
+      - 8.3.2 Programming of Parameters
+      - 8.3.3 Reading of Parameters by Users
+      - 8.3.4 eFuse VDDQ Timing
+      - 8.3.5 Parameters Used by Hardware Modules
+    - 8.4 Interrupts
+    - 8.5 Register Summary
+    - 8.6 Registers
+- IV System Component
+  - 9 GPIO Matrix and IO MUX
+    - 9.1 Overview
+    - 9.2 Features
+      - 9.2.1 HP GPIO Matrix and HP IO MUX
+      - 9.2.2 LP GPIO Matrix and LP IO MUX
+    - 9.3 Architectural Overview
+    - 9.4 Peripheral Input via GPIO Matrix
+      - 9.4.1 Overview
+      - 9.4.2 Signal Synchronization
+      - 9.4.3 GPIO Filter
+      - 9.4.4 Glitch Filter
+      - 9.4.5 Simple GPIO Input
+      - 9.4.6 GPIO Wakeup
+        - 9.4.6.1 HP GPIO Wakeup
+        - 9.4.6.2 LP GPIO Wakeup
+      - 9.4.7 Programming Procedure
+        - 9.4.7.1 HP GPIO Matrix
+        - 9.4.7.2 LP GPIO Matrix
+    - 9.5 Peripheral Output via GPIO Matrix
+      - 9.5.1 Overview
+      - 9.5.2 Simple GPIO Output
+      - 9.5.3 Sigma Delta Modulated Output (SDM)
+        - 9.5.3.1 Functional Description
+        - 9.5.3.2 SDM Configuration
+      - 9.5.4 Programming Procedure
+        - 9.5.4.1 HP GPIO Matrix
+        - 9.5.4.2 LP GPIO Matrix
+    - 9.6 Direct Input and Output via IO MUX
+      - 9.6.1 Overview
+      - 9.6.2 Functional Description
+        - 9.6.2.1 HP IO MUX
+        - 9.6.2.2 LP IO MUX
+    - 9.7 Analog Functions
+      - 9.7.1 Overview
+      - 9.7.2 Analog Functions
+    - 9.8 Pin Functions in Light-sleep
+    - 9.9 Pin Hold Feature
+    - 9.10 Hysteresis Characteristics of GPIO Pins
+    - 9.11 Power Supplies and Management of GPIO Pins
+      - 9.11.1 Power Supplies of GPIO Pins
+      - 9.11.2 Power Supply Management
+    - 9.12 HP Peripheral Signal List
+    - 9.13 LP Peripheral Signal List
+    - 9.14 HP IO MUX Functions List
+    - 9.15 LP IO MUX Functions List
+    - 9.16 GPIO Pin Analog Functions List
+    - 9.17 Event Task Matrix Function
+    - 9.18 Interrupts
+    - 9.19 Register Summary
+      - 9.19.1 HP GPIO Matrix Register Summary
+      - 9.19.2 HP IO MUX Register Summary
+      - 9.19.3 GPIO EXT Register Summary
+      - 9.19.4 LP GPIO Matrix Register Summary
+      - 9.19.5 LP IO MUX Register Summary
+    - 9.20 Registers
+      - 9.20.1 HP GPIO Matrix Registers
+      - 9.20.2 HP IO MUX Registers
+      - 9.20.3 GPIO EXT Registers
+      - 9.20.4 LP GPIO Matrix Registers
+      - 9.20.5 LP IO MUX Registers
+  - 10 Reset and Clock
+    - 10.1 Reset
+      - 10.1.1 Overview
+      - 10.1.2 Architectural Overview
+      - 10.1.3 Features
+      - 10.1.4 Functional Description
+      - 10.1.5 Peripheral Reset
+    - 10.2 Clock
+      - 10.2.1 Overview
+      - 10.2.2 Architectural Overview
+      - 10.2.3 Features
+      - 10.2.4 Functional Description
+        - 10.2.4.1 HP System Clock
+        - 10.2.4.2 LP System Clock
+        - 10.2.4.3 Peripheral Clocks
+    - 10.3 Programming Procedures
+      - 10.3.1 HP System Clock Configuration
+      - 10.3.2 LP System Clock Configuration
+      - 10.3.3 Peripheral Clock Reset and Configuration
+    - 10.4 Register Summary
+      - 10.4.1 Reset and Clock (HP_SYS_CLKRST) Register Summary
+      - 10.4.2 LP Always on Clock and Reset (LP_CLKRST) Register Summary
+      - 10.4.3 LP Peripheral Clock and Reset (LPPERI) Register Summary
+    - 10.5 Registers
+      - 10.5.1 Reset and Clock (HP_SYS_CLKRST) Registers
+      - 10.5.2 LP Always on Clock and Reset (LP_CLKRST) Registers
+      - 10.5.3 LP Peripheral Clock and Reset (LPPERI) Registers
+  - 11 Chip Boot Control
+    - 11.1 Overview
+    - 11.2 Functional Description
+      - 11.2.1 Default Configuration
+      - 11.2.2 Boot Mode Control
+      - 11.2.3 ROM Messages Printing Control
+      - 11.2.4 JTAG Signal Source Control
+  - 12 Interrupt Matrix
+    - 12.1 Overview
+    - 12.2 Interrupt Terminology in ESP32-P4
+      - 12.2.1 Interrupt
+      - 12.2.2 Interrupt Signal/Interrupt Source
+      - 12.2.3 Interrupt Flow in ESP32-P4
+    - 12.3 Features
+    - 12.4 Functional Description
+      - 12.4.1 Peripheral Interrupt Sources
+      - 12.4.2 Assign Peripheral Interrupt Source to HP CPU Interrupt
+        - 12.4.2.1 Assign One Peripheral Interrupt Source (SOURCE) to HP CPUx
+        - 12.4.2.2 Assign Multiple Peripheral Interrupt Sources (SOURCE) to HP CPUx
+        - 12.4.2.3 Disable HP CPUx Peripheral Interrupt Source (SOURCE)
+      - 12.4.3 Query Current Interrupt Status of HP CPUx Peripheral Interrupt Source
+      - 12.4.4 Interrupt Remapping
+    - 12.5 Register Summary
+      - 12.5.1 HP CPU0 Interrupt Matrix Register Summary
+      - 12.5.2 HP CPU1 Interrupt Matrix Register Summary
+    - 12.6 Registers
+      - 12.6.1 HP CPU0 Interrupt Matrix Registers
+      - 12.6.2 HP CPU1 Interrupt Matrix Registers
+  - 13 Event Task Matrix (ETM)
+    - 13.1 Overview
+    - 13.2 Features
+    - 13.3 Functional Description
+      - 13.3.1 Architecture
+      - 13.3.2 Events
+      - 13.3.3 Tasks
+      - 13.3.4 Event and Task Status
+      - 13.3.5 Timing Considerations
+      - 13.3.6 Channel Control
+    - 13.4 Register Summary
+    - 13.5 Registers
+  - 14 Low-Power Management
+    - 14.1 Overview
+    - 14.2 Terminology
+    - 14.3 Features
+    - 14.4 Functional Description
+      - 14.4.1 Power Scheme
+        - 14.4.1.1 Regulators
+        - 14.4.1.2 Digital Power Domains
+        - 14.4.1.3 Analog Power Domains
+        - 14.4.1.4 Battery Power Domain
+      - 14.4.2 PMU
+        - 14.4.2.1 PMU Main State Machine
+        - 14.4.2.2 Sleep/Wake-up Controller
+        - 14.4.2.3 Analog Power Controller
+        - 14.4.2.4 Digital Power Controller
+        - 14.4.2.5 Clock Controller
+        - 14.4.2.6 Backup Controller
+        - 14.4.2.7 System Controller
+        - 14.4.2.8 Battery Power Controller
+        - 14.4.2.9 Output Regulator Control
+          - 14.4.2.9.1 Regulator Features
+          - 14.4.2.9.2 Regulator Configuration Examples
+          - 14.4.2.9.3 Software Configuration Steps
+    - 14.5 Power Modes
+    - 14.6 Event Task Matrix Feature
+    - 14.7 Interrupts
+    - 14.8 Register Summary
+    - 14.9 Registers
+  - 15 System Timer
+    - 15.1 Overview
+    - 15.2 Features
+    - 15.3 System Timer Structure
+    - 15.4 Clock Source Selection
+    - 15.5 Functional Description
+      - 15.5.1 Counter
+      - 15.5.2 Comparator and Alarm
+      - 15.5.3 Event Task Matrix
+      - 15.5.4 Synchronization Operation
+    - 15.6 Interrupts
+    - 15.7 Programming Procedure
+      - 15.7.1 Read Current Count Value
+      - 15.7.2 Configure a One-Time Alarm in Target Mode
+      - 15.7.3 Configure Periodic Alarms in Period Mode
+      - 15.7.4 Update After Light-sleep
+    - 15.8 Register Summary
+    - 15.9 Registers
+  - 16 Timer Group (TIMG)
+    - 16.1 Overview
+    - 16.2 Features
+    - 16.3 Functional Description
+      - 16.3.1 16-bit Prescaler and Clock Selection
+      - 16.3.2 54-bit Time-base Counter
+      - 16.3.3 Alarm Generation
+      - 16.3.4 Timer Reload
+      - 16.3.5 Event Task Matrix Feature
+      - 16.3.6 RTC_SLOW_CLK Frequency Calculation
+      - 16.3.7 Interrupts
+    - 16.4 Configuration and Usage
+      - 16.4.1 Timer as a Simple Clock
+      - 16.4.2 Timer as One-shot Alarm
+      - 16.4.3 Timer as Periodic Alarm by APB
+      - 16.4.4 Timer as Periodic Alarm by ETM
+      - 16.4.5 RTC_SLOW_CLK Frequency Calculation
+    - 16.5 Register Summary
+    - 16.6 Registers
+  - 17 Watchdog Timers (WDT)
+    - 17.1 Overview
+    - 17.2 Digital Watchdog Timers
+      - 17.2.1 Features
+      - 17.2.2 Functional Description
+        - 17.2.2.1 Clock Source and 32-Bit Counter
+        - 17.2.2.2 Stages and Timeout Actions
+        - 17.2.2.3 Write Protection
+        - 17.2.2.4 Flash Boot Protection
+    - 17.3 Super Watchdog
+      - 17.3.1 Features
+      - 17.3.2 Super Watchdog Controller
+        - 17.3.2.1 Structure
+        - 17.3.2.2 Workflow
+    - 17.4 Interrupts
+    - 17.5 Register Summary
+    - 17.6 Registers
+  - 18 RTC Timer
+    - 18.1 Introduction
+    - 18.2 Feature List
+    - 18.3 Functional Description
+    - 18.4 Event Task Matrix Feature
+    - 18.5 Interrupts
+    - 18.6 Register Summary
+    - 18.7 Registers
+  - 19 Permission Control (PMS)
+    - 19.1 Overview
+    - 19.2 Features
+    - 19.3 Functional Description
+      - 19.3.1 Architecture
+      - 19.3.2 Address Ranges and Permissions Management
+        - 19.3.2.1 Address Ranges Managed by HP APM and LP APM
+        - 19.3.2.2 Address Ranges Managed by DMA APM
+    - 19.4 Programming Procedure
+      - 19.4.1 Configuring Access Permissions for HP CPU0/1
+      - 19.4.2 Configuring Access Permissions for LP CPU
+      - 19.4.3 Configuring Access Permission for DMA Masters
+    - 19.5 Illegal Access and Interrupts
+    - 19.6 Register Summary
+      - 19.6.1 HP_DMA_PMS_REG
+      - 19.6.2 HP_PERI_PMS_REG
+      - 19.6.3 LP2HP_PERI_PMS_REG
+      - 19.6.4 LP_PERI_PMS_REG
+      - 19.6.5 HP2LP_PERI_PMS_REG
+    - 19.7 Registers
+      - 19.7.1 HP_DMA_PMS_REG
+      - 19.7.2 HP_PERI_PMS_REG
+      - 19.7.3 LP2HP_PERI_PMS_REG
+      - 19.7.4 LP_PERI_PMS_REG
+      - 19.7.5 HP2LP_PERI_PMS_REG
+  - 20 System Registers (SYSREG)
+    - 20.1 Overview
+    - 20.2 Function Description
+      - 20.2.1 HP System Registers
+        - 20.2.1.1 External Memory Encryption/Decryption Configuration
+        - 20.2.1.2 HP Peripherals Clock Configuration and Power Control
+        - 20.2.1.3 HP Cache Clock and Reset Configuration
+        - 20.2.1.4 HP SPM and HP L2MEM Clock Configuration
+        - 20.2.1.5 HP SPM Parity Check Configuration
+        - 20.2.1.6 HP L2MEM ECC Check Configuration
+        - 20.2.1.7 BitScrambler Configuration
+        - 20.2.1.8 Ethernet MAC Control
+        - 20.2.1.9 USB OTG 2.0 Control
+        - 20.2.1.10 CPU Control and Record
+        - 20.2.1.11 HP GPIO Hold Control
+        - 20.2.1.12 HP GPIO Output Control
+        - 20.2.1.13 Illegal Access and Unauthorized Access
+        - 20.2.1.14 HP CPU Bus Timeout Protection
+        - 20.2.1.15 AXI Matrix
+        - 20.2.1.16 Post Write
+      - 20.2.2 LP System Registers
+        - 20.2.2.1 LP Timer Stall Control
+        - 20.2.2.2 Focused Ion Beam (FIB) Control
+        - 20.2.2.3 Boot Mode
+        - 20.2.2.4 LP CPU Control
+        - 20.2.2.5 Reset Control
+        - 20.2.2.6 Wakeup Control
+        - 20.2.2.7 LPROM and LP SPM Clock Control
+        - 20.2.2.8 Analog Voltage Comparator
+        - 20.2.2.9 Illegal Access and Unauthorized Access
+        - 20.2.2.10 LP Bus Timeout Protection
+        - 20.2.2.11 RNG Control
+    - 20.3 Interrupt
+    - 20.4 Register Summary
+      - 20.4.1 HP Register Summary
+      - 20.4.2 ICM Register Summary
+      - 20.4.3 LP Register Summary
+    - 20.5 Registers
+      - 20.5.1 HP Registers
+      - 20.5.2 ICM Register
+      - 20.5.3 LP Registers
+  - 21 Debug Assistant
+    - 21.1 Overview
+    - 21.2 Features
+    - 21.3 Functional Description
+      - 21.3.1 Region Read/Write Monitoring
+      - 21.3.2 SP Monitoring
+      - 21.3.3 PC Logging
+      - 21.3.4 CPU/DMA Bus Access Logging
+    - 21.4 Interrupts
+    - 21.5 Recommended Operation
+      - 21.5.1 Region Monitoring and SP Monitoring Configuration
+      - 21.5.2 PC Logging Configuration
+      - 21.5.3 CPU/DMA Bus Access Logging Configuration
+        - 21.5.3.1 HP CPU0/1 Bus Access Logging Configuration
+        - 21.5.3.2 DMA Bus Access Logging Configuration
+    - 21.6 Register Summary
+      - 21.6.1 HP CPU Bus Logging Configuration Register Summary
+      - 21.6.2 DMA Bus Logging Configuration Register Summary
+      - 21.6.3 Summary of Other Registers
+    - 21.7 Registers
+      - 21.7.1 HP CPU Bus Logging Configuration Registers
+      - 21.7.2 DMA Bus Logging Configuration Registers
+      - 21.7.3 Other Registers
+  - 22 LP Mailbox
+    - 22.1 Overview
+    - 22.2 Features
+    - 22.3 Functional Description
+      - 22.3.1 Message Registers
+      - 22.3.2 Interrupts
+      - 22.3.3 Inter-Core Communication
+    - 22.4 Register Summary
+    - 22.5 Registers
+  - 23 Brown-out Detector
+    - 23.1 Introduction
+    - 23.2 Feature List
+    - 23.3 Architectural Overview
+    - 23.4 Functional Description
+    - 23.5 Interrupts
+    - 23.6 Programming Procedures
+    - 23.7 Register Summary
+    - 23.8 Registers
+  - 24 Power Supply Detector (PSDET)
+    - 24.1 Overview
+    - 24.2 Features
+    - 24.3 Functional Description
+- V Cryptography/Security Component
+  - 25 AES Accelerator (AES)
+    - 25.1 Introduction
+    - 25.2 Features
+    - 25.3 Clock and Reset
+    - 25.4 AES Working Modes
+    - 25.5 Typical AES Working Mode
+      - 25.5.1 Key, Plaintext, and Ciphertext
+      - 25.5.2 Endianness
+      - 25.5.3 Operation Process 
+    - 25.6 DMA-AES Working Mode
+      - 25.6.1 Key, Plaintext, and Ciphertext
+      - 25.6.2 Endianness
+      - 25.6.3 Standard Incrementing Function
+      - 25.6.4 Block Number
+      - 25.6.5 Initialization Vector
+      - 25.6.6 Block Operation Process
+      - 25.6.7 GCM Operation Process
+    - 25.7 GCM Algorithm
+      - 25.7.1 Hash Subkey
+      - 25.7.2 J0
+      - 25.7.3 Authentication Tag
+      - 25.7.4 AAD Block Number
+      - 25.7.5 Number of Effective Bits of Incomplete Blocks
+    - 25.8 Pseudo-Round Anti-DPA Function
+    - 25.9 Interrupts
+    - 25.10 Memory Summary
+    - 25.11 Register Summary
+    - 25.12 Registers
+  - 26 ECC Accelerator (ECC)
+    - 26.1 Overview
+    - 26.2 Feature List
+    - 26.3 ECC Basics
+      - 26.3.1 Elliptic Curve and Points on the Curves
+      - 26.3.2 Affine Coordinates and Jacobian Coordinates
+      - 26.3.3 Memory Blocks
+      - 26.3.4 Data and Data Block
+      - 26.3.5 Writing Data
+      - 26.3.6 Reading Data
+      - 26.3.7 Standard Calculation and Jacobian Calculation
+    - 26.4 Function Description
+      - 26.4.1 Curve Mode
+      - 26.4.2 Working Modes
+        - 26.4.2.1 Affine Point Multiplication (Affine Point Multi)
+        - 26.4.2.2 Affine Point Verification (Affine Point Verif)
+        - 26.4.2.3 Affine Point Verification + Affine Point Multiplication (Affine Point Verif + Mul
+        - 26.4.2.4 Jacobian Point Multiplication (Jacobian Point Multi)
+        - 26.4.2.5 Point Addition (Point Add)
+        - 26.4.2.6 Jacobian Point Verification (Jacobian Point Verif)
+        - 26.4.2.7 Affine Point Verification + Jacobian Point Multiplication (Affine Point Verif + J
+        - 26.4.2.8 Mod Addition (Mod Add)
+        - 26.4.2.9 Mod Subtraction (Mod Sub)
+        - 26.4.2.10 Mod Multiplication (Mod Multi)
+        - 26.4.2.11 Mod Division (Mod Div)
+      - 26.4.3 Enhancing Anti-Attack Performance
+    - 26.5 Clock and Reset
+    - 26.6 Interrupts
+    - 26.7 Programming Procedures
+    - 26.8 Register Summary
+    - 26.9 Registers
+  - 27 HMAC Accelerator (HMAC)
+    - 27.1 Main Features
+    - 27.2 Functional Description
+      - 27.2.1 Upstream Mode
+      - 27.2.2 Downstream Mode - JTAG Enable Feature
+      - 27.2.3 Downstream Mode - RSA_DS Key Derivation Feature
+      - 27.2.4 HMAC eFuse Configuration
+      - 27.2.5 HMAC Process (Detailed)
+        - 27.2.5.1 Enable HMAC Module
+        - 27.2.5.2 Configure HMAC Keys and Key Purposes
+        - 27.2.5.3 Downstream Mode Process
+        - 27.2.5.4 Upstream Mode Process
+    - 27.3 HMAC Algorithm Details
+      - 27.3.1 Padding Bits
+      - 27.3.2 HMAC Algorithm Structure
+    - 27.4 Register Summary
+    - 27.5 Registers
+  - 28 RSA Accelerator (RSA)
+    - 28.1 Introduction
+    - 28.2 Features
+    - 28.3 Functional Description
+      - 28.3.1 Definitions and Representations
+      - 28.3.2 Large-Number Modular Exponentiation
+      - 28.3.3 Large-Number Modular Multiplication
+      - 28.3.4 Large-Number Multiplication
+      - 28.3.5 Options for Additional Acceleration
+    - 28.4 Interrupts
+    - 28.5 Memory Summary
+    - 28.6 Register Summary
+    - 28.7 Registers
+  - 29 SHA Accelerator (SHA)
+    - 29.1 Introduction
+    - 29.2 Features
+    - 29.3 Working Modes
+    - 29.4 Function Description
+      - 29.4.1 Preprocessing
+        - 29.4.1.1 Padding the Message
+        - 29.4.1.2 Parsing the Message
+        - 29.4.1.3 Setting the Initial Hash Value
+      - 29.4.2 Hash Operation
+        - 29.4.2.1 Typical SHA Mode Process
+        - 29.4.2.2 DMA-SHA Mode Process
+      - 29.4.3 Message Digest
+    - 29.5 Interrupt
+    - 29.6 Register Summary
+    - 29.7 Registers
+  - 30 RSA Digital Signature Peripheral (RSA_DS)
+    - 30.1 Overview
+    - 30.2 Features
+    - 30.3 Functional Description
+      - 30.3.1 Overview
+      - 30.3.2 Private Key Operands
+      - 30.3.3 Software Prerequisites
+      - 30.3.4 RSA_DS Operation at the Hardware Level
+      - 30.3.5 RSA_DS Operation at the Software Level
+    - 30.4 Memory Summary
+    - 30.5 Register Summary
+    - 30.6 Registers
+  - 31 ECDSA Digital Signature Peripheral (ECDSA_DS)
+    - 31.1 Introduction
+    - 31.2 Features
+    - 31.3 ECDSA Basics
+      - 31.3.1 Domain Parameters
+      - 31.3.2 Key Generation
+      - 31.3.3 Signature Generation
+      - 31.3.4 Signature Verification
+    - 31.4 Functional Description
+      - 31.4.1 ECDSA_DS Working Modes
+      - 31.4.2 Data and Data Block
+        - 31.4.2.1 Writing Data
+        - 31.4.2.2 Reading Data
+        - 31.4.2.3 Padding the Message
+        - 31.4.2.4 Parsing the Message
+      - 31.4.3 Security Features
+        - 31.4.3.1 High Anti-Attack Performance
+        - 31.4.3.2 State-Dependent Register Access Control
+        - 31.4.3.3 Hardware Occupation
+    - 31.5 Programming Procedures
+      - 31.5.1 ECDSA_DS Process
+        - 31.5.1.1 IDLE Stage
+        - 31.5.1.2 PREP Stage
+        - 31.5.1.3 LOAD Stage
+        - 31.5.1.4 PROC Stage
+        - 31.5.1.5 POST Stage
+        - 31.5.1.6 ECDSA_DS SHA Interface
+      - 31.5.2 Clocks and Resets
+      - 31.5.3 Interrupts
+    - 31.6 Memory Blocks
+    - 31.7 Register Summary
+    - 31.8 Registers
+  - 32 External Memory Encryption and Decryption (XTS_AES)
+    - 32.1 Overview
+    - 32.2 Features
+    - 32.3 Module Structure
+    - 32.4 Functional Description
+      - 32.4.1 XTS Algorithm
+      - 32.4.2 Key
+      - 32.4.3 Target Memory Space
+      - 32.4.4 Data Writing
+      - 32.4.5 Manual Encryption Block
+      - 32.4.6 Auto Encryption Block
+      - 32.4.7 Auto Decryption Block
+    - 32.5  Software Process 
+    - 32.6 Anti-DPA
+    - 32.7 Register Summary
+    - 32.8 Registers
+  - 33 Random Number Generator (RNG)
+    - 33.1 Introduction
+    - 33.2 Feature List
+    - 33.3 Functional Description
+    - 33.4 Programming Procedure
+    - 33.5 Register Summary
+    - 33.6 Registers
+  - 34 Key Manager
+    - 34.1 Overview
+    - 34.2 Background Knowledge
+    - 34.3 Glossary
+    - 34.4 Features
+    - 34.5 Architectural Overview
+    - 34.6 Functional Description
+      - 34.6.1 HUK Generator
+        - 34.6.1.1 HUK Generation Process
+        - 34.6.1.2 HUK Status Check
+      - 34.6.2 Key Manager
+        - 34.6.2.1 Random Deploy Mode
+        - 34.6.2.2 AES Deploy Mode
+        - 34.6.2.3 ECDH0 Deploy Mode
+        - 34.6.2.4 ECDH1 Deploy Mode
+        - 34.6.2.5 Private Key Recovery Mode
+        - 34.6.2.6 [para:keyinfo]key_info Export Mode
+    - 34.7 Programming Procedures
+      - 34.7.1 HUK Generator
+        - 34.7.1.1 IDLE Phase
+        - 34.7.1.2 PREP Phase
+        - 34.7.1.3 LOAD Phase
+        - 34.7.1.4 PROC Phase
+        - 34.7.1.5 GAIN Phase
+        - 34.7.1.6 POST Phase
+      - 34.7.2 Key Manager
+        - 34.7.2.1 IDLE Phase
+        - 34.7.2.2 PREP Phase
+        - 34.7.2.3 LOAD Phase
+        - 34.7.2.4 PROC Phase
+        - 34.7.2.5 GAIN Phase
+        - 34.7.2.6 POST Phase
+    - 34.8 Programming Examples
+      - 34.8.1 Software Process in Chip Private Key Deploy Phase
+      - 34.8.2 Software Process in Chip Normal Startup Phase
+    - 34.9 Interrupts
+    - 34.10 Memory Blocks
+    - 34.11 Register Summary
+      - 34.11.1 HUK Register Summary
+      - 34.11.2 Key Manager Register Summary
+    - 34.12 Registers
+      - 34.12.1 HUK Registers
+      - 34.12.2 Key Manager Registers
+- VI Image and Voice Processing
+  - 35 JPEG Codec
+    - 35.1 Terminology
+    - 35.2 Introduction
+    - 35.3 Features
+    - 35.4 Architectural Overview
+    - 35.5 Functional Description
+      - 35.5.1 JPEG Encoder
+        - 35.5.1.1 Pause
+        - 35.5.1.2 Color Space Conversion
+        - 35.5.1.3 Configurable Quantization Coefficient Table
+        - 35.5.1.4 Stuffed Zero Byte
+        - 35.5.1.5 EOI Marker
+      - 35.5.2 JPEG Decoder
+        - 35.5.2.1 Multiple Chrominance Components
+        - 35.5.2.2 Parsing RST Marker
+        - 35.5.2.3 Configurable Quantization Coefficient Table
+        - 35.5.2.4 Configurable Huffman Table
+        - 35.5.2.5 Timeout Detection
+    - 35.6 Interrupts
+    - 35.7 Programming Procedures
+      - 35.7.1 JPEG Encoder
+      - 35.7.2 JPEG Decoder
+      - 35.7.3 Reset
+    - 35.8 Register Summary
+    - 35.9 Registers
+  - 36 Image Signal Processor (ISP)
+    - 36.1 Introduction
+    - 36.2 Terminology
+    - 36.3 Feature List
+    - 36.4 Architectural Overview
+    - 36.5 Functional Description
+      - 36.5.1 ISP_Header
+      - 36.5.2 ISP_Pipeline
+        - 36.5.2.1 Black Level Correction (BLC)
+        - 36.5.2.2 Defective Pixel Correction (DPC)
+        - 36.5.2.3 Bayer Filter (BF)
+        - 36.5.2.4 Lens Shading Correction (LSC)
+        - 36.5.2.5 Demosaic
+        - 36.5.2.6 White Balance Gain (WBG)
+        - 36.5.2.7 Color Correction Matrix (CCM)
+        - 36.5.2.8 Gamma Correction
+        - 36.5.2.9 RGB2YUV
+        - 36.5.2.10 Sharpen
+        - 36.5.2.11 Contrast/Hue/Saturation/Luminance Adjustment (COLOR)
+        - 36.5.2.12 YUV_Limit and YUV2RGB
+        - 36.5.2.13 Cropping (CROP)
+        - 36.5.2.14 Automatic Exposure Statistics (AE)
+        - 36.5.2.15 Automatic Focus Statistics (AF)
+        - 36.5.2.16 Automatic White Balance Statistics (AWB)
+        - 36.5.2.17 Histogram Statistics (HIST)
+      - 36.5.3 ISP_Tail
+      - 36.5.4 Sequence Control
+      - 36.5.5 Shadow Registers
+      - 36.5.6 CSI_CM
+      - 36.5.7 CSI_Bridge
+      - 36.5.8 Color Mode and Byte Order
+        - 36.5.8.1 Output Pixel Layout Format
+        - 36.5.8.2 Byte Order
+    - 36.6 Interrupts
+    - 36.7 Programming Procedures
+      - 36.7.1 ISP Clock Reset Configuration
+      - 36.7.2 CSI_Bridge Configuration
+      - 36.7.3 VDMA Configuration
+      - 36.7.4 ISP General Configuration
+      - 36.7.5 Enabling ISP for Image Capture from MIPI-CSI
+      - 36.7.6 Enabling ISP for Image Capture from DVP
+      - 36.7.7 Enabling ISP for Image Capture from VDMA
+      - 36.7.8 LSC LUT Configuration
+      - 36.7.9 AE Configuration
+      - 36.7.10 AF Configuration
+      - 36.7.11 AWB Configuration
+      - 36.7.12 HIST Configuration
+      - 36.7.13 ISP_Pipeline Module Update Configuration
+    - 36.8 Register Summary
+      - 36.8.1 ISP Register Summary
+      - 36.8.2 MIPI CSI_Bridge Register Summary
+    - 36.9 Registers
+      - 36.9.1 ISP Registers
+      - 36.9.2 MIPI CSI_Bridge Registers
+  - 37 Pixel-Processing Accelerator (PPA)
+    - 37.1 Overview
+    - 37.2 Terminology
+    - 37.3 Features
+    - 37.4 Architectural Overview
+    - 37.5 Functional Description
+      - 37.5.1 PPA Color Space
+        - 37.5.1.1 SRM Color Space
+        - 37.5.1.2 BLEND Color Space
+      - 37.5.2 PPA 2D-DMA Linked List Configuration
+        - 37.5.2.1 SRM Special Configuration
+      - 37.5.3 Scaling - Rotation - Mirroring (SRM)
+        - 37.5.3.1 Basic Functionality
+        - 37.5.3.2 Pixel Block Rearrangement
+      - 37.5.4 Layer Blending (BLEND)
+        - 37.5.4.1 Basic Functionality
+        - 37.5.4.2 Filled Image Output
+    - 37.6 Interrupts
+    - 37.7 Programming Procedures
+      - 37.7.1 PPA Clock Reset Configuration
+      - 37.7.2 SRM Configuration
+      - 37.7.3 BLEND CLUT Configuration
+      - 37.7.4 BLEND Configuration
+      - 37.7.5 BLEND Image Filling Configuration
+      - 37.7.6 Error Handling
+    - 37.8 Register Summary
+    - 37.9 Registers
+  - 38 LCD and Camera Controller (LCD_CAM)
+    - 38.1 Overview
+    - 38.2 Features
+    - 38.3 Functional Description
+      - 38.3.1 Block Diagram
+      - 38.3.2 Signal Description
+      - 38.3.3 LCD_CAM Module Clocks
+        - 38.3.3.1 LCD Clock
+        - 38.3.3.2 Camera Clock
+      - 38.3.4 LCD_CAM Reset
+      - 38.3.5 LCD_CAM Data Format Control
+        - 38.3.5.1 LCD Data Format Control
+        - 38.3.5.2 Camera Data Format Control
+      - 38.3.6 YUV-RGB Data Format Conversion
+        - 38.3.6.1 YUV Formats
+        - 38.3.6.2 Format Conversion Configuration
+      - 38.3.7 LCD_CAM Timing
+        - 38.3.7.1 LCD Timing (RGB Format)
+        - 38.3.7.2 LCD Timing (I8080/MOTO6800 Format)
+    - 38.4 Interrupts
+    - 38.5 Software Configuration Process
+      - 38.5.1 Configure LCD (RGB Format) as TX Mode
+      - 38.5.2 Configure LCD (I8080/MOTO6800 Format) as TX Mode
+      - 38.5.3 Configure Camera as RX Mode
+    - 38.6 Register Summary
+    - 38.7 Registers
+  - 39 H264 Encoder
+    - 39.1 Overview
+    - 39.2 Terminology
+    - 39.3 Features
+    - 39.4 Architecture
+    - 39.5 Functional Description
+      - 39.5.1 Encoder Algorithm Core (ENC_CORE)
+        - 39.5.1.1 Architecture
+        - 39.5.1.2 Quantization Result Decimation
+        - 39.5.1.3 Motion Vector (MV) Merging
+        - 39.5.1.4 MB Level Rate Control
+        - 39.5.1.5 Region of Interest (ROI)
+      - 39.5.2 H264 Dedicated DMA
+        - 39.5.2.1 Architecture
+        - 39.5.2.2 Linked List Descriptor
+        - 39.5.2.3 Transfer Initialization
+        - 39.5.2.4 Transfer Reset
+        - 39.5.2.5 Channel Configuration
+    - 39.6 Interrupts
+    - 39.7 Programming Procedures
+      - 39.7.1 GOP Mode
+      - 39.7.2 Dual Stream Mode
+      - 39.7.3 Soft Reset
+    - 39.8 Register Summary
+      - 39.8.1 H264 Encoder Register Summary
+      - 39.8.2 H264 DMA Register Summary
+    - 39.9 Registers
+      - 39.9.1 H264 Encoder Registers
+      - 39.9.2 H264 DMA Registers
+  - 40 MIPI CSI
+    - 40.1 Introduction
+    - 40.2 Terminology
+    - 40.3 Feature List
+    - 40.4 Architectural Overview
+    - 40.5 Functional Description
+      - 40.5.1 Data Lane State
+      - 40.5.2 MIPI RX D-PHY Operation
+        - 40.5.2.1 No-Power State
+        - 40.5.2.2 Shut-Down State
+        - 40.5.2.3 AFE Initialization
+        - 40.5.2.4 Control Mode
+        - 40.5.2.5 High-Speed Data Reception Mode
+        - 40.5.2.6 Escape Mode
+      - 40.5.3 MIPI RX D-PHY Configuration
+        - 40.5.3.1 MIPI RX D-PHY Programming Interface
+        - 40.5.3.2 MIPI RX D-PHY Test Code
+      - 40.5.4 Descrambler
+      - 40.5.5 Error Management
+    - 40.6 Interrupts
+    - 40.7 Programming Procedures
+      - 40.7.1 Start High-Speed Data Reception
+        - 40.7.1.1 Clock and Reset
+        - 40.7.1.2 MIPI RX D-PHY and MIPI Host Initialization
+      - 40.7.2 Stop High-Speed Data Reception
+    - 40.8 Register Summary
+    - 40.9 Registers
+  - 41 Voice Activity Detection (VAD)
+    - 41.1 Introduction
+    - 41.2 Feature List
+    - 41.3 Architectural Overview
+    - 41.4 Functional Description
+      - 41.4.1 Algorithm Parameter Configuration
+      - 41.4.2 Wake-up Source Configuration
+    - 41.5 Interrupts
+    - 41.6 Programming Procedure
+      - 41.6.1 Automatic Operation Mode
+      - 41.6.2 Manual Operation Mode
+    - 41.7 Register Summary
+    - 41.8 Registers
+- VII Connectivity Interface
+  - 42 UART Controller (UART)
+    - 42.1 Overview
+    - 42.2 Features
+    - 42.3 UART Structure
+    - 42.4 Functional Description
+      - 42.4.1 Clock and Reset
+      - 42.4.2 UART FIFO
+      - 42.4.3 Baud Rate Generation and Detection
+        - 42.4.3.1 Baud Rate Generation
+        - 42.4.3.2 Baud Rate Detection
+      - 42.4.4 UART Data Frame
+      - 42.4.5 AT_CMD Character Structure
+      - 42.4.6 RS485
+        - 42.4.6.1 Driver Control
+        - 42.4.6.2 Turnaround Delay
+        - 42.4.6.3 Bus Snooping
+      - 42.4.7 IrDA
+      - 42.4.8 Wakeup
+      - 42.4.9 Flow Control
+        - 42.4.9.1 Hardware Flow Control
+        - 42.4.9.2 Software Flow Control
+      - 42.4.10 GDMA Mode
+      - 42.4.11 Interrupts
+    - 42.5 Programming Procedures
+      - 42.5.1 Register Type
+      - 42.5.2 Detailed Steps
+        - 42.5.2.1 Initializing UARTn
+        - 42.5.2.2 Configuring UARTn Communication
+        - 42.5.2.3 Enabling UARTn
+    - 42.6 Register Summary
+      - 42.6.1 UART Register Summary
+      - 42.6.2 LP UART Register Summary
+      - 42.6.3 UHCI Register Summary
+    - 42.7 Registers
+      - 42.7.1 UART Registers
+      - 42.7.2 LP UART Registers
+      - 42.7.3 UHCI Registers
+  - 43 SPI Controller (SPI)
+    - 43.1 Overview
+    - 43.2 Glossary
+    - 43.3 Features
+    - 43.4 Architectural Overview
+    - 43.5 Functional Description
+      - 43.5.1 Data Modes
+      - 43.5.2 Introduction to Bus Signals
+      - 43.5.3 Bit Read/Write Order Control
+      - 43.5.4 Unaligned Byte Transfer
+      - 43.5.5 Transfer Types
+      - 43.5.6 CPU-Controlled Data Transfer
+        - 43.5.6.1 CPU-Controlled Master Transfer
+        - 43.5.6.2 CPU-Controlled Slave Transfer
+      - 43.5.7 DMA-Controlled Data Transfer
+        - 43.5.7.1 DMA Configuration
+        - 43.5.7.2 DMA TX/RX Buffer Length Control
+      - 43.5.8 Data Flow Control (Take GP-SPI as an Example)
+        - 43.5.8.1 GP-SPI Functional Blocks
+        - 43.5.8.2 Data Flow Control as Master
+        - 43.5.8.3 Data Flow Control as Slave
+      - 43.5.9 GP-SPI as a Master
+        - 43.5.9.1 State Machine
+        - 43.5.9.2 Register Configuration for State and Bit Mode Control
+        - 43.5.9.3 Full-Duplex Communication (1-bit Mode Only)
+        - 43.5.9.4 Half-Duplex Communication (1/2/4/(8)-bit Mode)
+        - 43.5.9.5 DMA-Controlled Configurable Segmented Transfer
+      - 43.5.10 GP-SPI Works as a Slave
+        - 43.5.10.1 Configurable Communication Formats
+        - 43.5.10.2 CMD Values Supported in Half-Duplex Communication
+        - 43.5.10.3 Slave Single Transfer and Slave Segmented Transfer
+        - 43.5.10.4 Configuration of Slave Single Transfer
+        - 43.5.10.5 Configuration of Slave Segmented Transfer in Half-Duplex
+        - 43.5.10.6 Configuration of Slave Segmented Transfer in Full-Duplex
+    - 43.6 CS Setup Time and Hold Time Control
+    - 43.7 Clock Control
+      - 43.7.1 GP-SPI Clock Control
+      - 43.7.2 LP-SPI Clock Control
+      - 43.7.3 Clock Phase and Polarity
+      - 43.7.4 Clock Control as Master
+      - 43.7.5 Clock Control as Slave
+    - 43.8 GP-SPI Timing Compensation
+    - 43.9 LP-SPI Wake-Up
+    - 43.10 Differences Among LP-SPI, GP-SPI2, and GP-SPI3
+      - 43.10.1 Feature Differences
+      - 43.10.2 Register Differences
+      - 43.10.3 Interrupt Differences
+    - 43.11 Interrupt
+      - 43.11.1 Interrupt Description
+      - 43.11.2 Interrupts Used in Master and in Slave (Take GP-SPI as an Example)
+    - 43.12 Register Summary
+      - 43.12.1 GP-SPI2 Register Summary
+      - 43.12.2 GP-SPI3 Register Summary
+      - 43.12.3 LP-SPI Register Summary
+    - 43.13 Register
+      - 43.13.1 GP-SPI2 Register
+      - 43.13.2 GP-SPI3 Register
+      - 43.13.3 LP-SPI Register
+  - 44 I2C Controller (I2C)
+    - 44.1 Overview
+    - 44.2 Features
+    - 44.3 I2C Architecture
+    - 44.4 Functional Description
+      - 44.4.1 Clock Configuration
+      - 44.4.2 SCL and SDA Noise Filtering
+      - 44.4.3 SCL Clock Stretching
+      - 44.4.4 Generating SCL Pulses in Idle State
+      - 44.4.5 Synchronization
+      - 44.4.6 Open-Drain Output
+      - 44.4.7 Timing Parameter Configuration
+      - 44.4.8 Timeout Control
+      - 44.4.9 Command Configuration
+      - 44.4.10 TX/RX RAM Data Storage
+      - 44.4.11 Data Conversion
+      - 44.4.12 Addressing Mode
+      - 44.4.13 R/W Bit Check in 10-bit Addressing Mode
+      - 44.4.14 To Start the I2C Controller
+    - 44.5 Functional Differences Between LP_I2C and I2C
+    - 44.6 Programming Example
+      - 44.6.1 I2C master Writes to I2C slave with a 7-bit Address in One Command Sequence
+        - 44.6.1.1 Introduction
+        - 44.6.1.2 Configuration Example
+      - 44.6.2 I2C master Writes to I2C slave with a 10-bit Address in One Command Sequence
+        - 44.6.2.1 Introduction
+        - 44.6.2.2 Configuration Example
+      - 44.6.3 I2C master Writes to I2C slave with Two 7-bit Addresses in One Command Sequence
+        - 44.6.3.1 Introduction
+        - 44.6.3.2 Configuration Example
+      - 44.6.4 I2C master Writes to I2C slave with a 7-bit Address in Multiple Command Sequences
+        - 44.6.4.1 Introduction
+        - 44.6.4.2 Configuration Example
+      - 44.6.5 I2C master Reads I2C slave with a 7-bit Address in One Command Sequence
+        - 44.6.5.1 Introduction
+        - 44.6.5.2 Configuration Example
+      - 44.6.6 I2C master Reads I2C slave with a 10-bit Address in One Command Sequence
+        - 44.6.6.1 Introduction
+        - 44.6.6.2 Configuration Example
+      - 44.6.7 I2C master Reads I2C slave with Two 7-bit Addresses in One Command Sequence
+        - 44.6.7.1 Introduction
+        - 44.6.7.2 Configuration Example
+      - 44.6.8 I2C master Reads I2C slave with a 7-bit Address in Multiple Command Sequences
+        - 44.6.8.1 Introduction
+        - 44.6.8.2 Configuration Example
+    - 44.7 Interrupts
+    - 44.8 Register Summary
+      - 44.8.1 I2C Register Summary
+      - 44.8.2 LP_I2C Register Summary
+    - 44.9 Registers
+      - 44.9.1 I2C Registers
+      - 44.9.2 LP_I2C Registers
+  - 45 Analog I2C Controller
+    - 45.1 Introduction
+    - 45.2 Feature List
+    - 45.3 Architectural Overview
+    - 45.4 Functional Description
+    - 45.5 Programming Procedures
+    - 45.6 Register Summary
+    - 45.7 Registers
+  - 46 I2S Controller (I2S)
+    - 46.1 Overview
+    - 46.2 Terminology
+    - 46.3 Features
+    - 46.4 System Architecture
+    - 46.5 Supported Audio Standards
+      - 46.5.1 TDM Philips Standard
+      - 46.5.2 TDM MSB Alignment Standard
+      - 46.5.3 TDM PCM Standard
+      - 46.5.4 PDM Standard
+    - 46.6 I2S TX/RX Clock
+    - 46.7 I2S Reset
+    - 46.8 I2S Master/Slave Mode
+      - 46.8.1 Master/Slave TX Mode
+      - 46.8.2 Master/Slave RX Mode
+    - 46.9 Transmitting Data
+      - 46.9.1 Data Format Control
+        - 46.9.1.1 Bit Width Control of Channel Valid Data
+        - 46.9.1.2 Endian Control of Channel Valid Data
+        - 46.9.1.3 A-law/-law Compression and Decompression
+        - 46.9.1.4 Bit Width Control of Channel TX Data
+        - 46.9.1.5 Bit Order Control of Channel Data
+      - 46.9.2 Channel Mode Control
+        - 46.9.2.1 TDM TX Mode
+        - 46.9.2.2 PDM TX Mode
+      - 46.9.3 Synchronous Counter
+    - 46.10 Receiving Data
+      - 46.10.1 Channel Mode Control
+        - 46.10.1.1 TDM RX Mode
+        - 46.10.1.2 PDM RX Mode
+      - 46.10.2 Data Format Control
+        - 46.10.2.1 Bit Order Control of Channel Data
+        - 46.10.2.2 Bit Width Control of Channel Storage (Valid) Data
+        - 46.10.2.3 Bit Width Control of Channel RX Data
+        - 46.10.2.4 Endian Control of Channel Storage Data
+        - 46.10.2.5 A-law/-law Compression and Decompression
+    - 46.11 Event Task Matrix Feature
+    - 46.12 I2S Interrupts
+    - 46.13 Software Configuration Process
+      - 46.13.1 Configure I2S as TX Mode
+      - 46.13.2 Configure I2S as RX Mode
+    - 46.14 Register Summary
+    - 46.15 Registers
+  - 47 LP I2S Controller
+    - 47.1 Introduction
+    - 47.2 Feature List
+    - 47.3 Architectural Overview
+    - 47.4 Supported Audio Standards
+      - 47.4.1 TDM Philips Standard
+      - 47.4.2 TDM MSB Alignment Standard
+      - 47.4.3 TDM PCM Standard
+      - 47.4.4 PDM Standard
+    - 47.5 RX Clock
+    - 47.6 Reset
+    - 47.7 Master/Slave RX Mode
+    - 47.8 Receiving Data
+      - 47.8.1 Channel Mode Control
+        - 47.8.1.1 TDM RX Mode
+        - 47.8.1.2 PDM RX Mode
+      - 47.8.2 Data Format Control
+        - 47.8.2.1 Bit Order Control of Channel Data
+        - 47.8.2.2 Bit Width Control of Channel RX Data
+        - 47.8.2.3 Bit Width Control of Channel RX Data
+        - 47.8.2.4 Endian Control of Channel Storage Data
+      - 47.8.3 Internal Memory
+    - 47.9 Interrupts
+    - 47.10 Register Summary
+    - 47.11 Registers
+  - 48 Pulse Count Controller (PCNT)
+    - 48.1 Introduction
+    - 48.2 Feature List
+    - 48.3 Architectural Overview
+    - 48.4 Functional Description
+    - 48.5 Interrupts
+    - 48.6 Programming Procedures
+      - 48.6.1 Channel 0 Incrementing Independently
+      - 48.6.2 Channel 0 Decrementing Independently
+      - 48.6.3 Channel 0 and Channel 1 Incrementing Together
+    - 48.7 Register Summary
+    - 48.8 Registers
+  - 49 USB 2.0 High-Speed OTG
+    - 49.1 Overview
+    - 49.2 Glossary
+    - 49.3 Features
+      - 49.3.1 General Features
+      - 49.3.2 Device Mode Features
+      - 49.3.3 Host Mode Features
+    - 49.4 Functional Description
+      - 49.4.1 Controller Core and Interfaces
+      - 49.4.2 Memory Layout
+        - 49.4.2.1 Control & Status Registers (CSRs)
+        - 49.4.2.2 FIFO Access
+      - 49.4.3 FIFO and Queue Organization
+        - 49.4.3.1 Host Mode FIFOs and Queues
+        - 49.4.3.2 Device Mode FIFOs
+      - 49.4.4 Interrupt Hierarchy
+      - 49.4.5 DMA Modes and Slave Mode
+        - 49.4.5.1  Slave Mode
+        - 49.4.5.2  Buffer DMA Mode
+        - 49.4.5.3 Scatter/Gather DMA Mode
+      - 49.4.6 Transaction and Transfer Level Operation
+        - 49.4.6.1 Transaction and Transfer Level Operation in DMA Mode
+        - 49.4.6.2 Transaction and Transfer Level Operation in Slave Mode
+      - 49.4.7 OTG
+    - 49.5 Registers
+  - 50 USB 2.0 Full-Speed OTG 
+    - 50.1 Overview
+    - 50.2 Glossary
+    - 50.3 Features
+      - 50.3.1 General Features
+      - 50.3.2 Device Mode Features
+      - 50.3.3 Host Mode Features
+    - 50.4 Functional Description
+      - 50.4.1 Controller Core and Interfaces
+      - 50.4.2 Memory Layout
+        - 50.4.2.1 Control & Status Registers (CSRs)
+        - 50.4.2.2 FIFO Access
+      - 50.4.3 FIFO and Queue Organization
+        - 50.4.3.1 Host Mode FIFOs and Queues
+        - 50.4.3.2 Device Mode FIFOs
+      - 50.4.4 Interrupt Hierarchy
+      - 50.4.5 Slave Mode and DMA Modes
+        - 50.4.5.1 Slave Mode
+        - 50.4.5.2 Buffer DMA Mode
+        - 50.4.5.3 Scatter/Gather DMA Mode
+      - 50.4.6 Transaction and Transfer Level Operation
+        - 50.4.6.1 Transaction and Transfer Level Operation in DMA Mode
+        - 50.4.6.2 Transaction and Transfer Level Operation in Slave Mode
+    - 50.5 OTG
+      - 50.5.1 OTG Interface
+      - 50.5.2 ID Pin Detection
+      - 50.5.3 Session Request Protocol (SRP)
+        - 50.5.3.1 A-Device SRP
+        - 50.5.3.2 B-Device SRP
+      - 50.5.4 Host Negotiation Protocol (HNP)
+        - 50.5.4.1 A-Device HNP
+        - 50.5.4.2 B-Device HNP
+    - 50.6 Registers
+  - 51 USB Serial/JTAG Controller (USB_SERIAL_JTAG)
+    - 51.1 Overview
+    - 51.2 Features
+    - 51.3 Functional Description
+      - 51.3.1 CDC-ACM USB Interface Functional Description
+      - 51.3.2 CDC-ACM Firmware Interface Functional Description
+      - 51.3.3 USB-to-JTAG Interface: JTAG Command Processor
+      - 51.3.4 USB-to-JTAG Interface: CMD_REP Usage Example
+      - 51.3.5 USB-to-JTAG Interface: Response Capture Unit
+      - 51.3.6 USB-to-JTAG Interface: Control Transfer Requests
+    - 51.4 Recommended Operation
+    - 51.5 Interrupts
+    - 51.6 Register Summary
+    - 51.7 Registers
+  - 52 Ethernet Media Access Controller (EMAC)
+    - 52.1 Overview
+    - 52.2 Features
+    - 52.3 Ethernet MAC Architecture
+    - 52.4 Functional Description
+      - 52.4.1 EMAC_CORE
+        - 52.4.1.1 Transmission
+        - 52.4.1.2 Reception
+      - 52.4.2 EMAC_MTL (MAC Transaction Layer)
+      - 52.4.3 EMAC_DMA
+        - 52.4.3.1 Transmit Descriptors
+        - 52.4.3.2 Receive Descriptors
+      - 52.4.4 PHY Interface
+        - 52.4.4.1 Media Independent Interface: MII
+        - 52.4.4.2 Reduced Media Independent Interface: RMII
+        - 52.4.4.3 Station Management Agent (SMA) Interface
+      - 52.4.5 MAC Address Filtering
+        - 52.4.5.1 Unicast Destination Address Filtering
+        - 52.4.5.2 Multicast Destination Address Filtering
+        - 52.4.5.3 Broadcast Address Filter
+        - 52.4.5.4 Unicast Source Address Filter
+        - 52.4.5.5 Inverse Filtering Operation
+      - 52.4.6 Energy Efficient Ethernet (EEE) 
+        - 52.4.6.1 Transmission
+        - 52.4.6.2 Reception
+      - 52.4.7 Source Address, VLAN, and CRC Control
+        - 52.4.7.1 Source Address Control
+        - 52.4.7.2 VLAN Control
+        - 52.4.7.3 CRC Control
+      - 52.4.8 Time Stamp
+        - 52.4.8.1 Transmit Path
+        - 52.4.8.2 Receive Path
+      - 52.4.9 Remote Wakeup
+      - 52.4.10 Good Transmitted and Received Frames
+    - 52.5 Programming Procedures
+      - 52.5.1 MAC System Layer Configuration
+      - 52.5.2 EMAC Initial Configuration
+      - 52.5.3 Starting Transmission
+      - 52.5.4 Starting Reception
+      - 52.5.5 TX Entering and Exiting the LPI State
+      - 52.5.6 RX Entering and Exiting the LPI State
+    - 52.6 Interrupts
+    - 52.7 Register Summary
+    - 52.8 Registers
+  - 53 Two-Wire Automotive Interface (TWAI)
+    - 53.1 Features
+    - 53.2 Protocol Overview
+      - 53.2.1 TWAI Properties
+      - 53.2.2 TWAI Messages
+        - 53.2.2.1 Data Frames and Remote Frames
+        - 53.2.2.2 Error and Overload Frames
+        - 53.2.2.3 Interframe Space
+      - 53.2.3 TWAI Errors
+        - 53.2.3.1 Error Types
+        - 53.2.3.2 Error States
+        - 53.2.3.3 Error State Transition
+        - 53.2.3.4 Error Counter Rules
+      - 53.2.4 TWAI Bit Timing
+        - 53.2.4.1 Nominal Bit
+        - 53.2.4.2 Hard Synchronization and Resynchronization
+    - 53.3 Architectural Overview
+      - 53.3.1 Bit Timing Logic
+      - 53.3.2 Bit Stream Processor
+      - 53.3.3 Acceptance Filter
+      - 53.3.4 Receive FIFO
+      - 53.3.5 Error Management Logic
+      - 53.3.6 Registers Block
+    - 53.4 Functional Description
+      - 53.4.1 Modes
+        - 53.4.1.1 Reset Mode
+        - 53.4.1.2 Operation Mode
+      - 53.4.2 Bit Timing
+      - 53.4.3 Transmit and Receive Buffers
+        - 53.4.3.1 Overview of Buffers
+        - 53.4.3.2 Frame Information
+        - 53.4.3.3 Frame Identifier
+        - 53.4.3.4 Frame Data
+      - 53.4.4 Receive FIFO and Data Overruns
+      - 53.4.5 Acceptance Filter
+        - 53.4.5.1 Single-Filter Mode
+        - 53.4.5.2 Dual-Filter Mode
+      - 53.4.6 Error Management
+        - 53.4.6.1 Error Warning Limit
+        - 53.4.6.2 Error Passive
+        - 53.4.6.3 Bus-Off and Bus-Off Recovery
+      - 53.4.7 Error Code Capture
+      - 53.4.8 Arbitration Lost Capture
+      - 53.4.9 Transceiver Auto-Standby
+    - 53.5 Interrupts
+    - 53.6 Register Summary
+    - 53.7 Registers
+  - 54 SD/MMC Host Controller (SDHOST)
+    - 54.1 Overview
+    - 54.2 Features
+    - 54.3 SD/MMC External Interface Signals
+    - 54.4 Functional Description
+      - 54.4.1 SD/MMC Host Controller Architecture
+        - 54.4.1.1 Bus Interface Unit (BIU)
+        - 54.4.1.2 Card Interface Unit (CIU)
+      - 54.4.2 Command Path
+      - 54.4.3 Data Path
+        - 54.4.3.1 Data Transmit
+        - 54.4.3.2 Data Receive
+    - 54.5 Software Restrictions for CIU Operations
+    - 54.6 RAM for Receiving and Transmitting Data
+      - 54.6.1 TX RAM Module
+      - 54.6.2 RX RAM Module
+    - 54.7 DMA Linked List
+    - 54.8 DMA Descriptor Format
+    - 54.9 Programming Procedures
+      - 54.9.1 Initializing Registers
+      - 54.9.2 Sending Commands
+      - 54.9.3 Initializing DMA
+      - 54.9.4 Initializing DMA Transmission
+      - 54.9.5 Initializing DMA Reception
+    - 54.10 Clock Phase Selection
+    - 54.11 Interrupt
+    - 54.12 Register Summary
+    - 54.13 Registers
+  - 55 LED PWM Controller (LEDC)
+    - 55.1 Overview
+    - 55.2 Features
+    - 55.3 Architectural Overview
+    - 55.4 Functional Description
+      - 55.4.1 Timers
+        - 55.4.1.1 Clock Source
+        - 55.4.1.2 Clock Divider Configuration
+        - 55.4.1.3 20-Bit Counter
+      - 55.4.2 PWM Generators
+      - 55.4.3 Duty Cycle Fading
+        - 55.4.3.1 Linear Duty Cycle Fading
+        - 55.4.3.2 Gamma Curve Fading
+        - 55.4.3.3 Suspend and Resume Duty Cycle Fading
+      - 55.4.4 Event Task Matrix Feature
+    - 55.5 Interrupts
+    - 55.6 Programming Procedures
+    - 55.7 Memory Blocks
+    - 55.8 Register Summary
+    - 55.9 Registers
+  - 56 Motor Control PWM (MCPWM)
+    - 56.1 Overview
+    - 56.2 Features
+    - 56.3 Modules
+      - 56.3.1 Overview
+        - 56.3.1.1 Timer Module
+        - 56.3.1.2 Operator Module
+        - 56.3.1.3 Capture Module
+        - 56.3.1.4 ETM Module
+      - 56.3.2 PWM Timer Module
+        - 56.3.2.1 Configurations of the PWM Timer Module
+        - 56.3.2.2 PWM Timer's Working Modes and Timing Event Generation
+        - 56.3.2.3 Shadow Register of PWM Timer
+        - 56.3.2.4 PWM Timer Synchronization and Phase Locking
+      - 56.3.3 PWM Operator Module
+        - 56.3.3.1 PWM Generator Module
+        - 56.3.3.2 Dead Time Generator Module
+        - 56.3.3.3 PWM Carrier Module
+        - 56.3.3.4 Fault Detection Module
+      - 56.3.4 Capture Module
+        - 56.3.4.1 Introduction
+        - 56.3.4.2 Capture Timer
+        - 56.3.4.3 Capture Channel
+      - 56.3.5 ETM Module
+        - 56.3.5.1 Overview
+        - 56.3.5.2 MCPWM-Related ETM Events
+        - 56.3.5.3 MCPWM-Related ETM Tasks
+    - 56.4 Interrupts
+    - 56.5 Register Summary
+    - 56.6 Registers
+  - 57 Remote Control Peripheral (RMT)
+    - 57.1 Overview
+    - 57.2 Features
+    - 57.3 Functional Description
+      - 57.3.1 Architecture
+      - 57.3.2 RAM
+        - 57.3.2.1 Structure of RAM
+        - 57.3.2.2 Use of RAM
+        - 57.3.2.3 RAM Access
+      - 57.3.3 Clock
+      - 57.3.4 Transmitter
+        - 57.3.4.1 Normal TX Mode
+        - 57.3.4.2 Wrap TX Mode
+        - 57.3.4.3 TX Modulation
+        - 57.3.4.4 Continuous TX Mode
+        - 57.3.4.5 Simultaneous TX Mode
+      - 57.3.5 Receiver
+        - 57.3.5.1 Normal RX Mode
+        - 57.3.5.2 Wrap RX Mode
+        - 57.3.5.3 RX Filtering
+        - 57.3.5.4 RX Demodulation
+      - 57.3.6 Configuration Update
+    - 57.4 Interrupts
+    - 57.5 Register Summary
+    - 57.6 Registers
+  - 58 Parallel IO Controller (PARLIO)
+    - 58.1 Introduction
+    - 58.2 Glossary
+    - 58.3 Features
+    - 58.4 Architectural Overview
+    - 58.5 Functional Description
+      - 58.5.1 Clock Generator
+      - 58.5.2 Clock & Reset Restriction
+      - 58.5.3 Master-Slave Mode
+      - 58.5.4 Receive Modes of the RX Unit
+        - 58.5.4.1 Level Enable Mode
+        - 58.5.4.2 Pulse Enable Mode
+        - 58.5.4.3 Software Enable Mode
+      - 58.5.5 RX Unit GDMA SUC EOF Generation
+      - 58.5.6 TX Unit EOF Generation
+      - 58.5.7 RX Unit Timeout
+      - 58.5.8 Unlimited Length Data Transmission of TX Unit
+      - 58.5.9 TX Chip Select Function
+      - 58.5.10 Output Clock Gating of TX Unit
+      - 58.5.11 Bus Idle Value of TX Unit
+      - 58.5.12 Data Transfer in a Single Frame
+      - 58.5.13 Bit Reversal in One Byte
+    - 58.6 Interrupts
+    - 58.7 Programming Procedures
+      - 58.7.1 Data Receiving Operation Process
+      - 58.7.2 Data Transmitting Operation Process
+    - 58.8 Application Examples
+      - 58.8.1 Co-working with SPI
+      - 58.8.2 Co-working with I2S
+      - 58.8.3 Co-working with LCD
+    - 58.9 Register Summary
+    - 58.10 Registers
+  - 59 BitScrambler
+    - 59.1 Introduction
+    - 59.2 Feature List
+    - 59.3 Architectural Overview
+      - 59.3.1 Data Path
+      - 59.3.2 Control Path
+    - 59.4 Functional Description
+      - 59.4.1 Instructions
+      - 59.4.2 Configuration Registers
+    - 59.5 Programming Procedures
+    - 59.6 Register Summary
+    - 59.7 Registers
+- VIII Analog Signal Processing
+  - 60 Touch Sensor (TOUCH)
+    - 60.1 Terminology
+    - 60.2 Feature List
+    - 60.3 Architectural Overview
+      - 60.3.1 Touch Panel
+      - 60.3.2 Capacitive Touch Pin
+      - 60.3.3 Touch Sensor
+    - 60.4 Functional Description
+      - 60.4.1 Touch FSM
+      - 60.4.2 Sampled Signal Preprocessing
+        - 60.4.2.1 Measurement Process
+        - 60.4.2.2 Trigger Source of Measurement
+        - 60.4.2.3 Scan Mode
+        - 60.4.2.4 Frequency Hopping
+      - 60.4.3 Touch Detection
+        - 60.4.3.1 Sampled Value
+        - 60.4.3.2 Hardware Touch Detection
+      - 60.4.4 Proximity Mode
+      - 60.4.5 Sleep Mode
+      - 60.4.6 Moisture Tolerance
+      - 60.4.7 Water Rejection
+    - 60.5 Interrupts
+    - 60.6 Register Summary
+      - 60.6.1 Interrupt and Status Register Summary
+      - 60.6.2 Configuration Register Summary
+    - 60.7 Registers
+      - 60.7.1 Interrupt and Status Registers
+      - 60.7.2 Configuration Registers
+  - 61 Temperature Sensor (TSENS)
+    - 61.1 Overview
+    - 61.2 Features
+    - 61.3 Architecture
+    - 61.4 Functional Description
+      - 61.4.1 Temperature Sensor Power Up
+      - 61.4.2 Temperature Sensor Clock
+      - 61.4.3 Wake-Up Modes for Automatic Temperature Monitoring
+      - 61.4.4 Temperature Measurement Range and Offset
+      - 61.4.5 Data Conversion
+    - 61.5 Event Task Matrix Feature
+    - 61.6 Interrupts
+    - 61.7 Programming Procedure
+    - 61.8 Register Summary
+    - 61.9 Registers
+  - 62 ADC Controller (ADC)
+    - 62.1 Overview
+    - 62.2 Terminology
+    - 62.3 Features
+    - 62.4 Architecture
+    - 62.5 Functional Description
+      - 62.5.1 SAR ADC Power Up
+      - 62.5.2 SAR ADC Channels
+      - 62.5.3 SAR ADC Clock
+      - 62.5.4 SAR ADC Conversion and Attenuation
+      - 62.5.5 HP ADC FSM
+      - 62.5.6 HP ADC Pattern Table
+      - 62.5.7 HP ADC Pattern Configuration Example for Multi-channel Sampling
+      - 62.5.8 Dual HP ADC Sampling Control
+      - 62.5.9 HP ADC Filters
+      - 62.5.10 HP ADC Threshold Monitors
+      - 62.5.11 HP ADC GDMA Support
+      - 62.5.12 LP ADC Wake-Up Modes for Automatic Monitoring
+    - 62.6 Event Task Matrix Feature
+    - 62.7 Interrupts
+    - 62.8 Programming Procedure
+      - 62.8.1 HP ADC Multi-Channel Sampling Mode
+      - 62.8.2 LP ADC One-shot Sampling Mode
+      - 62.8.3 LP ADC Automatic Monitoring
+    - 62.9 Register Summary
+      - 62.9.1 HP ADC Register Summary
+      - 62.9.2 LP ADC Register Summary
+    - 62.10 Registers
+      - 62.10.1 HP ADC Registers
+      - 62.10.2 LP ADC Registers
+  - 63 Analog Voltage Comparator
+    - 63.1 Introduction
+    - 63.2 Feature List
+    - 63.3 Architectural Overview
+    - 63.4 Functional Description
+    - 63.5 Event Task Matrix Feature
+    - 63.6 Interrupts
+    - 63.7 Programming Procedures
+- IX Appendix
+  - Related Documentation and Resources
+  - Glossary
+    - Abbreviations for Peripherals
+    - Abbreviations Related to Registers
+    - Access Types for Registers
+  - Programming Reserved Register Field
+    - Introduction
+    - Programming Reserved Register Field
+  - Interrupt Configuration Registers
+  - Revision History
