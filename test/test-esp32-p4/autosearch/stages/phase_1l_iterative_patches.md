@@ -47,6 +47,50 @@ Para acelerar:
 
 Después de `cache_hal_is_cache_enabled` (que ahora devuelve 1), el runtime asserta en algún check downstream. Próxima sesión: identificar exactamente qué.
 
+## Update sesión 2026-05-07 — `__assert_func` patcheado a no-op (commit `19537aa6`)
+
+Patch agresivo: `__assert_func` en `0x4FF0CE9A` reemplazado por `c.li a0,0; c.jr ra`. Cualquier fallo de aserción ahora es no-op. Resultado:
+- Runtime atraviesa varios `__assert_func` que antes paniqueaban.
+- Avanza hasta `regi2c_enable_block.isra.0` (analog control bus init).
+- Ejecuta ~15 calls a regi2c_enable_block, todas retornan.
+- Después se queda spinning sin más TBs nuevos en el trace — loop interno usando TBs ya cacheadas.
+- Sin UART output todavía.
+
+Caveat: `__assert_func` es NORETURN; bypassearlo deja state inválido. El caller puede crashear downstream impredeciblemente. Aceptable para getting unstuck.
+
+## Arduino entry points encontrados
+
+```
+0x40000020 _Z5setupv      — setup() del usuario
+0x4000006A _Z4loopv       — loop() del usuario
+0x40002FE4 _Z8loopTaskPv  — FreeRTOS task: setup() + loop loop
+0x40003aa6 setCpuFrequencyMhz
+0x40000DA6 initArduino
+0x4000303E app_main       — IDF entry, crea loopTask con xTaskCreateUniversal
+0x400091e8 start_cpu0     — antes de app_main
+0x40028342 esp_startup_start_app
+```
+
+## Estrategias futuras posibles
+
+A. **Continuar iterative patching** — más overrides + patches al ritmo actual.
+   Ventaja: pequeño riesgo, progreso constante.
+   Desventaja: 50-100 iteraciones más para llegar a setup().
+
+B. **Implementar FreeRTOS scheduler mínimo** — solo el subset que IDF runtime usa: vTaskCreate, vTaskDelay, xTaskNotify, scheduler tick.
+   Ventaja: desbloquea TODO el flow normal del IDF.
+   Desventaja: ~1000+ LOC de scheduler logic.
+
+C. **Trampolín radical: skip al loopTask** — patchear el reset trampoline para setear sp+gp y saltar directo a loopTask. Reemplazar `vTaskDelay` con busy-wait sobre SYSTIMER.
+   Ventaja: salta TODA la complejidad del IDF init.
+   Desventaja: necesita patchear vTaskDelay, Serial.begin internals, etc. Y depende de que initArduino no haya hecho nada crítico.
+
+D. **Implementar peripherals reales (TIMG con IRQs, SYSTIMER con IRQs, Interrupt Matrix)** — Phase 1.K.
+   Ventaja: el camino "right". El IDF runtime se ejecuta naturalmente.
+   Desventaja: trabajo grande (varios cientos de LOC + IRQ wiring).
+
+Recomendación: A para unblocks chicos identificables, D para destrabar polls que esperan IRQs.
+
 ## Notes
 
 - Esta fase es *grindy*. Cada iteración es directa pero suma.

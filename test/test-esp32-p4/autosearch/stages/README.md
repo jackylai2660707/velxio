@@ -13,6 +13,7 @@ Tablero de estado: **una fila por fase**, ordenadas. Lo que viene primero es lo 
 | 1.E.bis | `-bios` acepta ELF + ROM oficial Espressif + trampolín relocalizado | ✅ done | `e05e201` | [phase_1e_bis_rom_loader.md](phase_1e_bis_rom_loader.md) |
 | 1.F-lite | RVA+RVF + CLIC MMIO + flash bypass + smart sysreg stubs | ✅ done | `fe94cea` | [phase_1f_lite_unblocks.md](phase_1f_lite_unblocks.md) |
 | 1.F.bis | More smart-stub overrides + runtime patches → spi_flash_cache_enabled | ✅ done | `d4505f8` | [phase_1f_bis_more_unblocks.md](phase_1f_bis_more_unblocks.md) |
+| 1.F.ter | `__assert_func` no-op patch → past cache asserts, into regi2c spin | ✅ done | `19537aa` | [phase_1l_iterative_patches.md](phase_1l_iterative_patches.md) |
 | 1.F | SPI flash controller real (P4 no tiene uno separado — ver lite) | ⏸️ N/A | — | [phase_1f_spi_flash.md](phase_1f_spi_flash.md) |
 | 1.G | Cache MMU (flash window translation) | ⏳ pending | — | [phase_1g_cache_mmu.md](phase_1g_cache_mmu.md) |
 | 1.H | TIMG con WDT auto-disable | ⏳ pending | — | [phase_1h_timg_wdt.md](phase_1h_timg_wdt.md) |
