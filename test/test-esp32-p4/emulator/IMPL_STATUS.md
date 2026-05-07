@@ -8,6 +8,7 @@
 ✅ **UART0 + `-bios` loader** `24e67a8852` — `Hi\n` end-to-end desde firmware RISC-V hand-rolled, confirmado en stdout.
 ✅ **Named peripheral stubs** `c976734cc2` — 22 peripherals registrados con `create_unimplemented_device()`. Visibles en `info mtree`, logging por peripheral, sin faults.
 ✅ **Real eFuse + SYSTIMER + GPIO** `b9abf3712a` — 3 sysbus devices reales (~458 LOC) reemplazan los stubs correspondientes. Smoke test de 138 instrucciones RV32I valida que: MAC se lee como `0xDEADBE7C`, SYSTIMER avanza entre lecturas, GPIO bit 2 se setea/limpia con W1TS/W1TC y emite log "pin 2 -> 0/1".
+✅ **`-kernel` ELF loader + 64 MB extflash + trampolín** `cd03e7a73a` — `blink.ino.elf` carga, sus 5 PT_LOAD segments aterrizan en HP SPM/extflash/L2MEM/LP SRAM, trampolín de 12 bytes en HP ROM salta al entry `0x4FF00C40`. CPU ejecuta `call_start_cpu0`, llama a `rv_utils_dbgr_is_attached`, regresa, llega a `CSRRS x, 0x7C1, x` (CSR custom Espressif CLIC) y se detiene. **Estamos ejecutando código del runtime ESP-IDF**.
 
 ## Build + smoke tests (verificados 2026-05-06)
 
@@ -49,6 +50,39 @@ Hi
 ```
 
 Pipeline validado: instrucción RISC-V → SW al MMIO UART0 (0x500CA000) → chardev backend → stdout host.
+
+### Phase 1.D — Arduino ELF carga y empieza a ejecutar IDF runtime
+
+`blink.ino.elf` (compilado por arduino-cli para `esp32:esp32:esp32p4`) carga vía `-kernel`:
+
+```
+$ qemu-system-riscv32 -M esp32p4 -kernel blink.ino.elf -nographic
+[esp32p4] loaded ELF '/root/blink.elf' (521210 bytes), entry 0x4ff00c40
+[esp32p4] machine init complete (UART0 + eFuse + SYSTIMER + GPIO + 17 stubs + extflash + ELF loader)
+```
+
+El CPU ejecuta (verificado con `-d in_asm`):
+```
+0x4FC00000  LUI t0, 0x4FF01      ← trampolín
+0x4FC00004  ADDI t0, t0, -0x3C0  ← (= 0x4FF00C40)
+0x4FC00008  JR t0
+0x4FF00C40  call_start_cpu0      ← ENTRY del IDF runtime ✓
+0x4FF00C40-4C   stack setup
+0x4FF00C4C  JAL rv_utils_dbgr_is_attached
+0x4FF0D5FA    LUI a5, 0x3FF06; LW a0, 116(a5); SRLI; ANDI; RET
+              (lee HP_CPU_PERIPH stub, devuelve 0 = "no debugger" ✓)
+0x4FF00C50  BEQZ a0 → 0x4FF00C6E
+0x4FF00C6E  AUIPC gp + ADDI gp     ← global pointer setup
+0x4FF00C7C  CSRRS a5, 0x7C1, a5    ← STALLS HERE
+```
+
+CSR `0x7C1` es un CSR custom de Espressif (CLIC mintstatus o similar). QEMU upstream no lo conoce → illegal instruction trap → IDF runtime no tiene exception handler todavía → loop.
+
+**Para superar este bloqueante** (Phase 1.E):
+- Agregar CSRs custom `0x7C0..0x7CF` en `target/riscv/esp_cpu.c` como scratch RW.
+- Stubear `HP_SYSREG` (0x500E5000) reads/writes para clock control.
+- Implementar mínimamente CLIC + CLINT.
+- (opcional) Cache MMU real translando 0x40000000 → contenido de flash.
 
 ### Phase 1.C — eFuse + SYSTIMER + GPIO reales
 
