@@ -63,6 +63,13 @@
   - **Refactor**: en cada MMU entry write con VALID set, **inmediatamente memcpy** flash_blob[phys_page << 16..phys_page << 16 + 64K] → extflash_RAM[entry_idx << 16 + 0x40000000..]. Después de la copia, los reads van a RAM y TCG puede JIT-cachear.
   - **Generalización**: removí el límite "solo block 63"; ahora cualquier entry (0..1023) se traduce eagerly. Soporta también XIP-from-cache de app code.
   - Resultado: bootloader avanza ~47 sec fake time / 60 sec wall (vs ~10 sec/60 sec antes). Mejora ~5x. Aún slow porque está haciendo SHA256 software de toda la app image. Phase 2.I (HW SHA accelerator) o paciencia destrabarán.
+✅ **Phase 2.I.sha** `5706e8c1aa` — **HW crypto block stubs** (AES, SHA, RSA, DS, HMAC) con backing-RAM 4KB cada uno. SHA_BUSY override = 0. No cambia el bootloader path observablemente (usa SW mbedtls SHA), pero deja la infra lista para futuros tests con ROM `ets_sha_*`.
+✅ **Phase 2.J** `887d5d16fc` — **¡App ELF path llega a `pmu_hp_system_init`!** Pivot estratégico: en vez de pelear con el bootloader's SW SHA stuck, uso `-kernel blink.elf` para skipear el bootloader.
+  - **Setup**: `qemu-system-riscv32 -M esp32p4 -kernel blink.elf -drive file=blink.merged.bin,if=mtd,format=raw -nographic`. blink.elf tiene setup()/loop()/app_main() y ESP-IDF runtime statically linked.
+  - **Loaded sin issues**: 521 KB del ELF, 3 PT_LOAD segments overlay-rewrites, trampoline jumps al entry 0x4FF00C40.
+  - **Primer abort**: `system_early_init` lee `*(0x40030000) == 0xE9` (image magic). Con nuestro flash blob lineal, virtual 0x40030000 = flash[0x30000] = bytes random, no 0xE9. Real silicon's bootloader programa cache MMU para mapear 0x40030000 → flash[0x10000].
+  - **Fix**: runtime patch en `0x40008064` reemplaza `beq a4, a5, +40` (0x02f70463) con `j +40` (0x0280006F). Check siempre passa.
+  - Resultado: app avanza a `pmu_hp_system_init` haciendo PMU register R-M-W reales, calls a `efuse_hal_chip_revision`, etc. CPU IDF runtime ejecuta código de inicialización real. Próximo blocker pending — investigar siguiente step post-PMU.
 ✅ **Phase 1.E — 4 unblocks consecutivos** `b0c4aad8f5`:
   - **SP init en el trampolín**: `sp` partía en 0, primera push escribía a `0xFFFFFFFC` → store fault. Trampolín ahora setea `sp = 0x4FF80000` (~256 KB dentro de L2MEM).
   - **Custom CSRs + CLIC standard como scratch RW**: 0x7C0-0x7FF + 0x307 (mtvt) + 0x345-0x349 (mnxti family) + 0xFB1 (mintstatus). El runtime IDF setea CLIC vectoring temprano y exige que esos CSRs acepten writes.

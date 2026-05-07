@@ -25,8 +25,8 @@ Tablero de estado: **una fila por fase**, ordenadas. Lo que viene primero es lo 
 | 2.B.boot_comm | Cache MMU block 63 emulator → **chip ID check passes!** | ✅ done | `64e2cd2` | [phase_2b_boot_comm.md](phase_2b_boot_comm.md) |
 | 2.B.post_qio (perf) | MMU refactor to eager-copy → **5x faster boot progress** | ✅ done | `947fba8` | [phase_2b_post_qio.md](phase_2b_post_qio.md) |
 | 2.I.sha (stub) | Crypto block stubs + SHA_BUSY=0 → ROM `ets_sha_*` returns | ✅ done | `5706e8c` | [phase_2i_sha.md](phase_2i_sha.md) |
-| 2.J | **`-kernel` ELF path reaches IDF runtime, aborts at `system_early_init`** | 🚧 in-progress | — | [phase_2j_kernel_elf.md](phase_2j_kernel_elf.md) |
-| **2.J.next** | **Investigate `system_early_init` abort cause (likely missing peripheral check)** | ⏭️ **next** | — | TBD |
+| 2.J | `-kernel` ELF path + magic check bypass → **app reaches pmu_hp_system_init** | ✅ done | `887d5d1` | [phase_2j_kernel_elf.md](phase_2j_kernel_elf.md) |
+| **2.J.next** | **PMU/eFuse init in app — find next blocker beyond pmu_hp_system_init** | ⏭️ **next** | — | TBD |
 | 2.B | TIMG real (timers + WDT) | ⏳ pending | — | (see roadmap) |
 | 2.C | HP_SYSREG + Reset/Clock real | ⏳ pending | — | (see roadmap) |
 | 2.D | CLIC + Interrupt Matrix | ⏳ pending | — | (see roadmap) |

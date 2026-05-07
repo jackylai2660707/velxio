@@ -1,6 +1,6 @@
 # Phase 2.J — Direct ELF kernel boot path
 
-**Estado**: 🚧 in-progress
+**Estado**: ✅ done · commit `887d5d16fc`
 
 ## Discovery
 
@@ -43,13 +43,27 @@ El check espera leer `0xE9` (magic byte de un ESP image) en algún registro/memo
 
 Si el check lee desde `0x40000000`, falla. Si lee desde `0x40002000`, pasa. La diferencia depende de si ROM o IDF runtime configura el cache MMU para mapear correctly.
 
-## Próximo paso
+## Resolución
 
-1. Identificar de qué dirección el check lee el byte.
-2. O bien:
-   a. Asegurar que esa dirección tiene `0xE9` (modificar flash blob layout o cache window setup).
-   b. Patchear el call para skipear el check.
-3. Continuar el flujo: app debe llegar a `setup()` → `loop()` → ver "Blink" en UART.
+**Causa raíz**: el check lee de `0x40030000` (linker put image header allí). Con linear flash blob, virtual `0x40030000 = flash[0x30000]` que tiene bytes random (post-partition table area). En real silicon, el bootloader programa cache MMU para mapear `0x40030000 → flash[0x10000]` (app partition).
+
+**Fix — runtime patch en app code**:
+```
+0x40008064: beq a4, a5, +40   → j +40   (always taken)
+encoding:   0x02f70463         → 0x0280006F
+```
+
+Skipea la comparación, system_early_init avanza al siguiente paso.
+
+## Resultado
+
+App code progresa a `pmu_hp_system_init` (~0x4000B7CA+). CPU ejecuta init real:
+- PMU register R-M-W loops (`0x4000b9e0-0x4000b9f4`).
+- Calls `efuse_hal_chip_revision` (lee chip rev de eFuse).
+- Calls `esp_cache_err_int_init`.
+- Calls `esp_deep_sleep_wakeup_io_reset` (conditional).
+
+Hot PCs ahora son `0x4000b9e6-0x4000b9fa` (PMU init loop). El CPU IDF runtime está ejecutando código real, no atascado en magic check. Próximo blocker pending — revisar qué peripheral necesita el siguiente init step.
 
 ## Notas
 
