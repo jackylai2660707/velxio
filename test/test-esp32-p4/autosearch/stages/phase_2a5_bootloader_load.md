@@ -1,6 +1,6 @@
 # Phase 2.A.5 — Flash bootloader load (invalid header)
 
-**Estado**: ⏭️ next
+**Estado**: ⏭️ next · necesita cache MMU real
 
 ## Goal
 
@@ -12,23 +12,42 @@ ROM ahora ejecuta `ets_run_flash_bootloader` y trata de leer el header del bootl
 - ROM lee primer header desde `cache_window @ 0x40000000` que mapea a flash offset 0.
 - `0x0b000ec1` es lo que la cache devuelve al leer flash en offset 0 (probablemente algún garbage uninitialized o un read across boundary).
 
-## Hipótesis
+## Análisis del flujo (confirmado por disasm)
 
-### H1 — Flash layout incorrecto
+`ets_run_flash_bootloader @ 0x4FC04762`:
+1. Llama `ROM_Boot_Cache_Init` que ejecuta `Cache_FLASH_MMU_Init`. Este invalida los 1024 entries del MMU (escribe 0 a `0x5008C37C` con index 0..1023 vía `0x5008C380`).
+2. Llama `ets_loader_map_range(buffer=sp+4, offset=0x2000, size=24, secure=0)`. Esta función debe:
+   - Programar el MMU para mapear flash[0x2000, 0x2000+24) a una virtual address en cache window.
+   - Devolver esa virtual address.
+3. Caller hace `memcpy(sp+12, mapped_va, 8)` y verifica `*(uint8_t*)mapped_va == 0xE9` (magic).
 
-Real ESP32-P4 con `idf.py merge-bin` produce un blob con bootloader en offset 0x0 o 0x2000 dependiendo del SDK. Lo más probable: el blob `blink.merged.bin` fue generado con bootloader en offset 0x2000.
+## Causa raíz
 
-**Fix**: regenerar blob con bootloader en offset 0, O configurar el cache window para mapear flash[0x2000+] al cache window 0x40000000.
+El MMU del flash cache está modelado como **smart stub scratch RW** (sólo guarda lo escrito, sin lógica). Las escrituras a `0x5008C37C/380` quedan en el storage pero **el cache window en `0x40000000` no responde a esas configuraciones**. En el setup actual de QEMU:
+- El flash blob de `blink.merged.bin` se carga directo a RAM en `0x40000000` (linear: flash byte 0 → 0x40000000, flash byte 0x2000 → 0x40002000).
+- `ets_loader_map_range` programa el MMU pero la translación no se ejecuta.
+- Si la función devuelve un VA que asume un mapping específico (no linear), el `memcpy` lee de un VA que no está mapeado a flash[0x2000].
 
-### H2 — Cache window mapping incorrecto
+`0x0b000ec1` no aparece en la flash blob a ningún offset; probablemente es **stack garbage** que ets_loader_map_range devolvió cuando el MMU set falló.
 
-El cache window podría no estar configurando correctamente la translación virtual→físical. ROM espera leer desde virtual `0x40000000` y obtener el contenido de flash desde el offset que el cache MMU dice.
+## Plan de implementación
 
-Investigar: TRM Cap 7.3.3 — Cache MMU configuration.
+Phase 2.A.5 requiere un **cache MMU emulator real**:
 
-### H3 — ROM lee bootloader desde una offset distinta
+1. **NO** cargar el flash blob directo a RAM en `0x40000000`. Cargar el blob a un MemoryRegion separado (RAM-backed) que solo es accesible vía el MMU.
+2. Implementar el cache window (`0x40000000-0x40FFFFFF`) como **MMIO region** que en cada read:
+   - Calcula `page_index = (vaddr - 0x40000000) >> 16` (64KB pages).
+   - Lee el MMU entry para `page_index`.
+   - Si entry es válido (bit 14 set per TRM): `flash_page = entry & 0x3FFF`.
+   - Devuelve `flash_blob[flash_page * 0x10000 + (vaddr & 0xFFFF)]`.
+3. Decodificar las escrituras a `0x5008C37C` (entry value) y `0x5008C380` (entry index) en una tabla `mmu_entries[1024]`.
+4. Cuando `Cache_FLASH_MMU_Init` invalida todo, todas las entries quedan en 0 (invalid). Antes de usar el cache, ROM debe llamar `Cache_FLASH_MMU_Set` que programa la mapping.
 
-Posible que el ROM lea desde una offset compute por el partition table (0x10000?). Buscar en ROM disasm cuál offset usa.
+### Referencia TRM
+
+- TRM Cap 7.3.3 "External Memory" — Cache MMU.
+- IDF `cache_ll.h` `cache_ll_l1_set_mmu_invalid_entry`.
+- esp-rom-elfs `Cache_MSPI_MMU_Set` source.
 
 ## Acceptance criteria
 
