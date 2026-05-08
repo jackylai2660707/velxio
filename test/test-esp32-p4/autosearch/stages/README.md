@@ -30,7 +30,9 @@ Tablero de estado: **una fila por fase**, ordenadas. Lo que viene primero es lo 
 | 2.J.uart | Investigación: app NOT stuck, ejecutando lento. Requiere scheduler/interrupts. | ✅ analyzed | `adeb86f` | [phase_2j_kernel_elf.md](phase_2j_kernel_elf.md) |
 | 2.K.systimer | SYSTIMER OP_REG snapshot protocol — exits IDF poll loops | ✅ done | `e408a19` | [phase_2k_systimer.md](phase_2k_systimer.md) |
 | 2.K.init_skip | Skip do_system_init_fn → app reaches **C++ static init + pthread + FreeRTOS port** | ✅ done | `53f8358` | [phase_2k_init_skip.md](phase_2k_init_skip.md) |
-| **2.K.scheduler** | **Reach `vTaskStartScheduler` — needs CLIC IRQ wiring for timer interrupts** | ⏭️ **next** | — | TBD |
+| 2.K.frame_info | Skip `__register_frame_info` libgcc DWARF init → reach `vTaskStartScheduler` | ✅ done | `ce6110f` | [phase_2k_init_skip.md](phase_2k_init_skip.md) |
+| 2.L | Crosscore err bypass + static idle-task buffers → **xTaskCreate + heap_caps + intr_alloc** | ✅ done | `0cf82e7` | [phase_2l_freertos.md](phase_2l_freertos.md) |
+| **2.L.next** | **heap_caps_alloc_failed → abort. Need working heap or more pvPortMalloc patches.** | ⏭️ **next** | — | TBD |
 | 2.B | TIMG real (timers + WDT) | ⏳ pending | — | (see roadmap) |
 | 2.C | HP_SYSREG + Reset/Clock real | ⏳ pending | — | (see roadmap) |
 | 2.D | CLIC + Interrupt Matrix | ⏳ pending | — | (see roadmap) |

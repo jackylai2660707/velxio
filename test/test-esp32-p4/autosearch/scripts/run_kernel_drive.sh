@@ -7,7 +7,7 @@ cd /root
   -nographic \
   -d in_asm -D /root/qkrn.log > /root/qkrn_long.log 2>&1 &
 QPID=$!
-sleep 15
+sleep 20
 kill -15 $QPID 2>/dev/null
 wait 2>/dev/null
 echo "=== STDOUT ==="
