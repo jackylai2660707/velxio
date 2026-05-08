@@ -46,10 +46,11 @@ Tablero de estado: **una fila por fase**, ordenadas. Lo que viene primero es lo 
 | 2.T-fix.next.next | **Print::write virtual dispatch neutralised** at `0x4000079A` (NULL vtable). New blocker: `uxListRemove` called with garbage pointer (FreeRTOS state corruption from skipped scheduler init). Each subsequent fault is deeper in FreeRTOS — single-patch chain not viable. | ✅ done w/ findings | (prior commit) | [phase_2t_fix_next_next_print_write.md](phase_2t_fix_next_next_print_write.md) |
 | 2.U | **🎉 LED BLINK MILESTONE** — hand-rolled asm at end of hello-world bypass toggles GPIO pin 5 at ~80 Hz. Dual-peripheral demo (UART + GPIO concurrently). GPIO model patched to use `fprintf(stderr)` for default visibility. | ✅ done | (prior commit) | [phase_2u_led_blink.md](phase_2u_led_blink.md) |
 | 2.V | **3-pin running light @ ~3.5 Hz** cycling pins 5→6→7 via trampoline-to-blob in cache-window IRAM. Discovered: L2MEM is NOT executable under IDF PMP rules; cache window 0x40000000+ is the safe executable region. | ✅ done | (prior commit) | [phase_2v_running_light.md](phase_2v_running_light.md) |
-| 2.W | **GPIO_IN register + external input pads** (`qdev_init_gpio_in_named` "esp32p4.gpio.input") + built-in fake button toggling pin 0 every 3 s host wall-clock. Concurrent guest-output + external-input demo working. | ✅ done | (this commit) | [phase_2w_gpio_input.md](phase_2w_gpio_input.md) |
-| **2.W.next** | **Enforce GPIO_ENABLE gating** (W1TS/W1TC writes only drive pin if output enabled) — needed for `pinMode(INPUT)` realism | ⏭️ **next** | — | TBD |
-| 2.X | Frontend UI integration — bridge GPIO transitions to chardev/socket so velxio web UI shows LED states | ⏳ planned | — | TBD |
+| 2.W | **GPIO_IN register + external input pads** (`qdev_init_gpio_in_named` "esp32p4.gpio.input") + built-in fake button toggling pin 0 every 3 s host wall-clock. Concurrent guest-output + external-input demo working. | ✅ done | (prior commit) | [phase_2w_gpio_input.md](phase_2w_gpio_input.md) |
+| 2.W.next | **GPIO_ENABLE pad multiplexer** — `effective = (gpio_out & enable) \| (external_input & ~enable)`. Demo blob now enables pins 5/6/7 first (mimics `pinMode(OUTPUT)`). Pin behaviour matches real silicon. | ✅ done | (this commit) | [phase_2w_next_enable_gating.md](phase_2w_next_enable_gating.md) |
+| **2.X** | **Frontend UI integration** — bridge GPIO transitions to chardev/socket so velxio web UI shows LED states | ⏭️ **next** | — | TBD |
 | 2.Y | Real SYSTIMER-based delay (replace busy-wait with virtual-time reads) | ⏳ planned | — | TBD |
+| 2.Z | Pin-transition GPIO interrupts (`attachInterrupt(pin, ISR, RISING)` end-to-end) | ⏳ planned | — | TBD |
 | 2.V | `mnxti`/`mintstatus` real semantics (multi-level preemption) | ⏳ planned | — | TBD |
 | 2.B | TIMG real (timers + WDT) | ⏳ pending | — | (see roadmap) |
 | 2.C | HP_SYSREG + Reset/Clock real | ⏳ pending | — | (see roadmap) |
