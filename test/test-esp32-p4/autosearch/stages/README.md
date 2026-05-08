@@ -35,7 +35,8 @@ Tablero de estado: **una fila por fase**, ordenadas. Lo que viene primero es lo 
 | 2.L.next | Bump allocator + vSystimerSetup bypass → **vTaskStartScheduler runs end-to-end** | ✅ done | `08e104d` | [phase_2l_next_bumpalloc.md](phase_2l_next_bumpalloc.md) |
 | 2.M | Bypass scheduler → **main_task + app_main + initArduino executing** | ✅ done | `e555e8c` | [phase_2m_bypass_scheduler.md](phase_2m_bypass_scheduler.md) |
 | 2.N | Inline UART writer in app_main → **🎉 "Hello from QEMU ESP32-P4!" 🎉** | ✅ done | `a216796` | [phase_2n_hello_world.md](phase_2n_hello_world.md) |
-| **2.O** | **Real CLIC IRQ → FreeRTOS scheduler → drop bypass patches** | ⏭️ **next** | — | TBD |
+| 2.O | SYSTIMER 100 Hz tick → CPU IRQ_M_EXT (foundation for FreeRTOS) | ✅ done | `94f989a` | [phase_2o_clic_irq.md](phase_2o_clic_irq.md) |
+| **2.P** | **Drop bypass patches → real Arduino setup()/loop() driven by SYSTIMER tick** | ⏭️ **next** | — | TBD |
 | 2.B | TIMG real (timers + WDT) | ⏳ pending | — | (see roadmap) |
 | 2.C | HP_SYSREG + Reset/Clock real | ⏳ pending | — | (see roadmap) |
 | 2.D | CLIC + Interrupt Matrix | ⏳ pending | — | (see roadmap) |
