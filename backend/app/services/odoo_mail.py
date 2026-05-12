@@ -112,11 +112,18 @@ async def send_password_reset(
     reset_url: str,
     expires_in_minutes: int = 60,
     user_name: Optional[str] = None,
+    velxio_user_id: Optional[str] = None,
 ) -> bool:
     """Ask Odoo to deliver a password-reset mail with the given URL.
 
     The caller (Velxio backend) is the source of truth for the one-time
     token; Odoo only renders the email.
+
+    `velxio_user_id` is forwarded so the Odoo side can upsert/match the
+    partner by stable user id (mirroring the send-welcome payload). This
+    removes the register-then-immediately-forgot race: with the id in
+    hand, send-password-reset can upsert the partner before delivering
+    the mail, so it no longer matters which endpoint reaches Odoo first.
     """
     params: dict = {
         "email": email,
@@ -125,6 +132,8 @@ async def send_password_reset(
     }
     if user_name:
         params["user_name"] = user_name
+    if velxio_user_id:
+        params["velxio_user_id"] = velxio_user_id
 
     result = await _post("/velxio/api/send-password-reset", params)
     return bool(result and result.get("sent"))

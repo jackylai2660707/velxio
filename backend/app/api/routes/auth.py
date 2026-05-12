@@ -216,6 +216,7 @@ async def forgot_password(
             reset_url=reset_url,
             expires_in_minutes=settings.PASSWORD_RESET_TOKEN_TTL_MINUTES,
             user_name=user.username,
+            velxio_user_id=user.id,
         )
     )
     logger.info("[forgot-password] token minted user=%s", user.id)
