@@ -22,6 +22,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Awaitable, Callable, Optional
 
+from fastapi import Request
+
 logger = logging.getLogger(__name__)
 
 
@@ -91,7 +93,7 @@ def register_get_current_user_id(hook: GetCurrentUserIdHook) -> None:
     _get_current_user_id_hook = hook
 
 
-async def get_current_user_id(request) -> Optional[str]:  # FastAPI dependency
+async def get_current_user_id(request: Request) -> Optional[str]:  # FastAPI dependency
     if _get_current_user_id_hook is None:
         return None
     try:
