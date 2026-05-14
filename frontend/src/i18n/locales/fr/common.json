@@ -224,8 +224,13 @@
       "actions": {
         "activity": "Activité",
         "edit": "Modifier",
-        "delete": "Supprimer"
-      }
+        "delete": "Supprimer",
+        "resetAgentUsage": "Réinitialiser l'agent",
+        "resetAgentUsageTooltip": "Effacer l'utilisation du jour pour que l'utilisateur puisse continuer."
+      },
+      "confirmResetAgentUsage": "Réinitialiser le quota de l'agent pour « {{username}} » (aujourd'hui, UTC) ?",
+      "resetAgentUsageDone": "Quota réinitialisé pour {{username}} — {{cycles}} cycle(s) libérés sur {{rows}} événement(s).",
+      "resetAgentUsageFailed": "Échec de la réinitialisation de l'utilisation de l'agent."
     },
     "boards": {
       "loadFailed": "Échec du chargement des métriques des cartes.",

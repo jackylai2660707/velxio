@@ -224,8 +224,13 @@
       "actions": {
         "activity": "Actividad",
         "edit": "Editar",
-        "delete": "Eliminar"
-      }
+        "delete": "Eliminar",
+        "resetAgentUsage": "Reiniciar agente",
+        "resetAgentUsageTooltip": "Borra el uso de hoy del agente para que el usuario pueda seguir usándolo."
+      },
+      "confirmResetAgentUsage": "¿Reiniciar la cuota del agente para \"{{username}}\" (hoy, UTC)?",
+      "resetAgentUsageDone": "Cuota reiniciada para {{username}} — se liberaron {{cycles}} ciclo(s) en {{rows}} evento(s).",
+      "resetAgentUsageFailed": "No se pudo reiniciar el uso del agente."
     },
     "boards": {
       "loadFailed": "Error al cargar métricas de placas.",

@@ -224,8 +224,13 @@
       "actions": {
         "activity": "活动",
         "edit": "编辑",
-        "delete": "删除"
-      }
+        "delete": "删除",
+        "resetAgentUsage": "重置代理",
+        "resetAgentUsageTooltip": "清除今日的代理使用量，让用户可以继续使用。"
+      },
+      "confirmResetAgentUsage": "为 \"{{username}}\" 重置代理配额（今日，UTC）？",
+      "resetAgentUsageDone": "已为 {{username}} 重置配额 — 在 {{rows}} 条事件中释放了 {{cycles}} 个周期。",
+      "resetAgentUsageFailed": "无法重置代理使用量。"
     },
     "boards": {
       "loadFailed": "加载开发板指标失败。",

@@ -224,8 +224,13 @@
       "actions": {
         "activity": "Aktivität",
         "edit": "Bearbeiten",
-        "delete": "Löschen"
-      }
+        "delete": "Löschen",
+        "resetAgentUsage": "Agent zurücksetzen",
+        "resetAgentUsageTooltip": "Tägliche Agent-Nutzung löschen, damit der Benutzer weiterhin den Agenten verwenden kann."
+      },
+      "confirmResetAgentUsage": "Agent-Kontingent für „{{username}}\" zurücksetzen (heute, UTC)?",
+      "resetAgentUsageDone": "Kontingent für {{username}} zurückgesetzt — {{cycles}} Zyklen freigegeben über {{rows}} Eintrag(e).",
+      "resetAgentUsageFailed": "Agent-Nutzung konnte nicht zurückgesetzt werden."
     },
     "boards": {
       "loadFailed": "Board-Metriken konnten nicht geladen werden.",

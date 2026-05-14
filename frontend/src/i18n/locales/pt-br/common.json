@@ -224,8 +224,13 @@
       "actions": {
         "activity": "Atividade",
         "edit": "Editar",
-        "delete": "Excluir"
-      }
+        "delete": "Excluir",
+        "resetAgentUsage": "Resetar agente",
+        "resetAgentUsageTooltip": "Limpa o uso do agente de hoje para que o usuário possa continuar."
+      },
+      "confirmResetAgentUsage": "Resetar a cota do agente para \"{{username}}\" (hoje, UTC)?",
+      "resetAgentUsageDone": "Cota resetada para {{username}} — {{cycles}} ciclo(s) liberados em {{rows}} evento(s).",
+      "resetAgentUsageFailed": "Falha ao resetar o uso do agente."
     },
     "boards": {
       "loadFailed": "Falha ao carregar métricas de placas.",

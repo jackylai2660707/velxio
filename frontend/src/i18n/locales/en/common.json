@@ -224,8 +224,13 @@
       "actions": {
         "activity": "Activity",
         "edit": "Edit",
-        "delete": "Delete"
-      }
+        "delete": "Delete",
+        "resetAgentUsage": "Reset agent",
+        "resetAgentUsageTooltip": "Clear today's agent usage so the user can continue using the agent."
+      },
+      "confirmResetAgentUsage": "Reset agent quota for \"{{username}}\" (today, UTC)?",
+      "resetAgentUsageDone": "Reset agent quota for {{username}} — freed {{cycles}} cycle(s) across {{rows}} event row(s).",
+      "resetAgentUsageFailed": "Failed to reset agent usage."
     },
     "boards": {
       "loadFailed": "Failed to load board metrics.",

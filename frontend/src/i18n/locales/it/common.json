@@ -224,8 +224,13 @@
       "actions": {
         "activity": "Attività",
         "edit": "Modifica",
-        "delete": "Elimina"
-      }
+        "delete": "Elimina",
+        "resetAgentUsage": "Reimposta agente",
+        "resetAgentUsageTooltip": "Cancella l'utilizzo odierno dell'agente per consentire all'utente di continuare."
+      },
+      "confirmResetAgentUsage": "Reimpostare la quota dell'agente per \"{{username}}\" (oggi, UTC)?",
+      "resetAgentUsageDone": "Quota reimpostata per {{username}} — liberati {{cycles}} cicli su {{rows}} eventi.",
+      "resetAgentUsageFailed": "Impossibile reimpostare l'utilizzo dell'agente."
     },
     "boards": {
       "loadFailed": "Caricamento metriche schede fallito.",

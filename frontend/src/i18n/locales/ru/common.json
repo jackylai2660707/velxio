@@ -224,8 +224,13 @@
       "actions": {
         "activity": "Активность",
         "edit": "Редактировать",
-        "delete": "Удалить"
-      }
+        "delete": "Удалить",
+        "resetAgentUsage": "Сбросить агента",
+        "resetAgentUsageTooltip": "Очистить дневное использование агента, чтобы пользователь мог продолжить."
+      },
+      "confirmResetAgentUsage": "Сбросить квоту агента для «{{username}}» (сегодня, UTC)?",
+      "resetAgentUsageDone": "Квота {{username}} сброшена — освобождено {{cycles}} цикл(ов) в {{rows}} событиях.",
+      "resetAgentUsageFailed": "Не удалось сбросить использование агента."
     },
     "boards": {
       "loadFailed": "Не удалось загрузить метрики плат.",

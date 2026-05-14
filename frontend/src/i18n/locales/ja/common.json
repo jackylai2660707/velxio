@@ -224,8 +224,13 @@
       "actions": {
         "activity": "アクティビティ",
         "edit": "編集",
-        "delete": "削除"
-      }
+        "delete": "削除",
+        "resetAgentUsage": "エージェントをリセット",
+        "resetAgentUsageTooltip": "本日のエージェント利用量をクリアし、ユーザーが利用を継続できるようにします。"
+      },
+      "confirmResetAgentUsage": "「{{username}}」のエージェント割り当てをリセットしますか（本日、UTC）？",
+      "resetAgentUsageDone": "{{username}} の割り当てをリセットしました — {{rows}} 件のイベントで {{cycles}} サイクル分を解放しました。",
+      "resetAgentUsageFailed": "エージェントの利用量をリセットできませんでした。"
     },
     "boards": {
       "loadFailed": "ボードメトリクスの読み込みに失敗しました。",
