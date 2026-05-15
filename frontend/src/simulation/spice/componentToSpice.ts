@@ -14,6 +14,7 @@
 
 import type { ComponentForSpice } from './types';
 import { parseValueWithUnits } from './valueParser';
+import { LM358_SUBCKT } from './models/lm358Subckt';
 
 export interface SpiceEmission {
   /** One or more netlist lines (without trailing newline). */
@@ -374,6 +375,16 @@ const MAPPERS: Record<string, Mapper> = {
     const inn = netLookup('IN-');
     const out = netLookup('OUT');
     if (!inp || !inn || !out) return null;
+    // Phase 2.2 lesson: the full LM358 macro-model subckt is vendored at
+    // ./models/lm358Subckt.ts but doesn't converge on `.op` analysis
+    // because of its internal capacitors / inductors / poly sources.
+    // The follower test (Vin → IN+, OUT → IN-) hangs >60 s. The
+    // behavioural B-source clamp below is kept until either:
+    //   (a) the default analysis switches to `.tran` (Phase 1c WASM
+    //       loop will probably do this anyway), or
+    //   (b) we add `.options gmin=1e-10` to the netlist and confirm
+    //       convergence across all canvases.
+    // The subckt module remains exported so future work can opt in.
     const A = 1e5;
     const vLo = 0.05;
     const vHi = ctx.vcc - 1.5;
