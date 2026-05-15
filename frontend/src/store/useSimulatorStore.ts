@@ -995,7 +995,17 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         languageMode: 'arduino',
       };
 
-      set((s) => ({ boards: [...s.boards, newBoard] }));
+      set((s) => {
+        // If there's no current active board (or the stored id doesn't point
+        // to one that exists), promote the new board to active. Without this,
+        // an agent that does add_board → compile_sketch fails on step 2 with
+        // "no active board on the canvas" and has to spend a turn on
+        // set_active_board. Manual placements via the UI already auto-active
+        // through the picker; this just closes the API gap.
+        const stillExists = s.boards.some((b) => b.id === s.activeBoardId);
+        const nextActive = stillExists ? s.activeBoardId : id;
+        return { boards: [...s.boards, newBoard], activeBoardId: nextActive };
+      });
       // Create the editor file group for this board
       useEditorStore.getState().createFileGroup(`group-${id}`);
       // Init VFS for Raspberry Pi 3 boards
