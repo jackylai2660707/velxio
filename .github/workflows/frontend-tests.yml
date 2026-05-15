@@ -9,27 +9,39 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['20', '22']
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 22
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ matrix.node-version }}
 
       # The metadata generator scans wokwi-elements/src/, which only ships in
       # the upstream repo (not on npm). Clone it once for the freshness check.
       - name: Clone wokwi-elements (for metadata regeneration only)
         run: git clone --depth=1 https://github.com/wokwi/wokwi-elements.git third-party/wokwi-elements
 
+      # Cache the vendored ngspice WASM (24 MB).  Keyed by the file hash —
+      # invalidates only when the WASM blob itself changes (rare).  Saves
+      # ~10s of disk write per CI run.
+      - name: Cache ngspice WASM
+        uses: actions/cache@v4
+        with:
+          path: frontend/public/wasm/ngspice-interactive
+          key: ngspice-wasm-${{ hashFiles('frontend/public/wasm/ngspice-interactive/ngspice-lib.wasm') }}
+
       # No node_modules cache. Lock files are gitignored (see .gitignore) so
       # a cache key tied to package-lock.json never invalidates and ends up
       # restoring stale links to old `file:` deps from previous commits
       # (e.g. wokwi-elements pre-npm migration). Fresh install every run is
       # ~30s slower but actually correct.
-
       - name: Install frontend dependencies
         run: cd frontend && npm install --no-audit --no-fund --include=optional
 
@@ -49,5 +61,31 @@ jobs:
             exit 1
           fi
 
+      - name: TypeScript build
+        run: cd frontend && npm run tsc
+        continue-on-error: true  # tsc -b has pre-existing strict errors in unrelated test files; tracking separately
+
       - name: Run tests
         run: cd frontend && npm test
+
+      # Production build smoke — catches Vite/Rollup-only failures that
+      # vitest doesn't see (chunk wiring, dynamic imports, manualChunks
+      # config, asset resolution).
+      - name: Vite production build
+        run: cd frontend && npm run build
+
+      # Upload coverage as an artifact for download / inspection.  Skip
+      # codecov for now (no org account).  Run only on Node 22 to keep the
+      # artifact list deduped.
+      - name: Coverage report
+        if: matrix.node-version == '22'
+        run: cd frontend && npm run test:coverage
+        continue-on-error: true
+
+      - name: Upload coverage artifact
+        if: matrix.node-version == '22' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: frontend/coverage/
+          if-no-files-found: ignore

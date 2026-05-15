@@ -24,7 +24,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "tsc": "tsc -b",
+    "test:libraries": "RUN_LIBRARY_TESTS=1 vitest run src/__tests__/library-compile.integration.test.ts"
   },
   "dependencies": {
     "@google/genai": "^0.6.0",
