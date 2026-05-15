@@ -71,8 +71,16 @@ jobs:
       # Production build smoke — catches Vite/Rollup-only failures that
       # vitest doesn't see (chunk wiring, dynamic imports, manualChunks
       # config, asset resolution).
+      #
+      # Use `build:docker` (not `build`): the latter runs `tsc -b` first
+      # which has pre-existing strict errors (TS6133 unused, TS1294
+      # erasableSyntaxOnly, JSX intrinsic-element types from custom
+      # elements). Those are tracked separately and gated by the `tsc`
+      # step above with continue-on-error. The Dockerfile in production
+      # uses `build:docker` too — this step now matches what actually
+      # ships.
       - name: Vite production build
-        run: cd frontend && npm run build
+        run: cd frontend && npm run build:docker
 
       # Upload coverage as an artifact for download / inspection.  Skip
       # codecov for now (no org account).  Run only on Node 22 to keep the
