@@ -142,19 +142,18 @@ export function buildNetlist(input: BuildNetlistInput): BuildNetlistResult {
   }
   lines.push('.end');
 
-  // ── 9. Build board pin → net map from the same UF ─────────────────────────
-  // Must use the same `uf` and `netNames` so net names match what ngspice sees.
+  // ── 9. Build (component|board) pin → net map from the same UF ────────────
+  // Every wire endpoint is in the UF. Including component-pin entries (not
+  // just board pins) lets the MixedModeScheduler bridge route SPICE voltages
+  // to component subscribers downstream of active devices. Legacy ADC
+  // injection still works — it only looks up board-prefixed keys.
   const pinNetMap = new Map<string, string>();
-  for (const board of boards) {
-    // All wire endpoints that belong to this board are already in the UF.
-    for (const w of wires) {
-      for (const endpoint of [w.start, w.end]) {
-        if (endpoint.componentId !== board.id) continue;
-        const key = pinKey(board.id, endpoint.pinName);
-        if (!uf.has(key)) continue;
-        const netName = netNames.get(uf.find(key));
-        if (netName) pinNetMap.set(key, netName);
-      }
+  for (const w of wires) {
+    for (const endpoint of [w.start, w.end]) {
+      const key = pinKey(endpoint.componentId, endpoint.pinName);
+      if (!uf.has(key)) continue;
+      const netName = netNames.get(uf.find(key));
+      if (netName) pinNetMap.set(key, netName);
     }
   }
 
