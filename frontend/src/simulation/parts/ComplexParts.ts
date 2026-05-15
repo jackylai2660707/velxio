@@ -787,8 +787,17 @@ PartSimulationRegistry.register('lcd2002', createLcdSimulation(20, 2));
  *   - 0x2A CASET  – set column address window
  *   - 0x2B PASET  – set page (row) address window
  *   - 0x2C RAMWR  – stream RGB-565 pixel data
+ *   - 0x36 MADCTL – memory access control (rotation MV / MX / MY bits)
  *   - 0x01 SWRESET – clear display
- *   - All others are silently accepted (init sequences, DISPON, MADCTL…)
+ *   - All others are silently accepted (DISPON, COLMOD, …)
+ *
+ * Coordinates in CASET/PASET are LOGICAL — driver libraries (Adafruit_
+ * ILI9341 etc.) call `setRotation(1|3)` which emits MADCTL with MV set
+ * and then writes CASET in 0..319 / PASET in 0..239. The emulator keeps
+ * the underlying canvas at the panel's native 240×320 and remaps each
+ * pixel through MV/MX/MY at write time. Without this, every landscape
+ * sketch (rotation 1 or 3) used to render to nothing because the X
+ * bound check filtered out anything past column 239.
  *
  * DC/RS pin: LOW = command byte, HIGH = data bytes.
  */
@@ -865,6 +874,14 @@ const ili9341Simulation = {
     let pixelHiByte = 0;
     let pixelByteCount = 0;
 
+    // ── MADCTL state ──────────────────────────────────────────────────
+    // ILI9341 0x36 command bits we care about (datasheet §8.2.29). Set
+    // by setRotation() in every Adafruit-style driver; default is
+    // rotation 0 = all bits clear (portrait, no swap, no mirror).
+    let madMV = false; // row/column exchange — landscape orientation
+    let madMX = false; // column address mirror
+    let madMY = false; // row address mirror
+
     // ── DC pin tracking ───────────────────────────────────────────────
     let dcState = false; // LOW = command, HIGH = data
     const pinDC = getArduinoPinHelper('D/C');
@@ -880,8 +897,32 @@ const ili9341Simulation = {
     }
 
     // ── Pixel writer ──────────────────────────────────────────────────
+    // curX / curY / col* / row* are LOGICAL coordinates — the values the
+    // driver thinks it's writing to. In rotation 0 logical = physical.
+    // In rotation 1/3 (MV set) the driver iterates X in 0..319 and Y in
+    // 0..239; we swap them at the last possible moment before touching
+    // the imageData buffer (which is always physically 240 wide × 320 tall).
     const writePixel = (hi: number, lo: number) => {
-      if (curX > colEnd || curY > rowEnd || curY >= SCREEN_H || curX >= SCREEN_W) return;
+      if (curX > colEnd || curY > rowEnd) return;
+
+      // Map logical → physical via MADCTL.
+      let physX = curX;
+      let physY = curY;
+      if (madMV) {
+        physX = curY;
+        physY = curX;
+      }
+      if (madMX) physX = (SCREEN_W - 1) - physX;
+      if (madMY) physY = (SCREEN_H - 1) - physY;
+
+      if (physX < 0 || physX >= SCREEN_W || physY < 0 || physY >= SCREEN_H) {
+        curX++;
+        if (curX > colEnd) {
+          curX = colStart;
+          curY++;
+        }
+        return;
+      }
 
       const id = getOrCreateImageData();
       const color = (hi << 8) | lo;
@@ -889,7 +930,7 @@ const ili9341Simulation = {
       const g = ((color >> 5) & 0x3f) * 4;
       const b = (color & 0x1f) * 8;
 
-      const idx = (curY * SCREEN_W + curX) * 4;
+      const idx = (physY * SCREEN_W + physX) * 4;
       id.data[idx] = r;
       id.data[idx + 1] = g;
       id.data[idx + 2] = b;
@@ -911,13 +952,16 @@ const ili9341Simulation = {
       pixelByteCount = 0;
 
       if (cmd === 0x01) {
-        // SWRESET – clear framebuffer
+        // SWRESET – clear framebuffer + reset MADCTL to defaults
         colStart = 0;
         colEnd = SCREEN_W - 1;
         rowStart = 0;
         rowEnd = SCREEN_H - 1;
         curX = 0;
         curY = 0;
+        madMV = false;
+        madMX = false;
+        madMY = false;
         imageData = null;
         if (ctx) ctx.clearRect(0, 0, SCREEN_W, SCREEN_H);
       }
@@ -953,7 +997,15 @@ const ili9341Simulation = {
             curY = rowStart;
           }
           break;
-        // All other commands (DISPON, MADCTL, COLMOD…) just buffer data
+        case 0x36: // MADCTL – memory access control (rotation / mirror)
+          if (dataBytes.length === 1) {
+            const m = dataBytes[0];
+            madMY = (m & 0x80) !== 0;
+            madMX = (m & 0x40) !== 0;
+            madMV = (m & 0x20) !== 0;
+          }
+          break;
+        // All other commands (DISPON, COLMOD…) just buffer data
       }
     };
 
