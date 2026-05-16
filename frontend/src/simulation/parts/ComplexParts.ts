@@ -874,18 +874,41 @@ const ili9341Simulation = {
       return imageData!;
     };
 
+    // Flush is debounced rather than rAF-pinned: TFT firmwares emit each
+    // frame as one long SPI burst that often takes >16 ms to drain
+    // (rp2040js is sub-realtime), so painting every rAF would snapshot
+    // the canvas mid-burst — the user would see only the pixels that
+    // happened to land before that tick. We instead wait for SPI silence
+    // (a real frame boundary), bounded by a hard cap so continuous-write
+    // sketches still update.
     let pendingFlush = false;
-    let rafId: number | null = null;
+    let idleTimerId: number | null = null;
+    let firstWriteSinceFlush = 0;
+    const IDLE_FLUSH_MS = 16;
+    const MAX_FLUSH_INTERVAL_MS = 100;
+
+    const doFlush = () => {
+      if (idleTimerId !== null) {
+        clearTimeout(idleTimerId);
+        idleTimerId = null;
+      }
+      if (pendingFlush && ctx && imageData) {
+        ctx.putImageData(imageData, 0, 0);
+        pendingFlush = false;
+        firstWriteSinceFlush = 0;
+      }
+    };
 
     const scheduleFlush = () => {
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        if (pendingFlush && ctx && imageData) {
-          ctx.putImageData(imageData, 0, 0);
-          pendingFlush = false;
-        }
-      });
+      if (!pendingFlush) return;
+      const now = performance.now();
+      if (firstWriteSinceFlush === 0) firstWriteSinceFlush = now;
+      if (now - firstWriteSinceFlush >= MAX_FLUSH_INTERVAL_MS) {
+        doFlush();
+        return;
+      }
+      if (idleTimerId !== null) clearTimeout(idleTimerId);
+      idleTimerId = window.setTimeout(doFlush, IDLE_FLUSH_MS);
     };
 
     // ── ILI9341 state ─────────────────────────────────────────────────
@@ -1078,7 +1101,7 @@ const ili9341Simulation = {
     // ── Cleanup ───────────────────────────────────────────────────────
     return () => {
       spi.onByte = prevOnByte;
-      if (rafId !== null) cancelAnimationFrame(rafId);
+      if (idleTimerId !== null) clearTimeout(idleTimerId);
       el.removeEventListener('canvas-ready', onCanvasReady);
       unsubscribers.forEach((u) => u());
     };
