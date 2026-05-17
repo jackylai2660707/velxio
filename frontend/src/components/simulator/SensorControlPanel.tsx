@@ -13,7 +13,7 @@ import {
   type SensorControl,
   type SliderControl,
 } from '../../simulation/sensorControlConfig';
-import { dispatchSensorUpdate } from '../../simulation/SensorUpdateRegistry';
+import { dispatchSensorUpdate, getLastSensorValues } from '../../simulation/SensorUpdateRegistry';
 import './SensorControlPanel.css';
 
 interface SensorControlPanelProps {
@@ -51,14 +51,22 @@ export const SensorControlPanel: React.FC<SensorControlPanelProps> = ({
   const { t } = useTranslation();
   const def = SENSOR_CONTROLS[metadataId];
 
-  // Local slider/button state — initialised from config defaults
-  const [values, setValues] = useState<Record<string, number | boolean>>(
-    def ? { ...def.defaultValues } : {},
-  );
+  // Local slider/button state — hydrated from the registry's last-known
+  // values for this componentId (so reopening a sensor or switching between
+  // two sensors of the same type shows each one's current state, not the
+  // previous panel's). Falls back to config defaults the first time a
+  // sensor is opened.
+  const [values, setValues] = useState<Record<string, number | boolean>>(() => {
+    const cached = getLastSensorValues(componentId);
+    if (cached) return { ...(def?.defaultValues ?? {}), ...cached };
+    return def ? { ...def.defaultValues } : {};
+  });
 
-  // Push initial defaults into simulation on mount
+  // Push defaults into simulation on first open for this sensor. Skipped
+  // when the sensor already has cached values — the simulation still holds
+  // them, no need to clobber.
   useEffect(() => {
-    if (def && Object.keys(def.defaultValues).length > 0) {
+    if (def && Object.keys(def.defaultValues).length > 0 && !getLastSensorValues(componentId)) {
       dispatchSensorUpdate(componentId, def.defaultValues);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

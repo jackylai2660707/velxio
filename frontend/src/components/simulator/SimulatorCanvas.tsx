@@ -2382,13 +2382,18 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
                   : 'default',
           }}
         >
-          {/* Sensor Control Panel — shown when a sensor component is clicked during simulation */}
+          {/* Sensor Control Panel — shown when a sensor component is clicked during simulation.
+              key={sensorControlComponentId} forces a fresh mount when the user clicks a
+              different instance of the same sensor type (e.g. a second photoresistor); the
+              slider state is local and would otherwise show the previously-clicked sensor's
+              value until the user manually moved it. */}
           {sensorControlComponentId &&
             sensorControlMetadataId &&
             (() => {
               const meta = registry.getById(sensorControlMetadataId);
               return (
                 <SensorControlPanel
+                  key={sensorControlComponentId}
                   componentId={sensorControlComponentId}
                   metadataId={sensorControlMetadataId}
                   sensorName={meta?.name ?? sensorControlMetadataId}
