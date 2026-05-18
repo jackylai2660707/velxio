@@ -201,9 +201,20 @@ export function buildNetlist(input: BuildNetlistInput): BuildNetlistResult {
   // by an underscore or digit.  ngspice's case-insensitive match means
   // both `Vname` and `vname` count.  We emit only uppercase prefixes
   // from componentToSpice + NetlistBuilder, so this regex is safe.
+  //
+  // The character class MUST include `-` (hyphen). Component ids in
+  // examples and user-drawn circuits commonly contain hyphens
+  // (`led-builtin`, `led-red`, auto-generated `led-1717…-abc`), and
+  // SPICE itself happily parses identifiers with hyphens. If the regex
+  // doesn't accept them it truncates the captured name at the first
+  // hyphen ⇒ wrong voltageSources entry ⇒ CircuitSimulationService
+  // asks ngspice for the WRONG branch-current vector ⇒ branchCurrents
+  // lookup returns undefined ⇒ LED brightness stays at zero even though
+  // the circuit conducts correctly. Single-character fix, but it
+  // unblocks every hyphenated id across every existing project.
   const voltageSources: string[] = [];
   for (const card of cards) {
-    const m = card.match(/^([Vv][_\w]*)\s/);
+    const m = card.match(/^([Vv][_\w-]*)\s/);
     if (m) voltageSources.push(m[1]);
   }
 
