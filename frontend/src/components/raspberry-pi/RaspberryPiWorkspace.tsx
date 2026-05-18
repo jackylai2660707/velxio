@@ -12,6 +12,7 @@ import Editor from '@monaco-editor/react';
 import { VirtualFileSystem } from './VirtualFileSystem';
 import { useVfsStore } from '../../store/useVfsStore';
 import { getBoardBridge, useSimulatorStore } from '../../store/useSimulatorStore';
+import { attachSlavesFromCanvas } from '../../simulation/piSlaveScanner';
 
 // Lazy-load PiTerminal so @xterm/xterm is only bundled when needed
 const PiTerminal = lazy(() => import('./PiTerminal').then((m) => ({ default: m.PiTerminal })));
@@ -49,6 +50,25 @@ export const RaspberryPiWorkspace: React.FC<RaspberryPiWorkspaceProps> = ({ boar
         bridge.connect();
       }
       setBridgeConnected(bridge?.connected ?? false);
+
+      // After the WS is open, scan the canvas for I2C/SPI/UART
+      // peripherals wired to this Pi and tell the backend to attach
+      // their slave models. We retry up to ~3s in case attachSlave
+      // calls race the WS open.
+      const attachOnce = (): boolean => {
+        const b = getBoardBridge(boardId);
+        if (!b?.connected) return false;
+        const { components, wires } = useSimulatorStore.getState();
+        attachSlavesFromCanvas(boardId, b, components, wires);
+        return true;
+      };
+      if (!attachOnce()) {
+        let attempts = 0;
+        const interval = setInterval(() => {
+          attempts++;
+          if (attachOnce() || attempts >= 6) clearInterval(interval);
+        }, 500);
+      }
     }, 800);
     return () => clearTimeout(timer);
   }, [board?.running, boardId]);

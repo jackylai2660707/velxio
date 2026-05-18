@@ -86,6 +86,18 @@ async def simulation_websocket(websocket: WebSocket, client_id: str):
                 state = msg_data.get('state', 0)
                 qemu_manager.set_pin_state(client_id, pin, state)
 
+            elif msg_type in ('pi_attach_slave', 'pi_detach_slave'):
+                # Pluggable hook — pro overlay registers the actual handler
+                # via qemu_manager.set_pi_slave_handler(). In the OSS image
+                # the hook is unset and the message is silently dropped.
+                handler = qemu_manager.get_pi_slave_handler()
+                if handler is not None:
+                    action = 'attach' if msg_type == 'pi_attach_slave' else 'detach'
+                    try:
+                        await handler(client_id, action, msg_data)
+                    except Exception:
+                        logger.exception('[%s] %s handler crashed', client_id, msg_type)
+
             # ── ESP32 lifecycle ──────────────────────────────────────────
             elif msg_type == 'start_esp32':
                 board        = msg_data.get('board', 'esp32')

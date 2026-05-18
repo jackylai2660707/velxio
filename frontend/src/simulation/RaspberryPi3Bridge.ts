@@ -10,6 +10,15 @@
  *     { type: 'stop_pi' }
  *     { type: 'serial_input', data: { bytes: number[] } }
  *     { type: 'gpio_in', data: { pin: number, state: 0 | 1 } }
+ *     { type: 'pi_attach_slave', data: {
+ *         bus_kind: 'i2c'|'spi'|'uart',
+ *         bus_num:  number,
+ *         address?: number,   // i2c
+ *         cs?:      number,   // spi
+ *         model_id: string,   // e.g. 'bme280'
+ *         config?:  Record<string, unknown>,
+ *     }}
+ *     { type: 'pi_detach_slave', data: { bus_kind, bus_num, address?|cs? } }
  *
  *   Backend → Frontend
  *     { type: 'serial_output', data: { data: string } }
@@ -132,6 +141,32 @@ export class RaspberryPi3Bridge {
   /** Drive a GPIO pin from an external source (e.g. connected Arduino) */
   sendPinEvent(gpioPin: number, state: boolean): void {
     this._send({ type: 'gpio_in', data: { pin: gpioPin, state: state ? 1 : 0 } });
+  }
+
+  /**
+   * Attach an I2C/SPI/UART slave model to the running Pi. The backend
+   * pro overlay turns this into a PiSlaveRegistry entry that the
+   * protocol dispatcher consults on each guest read. OSS images
+   * silently drop the message.
+   */
+  attachSlave(spec: {
+    bus_kind: 'i2c' | 'spi' | 'uart';
+    bus_num: number;
+    address?: number;
+    cs?: number;
+    model_id: string;
+    config?: Record<string, unknown>;
+  }): void {
+    this._send({ type: 'pi_attach_slave', data: spec });
+  }
+
+  detachSlave(spec: {
+    bus_kind: 'i2c' | 'spi' | 'uart';
+    bus_num: number;
+    address?: number;
+    cs?: number;
+  }): void {
+    this._send({ type: 'pi_detach_slave', data: spec });
   }
 
   private _send(payload: unknown): void {

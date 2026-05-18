@@ -95,6 +95,55 @@ PI_CONFIGS: dict[str, dict] = {
 DEFAULT_PI_BOARD = 'raspberry-pi-3'
 
 
+# ── Pluggable I2C/SPI/UART dispatcher ────────────────────────────────────
+#
+# When the pro overlay loads, it can call
+# ``set_pi_protocol_dispatcher(fn)`` to register a coroutine that
+# receives the raw protocol tokens for I2C/SPI/UART frames. If the
+# dispatcher returns a non-None string, that string is written back
+# to the guest as a reply line. Returning None falls through to the
+# default no-slave stubs.
+#
+# Signature: async def(client_id: str, tokens: list[str]) -> str | None
+#
+# This keeps the upstream OSS code unaware of the pro slave models
+# (BME280, MCP23017, ...) while letting the overlay attach real
+# behaviour at register_pro() time.
+import typing as _typing
+_ProtocolDispatcher = _typing.Callable[
+    [str, list[str]],
+    _typing.Awaitable[_typing.Optional[str]],
+]
+_PI_PROTOCOL_DISPATCHER: _ProtocolDispatcher | None = None
+
+
+def set_pi_protocol_dispatcher(fn: _ProtocolDispatcher | None) -> None:
+    """Install (or clear) the pro overlay's I2C/SPI/UART dispatcher."""
+    global _PI_PROTOCOL_DISPATCHER
+    _PI_PROTOCOL_DISPATCHER = fn
+
+
+# Pro overlay can also register a handler for attach/detach WebSocket
+# messages from the canvas (e.g. when the user wires a BME280 to the Pi).
+# Signature: async def(client_id: str, action: str, data: dict) -> None
+# where action is 'attach' or 'detach'.
+_SlaveHandler = _typing.Callable[
+    [str, str, dict],
+    _typing.Awaitable[None],
+]
+_PI_SLAVE_HANDLER: _SlaveHandler | None = None
+
+
+def set_pi_slave_handler(fn: _SlaveHandler | None) -> None:
+    """Install (or clear) the pro overlay's slave attach/detach handler."""
+    global _PI_SLAVE_HANDLER
+    _PI_SLAVE_HANDLER = fn
+
+
+def get_pi_slave_handler() -> _SlaveHandler | None:
+    return _PI_SLAVE_HANDLER
+
+
 def _find_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('127.0.0.1', 0))
@@ -550,34 +599,39 @@ class QemuManager:
                 pass
             return
 
-        # I2C / SPI / UART — Phase 2.5 will wire these to real canvas
-        # bridges. For Phase 2 we send an immediate "no slave" reply
-        # so user code gets an exception path instead of hanging.
-        if op == 'I2C' and len(parts) >= 4:
-            sub = parts[3]
-            if sub in ('R', 'RR'):
-                bus = parts[1]
-                addr = parts[2]
-                await self._reply_gpio(inst, f'I2C_ERR {bus} {addr} no-slave')
-            return
-
-        if op == 'SPI' and len(parts) >= 4 and parts[3] == 'X':
-            bus = parts[1]
-            cs  = parts[2]
-            # Reply with zero bytes of the same length so user code
-            # gets a deterministic empty xfer.
-            try:
-                req_hex = parts[4] if len(parts) > 4 else ''
-                length = len(bytes.fromhex(req_hex))
-            except ValueError:
-                length = 0
-            await self._reply_gpio(inst,
-                                   f'SPI_DATA {bus} {cs} {"00" * length}')
-            return
-
-        if op == 'UART' and len(parts) >= 3 and parts[2] == 'RX_REQ':
-            port = parts[1]
-            await self._reply_gpio(inst, f'UART_RX {port}')
+        # I2C / SPI / UART — if a pro overlay has registered a slave
+        # dispatcher, route the frame to it; otherwise reply with
+        # stubs (Phase 2 behaviour) so user code gets a deterministic
+        # answer instead of hanging.
+        if op in ('I2C', 'SPI', 'UART'):
+            disp = _PI_PROTOCOL_DISPATCHER
+            if disp is not None:
+                try:
+                    reply = await disp(inst.client_id, parts)
+                except Exception:
+                    logger.exception('pi-protocol dispatcher crashed')
+                    reply = None
+                if reply is not None:
+                    await self._reply_gpio(inst, reply)
+                    return
+            # Fall through to default stubs
+            if op == 'I2C' and len(parts) >= 4:
+                sub = parts[3]
+                if sub in ('R', 'RR'):
+                    await self._reply_gpio(
+                        inst, f'I2C_ERR {parts[1]} {parts[2]} no-slave')
+                return
+            if op == 'SPI' and len(parts) >= 4 and parts[3] == 'X':
+                try:
+                    req_hex = parts[4] if len(parts) > 4 else ''
+                    length = len(bytes.fromhex(req_hex))
+                except ValueError:
+                    length = 0
+                await self._reply_gpio(
+                    inst, f'SPI_DATA {parts[1]} {parts[2]} {"00" * length}')
+                return
+            if op == 'UART' and len(parts) >= 3 and parts[2] == 'RX_REQ':
+                await self._reply_gpio(inst, f'UART_RX {parts[1]}')
             return
 
         # Unknown — log at debug level (not a hot path)
@@ -687,6 +741,14 @@ class QemuManager:
             except Exception:
                 pass
             inst.overlay_path = None
+
+        # Notify pro overlay (if any) so it can drop its slave registry
+        # entry for this client. OSS image has no handler → no-op.
+        if _PI_SLAVE_HANDLER is not None:
+            try:
+                await _PI_SLAVE_HANDLER(inst.client_id, 'shutdown', {})
+            except Exception:
+                logger.exception('pi-slave shutdown hook crashed')
 
         logger.info('PiInstance %s shut down', inst.client_id)
 
