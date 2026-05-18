@@ -47,14 +47,52 @@ from app.services.boot_images import (
 
 logger = logging.getLogger(__name__)
 
-# Image-set id (matches a key in `boot_images/manifest.json`).
-PI3_IMAGE_SET = 'raspberry-pi-3-virt'
+# Per-board configuration. Pi 3/4/5 share the same arm64 image set;
+# Pi Zero/1/2 (Phase 3 deliverable) will share an armhf image set.
+# Only -cpu, -smp, -m, qemu binary and which image-set the provider
+# fetches vary per model.
+#
+# CPU choice notes:
+#   raspberry-pi-3 → Cortex-A53 (BCM2837, ARMv8 64-bit)
+#   raspberry-pi-4 → Cortex-A72 (BCM2711, ARMv8 64-bit)
+#   raspberry-pi-5 → Cortex-A76 (BCM2712, ARMv8 64-bit)
+PI_CONFIGS: dict[str, dict] = {
+    'raspberry-pi-3': {
+        'qemu':       'qemu-system-aarch64',
+        'cpu':        'cortex-a53',
+        'smp':        '4',
+        'memory':     '1G',
+        'image_set':  'raspberry-pi-3-virt',
+        'kernel':     'velxio-kernel-arm64',
+        'initramfs':  'velxio-initramfs-arm64.cpio.gz',
+        'rootfs':     'velxio-pi-rootfs-arm64.ext4',
+    },
+    'raspberry-pi-4': {
+        'qemu':       'qemu-system-aarch64',
+        'cpu':        'cortex-a72',
+        'smp':        '4',
+        'memory':     '2G',
+        'image_set':  'raspberry-pi-3-virt',   # same arm64 image set as Pi 3
+        'kernel':     'velxio-kernel-arm64',
+        'initramfs':  'velxio-initramfs-arm64.cpio.gz',
+        'rootfs':     'velxio-pi-rootfs-arm64.ext4',
+    },
+    'raspberry-pi-5': {
+        'qemu':       'qemu-system-aarch64',
+        'cpu':        'cortex-a76',
+        'smp':        '4',
+        'memory':     '2G',
+        'image_set':  'raspberry-pi-3-virt',   # same arm64 image set
+        'kernel':     'velxio-kernel-arm64',
+        'initramfs':  'velxio-initramfs-arm64.cpio.gz',
+        'rootfs':     'velxio-pi-rootfs-arm64.ext4',
+    },
+    # Pi Zero/1/2 require armhf — added in Phase 3.3.
+}
 
-# Filenames the provider materialises (must match `name` fields in the
-# manifest entry for PI3_IMAGE_SET).
-PI3_KERNEL_NAME    = 'velxio-kernel-arm64'
-PI3_INITRAMFS_NAME = 'velxio-initramfs-arm64.cpio.gz'
-PI3_ROOTFS_NAME    = 'velxio-pi-rootfs-arm64.ext4'
+# Default board if the client doesn't specify one. Kept for clients
+# that still send the legacy "start_pi" message without a board field.
+DEFAULT_PI_BOARD = 'raspberry-pi-3'
 
 
 def _find_free_port() -> int:
@@ -69,9 +107,11 @@ EventCallback = Callable[[str, dict], Awaitable[None]]
 class PiInstance:
     """State for one running Pi board."""
 
-    def __init__(self, client_id: str, callback: EventCallback):
-        self.client_id = client_id
-        self.callback  = callback
+    def __init__(self, client_id: str, callback: EventCallback,
+                 board_type: str = DEFAULT_PI_BOARD):
+        self.client_id  = client_id
+        self.callback   = callback
+        self.board_type = board_type
 
         # Runtime state
         self.process:      subprocess.Popen | None = None
@@ -105,12 +145,18 @@ class QemuManager:
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    def start_instance(self, client_id: str, board_type: str,  # noqa: ARG002
+    def start_instance(self, client_id: str, board_type: str,
                        callback: EventCallback) -> None:
         if client_id in self._instances:
             logger.warning('start_instance: %s already running', client_id)
             return
-        inst = PiInstance(client_id, callback)
+        if board_type not in PI_CONFIGS:
+            logger.warning(
+                'start_instance: unknown board %r, falling back to %s',
+                board_type, DEFAULT_PI_BOARD,
+            )
+            board_type = DEFAULT_PI_BOARD
+        inst = PiInstance(client_id, callback, board_type=board_type)
         self._instances[client_id] = inst
         asyncio.create_task(self._boot(inst))
 
@@ -144,21 +190,29 @@ class QemuManager:
     # ── Boot sequence ─────────────────────────────────────────────────────────
 
     async def _boot(self, inst: PiInstance) -> None:
+        # Per-board configuration drives the QEMU command, image-set,
+        # CPU type, RAM, and SMP count. See PI_CONFIGS at the top of
+        # this module.
+        cfg = PI_CONFIGS[inst.board_type]
+        logger.info('[%s] booting %s (cpu=%s mem=%s)',
+                    inst.client_id, inst.board_type, cfg['cpu'], cfg['memory'])
+
         # Resolve boot files via the provider (downloads + verifies on
         # first call; cache hit on subsequent calls thanks to the
         # lifespan pre-warm at module load).
         try:
-            images = await self._get_provider().get(PI3_IMAGE_SET)
+            images = await self._get_provider().get(cfg['image_set'])
         except BootImageError as exc:
-            logger.error('[pi3] boot-image provisioning failed: %s', exc)
+            logger.error('[%s] boot-image provisioning failed: %s',
+                         inst.client_id, exc)
             await inst.emit('error', {
-                'message': f'Raspberry Pi 3 boot files unavailable: {exc}',
+                'message': f'{inst.board_type} boot files unavailable: {exc}',
             })
             self._instances.pop(inst.client_id, None)
             return
-        kernel_path:    Path = images[PI3_KERNEL_NAME]
-        initramfs_path: Path = images[PI3_INITRAMFS_NAME]
-        rootfs_base:    Path = images[PI3_ROOTFS_NAME]
+        kernel_path:    Path = images[cfg['kernel']]
+        initramfs_path: Path = images[cfg['initramfs']]
+        rootfs_base:    Path = images[cfg['rootfs']]
 
         # Allocate transport endpoints for the two chardevs.
         #
@@ -213,11 +267,11 @@ class QemuManager:
         # Why no -dtb: virt machine generates its own DTB on the fly
         # from the runtime device list, so we don't ship one.
         cmd = [
-            'qemu-system-aarch64',
+            cfg['qemu'],
             '-M',      'virt',
-            '-cpu',    'cortex-a53',
-            '-smp',    '4',
-            '-m',      '1G',
+            '-cpu',    cfg['cpu'],
+            '-smp',    cfg['smp'],
+            '-m',      cfg['memory'],
             '-kernel', str(kernel_path),
             '-initrd', str(initramfs_path),
             # Root filesystem via virtio-blk over PCI. virt machine
@@ -652,29 +706,33 @@ class QemuManager:
 
 
 # ── Lifespan pre-warm ────────────────────────────────────────────────────────
-async def _prewarm_pi3_boot_images() -> None:
-    """Lifespan hook: download + cache the Pi 3 virt boot files in the
+async def _prewarm_pi_boot_images() -> None:
+    """Lifespan hook: download + cache the Pi virt boot files in the
     background at process start.
 
-    The cache check is cheap when files are already on disk (named
-    docker volume), so this is a no-op for warm containers and a one-
-    time pay-on-first-boot for fresh hosts. Failures are logged but
-    never block startup — a missing licence key or a velxio.dev outage
-    just means the first user request gets an error with a useful
-    message, instead of the whole backend refusing to start.
+    Pre-warms every unique ``image_set`` referenced by PI_CONFIGS
+    exactly once (Pi 3/4/5 share the arm64 set; Pi Zero/1/2 will add
+    an armhf set in Phase 3.3). The cache check is cheap when files
+    are already on disk (named docker volume), so this is a no-op
+    for warm containers. Failures are logged but never block startup.
     """
     try:
         provider = get_default_provider()
-    except Exception as exc:  # noqa: BLE001 - log + continue at startup
+    except Exception as exc:  # noqa: BLE001
         logger.warning(
-            '[pi3] cannot build boot-image provider, skipping pre-warm: %s',
+            '[pi] cannot build boot-image provider, skipping pre-warm: %s',
             exc,
         )
         return
-    asyncio.create_task(provider.warmup(PI3_IMAGE_SET))
+    seen: set[str] = set()
+    for cfg in PI_CONFIGS.values():
+        if cfg['image_set'] in seen:
+            continue
+        seen.add(cfg['image_set'])
+        asyncio.create_task(provider.warmup(cfg['image_set']))
 
 
-register_lifespan_startup(_prewarm_pi3_boot_images)
+register_lifespan_startup(_prewarm_pi_boot_images)
 
 
 qemu_manager = QemuManager()

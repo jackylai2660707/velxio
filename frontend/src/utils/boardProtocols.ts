@@ -144,7 +144,15 @@ function tableFor(boardKind: BoardKind | string): RoleTable | null {
   if (boardKind === 'raspberry-pi-pico' || boardKind === 'pi-pico-w') return RP2040_DEFAULT;
   if (boardKind === 'esp32-c3' || (boardKind as string).startsWith('esp32-c3')) return ESP32_C3_DEFAULT;
   if (boardKind === 'esp32' || (boardKind as string).startsWith('esp32')) return ESP32_DEFAULT;
-  if (boardKind === 'raspberry-pi-3' || (boardKind as string).startsWith('raspberry-pi-3'))
+  // Pi 3/4/5 all share the same 40-pin GPIO header → same BCM table.
+  if (
+    boardKind === 'raspberry-pi-3' ||
+    boardKind === 'raspberry-pi-4' ||
+    boardKind === 'raspberry-pi-5' ||
+    (boardKind as string).startsWith('raspberry-pi-3') ||
+    (boardKind as string).startsWith('raspberry-pi-4') ||
+    (boardKind as string).startsWith('raspberry-pi-5')
+  )
     return PI3_BCM;
   return ARDUINO_NANO; // default fallback: treat unknown as arduino-uno-like
 }
@@ -170,8 +178,15 @@ function normalizePinName(boardKind: string, pinName: string): string | null {
     return null;
   }
 
-  // Pi3B accepts physical pin numbers (1..40) which map to BCM
-  if (boardKind === 'raspberry-pi-3' || boardKind.startsWith('raspberry-pi-3')) {
+  // Pi 3/4/5 all accept physical pin numbers (1..40) which map to BCM
+  if (
+    boardKind === 'raspberry-pi-3' ||
+    boardKind === 'raspberry-pi-4' ||
+    boardKind === 'raspberry-pi-5' ||
+    boardKind.startsWith('raspberry-pi-3') ||
+    boardKind.startsWith('raspberry-pi-4') ||
+    boardKind.startsWith('raspberry-pi-5')
+  ) {
     const phys = parseInt(trimmed, 10);
     if (!isNaN(phys)) {
       const bcm = PI3_PHYSICAL_TO_BCM[phys];

@@ -64,19 +64,47 @@ export class ComponentRegistry {
 
       const data: ComponentMetadataCollection = await response.json();
 
-      // Inject Raspberry Pi 3 metadata
+      // Inject Raspberry Pi 3 / 4 / 5 metadata. All three share the
+      // same 40-pin GPIO header; the simulator backend picks a
+      // different QEMU CPU model per board (Cortex-A53/A72/A76).
       data.components.push({
         id: 'raspberry-pi-3',
         tagName: 'velxio-raspberry-pi-3',
         name: 'Raspberry Pi 3',
         category: 'boards',
-        description: 'Raspberry Pi 3 Model B with 40-pin GPIO. Connects to backend QEMU simulator.',
+        description: 'Raspberry Pi 3 Model B with 40-pin GPIO. QEMU virt + Cortex-A53 backend.',
         thumbnail:
           '<svg width="64" height="64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#E60049" rx="4"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="10" fill="#FFF">RPi3</text></svg>',
         properties: [],
         defaultValues: {},
         pinCount: 40,
         tags: ['raspberry', 'pi', 'rp3', 'board', 'qemu', 'linux'],
+      });
+      data.components.push({
+        id: 'raspberry-pi-4',
+        tagName: 'velxio-raspberry-pi-3',   // reuse Pi 3 board art (40-pin layout identical)
+        name: 'Raspberry Pi 4',
+        category: 'boards',
+        description: 'Raspberry Pi 4 Model B with 40-pin GPIO. QEMU virt + Cortex-A72 backend.',
+        thumbnail:
+          '<svg width="64" height="64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#83B81A" rx="4"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="10" fill="#FFF">RPi4</text></svg>',
+        properties: [],
+        defaultValues: {},
+        pinCount: 40,
+        tags: ['raspberry', 'pi', 'rp4', 'board', 'qemu', 'linux'],
+      });
+      data.components.push({
+        id: 'raspberry-pi-5',
+        tagName: 'velxio-raspberry-pi-3',   // reuse art for now (Phase 3 polish: Pi 5 PCB SVG)
+        name: 'Raspberry Pi 5',
+        category: 'boards',
+        description: 'Raspberry Pi 5 with 40-pin GPIO. QEMU virt + Cortex-A76 backend (no raspi5 machine in QEMU yet).',
+        thumbnail:
+          '<svg width="64" height="64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#76323F" rx="4"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="10" fill="#FFF">RPi5</text></svg>',
+        properties: [],
+        defaultValues: {},
+        pinCount: 40,
+        tags: ['raspberry', 'pi', 'rp5', 'board', 'qemu', 'linux'],
       });
 
       // Inject SPICE probe instruments — these are Velxio-specific React

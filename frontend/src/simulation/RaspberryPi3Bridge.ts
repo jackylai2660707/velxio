@@ -6,7 +6,7 @@
  *
  * Protocol (JSON frames):
  *   Frontend → Backend
- *     { type: 'start_pi', data: { board: 'raspberry-pi-3' } }
+ *     { type: 'start_pi', data: { board: 'raspberry-pi-3'|'raspberry-pi-4'|'raspberry-pi-5' } }
  *     { type: 'stop_pi' }
  *     { type: 'serial_input', data: { bytes: number[] } }
  *     { type: 'gpio_in', data: { pin: number, state: 0 | 1 } }
@@ -23,6 +23,10 @@ const API_BASE = (): string =>
 
 export class RaspberryPi3Bridge {
   readonly boardId: string;
+  /** Pi family member: 'raspberry-pi-3' | 'raspberry-pi-4' | 'raspberry-pi-5'.
+   * The backend uses this to pick the QEMU -cpu / -m. Defaults to Pi 3 for
+   * back-compat with code paths that don't know the kind yet. */
+  readonly boardKind: string;
 
   // Callbacks wired up by useSimulatorStore
   onSerialData: ((char: string) => void) | null = null;
@@ -35,8 +39,9 @@ export class RaspberryPi3Bridge {
   private socket: WebSocket | null = null;
   private _connected = false;
 
-  constructor(boardId: string) {
+  constructor(boardId: string, boardKind: string = 'raspberry-pi-3') {
     this.boardId = boardId;
+    this.boardKind = boardKind;
   }
 
   get connected(): boolean {
@@ -57,8 +62,8 @@ export class RaspberryPi3Bridge {
     socket.onopen = () => {
       this._connected = true;
       this.onConnected?.();
-      // Tell the backend to boot the Pi
-      this._send({ type: 'start_pi', data: { board: 'raspberry-pi-3' } });
+      // Tell the backend which Pi family member to boot.
+      this._send({ type: 'start_pi', data: { board: this.boardKind } });
     };
 
     socket.onmessage = (event: MessageEvent) => {

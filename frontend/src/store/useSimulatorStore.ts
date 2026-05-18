@@ -954,8 +954,12 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
 
       const serialCallback = (ch: string) => appendSerial(id, ch);
 
-      if (boardKind === 'raspberry-pi-3') {
-        const bridge = new RaspberryPi3Bridge(id);
+      if (
+        boardKind === 'raspberry-pi-3' ||
+        boardKind === 'raspberry-pi-4' ||
+        boardKind === 'raspberry-pi-5'
+      ) {
+        const bridge = new RaspberryPi3Bridge(id, boardKind);
         bridge.onSerialData = (ch: string) => {
           serialCallback(ch);
           // Cross-board routing now handled by Interconnect (see bind below).

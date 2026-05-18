@@ -129,12 +129,12 @@ export async function loadExample(
         // Arduino-style boards (AVR, RP2040, ESP32, …) all need the `.ino`
         // extension so arduino-cli auto-includes <Arduino.h>. Only the Pi 3B
         // uses a different toolchain (Python via VFS or g++ for `.cpp`).
-        const filename = eb.boardKind === 'raspberry-pi-3' ? 'main.cpp' : 'sketch.ino';
+        const filename = (eb.boardKind === 'raspberry-pi-3' || eb.boardKind === 'raspberry-pi-4' || eb.boardKind === 'raspberry-pi-5') ? 'main.cpp' : 'sketch.ino';
         useEditorStore.getState().setActiveGroup(board.activeFileGroupId);
         useEditorStore.getState().loadFiles([{ name: filename, content: eb.code }]);
       }
 
-      if (eb.vfsFiles && eb.boardKind === 'raspberry-pi-3') {
+      if (eb.vfsFiles && (eb.boardKind === 'raspberry-pi-3' || eb.boardKind === 'raspberry-pi-4' || eb.boardKind === 'raspberry-pi-5')) {
         const vfsState = useVfsStore.getState();
         const tree = vfsState.getTree(boardId);
         for (const [nodeId, node] of Object.entries(tree)) {
@@ -147,7 +147,7 @@ export async function loadExample(
 
     const firstArduinoIdx = example.boards.findIndex(
       (eb) =>
-        eb.boardKind !== 'raspberry-pi-3' &&
+        eb.boardKind !== 'raspberry-pi-3' && eb.boardKind !== 'raspberry-pi-4' && eb.boardKind !== 'raspberry-pi-5' &&
         eb.boardKind !== 'esp32' &&
         eb.boardKind !== 'esp32-s3' &&
         eb.boardKind !== 'esp32-c3',
@@ -242,7 +242,7 @@ export async function loadExample(
       // appear blank. (Regression test: load-example-transitions.test.ts.)
       const editorStore = useEditorStore.getState();
       editorStore.setActiveGroup(liveBoard.activeFileGroupId);
-      const filename = liveBoard.boardKind === 'raspberry-pi-3' ? 'main.cpp' : 'sketch.ino';
+      const filename = (liveBoard.boardKind === 'raspberry-pi-3' || liveBoard.boardKind === 'raspberry-pi-4' || liveBoard.boardKind === 'raspberry-pi-5') ? 'main.cpp' : 'sketch.ino';
       editorStore.loadFiles([{ name: filename, content: example.code }]);
     } else {
       // Truly board-less: write the placeholder code to whatever the editor

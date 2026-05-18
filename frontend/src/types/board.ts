@@ -4,7 +4,9 @@ export type BoardKind =
   | 'arduino-mega'
   | 'raspberry-pi-pico' // RP2040, browser emulation
   | 'pi-pico-w' // RP2040 + WiFi, browser emulation (WiFi ignored)
-  | 'raspberry-pi-3' // QEMU ARM64, backend
+  | 'raspberry-pi-3' // QEMU virt + Cortex-A53, backend
+  | 'raspberry-pi-4' // QEMU virt + Cortex-A72, backend
+  | 'raspberry-pi-5' // QEMU virt + Cortex-A76, backend
   | 'esp32' // Xtensa LX6, QEMU backend
   | 'esp32-devkit-c-v4' // ESP32 DevKit C V4, QEMU (esp32)
   | 'esp32-cam' // ESP32-CAM, QEMU (esp32)
@@ -71,6 +73,8 @@ export const BOARD_KIND_LABELS: Record<BoardKind, string> = {
   'raspberry-pi-pico': 'Raspberry Pi Pico',
   'pi-pico-w': 'Raspberry Pi Pico W',
   'raspberry-pi-3': 'Raspberry Pi 3B',
+  'raspberry-pi-4': 'Raspberry Pi 4B',
+  'raspberry-pi-5': 'Raspberry Pi 5',
   esp32: 'ESP32 DevKit V1',
   'esp32-devkit-c-v4': 'ESP32 DevKit C V4',
   'esp32-cam': 'ESP32-CAM',
@@ -91,6 +95,8 @@ export const BOARD_KIND_FQBN: Record<BoardKind, string | null> = {
   'raspberry-pi-pico': 'rp2040:rp2040:rpipico',
   'pi-pico-w': 'rp2040:rp2040:rpipicow',
   'raspberry-pi-3': null,
+  'raspberry-pi-4': null,
+  'raspberry-pi-5': null,
   esp32: 'esp32:esp32:esp32',
   'esp32-devkit-c-v4': 'esp32:esp32:esp32',
   'esp32-cam': 'esp32:esp32:esp32cam',
