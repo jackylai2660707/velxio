@@ -196,15 +196,24 @@ export class ComponentRegistry {
           { name: 'sourceC',    type: 'string', defaultValue: '' },
           { name: 'chipJson',   type: 'string', defaultValue: '{"name":"My Chip","pins":["IN","OUT","GND","VCC"]}' },
           { name: 'wasmBase64', type: 'string', defaultValue: '' },
+          // For CPU-emulator chips that load their program from a project file
+          // (.s / .asm / .hex / .bin). Compile-rom populates romBytes; the chip
+          // reads it on chip_setup via vx_rom_size / vx_rom_read.
+          { name: 'romBytes',    type: 'string', defaultValue: '' },
+          { name: 'programFile', type: 'string', defaultValue: '' },
+          { name: 'programTarget', type: 'string', defaultValue: '' },
         ],
         defaultValues: {
           chipName: 'My Chip',
           sourceC: '',
           chipJson: '{"name":"My Chip","pins":["IN","OUT","GND","VCC"]}',
           wasmBase64: '',
+          romBytes: '',
+          programFile: '',
+          programTarget: '',
         },
         pinCount: 0,
-        tags: ['custom', 'chip', 'wasm', 'c', 'wokwi', 'eeprom', 'rtc', 'logic'],
+        tags: ['custom', 'chip', 'wasm', 'c', 'wokwi', 'eeprom', 'rtc', 'logic', 'cpu', '8080', 'z80'],
       });
 
       this.processMetadata(data.components);

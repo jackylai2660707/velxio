@@ -195,6 +195,28 @@ extern void vx_buffer_write(vx_buffer buf, uint32_t offset, const void* data, ui
 /** Emit a message to the host's chip log. printf() also works via WASI. */
 extern void vx_log(const char* msg);
 
+/* ─── External ROM blob ─────────────────────────────────────────────────── */
+
+/**
+ * Read a chip's external ROM blob. The blob is injected by the host before
+ * `chip_setup()` runs, sourced from the `romBytes` property of the chip's
+ * component (base64-encoded bytes in the diagram editor, or compiled from
+ * a chip-program file like .s / .hex / .bin).
+ *
+ * Typical use — a CPU emulator chip loads its emulated program once at boot:
+ *
+ *   uint32_t rom_len = vx_rom_size();
+ *   if (rom_len) vx_rom_read(0, my_rom_buf, rom_len);
+ *
+ * If no ROM is provided, vx_rom_size() returns 0 and vx_rom_read() is a no-op
+ * — chips can fall back to a built-in default in that case.
+ */
+extern uint32_t vx_rom_size(void);
+
+/** Copy `len` bytes from offset `offset` of the external ROM into `dst`.
+ *  Reads past the end of the ROM are silently truncated. */
+extern void vx_rom_read(uint32_t offset, uint8_t* dst, uint32_t len);
+
 /* ─── Lifecycle (chip exports) ──────────────────────────────────────────── */
 
 /** Required: called once per chip instance after the simulator boots. */

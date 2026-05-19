@@ -1,12 +1,15 @@
 import Editor from '@monaco-editor/react';
 import { useEditorStore } from '../../store/useEditorStore';
+import { registerRetroAsm, LANGUAGE_ID as RETRO_ASM_ID } from './retroAsmLanguage';
 
 function getLanguage(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+  if (ext === 's' || ext === 'asm') return RETRO_ASM_ID;
   if (['ino', 'cpp', 'c', 'cc', 'h', 'hpp'].includes(ext)) return 'cpp';
   if (ext === 'py') return 'python';
   if (ext === 'json') return 'json';
   if (ext === 'md') return 'markdown';
+  if (ext === 'hex') return 'plaintext';
   return 'plaintext';
 }
 
@@ -23,6 +26,11 @@ export const CodeEditor = () => {
         language={activeFile ? getLanguage(activeFile.name) : 'cpp'}
         theme={theme}
         value={activeFile?.content ?? ''}
+        beforeMount={(monaco) => {
+          // Register the 8080/Z80 assembly language once so Monaco knows how
+          // to tokenize .s / .asm files when they're opened.
+          registerRetroAsm(monaco);
+        }}
         onChange={(value) => {
           if (activeFileId) setFileContent(activeFileId, value || '');
         }}

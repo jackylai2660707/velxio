@@ -13,7 +13,7 @@ if sys.platform == 'win32':
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import compile, compile_chip, libraries
+from app.api.routes import compile, compile_chip, compile_rom, libraries
 from app.core.config import settings
 from app.core.hooks import run_lifespan_startup
 
@@ -79,6 +79,7 @@ app.add_middleware(
 # Include routers
 app.include_router(compile.router, prefix="/api/compile", tags=["compilation"])
 app.include_router(compile_chip.router, prefix="/api/compile-chip", tags=["custom-chips"])
+app.include_router(compile_rom.router, prefix="/api/compile-rom", tags=["custom-chips"])
 app.include_router(libraries.router, prefix="/api/libraries", tags=["libraries"])
 
 # Auth / projects / admin / metrics routers used to be wired up here, gated

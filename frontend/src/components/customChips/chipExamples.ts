@@ -53,6 +53,8 @@ import bus8259PicC    from './examples/intel/8259-pic.c?raw';
 import bus8253PitC    from './examples/intel/8253-pit.c?raw';
 import i8080ReplC     from './examples/intel/i8080-repl.c?raw';
 import i8080CounterC  from './examples/intel/i8080-counter.c?raw';
+import i8080CpuC      from './examples/intel/i8080-cpu.c?raw';
+import z80CpuC         from './examples/intel/z80-cpu.c?raw';
 
 import cpu4004J       from './examples/intel/4004.chip.json?raw';
 import cpu4040J       from './examples/intel/4040.chip.json?raw';
@@ -71,6 +73,8 @@ import bus8259PicJ    from './examples/intel/8259-pic.chip.json?raw';
 import bus8253PitJ    from './examples/intel/8253-pit.chip.json?raw';
 import i8080ReplJ     from './examples/intel/i8080-repl.chip.json?raw';
 import i8080CounterJ  from './examples/intel/i8080-counter.chip.json?raw';
+import i8080CpuJ      from './examples/intel/i8080-cpu.chip.json?raw';
+import z80CpuJ         from './examples/intel/z80-cpu.chip.json?raw';
 
 export interface ChipExample {
   id: string;
@@ -172,6 +176,29 @@ export const CHIP_EXAMPLES: ChipExample[] = [
   },
 
   // ── Bundled "drop-and-go" retro demos ─────────────────────────────────
+  {
+    id: 'i8080-cpu',
+    name: 'i8080 CPU (programmable)',
+    description:
+      'Programmable Intel 8080 chip. Add a .s/.hex/.bin file to your project, ' +
+      'click Compile, then Run. Same chip, any program — mini PC, calculator, ' +
+      'LED demo, Kill-the-Bit, your call. 32 KB ROM + 16 KB RAM + 8 LEDs + 8 ' +
+      'buttons + UART.',
+    category: 'retro-bundle',
+    sourceC: i8080CpuC,
+    chipJson: i8080CpuJ,
+  },
+  {
+    id: 'z80-cpu',
+    name: 'Z80 CPU (programmable)',
+    description:
+      'Programmable Zilog Z80 chip — full Z80 ISA including JR, DJNZ, EXX, ' +
+      'LDIR, IM 0/1/2, IX/IY. Write Z80 assembly in a .s file or drop a ' +
+      'pre-compiled .hex/.bin, click Compile, click Run.',
+    category: 'retro-bundle',
+    sourceC: z80CpuC,
+    chipJson: z80CpuJ,
+  },
   {
     id: 'i8080-repl',
     name: 'i8080 Mini-Computer (Banner)',

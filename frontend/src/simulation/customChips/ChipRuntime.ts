@@ -129,6 +129,10 @@ export interface ChipInstanceOptions {
   log?: WriteStdoutFn;
   /** Optional display dimensions from chip.json's `display` field. */
   display?: { width: number; height: number } | null;
+  /** Optional external ROM bytes (vx_rom_size / vx_rom_read).
+   *  Used by CPU-emulator chips that load their program from a project file
+   *  instead of hard-coding it as a C byte array. */
+  romBytes?: Uint8Array | null;
 }
 
 export class ChipInstance {
@@ -156,6 +160,7 @@ export class ChipInstance {
   private _uartTxListener: ((byte: number) => void) | null = null;
   private spiDevices: SpiEntry[] = [];
   private _currentSpiBufPtr: number = 0;
+  private _romBytes: Uint8Array;
 
   /** Framebuffer state — created on first vx_framebuffer_init call. */
   private _framebuffer: { rgba: Uint8Array; width: number; height: number } | null = null;
@@ -181,6 +186,7 @@ export class ChipInstance {
     this.wires = opts.wires ?? new Map();
     this.attrs = opts.attrs ?? new Map();
     this.display = opts.display ?? null;
+    this._romBytes = opts.romBytes ?? new Uint8Array(0);
 
     this.wasi = new WasiShim(
       opts.simNanos ?? (() => 0n),
@@ -314,11 +320,24 @@ export class ChipInstance {
       vx_buffer_write: (handle: number, offset: number, dataPtr: number, dataLen: number) =>
         this._buffer_write(handle, offset, dataPtr, dataLen),
 
+      vx_rom_size: () => this._romBytes.length,
+      vx_rom_read: (offset: number, dstPtr: number, len: number) =>
+        this._rom_read(offset, dstPtr, len),
+
       vx_log: (msgPtr: number) => {
         const msg = readCString(this.memory!, msgPtr);
         this.wasi.writeStdout(`[chip] ${msg}\n`);
       },
     };
+  }
+
+  private _rom_read(offset: number, dstPtr: number, len: number): void {
+    if (!this.memory || this._romBytes.length === 0) return;
+    const max = this._romBytes.length;
+    if (offset >= max) return;
+    const end = Math.min(offset + len, max);
+    const dst = new Uint8Array(this.memory.buffer, dstPtr, end - offset);
+    dst.set(this._romBytes.subarray(offset, end));
   }
 
   // ── Pin implementations ──────────────────────────────────────────────────

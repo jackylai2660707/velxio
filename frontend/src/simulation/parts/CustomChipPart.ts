@@ -69,6 +69,22 @@ PartSimulationRegistry.register('custom-chip', {
       }
     } catch { /* ignore */ }
 
+    // Pull external ROM bytes (base64-encoded) if the chip's program lives
+    // in a project file like .s / .hex / .bin compiled to romBytes by the
+    // backend. CPU-emulator chips use this via vx_rom_size / vx_rom_read.
+    let romBytes: Uint8Array | null = null;
+    const romB64 = String(props.romBytes ?? '');
+    if (romB64) {
+      try {
+        const bin = atob(romB64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        romBytes = bytes;
+      } catch (e) {
+        console.warn(`[custom-chip] ${componentId} romBytes is not valid base64:`, e);
+      }
+    }
+
     // ── ESP32 path ──────────────────────────────────────────────────────────
     // The chip's WASM runs in the backend QEMU worker process so I2C events
     // are answered synchronously. See docs/wiki/custom-chips-esp32-backend-runtime.md.
@@ -140,6 +156,7 @@ PartSimulationRegistry.register('custom-chip', {
           wires,
           attrs,
           display,
+          romBytes,
           log: (s) => console.log(`[chip:${componentId}] ${s.replace(/\n$/, '')}`),
         });
         if (disposed) {

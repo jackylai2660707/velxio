@@ -11,6 +11,12 @@ import type { PinSourceState } from '../../simulation/spice/types';
 import type { BoardKind, LanguageMode } from '../../types/board';
 import { BOARD_KIND_FQBN, BOARD_KIND_LABELS, BOARD_SUPPORTS_MICROPYTHON } from '../../types/board';
 import { compileCode } from '../../services/compilation';
+import {
+  compileRom,
+  isChipProgramFile,
+  formatForFile,
+  targetForChip,
+} from '../../services/romCompileService';
 import { reportRunEvent } from '../../services/metricsService';
 import { useProjectStore } from '../../store/useProjectStore';
 import { LibraryManagerModal } from '../simulator/LibraryManagerModal';
@@ -153,6 +159,101 @@ export const EditorToolbar = ({
     setMessage(null);
     setConsoleOpen(true);
     trackCompileCode();
+
+    // ── Chip-program path ───────────────────────────────────────────────
+    // If the editor's active file is a chip-program file we don't compile
+    // Arduino code — we assemble/compile it into ROM bytes via
+    // /api/compile-rom and stash the result on every custom-chip component
+    // that points at this filename through its `programFile` property. The
+    // chip's emulator then reads the bytes on chip_setup via vx_rom_size /
+    // vx_rom_read.
+    //
+    // A file is "chip program" when EITHER its extension is unambiguous
+    // (.s/.asm/.hex/.bin) OR some custom-chip on the canvas has
+    // programFile === activeFile.name. The latter lets .c files route to
+    // SDCC instead of arduino-cli when wired to a CPU chip.
+    const activeFile = files.find((f) => f.id === useEditorStore.getState().activeFileId);
+    const componentsForCompile = useSimulatorStore.getState().components;
+    const chipsBoundToFile = activeFile
+      ? componentsForCompile.filter((c) => {
+          if (c.metadataId !== 'custom-chip') return false;
+          const prog = String((c.properties as any)?.programFile ?? '').trim();
+          return prog === activeFile.name;
+        })
+      : [];
+
+    if (activeFile && (isChipProgramFile(activeFile.name) || chipsBoundToFile.length > 0)) {
+      try {
+        const chips = chipsBoundToFile.length > 0
+          ? chipsBoundToFile
+          : componentsForCompile.filter((c) => {
+              if (c.metadataId !== 'custom-chip') return false;
+              const prog = String((c.properties as any)?.programFile ?? '').trim();
+              return prog === '' || prog === activeFile.name;
+            });
+        if (chips.length === 0) {
+          addLog({
+            timestamp: new Date(),
+            type: 'error',
+            message: `No custom-chip on the canvas references ${activeFile.name}. Drop an "i8080 CPU" chip, or set its programFile property.`,
+          });
+          setMessage({ type: 'error', text: 'No matching custom-chip on canvas' });
+          setCompiling(false);
+          return;
+        }
+        // Resolve target from the first matching chip's chip.json.
+        const firstChipJson = String((chips[0].properties as any)?.chipJson ?? '{}');
+        const target = targetForChip(firstChipJson);
+        const fmt = formatForFile(activeFile.name);
+        addLog({
+          timestamp: new Date(),
+          type: 'info',
+          message: `Assembling ${activeFile.name} (target=${target}, format=${fmt}) for ${chips.length} chip(s)...`,
+        });
+        const result = await compileRom(activeFile.content, target, fmt);
+        if (!result.success || !result.rom_base64) {
+          addLog({
+            timestamp: new Date(),
+            type: 'error',
+            message: result.error || 'ROM compile failed',
+          });
+          if (result.stderr) {
+            addLog({ timestamp: new Date(), type: 'error', message: result.stderr });
+          }
+          setMessage({ type: 'error', text: result.error || 'ROM compile failed' });
+          setCompiling(false);
+          return;
+        }
+        // Inject into every matching chip's romBytes property.
+        const updateComponent = useSimulatorStore.getState().updateComponent;
+        for (const chip of chips) {
+          updateComponent(chip.id, {
+            properties: {
+              ...(chip.properties as Record<string, unknown>),
+              romBytes: result.rom_base64,
+              programFile: activeFile.name,
+            },
+          });
+        }
+        addLog({
+          timestamp: new Date(),
+          type: 'success',
+          message: `ROM compiled: ${result.byte_size} bytes injected into ${chips.length} chip(s).`,
+        });
+        setMessage({
+          type: 'success',
+          text: `ROM ready (${result.byte_size} B). Hit Run.`,
+        });
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        addLog({ timestamp: new Date(), type: 'error', message: errMsg });
+        setMessage({ type: 'error', text: errMsg });
+      } finally {
+        setCompiling(false);
+      }
+      return;
+    }
+    // ── End chip-program path ───────────────────────────────────────────
 
     const kind = activeBoard?.boardKind;
 
