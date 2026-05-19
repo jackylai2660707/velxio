@@ -25,7 +25,7 @@ stdout        : JSON event lines (one per line, flushed immediately)
                {"type": "gpio_change",  "pin": N,  "state": V}
                {"type": "gpio_dir",     "pin": N,  "dir": V}
                {"type": "uart_tx",      "uart": N, "byte": V}
-               {"type": "ledc_update",  "channel": N, "duty": V, "duty_pct": F, "gpio": N|-1}
+               {"type": "ledc_duty",    "channel": N, "duty_pct": F}
                {"type": "rmt_event",    "channel": N, ...}
                {"type": "ws2812_update","channel": N, "pixels": [...]}
                {"type": "i2c_event",    "bus": N, "addr": N, "event": N, "response": N}
@@ -785,18 +785,6 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                 _emit({'type': 'ledc_duty',
                        'channel': ledc_ch,
                        'duty_pct': intensity})
-
-                # Legacy event (still consumed by the old broadcast/memo
-                # path during rollout).  Resolve channel→gpio from the
-                # router's reverse index — same value the legacy
-                # `_ledc_gpio_map.get(ledc_ch, -1)` returned.
-                sig_id = ledc_signal_for_channel(ledc_ch)
-                pins = _signal_router.pins_for_signal(sig_id)
-                gpio = pins[0] if pins else -1
-                _emit({'type': 'ledc_update', 'channel': ledc_ch,
-                       'duty': intensity,
-                       'duty_pct': intensity,
-                       'gpio': gpio})
             return
 
         # ── DHT22: track direction changes + trigger sync response ───────
@@ -1423,20 +1411,9 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                     _last_duty[ch] = duty_pct
                     if duty_pct > 0:
                         rounded = round(duty_pct, 2)
-                        # New canonical event for the SignalRouter
-                        # path — channel + duty only.
                         _emit({'type': 'ledc_duty',
                                'channel': ch,
                                'duty_pct': rounded})
-                        # Legacy event still consumed by the old
-                        # ledc_update handler during rollout.
-                        sig_id = ledc_signal_for_channel(ch)
-                        pins = _signal_router.pins_for_signal(sig_id)
-                        gpio = pins[0] if pins else -1
-                        _emit({'type': 'ledc_update', 'channel': ch,
-                               'duty': rounded,
-                               'duty_pct': rounded,
-                               'gpio': gpio})
             except Exception:
                 pass
 

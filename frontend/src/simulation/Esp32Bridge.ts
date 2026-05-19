@@ -22,7 +22,9 @@
  *     { type: 'serial_output', data: { data: string, uart?: number } }
  *     { type: 'gpio_change',   data: { pin: number, state: 0 | 1 } }
  *     { type: 'gpio_dir',      data: { pin: number, dir: 0 | 1 } }
- *     { type: 'ledc_update',   data: { channel: number, duty: number, duty_pct: number } }
+ *     { type: 'ledc_duty',     data: { channel: number, duty_pct: number } }
+ *     { type: 'gpio_routing',  data: { gpio: number, signal_id: number } }
+ *     { type: 'gpio_routing_clear', data: { gpio: number } }
  *     { type: 'ws2812_update', data: { channel: number, pixels: [number, number, number][] } }
  *     { type: 'i2c_event',        data: { addr: number, data: number } }
  *     { type: 'i2c_transaction',  data: { addr: number, data: number[] } }
@@ -67,15 +69,8 @@ export interface Ws2812Pixel {
   g: number;
   b: number;
 }
-export interface LedcUpdate {
-  channel: number;
-  duty: number;
-  duty_pct: number;
-  gpio?: number;
-}
-/** Canonical (SignalRouter) LEDC duty event — channel + duty only.
- *  The frontend resolves channel→signal_id→pin via its SignalRouter
- *  mirror.  Emitted alongside the legacy `ledc_update` during rollout. */
+/** LEDC duty event — channel + duty only. The frontend resolves
+ *  channel→signal_id→pin via its SignalRouter mirror. */
 export interface LedcDuty {
   channel: number;
   duty_pct: number;
@@ -107,11 +102,8 @@ export class Esp32Bridge {
   onSerialData: ((char: string, uart?: number) => void) | null = null;
   onPinChange: ((gpioPin: number, state: boolean) => void) | null = null;
   onPinDir: ((gpioPin: number, dir: 0 | 1) => void) | null = null;
-  onLedcUpdate: ((update: LedcUpdate) => void) | null = null;
-  /** SignalRouter-aware companion to `onLedcUpdate`.  The store wires
-   *  this to `makeLedcDutyHandler` which routes channel→pin via the
-   *  per-board SignalRouter; `onLedcUpdate` stays around for back-compat
-   *  during the rollout and is removed once SignalRouter is stable. */
+  /** Wired by the store to `makeLedcDutyHandler` which routes
+   *  channel→pin via the per-board SignalRouter mirror. */
   onLedcDuty: ((duty: LedcDuty) => void) | null = null;
   /** Fires whenever the backend observes a write to `gpio_out_sel[N]`.
    *  The store's handler updates the per-board SignalRouter mirror so
@@ -289,13 +281,6 @@ export class Esp32Bridge {
           const pin = msg.data.pin as number;
           const dir = msg.data.dir as 0 | 1;
           this.onPinDir?.(pin, dir);
-          break;
-        }
-        case 'ledc_update': {
-          console.log(
-            `[Esp32Bridge:${this.boardId}] ledc_update ch=${msg.data.channel} duty=${msg.data.duty_pct}% gpio=${msg.data.gpio}`,
-          );
-          this.onLedcUpdate?.(msg.data as unknown as LedcUpdate);
           break;
         }
         case 'ledc_duty': {

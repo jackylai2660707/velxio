@@ -528,52 +528,14 @@ class Esp32BridgeShim {
   }
 }
 
-// ── Shared LEDC update handler (used by addBoard, setBoardType, initSimulator) ─
+// ── LEDC duty handler ───────────────────────────────────────────────────
 //
-// Two handlers ship side by side during the SignalRouter rollout:
-//
-//   * makeLedcUpdateHandler — legacy, consumes the old `ledc_update`
-//     event (with embedded gpio). Drops the update when gpio=-1 and
-//     multiple PWM consumers are registered, to avoid the multi-servo
-//     blink symptom (see commit 77bf897). Kept until the SignalRouter
-//     path has logged a full prod cycle without regressions.
-//
-//   * makeLedcDutyHandler — canonical, consumes the new `ledc_duty`
-//     event (channel + duty only) and resolves channel → pins via the
-//     per-board SignalRouter mirror. Zero broadcasts, zero memos,
-//     multi-pin routing supported.
-//
-// Both run unconditionally; updatePwm is idempotent so two handlers
-// firing for the same (pin, duty) are a no-op.  Once the legacy path
-// is retired, makeLedcUpdateHandler + broadcastPwm + pwmListenerPinCount
-// are deleted in the same commit.
-
-function makeLedcUpdateHandler(boardId: string) {
-  // Per-channel gpio memo: when the backend's _ledc_gpio_map emits
-  // gpio=-1 (race window during attach), use the last-known gpio for
-  // this channel to avoid corrupting multi-servo setups.
-  const channelGpioMemo = new Map<number, number>();
-
-  return (update: { channel: number; duty_pct: number; gpio?: number }) => {
-    const boardPm = pinManagerMap.get(boardId);
-    if (!boardPm) return;
-    const dutyCycle = update.duty_pct / 100;
-
-    if (update.gpio !== undefined && update.gpio >= 0) {
-      channelGpioMemo.set(update.channel, update.gpio);
-      boardPm.updatePwm(update.gpio, dutyCycle);
-      return;
-    }
-    const rememberedGpio = channelGpioMemo.get(update.channel);
-    if (rememberedGpio !== undefined) {
-      boardPm.updatePwm(rememberedGpio, dutyCycle);
-      return;
-    }
-    if (boardPm.pwmListenerPinCount() <= 1) {
-      boardPm.broadcastPwm(dutyCycle);
-    }
-  };
-}
+// Resolves a (channel, duty_pct) event from the worker into one or more
+// (gpio_pin, duty_cycle) updates by consulting the per-board
+// SignalRouter mirror. Replaces the legacy `ledc_update` path that
+// embedded the gpio in the event and needed a per-channel memo + a
+// PinManager.broadcastPwm fallback to survive the worker's gpio=-1
+// race window.
 
 function makeLedcDutyHandler(boardId: string) {
   return (duty: { channel: number; duty_pct: number }) => {
@@ -982,7 +944,6 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           });
         };
         signalRouterMap.set(id, new SignalRouter());
-        bridge.onLedcUpdate = makeLedcUpdateHandler(id);
         bridge.onLedcDuty = makeLedcDutyHandler(id);
         bridge.onGpioRouting = makeGpioRoutingHandler(id);
         bridge.onGpioRoutingClear = makeGpioRoutingClearHandler(id);
@@ -1637,7 +1598,6 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           });
         };
         signalRouterMap.set(boardId, new SignalRouter());
-        bridge.onLedcUpdate = makeLedcUpdateHandler(boardId);
         bridge.onLedcDuty = makeLedcDutyHandler(boardId);
         bridge.onGpioRouting = makeGpioRoutingHandler(boardId);
         bridge.onGpioRoutingClear = makeGpioRoutingClearHandler(boardId);
@@ -1739,7 +1699,6 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           });
         };
         signalRouterMap.set(boardId, new SignalRouter());
-        bridge.onLedcUpdate = makeLedcUpdateHandler(boardId);
         bridge.onLedcDuty = makeLedcDutyHandler(boardId);
         bridge.onGpioRouting = makeGpioRoutingHandler(boardId);
         bridge.onGpioRoutingClear = makeGpioRoutingClearHandler(boardId);

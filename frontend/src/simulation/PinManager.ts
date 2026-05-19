@@ -139,34 +139,6 @@ export class PinManager {
     }
   }
 
-  /**
-   * Broadcast PWM duty to ALL registered PWM listeners.
-   * Used when the LEDC channel→GPIO mapping is unknown (gpio=-1).
-   * Components filter by duty range (e.g., servo accepts 0.01-0.20).
-   */
-  broadcastPwm(dutyCycle: number): void {
-    this.pwmListeners.forEach((callbacks, pin) => {
-      this.pwmValues.set(pin, dutyCycle);
-      callbacks.forEach((cb) => cb(pin, dutyCycle));
-    });
-  }
-
-  /**
-   * Count of distinct GPIO pins that currently have at least one PWM
-   * listener registered.  Used by the ledc_update router so it can
-   * skip a gpio=-1 broadcast when multiple consumers exist — sending
-   * the same duty to two servos would corrupt the second one
-   * (`servo blinks between two positions` symptom). With a single
-   * consumer the broadcast is unambiguous and useful.
-   */
-  pwmListenerPinCount(): number {
-    let n = 0;
-    this.pwmListeners.forEach((cbs) => {
-      if (cbs.size > 0) n++;
-    });
-    return n;
-  }
-
   getPwmValue(pin: number): number {
     return this.pwmValues.get(pin) ?? 0;
   }

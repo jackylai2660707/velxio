@@ -502,7 +502,9 @@ Converts hardware callbacks into **WebSocket events** for the frontend:
 | `spi_event` | `{bus, event, response}` | SPI transaction |
 | `rmt_event` | `{channel, config0, value, level0, dur0, level1, dur1}` | RMT pulse |
 | `ws2812_update` | `{channel, pixels: [[r,g,b],...]}` | Complete NeoPixel frame |
-| `ledc_update` | `{channel, duty, duty_pct, gpio}` | PWM duty cycle + GPIO controlled by that channel |
+| `ledc_duty` | `{channel, duty_pct}` | PWM duty cycle on an LEDC channel; frontend resolves channel→pin via the per-board SignalRouter mirror |
+| `gpio_routing` | `{gpio, signal_id}` | `gpio_out_sel[gpio]` was set to `signal_id` — frontend updates its SignalRouter mirror so subsequent `ledc_duty` events route correctly |
+| `gpio_routing_clear` | `{gpio}` | Pin no longer routed to any peripheral (matrix entry reset) |
 | `error` | `{message: str}` | Boot error |
 
 **Crash and reboot detection:**
@@ -720,7 +722,9 @@ The event emitted to the frontend:
 
 ```python
 await esp_lib_manager.poll_ledc(client_id)
-# Emits: {"type": "ledc_update", "data": {"channel": 0, "duty": 4096, "duty_pct": 50.0, "gpio": 2}}
+# Emits: {"type": "ledc_duty", "data": {"channel": 0, "duty_pct": 50.0}}
+# The frontend resolves channel→pin via the SignalRouter mirror that was
+# populated by earlier gpio_routing events from the GPIO matrix poller.
 ```
 
 The typical maximum duty is 8192 (13-bit timer). For LED brightness: `duty_pct / 100`.
@@ -742,7 +746,7 @@ drive multiple pins, or a pin can be unrouted. velxio models this
 1-to-1 with a **SignalRouter** abstraction on both sides of the
 WebSocket.
 
-**Why this matters:** previously the worker emitted
+**Why this matters:** before SignalRouter, the worker emitted
 `ledc_update {channel, duty, gpio}` where `gpio` was resolved from a
 worker-local `_ledc_gpio_map` cache. When the cache hadn't seen the
 GPIO matrix write yet (race window during `ledcAttachPin`), `gpio`
@@ -750,9 +754,11 @@ came through as `-1` and the frontend fell back to
 `PinManager.broadcastPwm` — fanning the duty to ALL PWM listeners.
 With two servos in the same duty-range that produced the multi-
 servo blink reported in project
-`5218f9e3-136d-43b3-bba1-6cebde21e1a4`.
+`5218f9e3-136d-43b3-bba1-6cebde21e1a4`. Both `ledc_update` and the
+`broadcastPwm` fallback have been removed; the SignalRouter path
+below is now the only PWM dispatch route.
 
-**Architecture (post-SignalRouter):**
+**Architecture (SignalRouter):**
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -778,9 +784,7 @@ servo blink reported in project
 │                                                                 │
 │ 0x5000 callback / ledc_poll_thread:                             │
 │   - first calls _refresh_signal_routing() so routing is current │
-│   - emits `ledc_duty {channel, duty_pct}` (canonical, no gpio)  │
-│   - also emits legacy `ledc_update {channel, duty, gpio}` for   │
-│     back-compat during the rollout                              │
+│   - emits `ledc_duty {channel, duty_pct}` — channel + duty only │
 └─────────────────────────────────────────────────────────────────┘
         │
         ▼  WebSocket
@@ -1093,7 +1097,7 @@ All backend events are wired to the frontend:
 | Event | Component | Status |
 |-------|-----------|--------|
 | `gpio_change` | `PinManager.triggerPinChange()` → connected LEDs/components | ✅ Implemented |
-| `ledc_update` | `PinManager.updatePwm(gpio, duty)` → CSS opacity of element connected to the GPIO | ✅ Implemented |
+| `ledc_duty` + `gpio_routing` | SignalRouter resolves channel→pin, then `PinManager.updatePwm(gpio, duty)` → CSS opacity of element connected to the GPIO | ✅ Implemented |
 | `ws2812_update` | `NeoPixel.tsx` — RGB LED strip with canvas | ✅ Implemented |
 | `gpio_dir` | Callback `onPinDir` in `Esp32Bridge.ts` | ✅ Implemented |
 | `i2c_event` | Callback `onI2cEvent` in `Esp32Bridge.ts` | ✅ Implemented |
@@ -1319,11 +1323,19 @@ User clicks <wokwi-pushbutton>
 **Visual flow:**
 
 ```text
+ledcAttachPin(gpio, ch) in firmware
+  → writes to gpio_out_sel[gpio] in the GPIO matrix
+  → backend poller observes the diff
+  → gpio_routing {gpio, signal_id} sent to frontend
+  → frontend SignalRouter mirror records the gpio↔signal mapping
+
 ledcWrite(ch, duty) in firmware
   → QEMU updates duty in internal LEDC array
   → poll_ledc() reads the array every ~50ms
-  → ledc_update {channel, duty, duty_pct, gpio} sent to frontend
-  → useSimulatorStore: bridge.onLedcUpdate → pinManager.updatePwm(gpio, duty/100)
+  → ledc_duty {channel, duty_pct} sent to frontend
+  → makeLedcDutyHandler: resolves channel → signal_id → list of pins
+    via the SignalRouter mirror, then for each pin:
+    pinManager.updatePwm(pin, duty_pct/100)
   → PinManager fires callbacks registered for that pin
   → SimulatorCanvas: onPwmChange → el.style.opacity = String(duty)
   → The visual element (wokwi-led) shows proportional brightness

@@ -78,7 +78,6 @@ vi.mock('../simulation/Esp32Bridge', () => ({
     this.onPinDir = null;
     this.onCrash = null;
     this.onDisconnected = null;
-    this.onLedcUpdate = null;
     this.onWs2812Update = null;
     this.onWifiStatus = null;
     this.onBleStatus = null;

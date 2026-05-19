@@ -29,7 +29,9 @@ Events emitted via callback(event_type, data):
   rmt_event     {channel: int, config0: int, value: int,
                  level0: int, dur0: int, level1: int, dur1: int}
   ws2812_update {channel: int, pixels: list[{r,g,b}]}
-  ledc_update   {channel: int, duty: int, duty_pct: float}
+  ledc_duty     {channel: int, duty_pct: float}
+  gpio_routing  {gpio: int, signal_id: int}
+  gpio_routing_clear {gpio: int}
   error         {message: str}
 """
 import asyncio

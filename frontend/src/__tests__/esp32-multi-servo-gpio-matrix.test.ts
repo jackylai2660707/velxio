@@ -22,7 +22,7 @@
  * path, this test fails because pin 12 would observe pin 13's duty.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { PinManager } from '../simulation/PinManager';
 import { SignalRouter } from '../simulation/SignalRouter';
 import { ledcSignalForChannel } from '../simulation/esp32-signals';
@@ -169,23 +169,14 @@ describe('multi-servo via SignalRouter — solar-tracker regression', () => {
     expect(seen).toEqual([]); // both pins untouched, no broadcast
   });
 
-  it('does not call PinManager.broadcastPwm', () => {
-    // Strong regression guard: the SignalRouter path must NEVER
-    // touch broadcastPwm.  If a future refactor accidentally
-    // reintroduces the old fallback path, this test fails before
-    // the multi-servo bug regresses.
-    const { pm, ledcDuty, gpioRouting } = setupBoard();
-    const spy = vi.spyOn(pm, 'broadcastPwm');
-
-    pm.onPwmChange(13, () => {});
-    pm.onPwmChange(12, () => {});
-    gpioRouting({ gpio: 13, signal_id: ledcSignalForChannel(0) });
-    gpioRouting({ gpio: 12, signal_id: ledcSignalForChannel(1) });
-
-    ledcDuty({ channel: 0, duty_pct: 7.5 });
-    ledcDuty({ channel: 1, duty_pct: 3.0 });
-    ledcDuty({ channel: 0, duty_pct: 8.0 });
-
-    expect(spy).not.toHaveBeenCalled();
+  it('PinManager exposes no broadcastPwm fallback', () => {
+    // The pre-SignalRouter patch shipped a `broadcastPwm` method on
+    // PinManager that fanned a duty out to every PWM listener as a
+    // gpio=-1 fallback.  The SignalRouter rewrite deletes that method
+    // entirely.  This test guards the deletion: if a future refactor
+    // adds it back, the regression fails here rather than in
+    // production multi-servo wiring.
+    const { pm } = setupBoard();
+    expect((pm as unknown as { broadcastPwm?: unknown }).broadcastPwm).toBeUndefined();
   });
 });
