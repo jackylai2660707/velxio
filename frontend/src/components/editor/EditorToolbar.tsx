@@ -23,7 +23,8 @@ import { LibraryManagerModal } from '../simulator/LibraryManagerModal';
 import { InstallLibrariesModal } from '../simulator/InstallLibrariesModal';
 import { parseCompileResult } from '../../utils/compilationLogger';
 import type { CompilationLog } from '../../utils/compilationLogger';
-import { exportToWokwiZip, importFromWokwiZip } from '../../utils/wokwiZip';
+import { exportToWokwiZip } from '../../utils/wokwiZip';
+import { importProjectFile, PROJECT_FILE_ACCEPT } from '../../utils/importProject';
 import { readFirmwareFile } from '../../utils/firmwareLoader';
 import {
   trackCompileCode,
@@ -903,7 +904,14 @@ export const EditorToolbar = ({
     importInputRef.current.value = '';
     if (!file) return;
     try {
-      const result = await importFromWokwiZip(file);
+      const result = await importProjectFile(file);
+      if (result.kind === 'vlx') {
+        // importVlxFile already wrote into the stores.
+        setMessage({ type: 'success', text: `Imported ${file.name}` });
+        return;
+      }
+      // .zip path: apply the parsed payload to the stores ourselves, then
+      // surface any missing libraries via the existing install modal.
       const { loadFiles } = useEditorStore.getState();
       const { setComponents, setWires, setBoardType, setBoardPosition, stopSimulation } =
         useSimulatorStore.getState();
@@ -1110,11 +1118,13 @@ export const EditorToolbar = ({
           {centerSlot && <div className="toolbar-center-slot">{centerSlot}</div>}
 
           <div className="toolbar-group toolbar-group-right">
-            {/* Hidden file input for import (always present) */}
+            {/* Hidden file input for project import. Accepts both .vlx
+                (Velxio native) and .zip (Wokwi bundle); the dispatcher in
+                utils/importProject.ts picks the right loader by extension. */}
             <input
               ref={importInputRef}
               type="file"
-              accept=".zip"
+              accept={PROJECT_FILE_ACCEPT}
               style={{ display: 'none' }}
               onChange={handleImportFile}
             />

@@ -4,7 +4,7 @@ import { useEditorStore } from '../../store/useEditorStore';
 import { useSimulatorStore } from '../../store/useSimulatorStore';
 import type { BoardKind } from '../../types/board';
 import { BOARD_KIND_LABELS } from '../../types/board';
-import { importVlxFile, VlxParseError } from '../../utils/vlxFile';
+import { importProjectFile, PROJECT_FILE_ACCEPT } from '../../utils/importProject';
 import './FileExplorer.css';
 
 // SVG icons — same style as EditorToolbar (stroke-based, 16x16)
@@ -173,29 +173,54 @@ interface FileExplorerProps {
 
 export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewClick }) => {
   // Hidden <input type="file"> we trigger via ref when the user clicks
-  // the Open .vlx button. Kept outside React state so the change event
-  // can fire repeatedly even if the user picks the same file twice.
+  // the Open project button.  Accepts both .vlx (Velxio native) and .zip
+  // (Wokwi bundle); the dispatcher in utils/importProject.ts decides which
+  // loader to run based on the file extension.  Kept outside React state so
+  // the change event still fires when the user picks the same file twice.
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const handleOpenVlxClick = useCallback(() => {
+  const handleOpenProjectClick = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
-  const handleVlxFilePicked = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProjectFilePicked = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     // Reset so picking the SAME file again later still fires onchange.
     e.target.value = '';
     if (!file) return;
+    const friendlyName = file.name.toLowerCase().endsWith('.zip') ? 'Wokwi .zip' : '.vlx';
     if (
       !window.confirm(
-        'Load this .vlx file? Your current workspace will be replaced. This cannot be undone.',
+        `Load this ${friendlyName} project? Your current workspace will be replaced. ` +
+          `This cannot be undone.`,
       )
     ) {
       return;
     }
     try {
-      await importVlxFile(file);
+      const result = await importProjectFile(file);
+      // .zip needs the caller to apply the payload to the stores (we keep
+      // that asymmetry so the toolbar's import flow can also pop the
+      // install-libraries modal afterwards). Here in the file explorer we
+      // don't have that modal, so we apply the payload silently and just
+      // warn in the console if the project references uninstalled libs.
+      if (result.kind === 'zip') {
+        const { loadFiles } = useEditorStore.getState();
+        const { setComponents, setWires, setBoardType, setBoardPosition, stopSimulation } =
+          useSimulatorStore.getState();
+        stopSimulation();
+        if (result.boardType) setBoardType(result.boardType);
+        setBoardPosition(result.boardPosition);
+        setComponents(result.components);
+        setWires(result.wires);
+        if (result.files.length > 0) loadFiles(result.files);
+        if (result.libraries.length > 0) {
+          console.warn(
+            '[FileExplorer] Imported Wokwi zip references libraries you may need to install:',
+            result.libraries,
+          );
+        }
+      }
     } catch (err) {
-      const msg = err instanceof VlxParseError ? err.message : (err as Error).message;
-      window.alert(`Could not load .vlx file:\n\n${msg}`);
+      window.alert((err as Error).message);
     }
   }, []);
 
@@ -330,16 +355,16 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewCl
           </button>
           <button
             className="file-explorer-save-btn"
-            title="Open .vlx file"
-            onClick={handleOpenVlxClick}
+            title="Open project (.vlx Velxio or .zip Wokwi)"
+            onClick={handleOpenProjectClick}
           >
             <IcoOpen />
           </button>
           <input
             ref={fileInputRef}
             type="file"
-            accept=".vlx,application/json"
-            onChange={handleVlxFilePicked}
+            accept={PROJECT_FILE_ACCEPT}
+            onChange={handleProjectFilePicked}
             style={{ display: 'none' }}
           />
           <button

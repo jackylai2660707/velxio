@@ -21,7 +21,7 @@
         "title": "Arduinoライブラリを検索してインストール",
         "label": "ライブラリ"
       },
-      "import": ".zipファイルからプロジェクトをインポート",
+      "import": "プロジェクトをインポート（.vlx Velxio または .zip Wokwi）",
       "export": "現在のプロジェクトを.zipファイルとしてエクスポート",
       "uploadFirmware": "ファームウェアをアップロード (.hex, .bin, .elf, .ihex) してコンパイルをスキップ",
       "toggleConsole": "出力コンソールの表示/非表示",

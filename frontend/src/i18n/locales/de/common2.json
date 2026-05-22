@@ -21,7 +21,7 @@
         "title": "Arduino-Bibliotheken suchen und installieren",
         "label": "Bibliotheken"
       },
-      "import": "Projekt aus .zip-Datei importieren",
+      "import": "Projekt importieren (.vlx Velxio oder .zip Wokwi)",
       "export": "Aktuelles Projekt als .zip-Datei exportieren",
       "uploadFirmware": "Firmware hochladen (.hex, .bin, .elf, .ihex) zur Umgehung der Kompilierung",
       "toggleConsole": "Ausgabekonsole umschalten",

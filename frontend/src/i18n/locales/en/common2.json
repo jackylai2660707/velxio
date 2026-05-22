@@ -21,7 +21,7 @@
         "title": "Search and install Arduino libraries",
         "label": "Libraries"
       },
-      "import": "Import a project from a .zip file",
+      "import": "Import project (.vlx Velxio or .zip Wokwi)",
       "export": "Export the current project as a .zip file",
       "uploadFirmware": "Upload firmware (.hex, .bin, .elf, .ihex) to bypass compilation",
       "toggleConsole": "Toggle Output Console",

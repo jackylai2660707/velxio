@@ -21,7 +21,7 @@
         "title": "Buscar e instalar librerías de Arduino",
         "label": "Librerías"
       },
-      "import": "Importar un proyecto desde un archivo .zip",
+      "import": "Importar proyecto (.vlx de Velxio o .zip de Wokwi)",
       "export": "Exportar el proyecto actual como un archivo .zip",
       "uploadFirmware": "Subir firmware (.hex, .bin, .elf, .ihex) para omitir la compilación",
       "toggleConsole": "Alternar consola de salida",
