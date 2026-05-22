@@ -933,6 +933,10 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           const boardPm = pinManagerMap.get(id);
           if (boardPm) boardPm.triggerPinChange(gpioPin, state, 'mcu');
         };
+        // Wire scope sampling for ESP32 (GPIO transitions + synthesized
+        // UART TX bits).  Mirrors what AVR/RP2040 simulators get for free
+        // by passing the oscilloscope callback into createSimulator().
+        bridge.onPinChangeWithTime = getOscilloscopeCallback(id);
         bridge.onCrash = () => {
           set({ esp32CrashBoardId: id });
         };
@@ -1595,6 +1599,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           const boardPm = pinManagerMap.get(boardId);
           if (boardPm) boardPm.triggerPinChange(gpioPin, state, 'mcu');
         };
+        bridge.onPinChangeWithTime = getOscilloscopeCallback(boardId);
         bridge.onCrash = () => {
           set({ esp32CrashBoardId: boardId });
         };
@@ -1696,6 +1701,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           const boardPm = pinManagerMap.get(boardId);
           if (boardPm) boardPm.triggerPinChange(gpioPin, state, 'mcu');
         };
+        bridge.onPinChangeWithTime = getOscilloscopeCallback(boardId);
         bridge.onCrash = () => {
           set({ esp32CrashBoardId: boardId });
         };

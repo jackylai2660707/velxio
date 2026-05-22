@@ -101,7 +101,28 @@ export class Esp32Bridge {
   // Callbacks wired up by useSimulatorStore
   onSerialData: ((char: string, uart?: number) => void) | null = null;
   onPinChange: ((gpioPin: number, state: boolean) => void) | null = null;
+  /**
+   * Timestamped version of onPinChange — wired to the oscilloscope so the
+   * scope can render ESP32 GPIO activity at the same resolution as AVR /
+   * RP2040 boards.  Also receives the synthesized UART TX frame bits from
+   * `emitUartTxFrame` so a scope on GPIO1 / GPIO43 / etc. shows real bit-
+   * level UART waveforms during `Serial.print`, matching real silicon.
+   *
+   * QEMU virtual time isn't exposed cleanly across the WebSocket, so the
+   * timestamps come from `performance.now()` (wall-clock).  At 1× sim
+   * speed this matches the AVR / RP2040 simulator-time within ~1 ms which
+   * is invisible on any practical sweep.
+   */
+  onPinChangeWithTime: ((gpioPin: number, state: boolean, timeMs: number) => void) | null = null;
   onPinDir: ((gpioPin: number, dir: 0 | 1) => void) | null = null;
+  /**
+   * Override baud rate used to space synthesized UART bits.  QEMU
+   * transmits bytes "instantly" so the backend doesn't surface a real
+   * baud rate, but for the scope to show a realistic frame we need a
+   * bit period.  Defaults to 115200 (Arduino default).  The store
+   * updates this when the firmware's `Serial.begin(N)` is observable.
+   */
+  uartBaudRate: number = 115200;
   /** Wired by the store to `makeLedcDutyHandler` which routes
    *  channel→pin via the per-board SignalRouter mirror. */
   onLedcDuty: ((duty: LedcDuty) => void) | null = null;
@@ -175,6 +196,72 @@ export class Esp32Bridge {
     return this._connected;
   }
 
+  /**
+   * Default UART0 TX GPIO for each ESP32 family variant.  The actual pin
+   * is selectable via the GPIO Matrix at runtime, but exposing the live
+   * matrix state across the WebSocket isn't worth it — these defaults
+   * match what the IO_MUX picks up for the standard `Serial` port and
+   * are what every Arduino-ESP32 sketch ends up using unless the user
+   * explicitly remaps via `Serial.setPins()`.
+   */
+  private uart0TxPin(): number {
+    switch (this.boardKind) {
+      case 'esp32-s3':
+      case 'xiao-esp32-s3':
+      case 'arduino-nano-esp32':
+        return 43;
+      case 'esp32-c3':
+      case 'xiao-esp32-c3':
+      case 'aitewinrobot-esp32c3-supermini':
+        return 21;
+      default:
+        // esp32, esp32-devkit-c-v4, esp32-cam, wemos-lolin32-lite, …
+        return 1;
+    }
+  }
+
+  /**
+   * Bit-level UART frame synthesis on the TX GPIO.  QEMU's UART
+   * peripheral transmits bytes "instantly" at the virtual-time layer
+   * and never toggles the SoC pad — same gap closed in AVRSimulator
+   * and RP2040Simulator.  We rebuild the standard 8N1 frame (start
+   * LOW + 8 data LSB-first + stop HIGH) at `this.uartBaudRate`, stamp
+   * each transition with wall-clock-spaced timestamps starting now,
+   * and push them through `onPinChangeWithTime` so the oscilloscope
+   * draws the waveform a real ESP32 would put on the pin.
+   *
+   * Only UART0 is synthesized today — UART1 / UART2 would need their
+   * own per-board GPIO mapping which Velxio doesn't currently track.
+   */
+  private emitUartTxFrame(byte: number, uart: number = 0): void {
+    if (uart !== 0) return; // UART0 only for now
+    if (!this.onPinChangeWithTime) return;
+    const baud = this.uartBaudRate || 115200;
+    if (baud <= 0) return;
+
+    const txPin = this.uart0TxPin();
+    const bitMs = 1000 / baud;
+    const startMs = performance.now();
+
+    // Seed idle HIGH right before the start bit so the scope renders the
+    // start-bit transition against a HIGH baseline, matching how the line
+    // sits between bytes on real hardware.
+    this.onPinChangeWithTime(txPin, true, Math.max(0, startMs - bitMs));
+
+    // 8N1: start LOW, then 8 data bits LSB-first, then stop HIGH.
+    const bits: boolean[] = [false];
+    for (let i = 0; i < 8; i++) bits.push(((byte >> i) & 1) !== 0);
+    bits.push(true);
+
+    let prev = true;
+    for (let i = 0; i < bits.length; i++) {
+      if (bits[i] !== prev) {
+        this.onPinChangeWithTime(txPin, bits[i], startMs + i * bitMs);
+        prev = bits[i];
+      }
+    }
+  }
+
   get clientId(): string {
     return getTabSessionId() + '::' + this.boardId;
   }
@@ -223,6 +310,15 @@ export class Esp32Bridge {
           const uart = msg.data.uart as number | undefined;
           if (this.onSerialData) {
             for (const ch of text) this.onSerialData(ch, uart);
+          }
+          // Synthesize the per-byte UART waveform on the TX GPIO so the
+          // oscilloscope shows a real frame, matching how a real ESP32
+          // drives the pin.  Falls back to UART0 when no uart index is
+          // provided (which is the case for all current backend events).
+          if (this.onPinChangeWithTime) {
+            for (let i = 0; i < text.length; i++) {
+              this.emitUartTxFrame(text.charCodeAt(i) & 0xff, uart ?? 0);
+            }
           }
           // MicroPython REPL injection — 4-stage state machine.
           // Each stage waits for a confirmed string in the serial buffer before
@@ -275,6 +371,11 @@ export class Esp32Bridge {
             `[Esp32Bridge:${this.boardId}] gpio_change pin=${pin} state=${state ? 'HIGH' : 'LOW'}`,
           );
           this.onPinChange?.(pin, state);
+          // Also feed the scope path so ESP32 digital pin activity shows
+          // up on the oscilloscope at parity with AVR / RP2040 boards.
+          // Wall-clock timestamp is good enough at 1× sim speed; QEMU
+          // virtual time isn't surfaced across the WebSocket today.
+          this.onPinChangeWithTime?.(pin, state, performance.now());
           break;
         }
         case 'gpio_dir': {
