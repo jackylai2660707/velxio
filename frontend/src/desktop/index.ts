@@ -22,6 +22,8 @@ import { DesktopWelcomePage } from './DesktopWelcomePage';
 import { Esp32QemuPrompt } from './Esp32QemuPrompt';
 import { GraceBanner } from './GraceBanner';
 import { invoke, isTauri, type ValidationResult } from './tauriBridge';
+import { installDesktopMenuListener } from './menu';
+import { dlog } from './log';
 import './desktop.css';
 
 let mounted = false;
@@ -101,8 +103,12 @@ async function checkInitialLicense(): Promise<void> {
 export const mountDesktop = (): void => {
   if (mounted) return;
   mounted = true;
-  // eslint-disable-next-line no-console
-  console.info('[desktop] mountDesktop() — Tauri shell active');
+  dlog('mountDesktop — Tauri shell active');
+
+  // Native menubar (Velxio / File / Edit / View / Help) sends events
+  // here. Hook the listener before any UI is mounted so the first
+  // user click is never dropped.
+  void installDesktopMenuListener();
 
   mountSidePanels();
   void checkInitialLicense();
