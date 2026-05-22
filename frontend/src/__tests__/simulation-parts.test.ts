@@ -743,9 +743,12 @@ describe('Analog-joystick — attachEvents', () => {
   });
 
   it('updates ADC voltages on joystick-move event', () => {
+    // wokwi-analog-joystick exposes xValue / yValue as direction {-1, 0, +1},
+    // NOT 0..1023.  The handler maps -1 → 0V, 0 → Vcc/2, +1 → Vcc.
+    // AVR mock simulator → Vcc = 5V.
     const logic = PartSimulationRegistry.get('analog-joystick')!;
     const adc = makeADC();
-    const el = makeElement({ xValue: 0, yValue: 1023 });
+    const el = makeElement({ xValue: -1, yValue: 1 });
     const sim = makeSimulator(adc);
 
     let moveHandler!: () => void;
@@ -758,8 +761,8 @@ describe('Analog-joystick — attachEvents', () => {
     logic.attachEvents!(el, sim as any, pinMap({ VRX: 14, VRY: 15 }));
     moveHandler();
 
-    expect(adc.channelValues[0]).toBeCloseTo(0.0, 1); // X at min = 0V
-    expect(adc.channelValues[1]).toBeCloseTo(5.0, 1); // Y at max = 5V
+    expect(adc.channelValues[0]).toBeCloseTo(0.0, 1); // X = -1 → 0V (full left)
+    expect(adc.channelValues[1]).toBeCloseTo(5.0, 1); // Y = +1 → 5V (full down)
   });
 });
 
