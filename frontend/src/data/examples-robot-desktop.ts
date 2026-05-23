@@ -60,6 +60,16 @@ export const robotDesktopExamples: ExampleProject[] = [
     difficulty: 'advanced',
     boardType: 'esp32',
     boardFilter: 'esp32',
+    // Sketch includes <U8g2lib.h>, <DHT.h>, <ESP32Servo.h> and
+    // <Adafruit_Sensor.h>. None of those ship with arduino-esp32, so
+    // declare them here — loadExample() runs `arduino-cli lib install`
+    // for each missing entry before the user clicks Compile.
+    libraries: [
+      'Adafruit Unified Sensor',
+      'DHT sensor library',
+      'ESP32Servo',
+      'U8g2',
+    ],
     tags: [
       'esp32', 'oled', 'ssd1306', 'dht11', 'pir', 'ldr', 'servo',
       'animation', 'robot', 'cozmo', 'eyes', 'multi-file',
