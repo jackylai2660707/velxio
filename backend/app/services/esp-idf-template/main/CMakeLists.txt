@@ -67,6 +67,23 @@ if(DEFINED ENV{ARDUINO_ESP32_PATH})
         target_compile_definitions(${COMPONENT_LIB} PRIVATE
             "LED_BUILTIN=2")
     endif()
+
+    # Relax `-Werror=` for user sketches. ESP-IDF defaults treat several
+    # warning categories as errors (-Werror=comment, -Werror=missing-field-
+    # initializers, etc.) which is great for IDF itself but ruthless for
+    # user Arduino code that often has nested /* */ comments,
+    # parenthesized macros, or other idioms that compile fine under
+    # arduino-cli's permissive defaults. Demoting these to plain warnings
+    # gives users the same "it just compiles" experience they expect from
+    # the Arduino IDE without disabling -Wall entirely.
+    target_compile_options(${COMPONENT_LIB} PRIVATE
+        -Wno-error=comment
+        -Wno-error=parentheses
+        -Wno-error=sign-compare
+        -Wno-error=narrowing
+        -Wno-error=write-strings
+        -Wno-error=missing-field-initializers
+        -Wno-error=reorder)
 else()
     # Pure ESP-IDF mode: main.c #includes sketch_translated.c
     idf_component_register(
