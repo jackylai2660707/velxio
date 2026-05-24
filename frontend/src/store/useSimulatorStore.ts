@@ -1279,43 +1279,99 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
             return `with open(${path},'w') as _f:\n    _f.write(${lit})`;
           });
 
-          // WiFi compat shim: replace `network` and `ntptime` with no-op
-          // stubs BEFORE user main.py imports them. The picsimlab QEMU
-          // fork's esp32_wifi NIC emulation is sufficient for Arduino's
-          // lightweight WiFi.h but not for MicroPython's full esp_wifi_init
-          // path — calling `network.WLAN(STA_IF)` hangs forever waiting
-          // for peripheral status bits that QEMU never sets, tripping the
-          // FreeRTOS task watchdog (TG1WDT_SYS_RESET ~26s after boot).
-          // The stubs let sketches degrade gracefully:
-          //   wlan.isconnected() → False
-          //   wlan.connect(...) → no-op
-          //   ntptime.settime() → raises OSError (most sketches already
-          //                       catch and print "Sync Failed")
+          // WiFi compat shim: replace `network`, `ntptime`, `urequests`
+          // with smart stubs BEFORE user main.py imports them. The
+          // picsimlab QEMU fork's esp32_wifi NIC emulation is sufficient
+          // for Arduino's lightweight WiFi.h but not for MicroPython's
+          // full esp_wifi_init path — calling `network.WLAN(STA_IF)`
+          // hangs forever waiting for peripheral status bits QEMU never
+          // sets, tripping the FreeRTOS task watchdog after ~26s.
+          //
+          // Smart stub behaviour (so examples like smart-ui-eyes WORK
+          // end-to-end, not just degrade gracefully):
+          //   wlan.isconnected() → True after first 2 calls (simulates
+          //                        ~1 second connection)
+          //   wlan.ifconfig() → plausible LAN IPs
+          //   ntptime.settime() → sets machine.RTC to host's current
+          //                       UTC so localtime() returns real time
+          //   urequests.get(url) → returns a Response stub whose .json()
+          //                        decodes a stubbed payload (weather
+          //                        for openweathermap URLs, generic {}
+          //                        otherwise). Backed by client-side
+          //                        fixtures so the example screens show
+          //                        useful data instead of "API Error".
+          const now = new Date();
+          const fakeWeatherCity = 'Simulator City';
           const wifiStub = [
             'import sys',
+            'import json as _json',
+            'try:',
+            '    import machine as _machine',
+            'except ImportError:',
+            '    _machine = None',
+            '',
             'class _StubWLAN:',
-            '    def __init__(self, *a, **k): pass',
-            '    def active(self, on=None): return False',
+            '    def __init__(self, *a, **k):',
+            '        self._calls = 0',
+            '    def active(self, on=None): return True',
             '    def connect(self, ssid=None, pwd=None): pass',
             '    def disconnect(self): pass',
-            '    def isconnected(self): return False',
-            '    def ifconfig(self, c=None): return ("0.0.0.0", "0.0.0.0", "0.0.0.0", "0.0.0.0")',
-            '    def config(self, *a, **k): return None',
-            '    def status(self, *a): return -1',
+            '    def isconnected(self):',
+            '        self._calls += 1',
+            '        return self._calls > 2',
+            '    def ifconfig(self, c=None): return ("10.0.2.15", "255.255.255.0", "10.0.2.2", "10.0.2.3")',
+            '    def config(self, *a, **k): return b"velxio"',
+            '    def status(self, *a): return 1010',
             '    def scan(self): return []',
             'class _StubNetwork:',
             '    STA_IF = 0',
             '    AP_IF = 1',
             '    WLAN = _StubWLAN',
             'sys.modules["network"] = _StubNetwork()',
+            '',
+            '# ntptime: pre-load RTC with host UTC so localtime() works.',
+            f'_VLX_BOOT_UTC = ({now.getUTCFullYear()}, {now.getUTCMonth() + 1}, {now.getUTCDate()}, {now.getUTCDay() || 7}, {now.getUTCHours()}, {now.getUTCMinutes()}, {now.getUTCSeconds()}, 0)',
             'class _StubNTP:',
             '    host = "pool.ntp.org"',
             '    timeout = 1',
             '    @staticmethod',
-            '    def settime(): raise OSError("WiFi unavailable in simulator")',
+            '    def settime():',
+            '        if _machine is not None:',
+            '            try: _machine.RTC().datetime(_VLX_BOOT_UTC)',
+            '            except Exception: pass',
             '    @staticmethod',
-            '    def time(): raise OSError("WiFi unavailable in simulator")',
+            '    def time(): return 0',
             'sys.modules["ntptime"] = _StubNTP()',
+            '',
+            '# urequests: fake responses so examples that call HTTP APIs',
+            '# show real-looking data on the OLED instead of "API Error".',
+            f'_VLX_WEATHER = {{"main": {{"temp": 22.5, "humidity": 58, "pressure": 1013}}, "weather": [{{"main": "Clouds", "description": "partly cloudy"}}], "name": "{fakeWeatherCity}", "wind": {{"speed": 3.4}}}}',
+            'class _StubResponse:',
+            '    def __init__(self, payload):',
+            '        self._payload = payload',
+            '        self.status_code = 200',
+            '        self.text = _json.dumps(payload)',
+            '        self.content = self.text.encode()',
+            '    def json(self): return self._payload',
+            '    def close(self): pass',
+            '    def __enter__(self): return self',
+            '    def __exit__(self, *a): pass',
+            'class _StubURequests:',
+            '    @staticmethod',
+            '    def _route(url):',
+            '        u = url.lower()',
+            '        if "openweathermap" in u or "weather" in u: return _VLX_WEATHER',
+            '        if "ipify" in u or "myip" in u: return {"ip": "10.0.2.15"}',
+            '        if "worldtimeapi" in u: return {"datetime": "2026-05-25T00:00:00+00:00"}',
+            '        return {}',
+            '    @staticmethod',
+            '    def get(url, *a, **k): return _StubResponse(_StubURequests._route(url))',
+            '    @staticmethod',
+            '    def post(url, *a, **k): return _StubResponse({"ok": True})',
+            '    @staticmethod',
+            '    def head(url, *a, **k): return _StubResponse({})',
+            'sys.modules["urequests"] = _StubURequests()',
+            'sys.modules["requests"] = _StubURequests()',
           ].join('\n');
 
           const prelude = wifiStub + '\n' +
