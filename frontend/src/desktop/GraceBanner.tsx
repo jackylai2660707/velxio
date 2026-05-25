@@ -61,16 +61,32 @@ type BannerInfo = {
   dismissible: boolean;
 };
 
-function bannerFor(status: LicenseStatus, now: number): BannerInfo | null {
+// Exported for unit testing in __tests__/GraceBanner.test.ts.
+// Pure function: deterministic output for given (status, now) - easy
+// to assert against without rendering React.
+export function bannerFor(status: LicenseStatus, now: number): BannerInfo | null {
   if (status.state === 'active') {
-    const secondsUntilExp = status.claims.exp - Math.floor(now / 1000);
-    if (secondsUntilExp <= 0) return null; // shell hasn't updated state yet, ignore
+    // Pre-expiry warnings target the REAL expiry of the
+    // entitlement (trial_ends_at for trials, subscription_period_end
+    // for paid), NOT claims.exp - that one is the JWT cache window
+    // (typically 7d) which gets refreshed every 6h by the checkin
+    // loop, so it would never trigger the "5d / 24h" thresholds
+    // under normal online use. Fall back to claims.exp only when
+    // neither real-expiry field is present.
+    const isTrial = status.claims.plan === 'trial';
+    const realExp = isTrial
+      ? status.claims.trial_ends_at
+      : status.claims.subscription_period_end;
+    const effectiveExp = realExp ?? status.claims.exp;
+    const secondsUntilExp = effectiveExp - Math.floor(now / 1000);
+    if (secondsUntilExp <= 0) return null; // shell hasn't transitioned state yet, ignore
     const hoursUntilExp = secondsUntilExp / 3600;
+    const subject = isTrial ? 'free trial' : 'Velxio Pro subscription';
     if (hoursUntilExp <= 24) {
       const h = Math.max(1, Math.round(hoursUntilExp));
       return {
         tone: 'red',
-        message: `Your Velxio Pro subscription expires in ${h}h. Renew now to avoid interruption.`,
+        message: `Your ${subject} expires in ${h}h. ${isTrial ? 'Upgrade' : 'Renew'} now to avoid interruption.`,
         dismissible: false,
       };
     }
@@ -78,7 +94,7 @@ function bannerFor(status: LicenseStatus, now: number): BannerInfo | null {
       const d = Math.max(1, Math.round(hoursUntilExp / 24));
       return {
         tone: 'amber',
-        message: `Your Velxio Pro subscription expires in ${d} day${d === 1 ? '' : 's'}. Renew to avoid interruption.`,
+        message: `Your ${subject} expires in ${d} day${d === 1 ? '' : 's'}. ${isTrial ? 'Upgrade' : 'Renew'} to avoid interruption.`,
         dismissible: true,
       };
     }
@@ -100,19 +116,14 @@ function bannerFor(status: LicenseStatus, now: number): BannerInfo | null {
       dismissible: false,
     };
   }
-  if (status.state === 'locked') {
-    return {
-      tone: 'red',
-      message: 'Your Velxio Desktop license has expired offline. Reconnect to continue using the editor.',
-      dismissible: false,
-    };
-  }
-  if (status.state === 'tampered') {
-    return {
-      tone: 'red',
-      message: 'Velxio could not verify the stored license. Sign out and sign in again.',
-      dismissible: false,
-    };
+  // Locked + Tampered are covered by the full-screen LockoutOverlay
+  // (z-index 10001) that index.ts mounts on `velxio://license-required`.
+  // Returning a banner here would render behind the overlay and bleed
+  // through its 96%-opaque background - users see a confusing red
+  // strip behind the modal. The overlay's own copy already explains
+  // the state; banner is redundant.
+  if (status.state === 'locked' || status.state === 'tampered') {
+    return null;
   }
   return null;
 }

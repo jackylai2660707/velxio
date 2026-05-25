@@ -20,7 +20,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/__tests__/**/*.test.ts'],
+    include: ['src/__tests__/**/*.test.ts', 'src/**/__tests__/**/*.test.ts'],
     testTimeout: 30_000,
     hookTimeout: 30_000,
     // Vitest 4 removed `test.poolOptions` — config moved to top-level
