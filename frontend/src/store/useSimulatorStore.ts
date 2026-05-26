@@ -1630,10 +1630,20 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         if (sim) {
           sim.reset();
           // Drop MCU-output classification so the new program starts
-          // clean — no stale V-sources from the previous run.
+          // clean — no stale V-sources from the previous run. The
+          // resetPinStates call also notifies listeners that pins which
+          // were HIGH are now LOW, so visual components (7-segment,
+          // NeoPixel, LCD backlight) clear their stale state instead of
+          // freezing on whatever pattern they had at the moment of
+          // Reset.
           getBoardPinManager(boardId)?.resetPinStates();
-          // Re-wire serial callback after reset
-          sim.onSerialData = (ch) => appendSerial(boardId, ch);
+          // NOTE: do NOT reassign sim.onSerialData here. sim.reset()
+          // recreates the USART but the new usart.onByteTransmit
+          // already chains through `this.onSerialData`, which is the
+          // wrapper Interconnect installed for cross-board UART. The
+          // previous "re-wire" line was destroying that wrapper and
+          // silently breaking sibling-board serial forwarding after
+          // every Reset press.
           if (sim instanceof AVRSimulator) {
             sim.onBaudRateChange = (baud) => {
               set((s) => {

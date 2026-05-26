@@ -139,15 +139,34 @@ export class PinManager {
   }
 
   /**
-   * Clear cached pin states + output-pin classifications.  Called by
+   * Clear cached pin states + output-pin classifications. Called by
    * stopBoard / resetBoard so the next Run starts without stale output
    * classifications from a previous session forcing premature V-source
-   * emission.  Also keeps the test fixtures' fresh-triggerPinChange path
-   * (the original reason this helper exists) working.
+   * emission.
+   *
+   * Also notifies every listener that its pin returned to LOW when the
+   * previously-cached state was HIGH. Without this notification,
+   * stateful display components (7-segment, dot-matrix, NeoPixel, LCD
+   * backlight) keep the last lit pattern frozen on screen after the
+   * user presses Reset / Stop — their visual state only updates when a
+   * pinChange callback fires, and resetPinStates was clearing the
+   * cache silently. Listeners that ignore the synthetic LOW (analog
+   * sensors, buttons) are unaffected; their next external write
+   * overrides the false anyway.
    */
   resetPinStates(): void {
+    const wereHigh: number[] = [];
+    for (const [pin, state] of this.pinStates) {
+      if (state) wereHigh.push(pin);
+    }
     this.pinStates.clear();
     this.outputPins.clear();
+    for (const pin of wereHigh) {
+      const callbacks = this.listeners.get(pin);
+      if (callbacks) {
+        callbacks.forEach((cb) => cb(pin, false));
+      }
+    }
   }
 
   // ── PWM duty cycle API ───────────────────────────────────────────────────
