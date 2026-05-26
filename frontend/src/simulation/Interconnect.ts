@@ -174,12 +174,13 @@ function pushPinState(boardId: string, pin: number, state: boolean): void {
 
 /** Push a UART byte into the receiving board's UART RX. */
 function pushSerialByte(boardId: string, ch: string, uart: number): void {
-  if (!runtime) return;
+  if (!runtime) { console.log('[IC-DBG] pushSerialByte: no runtime'); return; }
   const entry = boards.get(boardId);
-  if (!entry) return;
+  if (!entry) { console.log('[IC-DBG] pushSerialByte: no entry for', boardId); return; }
 
   if (isBrowserSim(entry.kind)) {
     const sim = runtime.getBoardSimulator(boardId);
+    console.log('[IC-DBG] pushSerialByte to', boardId, 'ch=', JSON.stringify(ch), 'sim=', !!sim, 'feedUart=', !!sim?.feedUart, 'serialWrite=', !!sim?.serialWrite);
     // RP2040Simulator doesn't yet expose feedUart per-UART — fall back
     // to serialWrite (which feeds UART0) for uart === 0.
     if (sim?.feedUart) {
@@ -286,6 +287,7 @@ function ensureSerialHook(entry: BoardEntry): void {
     if ((sim as any).__icSerialHookInstalled) return;
     (sim as any).__icSerialHookInstalled = true;
     entry.origSerialCallback = sim.onSerialData ?? null;
+    console.log('[IC-DBG] ensureSerialHook installed on', boardId, 'origCb=', !!entry.origSerialCallback);
     sim.onSerialData = (ch: string, uart?: number) => {
       const liveEntry = boards.get(boardId);
       liveEntry?.origSerialCallback?.(ch, uart);
@@ -293,6 +295,7 @@ function ensureSerialHook(entry: BoardEntry): void {
       // same callback. Default to UART0 for routing.
       const u = uart ?? 0;
       const subs = liveEntry?.serialFanout.get(u);
+      console.log('[IC-DBG] wrapper invoked for', boardId, 'ch=', JSON.stringify(ch), 'subs=', subs ? subs.size : 'none');
       if (subs) for (const cb of subs) cb(ch);
     };
     return;
@@ -385,6 +388,7 @@ function buildRouteForWire(wire: Wire): RouteHandle | null {
     const aRoleIsTx = classifyPin(aEntry.kind, wire.start.pinName).kind === 'uart-tx';
     const aUart = uartInfo.uartA;
     const bUart = uartInfo.uartB;
+    console.log('[IC-DBG] UART route built:', aEntry.id, '(tx?', aRoleIsTx, ')', '<->', bEntry.id, 'uartA=', aUart, 'uartB=', bUart);
     if (aRoleIsTx) {
       // A.TX → B.RX
       teardowns.push(installSerialFanout(aEntry.id, aUart, bEntry.id, bUart));
