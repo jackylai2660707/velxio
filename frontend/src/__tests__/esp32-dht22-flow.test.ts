@@ -58,6 +58,7 @@ vi.mock('../simulation/PinManager', () => ({
     this.onPinChange = vi.fn().mockReturnValue(() => {});
     this.onPwmChange = vi.fn().mockReturnValue(() => {});
     this.getListenersCount = vi.fn().mockReturnValue(0);
+    this.hardResetPinStates = vi.fn();
     this.updatePwm = vi.fn();
   }),
 }));
