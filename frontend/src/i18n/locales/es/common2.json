@@ -29,7 +29,8 @@
         "message": "¿Falta una librería? Instálala desde el",
         "cta": "Gestor de librerías",
         "dismiss": "Descartar"
-      }
+      },
+      "exportBom": "Exportar lista de materiales (CSV — Pro)"
     },
     "fileExplorer": {
       "workspace": "ESPACIO DE TRABAJO",

@@ -29,7 +29,8 @@
         "message": "缺少库？从",
         "cta": "库管理器",
         "dismiss": "忽略"
-      }
+      },
+      "exportBom": "导出物料清单 (CSV — Pro)"
     },
     "fileExplorer": {
       "workspace": "工作区",

@@ -29,7 +29,8 @@
         "message": "Missing library? Install it from the",
         "cta": "Library Manager",
         "dismiss": "Dismiss"
-      }
+      },
+      "exportBom": "Export Bill of Materials (CSV — Pro)"
     },
     "fileExplorer": {
       "workspace": "WORKSPACE",

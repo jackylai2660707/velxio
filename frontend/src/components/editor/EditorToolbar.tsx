@@ -881,6 +881,53 @@ export const EditorToolbar = ({
     }
   };
 
+  // Phase 3 D3.1 — BOM export. Pro-tier-gated by the backend (402 if not pro).
+  // We let everyone click; the 402 response feeds the upgrade prompt below
+  // so free/maker users hit the funnel naturally instead of an obviously-
+  // locked button (which they'd just dismiss).
+  const handleExportBom = async () => {
+    const projectId = currentProject?.id;
+    if (!projectId) {
+      setMessage({ type: 'error', text: 'Save the project before exporting a BOM.' });
+      return;
+    }
+    try {
+      const resp = await fetch(`/api/pro/projects/${projectId}/bom.csv`, {
+        credentials: 'include',
+      });
+      if (resp.status === 402) {
+        // Pro-required. Bounce to /pricing with a hint so the page can
+        // surface the right upgrade message. (The backend returned a
+        // structured `detail.error = 'pro_required'` payload but for the
+        // MVP we just route to pricing.)
+        window.location.href = '/pricing?from=bom_export';
+        return;
+      }
+      if (resp.status === 401) {
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+        return;
+      }
+      if (!resp.ok) {
+        setMessage({ type: 'error', text: 'BOM export failed.' });
+        return;
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      // Filename comes from Content-Disposition; pick a fallback.
+      const cd = resp.headers.get('Content-Disposition') || '';
+      const m = /filename="?([^"]+)"?/.exec(cd);
+      a.download = m ? m[1] : `bom-${projectId}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setMessage({ type: 'error', text: 'BOM export failed.' });
+    }
+  };
+
   const handleFirmwareUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (firmwareInputRef.current) firmwareInputRef.current.value = '';
@@ -1210,6 +1257,19 @@ export const EditorToolbar = ({
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </button>
+            <button
+              onClick={() => handleExportBom()}
+              className="tb-btn"
+              title={t('editor.toolbar.exportBom')}
+            >
+              {/* Spreadsheet / list icon — distinguishes the BOM from the
+                  generic project Export ZIP that sits next to it. */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+                <line x1="9" y1="4" x2="9" y2="20" />
               </svg>
             </button>
             <button

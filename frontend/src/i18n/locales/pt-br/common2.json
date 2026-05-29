@@ -29,7 +29,8 @@
         "message": "Faltando biblioteca? Instale-a no",
         "cta": "Gerenciador de Bibliotecas",
         "dismiss": "Dispensar"
-      }
+      },
+      "exportBom": "Exportar lista de materiais (CSV — Pro)"
     },
     "fileExplorer": {
       "workspace": "ESPAÇO DE TRABALHO",
