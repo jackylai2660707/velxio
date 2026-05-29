@@ -127,3 +127,34 @@ async def run_lifespan_startup() -> None:
             await hook()
         except Exception:
             logger.exception("lifespan startup hook %r failed (swallowed)", hook)
+
+
+# ── iot_gateway_gate ──────────────────────────────────────────────────────────
+# Decides whether a given request may use the private IoT gateway proxy.
+# OSS-default: allow everyone (the gateway is a free feature in the open
+# image). A private overlay (velxio-prod) registers a real implementation
+# that gates it to paid plans + grandfathered users. Returns None to allow,
+# or a `detail` dict that the route turns into a 402 response when blocking.
+
+IotGatewayGateHook = Callable[[Request], Awaitable[Optional[dict]]]
+
+_iot_gateway_gate_hook: Optional[IotGatewayGateHook] = None
+
+
+def register_iot_gateway_gate(hook: IotGatewayGateHook) -> None:
+    """Install the IoT-gateway gate. Called by overlays in register_pro."""
+    global _iot_gateway_gate_hook
+    _iot_gateway_gate_hook = hook
+
+
+async def iot_gateway_gate(request: Request) -> Optional[dict]:
+    """Return None to allow the gateway request, or a detail dict to block
+    it with 402. No-op (allow) when no overlay is loaded."""
+    if _iot_gateway_gate_hook is None:
+        return None
+    try:
+        return await _iot_gateway_gate_hook(request)
+    except Exception:
+        # A failing gate must not take the gateway down — fail open.
+        logger.exception("iot_gateway_gate hook failed (allowing request)")
+        return None
