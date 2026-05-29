@@ -1118,11 +1118,27 @@ export const LandingPage: React.FC = () => {
               {t('landing.pricing.tiers.free.cta')}
             </Link>
           </div>
+          <div className="pricing-card">
+            <div className="pricing-card-name">{t('landing.pricing.tiers.maker.name')}</div>
+            <div className="pricing-card-price">
+              <span className="pricing-card-amount">$7</span>
+              <span className="pricing-card-period">/mo</span>
+            </div>
+            <p className="pricing-card-tagline">{t('landing.pricing.tiers.maker.tagline')}</p>
+            <ul className="pricing-card-features">
+              <li>{t('landing.pricing.tiers.maker.f1')}</li>
+              <li>{t('landing.pricing.tiers.maker.f2')}</li>
+              <li>{t('landing.pricing.tiers.maker.f3')}</li>
+            </ul>
+            <Link to={localize('/pricing')} className="pricing-card-cta pricing-card-cta-secondary">
+              {t('landing.pricing.tiers.maker.cta')}
+            </Link>
+          </div>
           <div className="pricing-card pricing-card-featured">
             <div className="pricing-card-badge">{t('landing.pricing.popular')}</div>
             <div className="pricing-card-name">{t('landing.pricing.tiers.pro.name')}</div>
             <div className="pricing-card-price">
-              <span className="pricing-card-amount">$15</span>
+              <span className="pricing-card-amount">$19</span>
               <span className="pricing-card-period">/mo</span>
             </div>
             <p className="pricing-card-tagline">{t('landing.pricing.tiers.pro.tagline')}</p>
@@ -1133,22 +1149,6 @@ export const LandingPage: React.FC = () => {
             </ul>
             <Link to={localize('/pricing')} className="pricing-card-cta pricing-card-cta-primary">
               {t('landing.pricing.tiers.pro.cta')}
-            </Link>
-          </div>
-          <div className="pricing-card">
-            <div className="pricing-card-name">{t('landing.pricing.tiers.pro_max.name')}</div>
-            <div className="pricing-card-price">
-              <span className="pricing-card-amount">$35</span>
-              <span className="pricing-card-period">/mo</span>
-            </div>
-            <p className="pricing-card-tagline">{t('landing.pricing.tiers.pro_max.tagline')}</p>
-            <ul className="pricing-card-features">
-              <li>{t('landing.pricing.tiers.pro_max.f1')}</li>
-              <li>{t('landing.pricing.tiers.pro_max.f2')}</li>
-              <li>{t('landing.pricing.tiers.pro_max.f3')}</li>
-            </ul>
-            <Link to={localize('/pricing')} className="pricing-card-cta pricing-card-cta-secondary">
-              {t('landing.pricing.tiers.pro_max.cta')}
             </Link>
           </div>
         </div>

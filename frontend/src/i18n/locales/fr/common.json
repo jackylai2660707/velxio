@@ -127,21 +127,21 @@
           "f3": "Émulation CPU réelle, projets publics",
           "cta": "Commencer"
         },
+        "maker": {
+          "name": "Maker",
+          "tagline": "Pour les makers qui livrent de vrais circuits avec l'aide de l'IA.",
+          "f1": "500 crédits IA par jour (jusqu'à 15 000/mois)",
+          "f2": "Projets non listés + Velxio Desktop (hors-ligne)",
+          "f3": "Les 19 cartes + 48+ composants",
+          "cta": "Commencer Maker"
+        },
         "pro": {
           "name": "Pro",
-          "tagline": "Pour les makers en projets réels.",
-          "f1": "500 crédits IA par jour (jusqu’à 15 000/mois)",
-          "f2": "Projets privés + composants premium",
-          "f3": "File de compilation prioritaire, annulez quand vous voulez",
-          "cta": "S’abonner à Pro"
-        },
-        "pro_max": {
-          "name": "Pro Max",
-          "tagline": "Pour power users et petites équipes.",
-          "f1": "2 000 crédits IA par jour (jusqu’à 60 000/mois)",
-          "f2": "Accès anticipé aux nouvelles cartes",
-          "f3": "Support direct du mainteneur",
-          "cta": "Choisir Pro Max"
+          "tagline": "Projets privés, GitHub Sync et exports BOM.",
+          "f1": "2 000 crédits IA par jour (jusqu'à 60 000/mois)",
+          "f2": "Projets privés + BOM CSV + schéma PNG",
+          "f3": "GitHub Sync + intégrations sans filigrane",
+          "cta": "S'abonner à Pro"
         }
       }
     }

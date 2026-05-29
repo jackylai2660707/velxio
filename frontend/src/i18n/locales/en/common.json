@@ -127,21 +127,21 @@
           "f3": "Real CPU emulation, public projects",
           "cta": "Get started"
         },
+        "maker": {
+          "name": "Maker",
+          "tagline": "For makers shipping real circuits with AI help.",
+          "f1": "500 daily AI credits (up to 15,000/month)",
+          "f2": "Unlisted projects + Velxio Desktop (offline)",
+          "f3": "All 19 boards + 48+ components",
+          "cta": "Start Maker"
+        },
         "pro": {
           "name": "Pro",
-          "tagline": "For makers building real projects with AI.",
-          "f1": "500 daily AI credits (up to 15,000/month)",
-          "f2": "Private projects + premium components",
-          "f3": "Priority compile queue, cancel anytime",
-          "cta": "Subscribe to Pro"
-        },
-        "pro_max": {
-          "name": "Pro Max",
-          "tagline": "For power users and small teams.",
+          "tagline": "Private projects, GitHub Sync and BOM exports.",
           "f1": "2,000 daily AI credits (up to 60,000/month)",
-          "f2": "Early access to new boards",
-          "f3": "Direct support from the maintainer",
-          "cta": "Choose Pro Max"
+          "f2": "Private projects + BOM CSV + schematic PNG",
+          "f3": "GitHub Sync + watermark-free embeds",
+          "cta": "Subscribe to Pro"
         }
       }
     }
