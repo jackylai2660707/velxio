@@ -1477,6 +1477,26 @@ export const EditorToolbar = ({
                     </svg>
                     <span className="tb-overflow-label">{t('editor.toolbar.shareLabel', 'Share / Embed')}</span>
                   </button>
+                  {/* Record simulation — Pro feature. Dispatches a toggle the
+                      pro overlay handles (plan check, board-type check,
+                      start/stop the recorder). OSS build → no listener →
+                      silent no-op. */}
+                  <button
+                    className="tb-overflow-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setMoreMenuOpen(false);
+                      window.dispatchEvent(new CustomEvent('velxio-pro-replay-record-toggle', {
+                        detail: { projectId: currentProject?.id ?? null },
+                      }));
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="12" cy="12" r="7" />
+                    </svg>
+                    <span className="tb-overflow-label">{t('editor.toolbar.recordLabel', 'Record simulation')}</span>
+                    <span className="tb-overflow-pro">PRO</span>
+                  </button>
                 </div>
               )}
             </div>
