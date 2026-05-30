@@ -106,9 +106,17 @@ data/*
 .publicar_discord/*
 img/*
 
-# ESP32 QEMU runtime binaries (too large for git — build/copy from MSYS2/qemu-lcgamboa)
+# QEMU runtime binaries (too large for git, and Pro-gated — built/copied from
+# MSYS2/qemu-lcgamboa). These must NEVER be committed to the public OSS repo:
+# STM32 (libqemu-arm) + ESP32 emulation are paid/desktop-only features, the
+# velxio.dev/Pro image downloads them at build time behind a license key, and
+# the OSS image intentionally ships without them.
+backend/app/services/libqemu-arm.dll
+backend/app/services/libqemu-arm.dylib
 backend/app/services/libqemu-xtensa.dll
 backend/app/services/libqemu-riscv32.dll
+backend/app/services/libqemu-*.dll
+backend/app/services/libqemu-*.dylib
 backend/app/services/esp32-v3-rom.bin
 backend/app/services/esp32-v3-rom-app.bin
 backend/app/services/esp32c3-rom.bin

@@ -227,6 +227,7 @@ export const BOARD_COMPONENT_IDS = [
   'esp32-c3',
   'xiao-esp32-c3',
   'aitewinrobot-esp32c3-supermini',
+  'stm32-bluepill',
   'attiny85',
 ];
 
@@ -431,6 +432,28 @@ export function boardPinToNumber(boardId: string, pinName: string): number | nul
     // Numeric fallback
     const num = parseInt(pinName, 10);
     if (!isNaN(num) && num >= 0 && num <= 5) return num;
+    return null;
+  }
+
+  // STM32 Blue Pill (and family) — linear pin = port*16 + pin, matching the
+  // backend (hw/arm/stm32_picsimlab.c) and Stm32Bridge.stm32PinNameToLinear.
+  // PA0..PA15=0..15, PB0..PB15=16..31, PC13..PC15=44..47.
+  if (boardId === 'stm32-bluepill' || boardId.startsWith('stm32-')) {
+    // Power / reset pins — not GPIOs.
+    if (
+      pinName.startsWith('GND') || pinName.startsWith('3V3') ||
+      pinName.startsWith('3.3V') || pinName.startsWith('5V') ||
+      pinName === 'VBAT' || pinName === 'VB' || pinName === 'NRST' ||
+      pinName === 'RST'
+    ) {
+      return -1;
+    }
+    const m = /^P([A-G])(\d{1,2})$/.exec(pinName);
+    if (m) {
+      const port = m[1].charCodeAt(0) - 'A'.charCodeAt(0); // A=0,B=1,C=2,...
+      const pin = parseInt(m[2], 10);
+      if (pin >= 0 && pin <= 15) return port * 16 + pin;
+    }
     return null;
   }
 

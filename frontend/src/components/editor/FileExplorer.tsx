@@ -139,6 +139,8 @@ const BOARD_ICON: Record<BoardKind, string> = {
   esp32: '⬡',
   'esp32-s3': '⬡',
   'esp32-c3': '⬡',
+  'stm32-bluepill': '◈',
+  'stm32-blackpill': '◈',
 };
 
 // Color accent per board family
@@ -151,6 +153,8 @@ const BOARD_COLOR: Record<BoardKind, string> = {
   esp32: '#a5d6a7',
   'esp32-s3': '#a5d6a7',
   'esp32-c3': '#a5d6a7',
+  'stm32-bluepill': '#80cbc4',
+  'stm32-blackpill': '#b0bec5',
 };
 
 function FileIcon({ name }: { name: string }) {

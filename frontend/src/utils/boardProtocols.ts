@@ -138,7 +138,18 @@ const PI3_PHYSICAL_TO_BCM: Record<number, number> = {
 
 // ── Master table ─────────────────────────────────────────────────────────────
 
+// STM32 Blue Pill (F103). Keyed by the silkscreen port labels used in wires.
+// USART1 = PA9 (TX) / PA10 (RX); USART2 = PA2 (TX) / PA3 (RX). The worker
+// reports USART1 as uart 0 (usart[0]).
+const STM32_DEFAULT: RoleTable = {
+  PA9: { kind: 'uart-tx', uart: 0 },
+  PA10: { kind: 'uart-rx', uart: 0 },
+  PA2: { kind: 'uart-tx', uart: 1 },
+  PA3: { kind: 'uart-rx', uart: 1 },
+};
+
 function tableFor(boardKind: BoardKind | string): RoleTable | null {
+  if (boardKind === 'stm32-bluepill' || (boardKind as string).startsWith('stm32-')) return STM32_DEFAULT;
   if (boardKind === 'arduino-uno' || boardKind === 'arduino-nano') return ARDUINO_UNO;
   if (boardKind === 'arduino-mega') return ARDUINO_MEGA;
   if (boardKind === 'raspberry-pi-pico' || boardKind === 'pi-pico-w') return RP2040_DEFAULT;
@@ -235,6 +246,11 @@ function normalizePinName(boardKind: string, pinName: string): string | null {
     if (boardKind === 'arduino-uno' || boardKind === 'arduino-nano') return '19';
     if (boardKind === 'raspberry-pi-pico' || boardKind === 'pi-pico-w') return '5';
     if (boardKind === 'esp32') return '22';
+  }
+
+  // STM32 port labels (PA9, PB12, PC13…) are used verbatim as table keys.
+  if (/^P[A-G]\d{1,2}$/.test(trimmed)) {
+    return trimmed;
   }
 
   // Bare numeric

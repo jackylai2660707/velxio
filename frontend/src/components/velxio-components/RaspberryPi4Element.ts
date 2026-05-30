@@ -1,25 +1,56 @@
 /**
- * Raspberry Pi 4 Model B — Velxio schematic board.
+ * Raspberry Pi 4 Model B — Velxio board art.
  *
- * Authored from scratch (not traced from RPi Foundation art); the layout
- * is the publicly-known PCB topology (BCM2711 SoC centre-right, USB-C
- * power on the south edge, dual micro-HDMI mid-south, 4× USB-A and
- * gigabit Ethernet stacked on the east edge, 40-pin GPIO header on the
- * north edge, microSD on the underside).  Rendered at the same
- * 250×160 footprint and pin pitch as RaspberryPi3Element so wires from
- * existing canvases line up byte-for-byte.
+ * Uses a realistic top-down product photo of the Raspberry Pi 4 as the board
+ * sprite. The source shipped on a solid white background; it was flood-filled
+ * to a transparent PNG and cropped tight to the board outline so it composites
+ * cleanly on the canvas -> frontend/src/assets/raspberry-pi-4-board.png.
  *
- * The 40-pin GPIO header is electrically identical to every Pi from
- * the 1B+ onwards — pin numbers 1-40 map to the same BCM GPIO lines
- * the firmware sees, so reusing the same pin-name scheme means Velxio
- * routes and example projects transfer between Pi models without
- * touching wires.
+ * The 40-pin GPIO header coordinates were calibrated against that image and
+ * are exposed through the `pinInfo` getter, so the wire system anchors every
+ * wire on the real header pins. Pin names follow the standard BCM/40-pin
+ * convention shared by every Pi from the 1B+ onwards, so example wires
+ * transfer between Pi models by name.
  */
 
-import { buildPi40PinHeader } from './pi40PinHeader';
+import pi4img from '../../assets/raspberry-pi-4-board.png';
 
-const PI_WIDTH = 250;
-const PI_HEIGHT = 160;
+// Native size of the cropped, transparent board PNG, and on-canvas render size.
+const NATIVE_W = 925;
+const NATIVE_H = 602;
+const DISPLAY_W = 330;
+const SCALE = DISPLAY_W / NATIVE_W;
+const DISPLAY_H = Math.round(NATIVE_H * SCALE);
+
+// GPIO 40-pin header calibration, in native cropped-PNG pixels.
+const HDR_X0 = 108;
+const HDR_STEP = 25.8;
+const HDR_Y_TOP = 26;
+const HDR_Y_BOT = 51;
+
+// Standard Raspberry Pi 40-pin header pin-name map (physical pin -> name).
+const PI_PIN_NAMES: Record<number, string> = {
+  1: '3V3', 2: '5V',
+  3: 'GPIO2', 4: '5V',
+  5: 'GPIO3', 6: 'GND',
+  7: 'GPIO4', 8: 'GPIO14',
+  9: 'GND', 10: 'GPIO15',
+  11: 'GPIO17', 12: 'GPIO18',
+  13: 'GPIO27', 14: 'GND',
+  15: 'GPIO22', 16: 'GPIO23',
+  17: '3V3', 18: 'GPIO24',
+  19: 'GPIO10', 20: 'GND',
+  21: 'GPIO9', 22: 'GPIO25',
+  23: 'GPIO11', 24: 'GPIO8',
+  25: 'GND', 26: 'GPIO7',
+  27: 'ID_SD', 28: 'ID_SC',
+  29: 'GPIO5', 30: 'GND',
+  31: 'GPIO6', 32: 'GPIO12',
+  33: 'GPIO13', 34: 'GND',
+  35: 'GPIO19', 36: 'GPIO16',
+  37: 'GPIO26', 38: 'GPIO20',
+  39: 'GND', 40: 'GPIO21',
+};
 
 class RaspberryPi4Element extends HTMLElement {
   constructor() {
@@ -31,84 +62,52 @@ class RaspberryPi4Element extends HTMLElement {
     this.render();
   }
 
+  /**
+   * Pin tip coordinates in CSS pixels relative to the element's top-left,
+   * calibrated to the GPIO header in the board photo. Odd pins (1,3,5…) on
+   * the top row, even pins (2,4,6…) on the bottom row, pin 1 left-most.
+   */
   get pinInfo() {
-    return buildPi40PinHeader();
+    const pins: { name: string; x: number; y: number; signals: string[] }[] = [];
+    for (let col = 0; col < 20; col++) {
+      const oddPin = col * 2 + 1; // top row
+      const evenPin = col * 2 + 2; // bottom row
+      const px = (HDR_X0 + col * HDR_STEP) * SCALE;
+      pins.push({
+        name: PI_PIN_NAMES[oddPin] ?? `P${oddPin}`,
+        x: px,
+        y: HDR_Y_TOP * SCALE,
+        signals: [],
+      });
+      pins.push({
+        name: PI_PIN_NAMES[evenPin] ?? `P${evenPin}`,
+        x: px,
+        y: HDR_Y_BOT * SCALE,
+        signals: [],
+      });
+    }
+    return pins;
   }
 
   render() {
-    let pinsSvg = '';
-    const pins = this.pinInfo;
-    pins.forEach((pin) => {
-      pinsSvg += `<rect x="${pin.x - 3}" y="${pin.y - 3}" width="6" height="6" fill="#D4AF37" />`;
-      pinsSvg += `<circle cx="${pin.x}" cy="${pin.y}" r="2" fill="#000" />`;
-    });
-
     this.shadowRoot!.innerHTML = `
       <style>
         :host {
           display: block;
-          width: ${PI_WIDTH}px;
-          height: ${PI_HEIGHT}px;
+          width: ${DISPLAY_W}px;
+          height: ${DISPLAY_H}px;
           position: relative;
         }
-        svg { width: 100%; height: 100%; }
-        .board {
-          fill: #006633; /* Pi 4 green PCB */
-          stroke: #003d1f;
-          stroke-width: 2;
-          rx: 8;
+        img {
+          width: 100%;
+          height: 100%;
+          display: block;
+          user-select: none;
+          -webkit-user-drag: none;
+          pointer-events: none;
         }
-        .cpu { fill: #1a1a1a; stroke: #000; rx: 2; }
-        .usb { fill: #ccc; stroke: #999; rx: 2; }
-        .usbc { fill: #888; stroke: #555; rx: 1; }
-        .eth { fill: #bbb; stroke: #888; rx: 2; }
-        .hdmi { fill: #555; stroke: #333; rx: 1; }
-        .gpio-header { fill: #222; }
-        .rp1 { fill: #2a2a2a; stroke: #000; rx: 2; }
-        .label { fill: #FFF; font-family: sans-serif; }
       </style>
-      <svg viewBox="0 0 ${PI_WIDTH} ${PI_HEIGHT}">
-        <!-- PCB -->
-        <rect class="board" x="2" y="2" width="${PI_WIDTH - 4}" height="${PI_HEIGHT - 4}" />
-
-        <!-- BCM2711 SoC (centre-right, larger than Pi 3) -->
-        <rect class="cpu" x="100" y="55" width="48" height="48" />
-        <text x="124" y="76" class="label" font-size="7" text-anchor="middle">BCM2711</text>
-        <text x="124" y="86" class="label" font-size="6" text-anchor="middle" opacity="0.7">A72 ×4</text>
-
-        <!-- 4× USB-A (east edge, two stacked banks) -->
-        <rect class="usb" x="${PI_WIDTH - 38}" y="18" width="36" height="28" />
-        <text x="${PI_WIDTH - 20}" y="34" class="label" font-size="5" text-anchor="middle" opacity="0.7">USB3</text>
-        <rect class="usb" x="${PI_WIDTH - 38}" y="50" width="36" height="28" />
-        <text x="${PI_WIDTH - 20}" y="66" class="label" font-size="5" text-anchor="middle" opacity="0.7">USB2</text>
-
-        <!-- Gigabit Ethernet -->
-        <rect class="eth" x="${PI_WIDTH - 38}" y="82" width="36" height="36" />
-        <text x="${PI_WIDTH - 20}" y="102" class="label" font-size="5" text-anchor="middle" opacity="0.7">GbE</text>
-
-        <!-- USB-C Power (south edge, west side) -->
-        <rect class="usbc" x="6" y="${PI_HEIGHT - 18}" width="18" height="10" />
-        <text x="15" y="${PI_HEIGHT - 22}" class="label" font-size="5" text-anchor="middle" opacity="0.7">USB-C 5V</text>
-
-        <!-- 2× micro-HDMI (south edge, centre) -->
-        <rect class="hdmi" x="40" y="${PI_HEIGHT - 16}" width="20" height="10" />
-        <rect class="hdmi" x="66" y="${PI_HEIGHT - 16}" width="20" height="10" />
-        <text x="63" y="${PI_HEIGHT - 20}" class="label" font-size="5" text-anchor="middle" opacity="0.7">µHDMI 0 / 1</text>
-
-        <!-- Audio jack (south edge, east of HDMI) -->
-        <circle cx="100" cy="${PI_HEIGHT - 11}" r="5" fill="#222" stroke="#000" />
-
-        <!-- GPIO Header base -->
-        <rect class="gpio-header" x="15" y="5" width="200" height="20" rx="1" />
-
-        <!-- Pins -->
-        ${pinsSvg}
-
-        <!-- Board name + Velxio mark -->
-        <text x="60" y="125" class="label" font-size="14" font-weight="bold">Raspberry Pi 4</text>
-        <text x="60" y="140" class="label" font-size="9" opacity="0.85">Model B · Cortex-A72</text>
-        <text x="${PI_WIDTH - 8}" y="${PI_HEIGHT - 6}" class="label" font-size="6" text-anchor="end" opacity="0.6">velxio</text>
-      </svg>
+      <img src="${pi4img}" alt="Raspberry Pi 4 Model B" draggable="false" />
     `;
   }
 }

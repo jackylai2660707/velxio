@@ -376,6 +376,21 @@ attribution comment pointing back to its source. Any new asset copied
 out of `third-party/fritzing-parts/` MUST be added to this table and
 to the corresponding component's header comment.
 
+## Raspberry Pi board sprites
+
+The Raspberry Pi board sprites are top-down board artwork. The Pi 3 uses the
+official Raspberry Pi Foundation vector illustration (CC-BY-SA 3.0, via
+Wikimedia Commons). The Pi 4 and Pi 5 use realistic top-down product photos
+that were flood-filled to a transparent background and cropped to the board
+outline. Each board's Web Component calibrates the 40-pin GPIO header to its
+own art and carries an inline source comment.
+
+| Velxio asset | Source |
+|---|---|
+| `frontend/src/assets/Raspberry_Pi_3_illustration.svg` | "Raspberry Pi 3 illustration", Raspberry Pi Foundation, CC-BY-SA 3.0 (Wikimedia Commons) |
+| `frontend/src/assets/raspberry-pi-4-board.png` | Raspberry Pi 4 product photo (background removed) |
+| `frontend/src/assets/raspberry-pi-5-board.png` | Raspberry Pi 5 product photo (background removed) |
+
 ## References
 
 - [Wokwi Elements Documentation](https://elements.wokwi.com/)

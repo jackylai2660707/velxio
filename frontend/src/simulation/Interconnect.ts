@@ -43,6 +43,7 @@ interface RuntimeAccessors {
   getBoardPinManager: (id: string) => any | undefined;
   getBoardBridge: (id: string) => any | undefined; // Pi3B
   getEsp32Bridge: (id: string) => any | undefined;
+  getStm32Bridge: (id: string) => any | undefined;
 }
 
 let runtime: RuntimeAccessors | null = null;
@@ -132,6 +133,12 @@ function isPi3Bridge(boardKind: string): boolean {
   return boardKind.startsWith('raspberry-pi-') && boardKind !== 'raspberry-pi-pico';
 }
 
+function isStm32Bridge(boardKind: string): boolean {
+  // STM32 family via libqemu-arm (Stm32Bridge). Same single-slot
+  // onPinChange/onSerialData + sendPinEvent/sendSerialBytes shape as Esp32Bridge.
+  return boardKind === 'stm32-bluepill' || boardKind.startsWith('stm32-');
+}
+
 /** Resolve `(componentId, pinName)` to a `(boardId, pinNumber)` pair. */
 function resolveEndpoint(
   componentId: string,
@@ -163,6 +170,9 @@ function pushPinState(boardId: string, pin: number, state: boolean): void {
     } else if (isEsp32Bridge(entry.kind)) {
       const bridge = runtime.getEsp32Bridge(boardId);
       bridge?.sendPinEvent?.(pin, state);
+    } else if (isStm32Bridge(entry.kind)) {
+      const bridge = runtime.getStm32Bridge(boardId);
+      bridge?.sendPinEvent?.(pin, state);
     } else if (isPi3Bridge(entry.kind)) {
       const bridge = runtime.getBoardBridge(boardId);
       bridge?.sendPinEvent?.(pin, state);
@@ -189,6 +199,9 @@ function pushSerialByte(boardId: string, ch: string, uart: number): void {
     }
   } else if (isEsp32Bridge(entry.kind)) {
     const bridge = runtime.getEsp32Bridge(boardId);
+    bridge?.sendSerialBytes?.([ch.charCodeAt(0)], uart);
+  } else if (isStm32Bridge(entry.kind)) {
+    const bridge = runtime.getStm32Bridge(boardId);
     bridge?.sendSerialBytes?.([ch.charCodeAt(0)], uart);
   } else if (isPi3Bridge(entry.kind)) {
     const bridge = runtime.getBoardBridge(boardId);
@@ -226,7 +239,9 @@ function ensureBridgePinHook(entry: BoardEntry): void {
   if (!runtime) return;
   const bridge = isEsp32Bridge(entry.kind)
     ? runtime.getEsp32Bridge(entry.id)
-    : runtime.getBoardBridge(entry.id);
+    : isStm32Bridge(entry.kind)
+      ? runtime.getStm32Bridge(entry.id)
+      : runtime.getBoardBridge(entry.id);
   if (!bridge) return;
 
   // Already installed?
@@ -301,7 +316,9 @@ function ensureSerialHook(entry: BoardEntry): void {
   // Bridges: same pattern on bridge.onSerialData
   const bridge = isEsp32Bridge(entry.kind)
     ? runtime.getEsp32Bridge(entry.id)
-    : runtime.getBoardBridge(entry.id);
+    : isStm32Bridge(entry.kind)
+      ? runtime.getStm32Bridge(entry.id)
+      : runtime.getBoardBridge(entry.id);
   if (!bridge) return;
   if ((bridge as any).__icSerialHookInstalled) return;
   (bridge as any).__icSerialHookInstalled = true;

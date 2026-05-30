@@ -13,6 +13,7 @@ import { RaspberryPi5 } from '../velxio-components/RaspberryPi5';
 import { Esp32 } from '../velxio-components/Esp32';
 import { Attiny85 } from '../velxio-components/Attiny85';
 import { PiPicoW } from '../velxio-components/PiPicoW';
+import { Stm32BluePill, Stm32BlackPill } from '../velxio-components/Stm32BluePill';
 import { PinOverlay } from './PinOverlay';
 
 // Board visual dimensions (width × height) for the drag-overlay sizing.
@@ -31,8 +32,8 @@ const BOARD_SIZE: Record<string, { w: number; h: number }> = {
   // the boardKind name.
   'raspberry-pi-pico': { w: 105, h: 264 },
   'raspberry-pi-3': { w: 250, h: 160 }, // RaspberryPi3Element: PI_WIDTH=250 PI_HEIGHT=160
-  'raspberry-pi-4': { w: 250, h: 160 }, // RaspberryPi4Element — same 40-pin footprint
-  'raspberry-pi-5': { w: 250, h: 160 }, // RaspberryPi5Element — same 40-pin footprint
+  'raspberry-pi-4': { w: 330, h: 215 }, // RaspberryPi4Element — real board photo (925×602 @ scale)
+  'raspberry-pi-5': { w: 330, h: 220 }, // RaspberryPi5Element — real board photo (1024×681 @ scale)
   esp32: { w: 141, h: 265 }, // esp32-devkit-v1: 28.2 × 53 mm
   'esp32-s3': { w: 128, h: 350 }, // esp32-s3-devkitc-1: 25.5 × 70 mm
   'esp32-c3': { w: 127, h: 215 }, // esp32-c3-devkitm-1: 25.4 × 42.9 mm
@@ -44,6 +45,8 @@ const BOARD_SIZE: Record<string, { w: number; h: number }> = {
   'arduino-nano-esp32': { w: 217, h: 90 },
   'xiao-esp32-c3': { w: 91, h: 117 },
   'aitewinrobot-esp32c3-supermini': { w: 90, h: 123 },
+  'stm32-bluepill': { w: 114, h: 271 }, // 22.855 × 54.193 mm (wokwi-boards SVG)
+  'stm32-blackpill': { w: 103, h: 266 }, // 20.695 × 53.125 mm (wokwi-boards SVG)
   attiny85: { w: 160, h: 132 },
 };
 
@@ -116,6 +119,10 @@ export const BoardOnCanvas = ({
       case 'xiao-esp32-c3':
       case 'aitewinrobot-esp32c3-supermini':
         return <Esp32 id={id} x={x} y={y} boardKind={boardKind} />;
+      case 'stm32-bluepill':
+        return <Stm32BluePill id={id} x={x} y={y} />;
+      case 'stm32-blackpill':
+        return <Stm32BlackPill id={id} x={x} y={y} />;
       case 'attiny85':
         return <Attiny85 id={id} x={x} y={y} led1={led13} />;
     }

@@ -20,6 +20,8 @@ export type BoardKind =
   | 'esp32-c3' // RISC-V RV32IMC, QEMU backend
   | 'xiao-esp32-c3' // Seeed XIAO ESP32-C3, QEMU backend
   | 'aitewinrobot-esp32c3-supermini' // ESP32-C3 SuperMini, QEMU backend
+  | 'stm32-bluepill' // STM32F103C8 (Cortex-M3), QEMU backend (libqemu-arm)
+  | 'stm32-blackpill' // STM32F411CE (Cortex-M4), QEMU backend (libqemu-arm)
   | 'attiny85'; // AVR ATtiny85, browser emulation (avr8js)
 
 export type LanguageMode = 'arduino' | 'micropython';
@@ -29,6 +31,12 @@ export type LanguageMode = 'arduino' | 'micropython';
 export function isPiBoardKind(kind: BoardKind | string): boolean {
   return typeof kind === 'string' && kind.startsWith('raspberry-pi-')
     && kind !== 'raspberry-pi-pico';
+}
+
+/** True for STM32 boards backed by the QEMU bridge (libqemu-arm via
+ *  stm32_lib_manager). */
+export function isStm32BoardKind(kind: BoardKind | string): boolean {
+  return typeof kind === 'string' && kind.startsWith('stm32-');
 }
 
 export const BOARD_SUPPORTS_MICROPYTHON = new Set<BoardKind>([
@@ -104,6 +112,8 @@ export const BOARD_KIND_LABELS: Record<BoardKind, string> = {
   'esp32-c3': 'ESP32-C3 DevKit',
   'xiao-esp32-c3': 'XIAO ESP32-C3',
   'aitewinrobot-esp32c3-supermini': 'ESP32-C3 SuperMini',
+  'stm32-bluepill': 'STM32 Blue Pill',
+  'stm32-blackpill': 'STM32 Black Pill',
   attiny85: 'ATtiny85',
 };
 
@@ -129,5 +139,7 @@ export const BOARD_KIND_FQBN: Record<BoardKind, string | null> = {
   'esp32-c3': 'esp32:esp32:esp32c3',
   'xiao-esp32-c3': 'esp32:esp32:XIAO_ESP32C3',
   'aitewinrobot-esp32c3-supermini': 'esp32:esp32:esp32c3',
+  'stm32-bluepill': 'STMicroelectronics:stm32:GenF1:pnum=BLUEPILL_F103C8',
+  'stm32-blackpill': 'STMicroelectronics:stm32:GenF4:pnum=BLACKPILL_F411CE',
   attiny85: 'ATTinyCore:avr:attinyx5:chip=85,clock=16pll',
 };

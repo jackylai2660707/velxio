@@ -43,6 +43,7 @@ import { useIsCoarsePointer } from '../../utils/useTouchDevice';
 import type { ComponentMetadata } from '../../types/component-metadata';
 import type { BoardKind } from '../../types/board';
 import { BOARD_KIND_FQBN, BOARD_KIND_LABELS } from '../../types/board';
+import { boardGateDecision, proBoardFeatureName, triggerProUpgradePrompt } from '../../lib/proBoardGate';
 import { FlashModal } from './FlashModal';
 import { isTauri as isTauriRuntimeFn } from '../../desktop/tauriBridge';
 import { isEsp32Family } from '../../types/boardOptions';
@@ -2786,6 +2787,13 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
         onClose={() => setShowComponentPicker(false)}
         onSelectComponent={handleSelectComponent}
         onSelectBoard={(kind: BoardKind) => {
+          // Pro gate: STM32 + Raspberry Pi emulation is paid-only on the web.
+          // The overlay's gate returns 'block' for non-paid web users; show the
+          // upgrade prompt and skip the add. OSS / desktop / paid -> 'allow'.
+          if (boardGateDecision(kind) === 'block') {
+            triggerProUpgradePrompt(proBoardFeatureName(kind));
+            return;
+          }
           trackSelectBoard(kind);
           const sameKind = boards.filter((b) => b.boardKind === kind);
           const newBoardId = sameKind.length === 0 ? kind : `${kind}-${sameKind.length + 1}`;

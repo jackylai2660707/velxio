@@ -85,6 +85,1063 @@ export interface ExampleProject {
 
 const legacyExamples: ExampleProject[] = [
   {
+    id: 'stm32-bluepill-blink',
+    title: 'STM32 Blue Pill Blink',
+    description:
+      'Blink the onboard PC13 LED and print to Serial on an STM32F103 Blue Pill (QEMU / libqemu-arm)',
+    category: 'basics',
+    difficulty: 'beginner',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 100,
+        y: 100,
+        code: `// STM32 Blue Pill (STM32F103C8) blink + serial
+// Onboard LED is on PC13 (active LOW). Runs under QEMU via libqemu-arm.
+
+void setup() {
+  pinMode(PC13, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("velxio stm32 blink");
+}
+
+void loop() {
+  digitalWrite(PC13, HIGH);
+  delay(200);
+  digitalWrite(PC13, LOW);
+  delay(200);
+}`,
+      },
+    ],
+    code: '',
+    components: [],
+    wires: [],
+    tags: ['stm32', 'blue pill', 'f103', 'qemu', 'blink', 'cortex-m3'],
+  },
+  {
+    id: 'stm32-bluepill-serial-counter',
+    title: 'STM32 Serial Counter',
+    description:
+      'STM32 Blue Pill prints an incrementing counter and uptime to Serial every second. Open the Serial Monitor to watch it. Onboard PC13 LED blinks as a heartbeat.',
+    category: 'communication',
+    difficulty: 'beginner',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 100,
+        y: 100,
+        code: `// STM32 Blue Pill — serial counter (USART1, 115200 baud)
+unsigned long n = 0;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(PC13, OUTPUT);
+  Serial.println("STM32 Blue Pill ready");
+}
+
+void loop() {
+  n++;
+  Serial.print("count=");
+  Serial.print(n);
+  Serial.print("  uptime_ms=");
+  Serial.println(millis());
+  digitalWrite(PC13, n % 2 ? HIGH : LOW);  // heartbeat
+  delay(1000);
+}`,
+      },
+    ],
+    code: '',
+    components: [],
+    wires: [],
+    tags: ['stm32', 'blue pill', 'serial', 'usart', 'qemu'],
+  },
+  {
+    id: 'stm32-uno-gpio-mirror',
+    title: '[STM32 + Arduino] GPIO Mirror',
+    description:
+      'Cross-board demo: the STM32 Blue Pill toggles PA1 every 500 ms (wired to Arduino Uno pin 2). The Uno reads pin 2 and mirrors it to its built-in LED (pin 13). Shows heterogeneous multi-board simulation — QEMU STM32 driving an avr8js Arduino.',
+    category: 'communication',
+    difficulty: 'intermediate',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 80,
+        y: 100,
+        code: `// STM32 Blue Pill — drives PA1 as a 1 Hz square wave.
+// Wiring: STM32 PA1 -> Uno pin 2,  STM32 GND -> Uno GND.
+void setup() {
+  pinMode(PA1, OUTPUT);
+  pinMode(PC13, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("STM32 driving PA1");
+}
+
+void loop() {
+  digitalWrite(PA1, HIGH);
+  digitalWrite(PC13, LOW);   // onboard LED on (active-low)
+  Serial.println("PA1 -> HIGH");
+  delay(500);
+  digitalWrite(PA1, LOW);
+  digitalWrite(PC13, HIGH);
+  Serial.println("PA1 -> LOW");
+  delay(500);
+}`,
+      },
+      {
+        boardKind: 'arduino-uno',
+        x: 520,
+        y: 100,
+        code: `// Arduino Uno — reads pin 2 (from STM32 PA1) and mirrors to LED 13.
+const int IN_PIN = 2;
+void setup() {
+  pinMode(IN_PIN, INPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("Uno mirroring pin 2 -> LED 13");
+}
+void loop() {
+  int v = digitalRead(IN_PIN);
+  digitalWrite(LED_BUILTIN, v);
+  Serial.print("pin2=");
+  Serial.println(v ? "HIGH" : "LOW");
+  delay(100);
+}`,
+      },
+    ],
+    code: '',
+    components: [],
+    wires: [
+      {
+        id: 'w-pa1-d2',
+        start: { componentId: 'stm32-bluepill', pinName: 'PA1' },
+        end: { componentId: 'arduino-uno', pinName: '2' },
+        color: '#22cc22',
+      },
+      {
+        id: 'w-gnd',
+        start: { componentId: 'stm32-bluepill', pinName: 'GND' },
+        end: { componentId: 'arduino-uno', pinName: 'GND' },
+        color: '#000000',
+      },
+    ],
+    tags: ['stm32', 'arduino', 'multi-board', 'gpio', 'interconnect', 'qemu'],
+  },
+  {
+    id: 'stm32-uno-serial-link',
+    title: '[STM32 + Arduino] Serial Link',
+    description:
+      'Cross-board UART: the STM32 Blue Pill sends a "PING n" message over USART1 (PA9 TX) into the Arduino Uno RX (pin 0). The Uno reads each line and blinks LED 13 + echoes "[Uno] got: ..." to its own Serial Monitor. Watch both monitors.',
+    category: 'communication',
+    difficulty: 'intermediate',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 80,
+        y: 100,
+        code: `// STM32 Blue Pill — sends PING over USART1 (PA9 = TX).
+// Wiring: STM32 PA9 -> Uno pin 0 (RX),  STM32 GND -> Uno GND.
+unsigned long n = 0;
+void setup() {
+  Serial.begin(9600);   // USART1
+  pinMode(PC13, OUTPUT);
+}
+void loop() {
+  n++;
+  Serial.print("PING ");
+  Serial.println(n);
+  digitalWrite(PC13, n % 2 ? HIGH : LOW);
+  delay(1000);
+}`,
+      },
+      {
+        boardKind: 'arduino-uno',
+        x: 520,
+        y: 100,
+        code: `// Arduino Uno — receives lines from STM32 on RX (pin 0), blinks LED 13.
+String buf;
+void setup() {
+  Serial.begin(9600);
+  pinMode(LED_BUILTIN, OUTPUT);
+}
+void loop() {
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\\n') {
+      Serial.print("[Uno] got: ");
+      Serial.println(buf);
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+      buf = "";
+    } else if (c != '\\r') {
+      buf += c;
+    }
+  }
+}`,
+      },
+    ],
+    code: '',
+    components: [],
+    wires: [
+      {
+        id: 'w-tx-rx',
+        start: { componentId: 'stm32-bluepill', pinName: 'PA9' },
+        end: { componentId: 'arduino-uno', pinName: '0' },
+        color: '#ff8800',
+      },
+      {
+        id: 'w-gnd',
+        start: { componentId: 'stm32-bluepill', pinName: 'GND' },
+        end: { componentId: 'arduino-uno', pinName: 'GND' },
+        color: '#000000',
+      },
+    ],
+    tags: ['stm32', 'arduino', 'multi-board', 'serial', 'uart', 'interconnect', 'qemu'],
+  },
+  {
+    id: 'stm32-esp32-gpio-sync',
+    title: '[STM32 + ESP32] GPIO Sync',
+    description:
+      'Cross-board demo: the STM32 Blue Pill toggles PA1 (wired to ESP32 GPIO4). The ESP32 reads GPIO4 and prints its state + mirrors it onto GPIO2. Two QEMU backends (libqemu-arm + libqemu-xtensa) talking over a wire.',
+    category: 'communication',
+    difficulty: 'advanced',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 80,
+        y: 100,
+        code: `// STM32 Blue Pill — drives PA1 at 1 Hz.
+// Wiring: STM32 PA1 -> ESP32 GPIO4,  STM32 GND -> ESP32 GND.
+void setup() {
+  pinMode(PA1, OUTPUT);
+  pinMode(PC13, OUTPUT);
+  Serial.begin(115200);
+}
+void loop() {
+  digitalWrite(PA1, HIGH); digitalWrite(PC13, LOW);
+  Serial.println("PA1 HIGH"); delay(700);
+  digitalWrite(PA1, LOW);  digitalWrite(PC13, HIGH);
+  Serial.println("PA1 LOW");  delay(700);
+}`,
+      },
+      {
+        boardKind: 'esp32',
+        x: 520,
+        y: 100,
+        code: `// ESP32 — reads GPIO4 (from STM32 PA1), mirrors to GPIO2.
+void setup() {
+  pinMode(4, INPUT);
+  pinMode(2, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("ESP32 watching GPIO4");
+}
+void loop() {
+  int v = digitalRead(4);
+  digitalWrite(2, v);
+  Serial.print("GPIO4=");
+  Serial.println(v);
+  delay(100);
+}`,
+      },
+    ],
+    code: '',
+    components: [],
+    wires: [
+      {
+        id: 'w-pa1-gpio4',
+        start: { componentId: 'stm32-bluepill', pinName: 'PA1' },
+        end: { componentId: 'esp32', pinName: '4' },
+        color: '#22cc22',
+      },
+      {
+        id: 'w-gnd',
+        start: { componentId: 'stm32-bluepill', pinName: 'GND' },
+        end: { componentId: 'esp32', pinName: 'GND' },
+        color: '#000000',
+      },
+    ],
+    tags: ['stm32', 'esp32', 'multi-board', 'gpio', 'interconnect', 'qemu'],
+  },
+  {
+    id: 'stm32-blackpill-blink',
+    title: 'STM32 Black Pill Blink',
+    description:
+      'Blink the onboard PC13 LED and print to Serial on an STM32F411 Black Pill (Cortex-M4, QEMU / libqemu-arm).',
+    category: 'basics',
+    difficulty: 'beginner',
+    boardFilter: 'stm32-blackpill',
+    boards: [
+      {
+        boardKind: 'stm32-blackpill',
+        x: 100,
+        y: 100,
+        code: `// STM32 Black Pill (STM32F411CE, Cortex-M4) blink + serial.
+// Onboard LED is on PC13 (active LOW).
+void setup() {
+  pinMode(PC13, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("velxio black pill blink");
+}
+
+void loop() {
+  digitalWrite(PC13, LOW);   // LED on (active-low)
+  delay(150);
+  digitalWrite(PC13, HIGH);  // LED off
+  delay(150);
+}`,
+      },
+    ],
+    code: '',
+    components: [],
+    wires: [],
+    tags: ['stm32', 'black pill', 'f411', 'cortex-m4', 'qemu', 'blink'],
+  },
+  {
+    id: 'stm32-bluepill-blackpill-gpio',
+    title: '[STM32 + STM32] Blue Pill → Black Pill',
+    description:
+      'Two different STM32 boards talking: the Blue Pill (F103) toggles PA1, wired to the Black Pill (F411) PA0. The Black Pill reads PA0 and mirrors it to its onboard PC13 LED. Both run on separate libqemu-arm QEMU instances.',
+    category: 'communication',
+    difficulty: 'intermediate',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 80,
+        y: 100,
+        code: `// Blue Pill (F103) — drives PA1 at ~1.5 Hz.
+// Wiring: BluePill PA1 -> BlackPill PA0,  GND -> GND.
+void setup() {
+  pinMode(PA1, OUTPUT);
+  pinMode(PC13, OUTPUT);
+  Serial.begin(115200);
+}
+void loop() {
+  digitalWrite(PA1, HIGH); digitalWrite(PC13, LOW);
+  Serial.println("PA1 HIGH"); delay(350);
+  digitalWrite(PA1, LOW);  digitalWrite(PC13, HIGH);
+  Serial.println("PA1 LOW");  delay(350);
+}`,
+      },
+      {
+        boardKind: 'stm32-blackpill',
+        x: 480,
+        y: 100,
+        code: `// Black Pill (F411) — reads PA0 (from Blue Pill PA1), mirrors to PC13 LED.
+void setup() {
+  pinMode(PA0, INPUT);
+  pinMode(PC13, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("Black Pill watching PA0");
+}
+void loop() {
+  int v = digitalRead(PA0);
+  digitalWrite(PC13, v ? LOW : HIGH);  // PC13 active-low: LED on when PA0 HIGH
+  Serial.print("PA0=");
+  Serial.println(v ? "HIGH" : "LOW");
+  delay(80);
+}`,
+      },
+    ],
+    code: '',
+    components: [],
+    wires: [
+      {
+        id: 'w-pa1-pa0',
+        start: { componentId: 'stm32-bluepill', pinName: 'PA1' },
+        end: { componentId: 'stm32-blackpill', pinName: 'PA0' },
+        color: '#22cc22',
+      },
+      {
+        id: 'w-gnd',
+        start: { componentId: 'stm32-bluepill', pinName: 'GND' },
+        end: { componentId: 'stm32-blackpill', pinName: 'GND' },
+        color: '#000000',
+      },
+    ],
+    tags: ['stm32', 'blue pill', 'black pill', 'multi-board', 'gpio', 'interconnect', 'qemu'],
+  },
+  {
+    id: 'stm32-bluepill-bmp280',
+    title: 'STM32: BMP280 Weather Sensor (I2C)',
+    description:
+      'Read temperature and pressure from a BMP280 over I2C1 on an STM32 Blue Pill (SCL=PB6, SDA=PB7). The sensor runs as a QEMU I2C slave; values stream to the Serial Monitor. Demonstrates the STM32 hardware I2C master peripheral end to end.',
+    libraries: ['Adafruit BMP280 Library', 'Adafruit Unified Sensor'],
+    category: 'sensors',
+    difficulty: 'intermediate',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 100,
+        y: 90,
+        code: `// STM32 Blue Pill (F103) — BMP280 over I2C1
+// Wiring: SDA -> PB7  |  SCL -> PB6  |  VCC -> 3V3  |  GND -> GND
+// Requires: Adafruit BMP280 Library, Adafruit Unified Sensor
+
+#include <Wire.h>
+#include <Adafruit_BMP280.h>
+
+Adafruit_BMP280 bmp;   // I2C
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();        // I2C1: SCL=PB6, SDA=PB7
+  if (!bmp.begin(0x76)) {
+    Serial.println("BMP280 not found! Check wiring.");
+    while (true) delay(10);
+  }
+  bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,
+                  Adafruit_BMP280::SAMPLING_X2,
+                  Adafruit_BMP280::SAMPLING_X16,
+                  Adafruit_BMP280::FILTER_X16,
+                  Adafruit_BMP280::STANDBY_MS_500);
+  Serial.println("BMP280 ready");
+}
+
+void loop() {
+  float tempC    = bmp.readTemperature();
+  float pressure = bmp.readPressure() / 100.0F; // hPa
+  Serial.print("Temp: ");
+  Serial.print(tempC);
+  Serial.print(" C  Pressure: ");
+  Serial.print(pressure);
+  Serial.println(" hPa");
+  delay(2000);
+}`,
+      },
+    ],
+    code: '',
+    components: [
+      {
+        type: 'velxio-bmp280',
+        id: 'bmp1',
+        x: 460,
+        y: 150,
+        properties: { temperature: '25', pressure: '1013.25' },
+      },
+    ],
+    wires: [
+      {
+        id: 'bmp-vcc',
+        start: { componentId: 'stm32-bluepill', pinName: '3V3' },
+        end: { componentId: 'bmp1', pinName: 'VCC' },
+        color: '#ff4444',
+      },
+      {
+        id: 'bmp-gnd',
+        start: { componentId: 'stm32-bluepill', pinName: 'GND' },
+        end: { componentId: 'bmp1', pinName: 'GND' },
+        color: '#000000',
+      },
+      {
+        id: 'bmp-sda',
+        start: { componentId: 'stm32-bluepill', pinName: 'PB7' },
+        end: { componentId: 'bmp1', pinName: 'SDA' },
+        color: '#22aaff',
+      },
+      {
+        id: 'bmp-scl',
+        start: { componentId: 'stm32-bluepill', pinName: 'PB6' },
+        end: { componentId: 'bmp1', pinName: 'SCL' },
+        color: '#ff8800',
+      },
+    ],
+    tags: ['stm32', 'blue pill', 'i2c', 'bmp280', 'sensor', 'qemu'],
+  },
+  {
+    id: 'stm32-bluepill-oled',
+    title: 'STM32: SSD1306 OLED Display (I2C)',
+    description:
+      'Drive a 128x64 SSD1306 OLED over I2C1 from an STM32 Blue Pill (SCL=PB6, SDA=PB7). The framebuffer writes are captured by the QEMU I2C slave and rendered on the canvas. Shows "Hello Velxio!" with a live frame counter.',
+    libraries: ['Adafruit SSD1306', 'Adafruit GFX Library'],
+    category: 'displays',
+    difficulty: 'intermediate',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 100,
+        y: 90,
+        code: `// STM32 Blue Pill (F103) — SSD1306 128x64 OLED over I2C1
+// Wiring: SDA -> PB7  |  SCL -> PB6  |  VCC -> 3V3  |  GND -> GND
+// Requires: Adafruit SSD1306, Adafruit GFX Library
+
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+int counter = 0;
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();        // I2C1: SCL=PB6, SDA=PB7
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("SSD1306 not found!");
+    while (true) delay(10);
+  }
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println("Hello");
+  display.println("Velxio!");
+  display.display();
+  Serial.println("OLED ready");
+}
+
+void loop() {
+  counter++;
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println("Hello");
+  display.println("Velxio!");
+  display.setTextSize(1);
+  display.setCursor(0, 48);
+  display.print("Count: ");
+  display.print(counter);
+  display.display();
+  Serial.print("Frame: ");
+  Serial.println(counter);
+  delay(1000);
+}`,
+      },
+    ],
+    code: '',
+    components: [{ type: 'wokwi-ssd1306', id: 'oled1', x: 460, y: 120, properties: {} }],
+    wires: [
+      {
+        id: 'oled-vcc',
+        start: { componentId: 'stm32-bluepill', pinName: '3V3' },
+        end: { componentId: 'oled1', pinName: 'VIN' },
+        color: '#ff4444',
+      },
+      {
+        id: 'oled-gnd',
+        start: { componentId: 'stm32-bluepill', pinName: 'GND' },
+        end: { componentId: 'oled1', pinName: 'GND' },
+        color: '#000000',
+      },
+      {
+        id: 'oled-sda',
+        start: { componentId: 'stm32-bluepill', pinName: 'PB7' },
+        end: { componentId: 'oled1', pinName: 'DATA' },
+        color: '#22aaff',
+      },
+      {
+        id: 'oled-scl',
+        start: { componentId: 'stm32-bluepill', pinName: 'PB6' },
+        end: { componentId: 'oled1', pinName: 'CLK' },
+        color: '#ff8800',
+      },
+    ],
+    tags: ['stm32', 'blue pill', 'i2c', 'ssd1306', 'oled', 'display', 'qemu'],
+  },
+  {
+    id: 'stm32-bluepill-mpu6050',
+    title: 'STM32: MPU6050 IMU (I2C)',
+    description:
+      'Read the WHO_AM_I id and accelerometer axes from an MPU6050 6-axis IMU over I2C1 on the STM32 Blue Pill (SCL=PB6, SDA=PB7). The sensor runs as a QEMU I2C slave; raw Wire reads stream to the Serial Monitor.',
+    category: 'sensors',
+    difficulty: 'intermediate',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 100,
+        y: 90,
+        code: `// STM32 Blue Pill (F103) — MPU6050 6-axis IMU over I2C1
+// Wiring: SDA -> PB7  |  SCL -> PB6  |  VCC -> 3V3  |  GND -> GND
+#include <Wire.h>
+
+const uint8_t MPU = 0x68;
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();              // I2C1: SCL=PB6, SDA=PB7
+  // Wake the device (clear SLEEP bit in PWR_MGMT_1).
+  Wire.beginTransmission(MPU); Wire.write(0x6B); Wire.write(0x00); Wire.endTransmission();
+  // WHO_AM_I (0x75) should read 0x68.
+  Wire.beginTransmission(MPU); Wire.write(0x75); Wire.endTransmission(false);
+  Wire.requestFrom(MPU, (uint8_t)1);
+  uint8_t who = Wire.read();
+  Serial.print("MPU6050 WHO_AM_I = 0x"); Serial.println(who, HEX);
+}
+
+void loop() {
+  // Burst-read the 6 accelerometer bytes starting at ACCEL_XOUT_H (0x3B).
+  Wire.beginTransmission(MPU); Wire.write(0x3B); Wire.endTransmission(false);
+  Wire.requestFrom(MPU, (uint8_t)6);
+  int16_t ax = (Wire.read() << 8) | Wire.read();
+  int16_t ay = (Wire.read() << 8) | Wire.read();
+  int16_t az = (Wire.read() << 8) | Wire.read();
+  Serial.print("AX="); Serial.print(ax);
+  Serial.print("  AY="); Serial.print(ay);
+  Serial.print("  AZ="); Serial.println(az);
+  delay(1000);
+}`,
+      },
+    ],
+    code: '',
+    components: [
+      { type: 'wokwi-mpu6050', id: 'mpu1', x: 460, y: 150, properties: {} },
+    ],
+    wires: [
+      { id: 'mpu-vcc', start: { componentId: 'stm32-bluepill', pinName: '3V3' }, end: { componentId: 'mpu1', pinName: 'VCC' }, color: '#ff4444' },
+      { id: 'mpu-gnd', start: { componentId: 'stm32-bluepill', pinName: 'GND' }, end: { componentId: 'mpu1', pinName: 'GND' }, color: '#000000' },
+      { id: 'mpu-sda', start: { componentId: 'stm32-bluepill', pinName: 'PB7' }, end: { componentId: 'mpu1', pinName: 'SDA' }, color: '#22aaff' },
+      { id: 'mpu-scl', start: { componentId: 'stm32-bluepill', pinName: 'PB6' }, end: { componentId: 'mpu1', pinName: 'SCL' }, color: '#ff8800' },
+    ],
+    tags: ['stm32', 'blue pill', 'i2c', 'mpu6050', 'imu', 'sensor', 'qemu'],
+  },
+  {
+    id: 'stm32-bluepill-rtc',
+    title: 'STM32: DS1307 RTC Clock (I2C)',
+    description:
+      'Read the current time and date from a DS1307 real-time clock over I2C1 on the STM32 Blue Pill (SCL=PB6, SDA=PB7). The QEMU DS1307 slave returns the live system clock in BCD, ticking once a second in the Serial Monitor.',
+    category: 'sensors',
+    difficulty: 'intermediate',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 100,
+        y: 90,
+        code: `// STM32 Blue Pill (F103) — DS1307 RTC over I2C1
+// Wiring: SDA -> PB7  |  SCL -> PB6  |  VCC -> 3V3  |  GND -> GND
+#include <Wire.h>
+
+const uint8_t DS_ADDR = 0x68;   // 'RTC' is a reserved STM32 HAL macro
+
+uint8_t bcd2dec(uint8_t b) { return (b >> 4) * 10 + (b & 0x0F); }
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();              // I2C1: SCL=PB6, SDA=PB7
+  Serial.println("DS1307 RTC ready");
+}
+
+void loop() {
+  // Read 7 timekeeping registers starting at 0x00.
+  Wire.beginTransmission(DS_ADDR); Wire.write(0x00); Wire.endTransmission(false);
+  Wire.requestFrom(DS_ADDR, (uint8_t)7);
+  uint8_t ss = bcd2dec(Wire.read() & 0x7F);
+  uint8_t mm = bcd2dec(Wire.read());
+  uint8_t hh = bcd2dec(Wire.read() & 0x3F);
+  Wire.read();                       // day-of-week (unused)
+  uint8_t dd = bcd2dec(Wire.read());
+  uint8_t mo = bcd2dec(Wire.read());
+  uint8_t yy = bcd2dec(Wire.read());
+  char buf[48];
+  sprintf(buf, "Time %02d:%02d:%02d   Date %02d/%02d/20%02d", hh, mm, ss, dd, mo, yy);
+  Serial.println(buf);
+  delay(1000);
+}`,
+      },
+    ],
+    code: '',
+    components: [
+      { type: 'wokwi-ds1307', id: 'rtc1', x: 460, y: 150, properties: {} },
+    ],
+    wires: [
+      { id: 'rtc-vcc', start: { componentId: 'stm32-bluepill', pinName: '3V3' }, end: { componentId: 'rtc1', pinName: 'VCC' }, color: '#ff4444' },
+      { id: 'rtc-gnd', start: { componentId: 'stm32-bluepill', pinName: 'GND' }, end: { componentId: 'rtc1', pinName: 'GND' }, color: '#000000' },
+      { id: 'rtc-sda', start: { componentId: 'stm32-bluepill', pinName: 'PB7' }, end: { componentId: 'rtc1', pinName: 'SDA' }, color: '#22aaff' },
+      { id: 'rtc-scl', start: { componentId: 'stm32-bluepill', pinName: 'PB6' }, end: { componentId: 'rtc1', pinName: 'SCL' }, color: '#ff8800' },
+    ],
+    tags: ['stm32', 'blue pill', 'i2c', 'ds1307', 'rtc', 'clock', 'qemu'],
+  },
+  {
+    id: 'stm32-blackpill-oled',
+    title: 'STM32 Black Pill: SSD1306 OLED (I2C)',
+    description:
+      'Drive a 128x64 SSD1306 OLED over I2C1 from an STM32 Black Pill (F411, Cortex-M4; SCL=PB6, SDA=PB7). Proves the I2C display path works on the F4 board too. Shows "Black Pill" with a live counter.',
+    libraries: ['Adafruit SSD1306', 'Adafruit GFX Library'],
+    category: 'displays',
+    difficulty: 'intermediate',
+    boardFilter: 'stm32-blackpill',
+    boards: [
+      {
+        boardKind: 'stm32-blackpill',
+        x: 100,
+        y: 90,
+        code: `// STM32 Black Pill (F411) — SSD1306 128x64 OLED over I2C1
+// Wiring: SDA -> PB7  |  SCL -> PB6  |  VCC -> 3V3  |  GND -> GND
+// Requires: Adafruit SSD1306, Adafruit GFX Library
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
+int counter = 0;
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("SSD1306 not found!");
+    while (true) delay(10);
+  }
+  Serial.println("OLED ready");
+}
+
+void loop() {
+  counter++;
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+  display.setTextSize(2);
+  display.setCursor(0, 0);
+  display.println("Black");
+  display.println("Pill F4");
+  display.setTextSize(1);
+  display.setCursor(0, 52);
+  display.print("count: "); display.print(counter);
+  display.display();
+  Serial.print("Frame: "); Serial.println(counter);
+  delay(1000);
+}`,
+      },
+    ],
+    code: '',
+    components: [{ type: 'wokwi-ssd1306', id: 'bpoled1', x: 460, y: 120, properties: {} }],
+    wires: [
+      { id: 'bpo-vcc', start: { componentId: 'stm32-blackpill', pinName: '3V3' }, end: { componentId: 'bpoled1', pinName: 'VIN' }, color: '#ff4444' },
+      { id: 'bpo-gnd', start: { componentId: 'stm32-blackpill', pinName: 'GND' }, end: { componentId: 'bpoled1', pinName: 'GND' }, color: '#000000' },
+      { id: 'bpo-sda', start: { componentId: 'stm32-blackpill', pinName: 'PB7' }, end: { componentId: 'bpoled1', pinName: 'DATA' }, color: '#22aaff' },
+      { id: 'bpo-scl', start: { componentId: 'stm32-blackpill', pinName: 'PB6' }, end: { componentId: 'bpoled1', pinName: 'CLK' }, color: '#ff8800' },
+    ],
+    tags: ['stm32', 'black pill', 'f411', 'i2c', 'ssd1306', 'oled', 'qemu'],
+  },
+  {
+    id: 'stm32-bluepill-weather-station',
+    title: 'STM32: Weather Station (BMP280 + OLED)',
+    description:
+      'A complete I2C dashboard on the STM32 Blue Pill: read temperature and pressure from a BMP280 and render them live on an SSD1306 OLED, both sharing the same I2C1 bus (BMP280 0x76, OLED 0x3C, SCL=PB6/SDA=PB7). Exercises I2C read and write on one bus.',
+    libraries: ['Adafruit BMP280 Library', 'Adafruit Unified Sensor', 'Adafruit SSD1306', 'Adafruit GFX Library'],
+    category: 'sensors',
+    difficulty: 'intermediate',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 100,
+        y: 90,
+        code: `// STM32 Blue Pill (F103) — Weather station: BMP280 + SSD1306 on one I2C bus
+// Wiring: both devices SDA -> PB7, SCL -> PB6, VCC -> 3V3, GND -> GND
+// Requires: Adafruit BMP280 Library, Adafruit Unified Sensor, Adafruit SSD1306, Adafruit GFX Library
+#include <Wire.h>
+#include <Adafruit_BMP280.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+Adafruit_BMP280 bmp;
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();
+  if (!bmp.begin(0x76)) Serial.println("BMP280 not found");
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) Serial.println("OLED not found");
+  display.setTextColor(SSD1306_WHITE);
+  Serial.println("Weather station ready");
+}
+
+void loop() {
+  float t = bmp.readTemperature();
+  float p = bmp.readPressure() / 100.0F;   // hPa
+  display.clearDisplay();
+  display.setTextSize(1); display.setCursor(0, 0);
+  display.println("Velxio Weather");
+  display.setTextSize(2); display.setCursor(0, 16);
+  display.print(t, 1); display.println(" C");
+  display.setTextSize(1); display.setCursor(0, 52);
+  display.print(p, 1); display.print(" hPa");
+  display.display();
+  Serial.print("T="); Serial.print(t); Serial.print(" C  P="); Serial.print(p); Serial.println(" hPa");
+  delay(1000);
+}`,
+      },
+    ],
+    code: '',
+    components: [
+      { type: 'velxio-bmp280', id: 'wbmp1', x: 470, y: 80, properties: { temperature: '23.5', pressure: '1011.2' } },
+      { type: 'wokwi-ssd1306', id: 'woled1', x: 470, y: 250, properties: {} },
+    ],
+    wires: [
+      { id: 'w-bmp-vcc', start: { componentId: 'stm32-bluepill', pinName: '3V3' }, end: { componentId: 'wbmp1', pinName: 'VCC' }, color: '#ff4444' },
+      { id: 'w-bmp-gnd', start: { componentId: 'stm32-bluepill', pinName: 'GND' }, end: { componentId: 'wbmp1', pinName: 'GND' }, color: '#000000' },
+      { id: 'w-bmp-sda', start: { componentId: 'stm32-bluepill', pinName: 'PB7' }, end: { componentId: 'wbmp1', pinName: 'SDA' }, color: '#22aaff' },
+      { id: 'w-bmp-scl', start: { componentId: 'stm32-bluepill', pinName: 'PB6' }, end: { componentId: 'wbmp1', pinName: 'SCL' }, color: '#ff8800' },
+      { id: 'w-oled-vcc', start: { componentId: 'wbmp1', pinName: 'VCC' }, end: { componentId: 'woled1', pinName: 'VIN' }, color: '#ff4444' },
+      { id: 'w-oled-gnd', start: { componentId: 'wbmp1', pinName: 'GND' }, end: { componentId: 'woled1', pinName: 'GND' }, color: '#000000' },
+      { id: 'w-oled-sda', start: { componentId: 'wbmp1', pinName: 'SDA' }, end: { componentId: 'woled1', pinName: 'DATA' }, color: '#22aaff' },
+      { id: 'w-oled-scl', start: { componentId: 'wbmp1', pinName: 'SCL' }, end: { componentId: 'woled1', pinName: 'CLK' }, color: '#ff8800' },
+    ],
+    tags: ['stm32', 'blue pill', 'i2c', 'bmp280', 'ssd1306', 'weather', 'dashboard', 'qemu'],
+  },
+  {
+    id: 'stm32-bluepill-7segment',
+    title: 'STM32: 7-Segment Counter',
+    description:
+      'Count 0-9 on a 7-segment display driven by seven GPIO pins (PA0-PA6 = segments A-G) on the STM32 Blue Pill. Pure digital output: each digit pattern is written to the segment pins. Common-cathode (COM -> GND).',
+    category: 'basics',
+    difficulty: 'beginner',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 100,
+        y: 90,
+        code: `// STM32 Blue Pill (F103) — 7-segment counter 0-9
+// Segments A..G on PA0..PA6, common cathode (COM -> GND).
+const int seg[7] = { PA0, PA1, PA2, PA3, PA4, PA5, PA6 }; // A B C D E F G
+// Bit i (i=0..6) maps to segment seg[i]. 1 = segment lit.
+const uint8_t pattern[10] = {
+  0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F
+};
+
+void setup() {
+  Serial.begin(115200);
+  for (int i = 0; i < 7; i++) pinMode(seg[i], OUTPUT);
+}
+
+void loop() {
+  for (int d = 0; d < 10; d++) {
+    uint8_t p = pattern[d];
+    for (int i = 0; i < 7; i++) digitalWrite(seg[i], (p >> i) & 1);
+    Serial.print("digit = "); Serial.println(d);
+    delay(800);
+  }
+}`,
+      },
+    ],
+    code: '',
+    components: [
+      { type: 'wokwi-7segment', id: 'seg1', x: 470, y: 140, properties: { common: 'cathode' } },
+    ],
+    wires: [
+      { id: 's-a', start: { componentId: 'stm32-bluepill', pinName: 'PA0' }, end: { componentId: 'seg1', pinName: 'A' }, color: '#ff5555' },
+      { id: 's-b', start: { componentId: 'stm32-bluepill', pinName: 'PA1' }, end: { componentId: 'seg1', pinName: 'B' }, color: '#ff9955' },
+      { id: 's-c', start: { componentId: 'stm32-bluepill', pinName: 'PA2' }, end: { componentId: 'seg1', pinName: 'C' }, color: '#ffdd55' },
+      { id: 's-d', start: { componentId: 'stm32-bluepill', pinName: 'PA3' }, end: { componentId: 'seg1', pinName: 'D' }, color: '#88dd55' },
+      { id: 's-e', start: { componentId: 'stm32-bluepill', pinName: 'PA4' }, end: { componentId: 'seg1', pinName: 'E' }, color: '#55ddcc' },
+      { id: 's-f', start: { componentId: 'stm32-bluepill', pinName: 'PA5' }, end: { componentId: 'seg1', pinName: 'F' }, color: '#5599ff' },
+      { id: 's-g', start: { componentId: 'stm32-bluepill', pinName: 'PA6' }, end: { componentId: 'seg1', pinName: 'G' }, color: '#aa77ff' },
+      { id: 's-com', start: { componentId: 'stm32-bluepill', pinName: 'GND' }, end: { componentId: 'seg1', pinName: 'COM' }, color: '#000000' },
+    ],
+    tags: ['stm32', 'blue pill', 'gpio', '7-segment', 'display', 'counter'],
+  },
+  {
+    id: 'stm32-bluepill-rgb',
+    title: 'STM32: RGB LED Color Cycle',
+    description:
+      'Cycle an RGB LED through red, green and blue using three GPIO pins (PA0=R, PA1=G, PA2=B) on the STM32 Blue Pill. Pure digital output; common-cathode (COM -> GND).',
+    category: 'basics',
+    difficulty: 'beginner',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 100,
+        y: 90,
+        code: `// STM32 Blue Pill (F103) — RGB LED color cycle
+// R=PA0, G=PA1, B=PA2, common cathode (COM -> GND).
+const int PIN_R = PA0, PIN_G = PA1, PIN_B = PA2;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(PIN_R, OUTPUT); pinMode(PIN_G, OUTPUT); pinMode(PIN_B, OUTPUT);
+}
+
+void show(bool r, bool g, bool b, const char* name) {
+  digitalWrite(PIN_R, r); digitalWrite(PIN_G, g); digitalWrite(PIN_B, b);
+  Serial.println(name);
+  delay(700);
+}
+
+void loop() {
+  show(true,  false, false, "RED");
+  show(false, true,  false, "GREEN");
+  show(false, false, true,  "BLUE");
+  show(true,  true,  false, "YELLOW");
+  show(false, true,  true,  "CYAN");
+  show(true,  false, true,  "MAGENTA");
+}`,
+      },
+    ],
+    code: '',
+    components: [
+      { type: 'wokwi-rgb-led', id: 'rgb1', x: 470, y: 150, properties: {} },
+    ],
+    wires: [
+      { id: 'rgb-r', start: { componentId: 'stm32-bluepill', pinName: 'PA0' }, end: { componentId: 'rgb1', pinName: 'R' }, color: '#ff3333' },
+      { id: 'rgb-g', start: { componentId: 'stm32-bluepill', pinName: 'PA1' }, end: { componentId: 'rgb1', pinName: 'G' }, color: '#33cc33' },
+      { id: 'rgb-b', start: { componentId: 'stm32-bluepill', pinName: 'PA2' }, end: { componentId: 'rgb1', pinName: 'B' }, color: '#3366ff' },
+      { id: 'rgb-com', start: { componentId: 'stm32-bluepill', pinName: 'GND' }, end: { componentId: 'rgb1', pinName: 'COM' }, color: '#000000' },
+    ],
+    tags: ['stm32', 'blue pill', 'gpio', 'rgb-led', 'led'],
+  },
+  {
+    id: 'stm32-bluepill-button',
+    title: 'STM32: Push Button -> LED',
+    description:
+      'Read a push button on PA0 (INPUT_PULLUP) and mirror it to the onboard PC13 LED on the STM32 Blue Pill. Pressing the button drives the GPIO input LOW; the firmware lights the LED while pressed. Demonstrates GPIO input injection.',
+    category: 'basics',
+    difficulty: 'beginner',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 100,
+        y: 90,
+        code: `// STM32 Blue Pill (F103) — push button on PA0 -> onboard PC13 LED
+// Button between PA0 and GND. PC13 LED is active-LOW.
+const int BTN = PA0;
+const int LED = PC13;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(BTN, INPUT_PULLUP);
+  pinMode(LED, OUTPUT);
+  digitalWrite(LED, HIGH);     // LED off (active-low)
+  Serial.println("Press the button");
+}
+
+void loop() {
+  bool pressed = (digitalRead(BTN) == LOW);
+  digitalWrite(LED, pressed ? LOW : HIGH);   // pressed -> LED on
+  static bool last = false;
+  if (pressed != last) {
+    Serial.println(pressed ? "PRESSED -> LED ON" : "released -> LED OFF");
+    last = pressed;
+  }
+  delay(20);
+}`,
+      },
+    ],
+    code: '',
+    components: [
+      { type: 'wokwi-pushbutton', id: 'btn1', x: 470, y: 160, properties: { color: 'green' } },
+    ],
+    wires: [
+      { id: 'btn-sig', start: { componentId: 'stm32-bluepill', pinName: 'PA0' }, end: { componentId: 'btn1', pinName: '1.l' }, color: '#22aaff' },
+      { id: 'btn-gnd', start: { componentId: 'stm32-bluepill', pinName: 'GND' }, end: { componentId: 'btn1', pinName: '2.l' }, color: '#000000' },
+    ],
+    tags: ['stm32', 'blue pill', 'gpio', 'button', 'input', 'pushbutton'],
+  },
+  {
+    id: 'stm32-bluepill-switch',
+    title: 'STM32: Slide Switch -> LED',
+    description:
+      'Read a slide switch on PA0 and reflect its position on the onboard PC13 LED of the STM32 Blue Pill. Flipping the switch drives the GPIO input HIGH/LOW. Demonstrates GPIO input injection from a latching element.',
+    category: 'basics',
+    difficulty: 'beginner',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 100,
+        y: 90,
+        code: `// STM32 Blue Pill (F103) — slide switch on PA0 -> onboard PC13 LED
+// Switch common (pin 2) -> PA0, ends to GND / 3V3. PC13 LED is active-LOW.
+const int SW = PA0;
+const int LED = PC13;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(SW, INPUT);
+  pinMode(LED, OUTPUT);
+  Serial.println("Flip the switch");
+}
+
+void loop() {
+  bool on = (digitalRead(SW) == HIGH);
+  digitalWrite(LED, on ? LOW : HIGH);    // switch ON -> LED on
+  static int last = -1;
+  if ((int)on != last) {
+    Serial.println(on ? "switch ON  -> LED ON" : "switch OFF -> LED OFF");
+    last = on;
+  }
+  delay(50);
+}`,
+      },
+    ],
+    code: '',
+    components: [
+      { type: 'wokwi-slide-switch', id: 'sw1', x: 470, y: 160, properties: {} },
+    ],
+    wires: [
+      { id: 'sw-sig', start: { componentId: 'stm32-bluepill', pinName: 'PA0' }, end: { componentId: 'sw1', pinName: '2' }, color: '#22aaff' },
+      { id: 'sw-gnd', start: { componentId: 'stm32-bluepill', pinName: 'GND' }, end: { componentId: 'sw1', pinName: '1' }, color: '#000000' },
+      { id: 'sw-vcc', start: { componentId: 'stm32-bluepill', pinName: '3V3' }, end: { componentId: 'sw1', pinName: '3' }, color: '#ff4444' },
+    ],
+    tags: ['stm32', 'blue pill', 'gpio', 'switch', 'input', 'slide-switch'],
+  },
+  {
+    id: 'stm32-bluepill-stepper',
+    title: 'STM32: Stepper Motor',
+    description:
+      'Rotate a stepper motor with the four-pin full-step sequence driven by GPIO pins (PA0-PA3) on the STM32 Blue Pill. Pure digital output: the firmware energizes coils A+, B+, A-, B- in order to step the rotor.',
+    category: 'motors',
+    difficulty: 'intermediate',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 100,
+        y: 90,
+        code: `// STM32 Blue Pill (F103) — bipolar stepper, full-step sequence
+// Coils: A+ = PA0, A- = PA1, B+ = PA2, B- = PA3
+const int Ap = PA0, An = PA1, Bp = PA2, Bn = PA3;
+
+// Full-step order energizing one coil at a time: A+, B+, A-, B-
+const uint8_t seq[4][4] = {
+  { 1, 0, 0, 0 },   // A+
+  { 0, 0, 1, 0 },   // B+
+  { 0, 1, 0, 0 },   // A-
+  { 0, 0, 0, 1 },   // B-
+};
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(Ap, OUTPUT); pinMode(An, OUTPUT);
+  pinMode(Bp, OUTPUT); pinMode(Bn, OUTPUT);
+  Serial.println("Stepper running");
+}
+
+void loop() {
+  static int s = 0;
+  digitalWrite(Ap, seq[s][0]); digitalWrite(An, seq[s][1]);
+  digitalWrite(Bp, seq[s][2]); digitalWrite(Bn, seq[s][3]);
+  Serial.print("step "); Serial.println(s);
+  s = (s + 1) % 4;
+  delay(300);
+}`,
+      },
+    ],
+    code: '',
+    components: [
+      { type: 'wokwi-stepper-motor', id: 'stp1', x: 470, y: 150, properties: {} },
+    ],
+    wires: [
+      { id: 'stp-ap', start: { componentId: 'stm32-bluepill', pinName: 'PA0' }, end: { componentId: 'stp1', pinName: 'A+' }, color: '#ff5555' },
+      { id: 'stp-an', start: { componentId: 'stm32-bluepill', pinName: 'PA1' }, end: { componentId: 'stp1', pinName: 'A-' }, color: '#ff9955' },
+      { id: 'stp-bp', start: { componentId: 'stm32-bluepill', pinName: 'PA2' }, end: { componentId: 'stp1', pinName: 'B+' }, color: '#55aaff' },
+      { id: 'stp-bn', start: { componentId: 'stm32-bluepill', pinName: 'PA3' }, end: { componentId: 'stp1', pinName: 'B-' }, color: '#aa77ff' },
+    ],
+    tags: ['stm32', 'blue pill', 'gpio', 'stepper', 'motor'],
+  },
+  {
     id: 'blink-led',
     title: 'Blink LED',
     description: 'Classic Arduino blink example - toggle an LED on and off',

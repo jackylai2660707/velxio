@@ -308,9 +308,16 @@ class QemuManager:
         except BootImageError as exc:
             logger.error('[%s] boot-image provisioning failed: %s',
                          inst.client_id, exc)
-            await inst.emit('error', {
-                'message': f'{inst.board_type} boot files unavailable: {exc}',
-            })
+            # OSS / self-hosted has no boot-image downloader configured (no
+            # license key) -> frame Raspberry Pi as the Pro feature it is,
+            # rather than surfacing a raw "not configured" provisioning error.
+            # A genuine boot failure on velxio.dev still shows the detail.
+            from app.services.board_access import PRO_BOARD_MESSAGE
+            if 'not configured' in str(exc).lower():
+                message = PRO_BOARD_MESSAGE
+            else:
+                message = f'{inst.board_type} boot files unavailable: {exc}'
+            await inst.emit('error', {'message': message})
             self._instances.pop(inst.client_id, None)
             return
         kernel_path:    Path = images[cfg['kernel']]

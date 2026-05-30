@@ -230,6 +230,13 @@ class ArduinoCLIService:
         """Return True if the FQBN targets an ESP32 family board."""
         return fqbn.startswith("esp32:")
 
+    def _is_stm32_board(self, fqbn: str) -> bool:
+        """Return True if the FQBN targets an STM32 (STM32duino) board.
+
+        STM32 boots from an ELF via QEMU's -kernel (libqemu-arm), so the
+        emulator wants the .elf artifact, not a flash image."""
+        return fqbn.startswith("STMicroelectronics:stm32")
+
     def _is_esp32c3_board(self, fqbn: str) -> bool:
         """Return True if the FQBN targets an ESP32-C3 (RISC-V) board.
 
@@ -434,6 +441,32 @@ class ArduinoCLIService:
                                 "error": "ESP32 binary (.bin) not found after compilation",
                                 "stdout": result.stdout,
                                 "stderr": result.stderr
+                            }
+                    elif self._is_stm32_board(board_fqbn):
+                        # STM32 (STM32duino) boots from an ELF via QEMU -kernel.
+                        elf_file = build_dir / "sketch.ino.elf"
+                        bin_file = build_dir / "sketch.ino.bin"
+                        target_file = elf_file if elf_file.exists() else (bin_file if bin_file.exists() else None)
+                        if target_file:
+                            raw_bytes = target_file.read_bytes()
+                            binary_b64 = base64.b64encode(raw_bytes).decode('ascii')
+                            print(f"[STM32] Binary file: {target_file.name}, size: {len(raw_bytes)} bytes")
+                            print("=== STM32 Compilation successful ===\n")
+                            return {
+                                "success": True,
+                                "hex_content": None,
+                                "binary_content": binary_b64,
+                                "binary_type": "elf" if target_file == elf_file else "bin",
+                                "stdout": result.stdout,
+                                "stderr": result.stderr,
+                            }
+                        else:
+                            print(f"[STM32] ELF/bin not found. Files: {list(build_dir.iterdir())}")
+                            return {
+                                "success": False,
+                                "error": "STM32 firmware (.elf/.bin) not found after compilation",
+                                "stdout": result.stdout,
+                                "stderr": result.stderr,
                             }
                     else:
                         # AVR outputs a .hex file (Intel HEX format)

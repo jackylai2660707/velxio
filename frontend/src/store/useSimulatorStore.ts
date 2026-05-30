@@ -18,11 +18,13 @@ import type { I2CDevice } from '../simulation/I2CBusManager';
 import type { RP2040I2CDevice } from '../simulation/RP2040Simulator';
 import type { Wire, WireInProgress, WireEndpoint } from '../types/wire';
 import type { BoardKind, BoardInstance, LanguageMode } from '../types/board';
-import { BOARD_SUPPORTS_MICROPYTHON, isPiBoardKind } from '../types/board';
+import { BOARD_SUPPORTS_MICROPYTHON, isPiBoardKind, isStm32BoardKind } from '../types/board';
+import { boardGateDecision, proBoardFeatureName, triggerProUpgradePrompt } from '../lib/proBoardGate';
 import { calculatePinPosition } from '../utils/pinPositionCalculator';
 import { useOscilloscopeStore } from './useOscilloscopeStore';
 import { RaspberryPi3Bridge } from '../simulation/RaspberryPi3Bridge';
 import { Esp32Bridge } from '../simulation/Esp32Bridge';
+import { Stm32Bridge, stm32PinNameToLinear } from '../simulation/Stm32Bridge';
 import { useEditorStore } from './useEditorStore';
 import { useVfsStore } from './useVfsStore';
 import { boardPinToNumber, isBoardComponent } from '../utils/boardPinMapping';
@@ -566,10 +568,117 @@ function makeGpioRoutingClearHandler(boardId: string) {
   };
 }
 
+// ── Lightweight shim wrapping Stm32Bridge so PartSimulationRegistry parts
+// (I2C displays, sensors, SPI panels) attach to an STM32 board the same way
+// they attach to ESP32.  Like the STM32 firmware itself, every device model
+// runs in the backend QEMU worker: `registerSensor` builds the QEMU-side I2C
+// slave, write-only devices (SSD1306, PCF8574) stream their bytes back via
+// `i2c_transaction`, and SPI panels read MOSI bytes off the `spi_batch`
+// channel through the `.spi` adapter — identical surface to Esp32BridgeShim,
+// minus the ESP32-only WiFi / proxy-resync machinery. ──────────────────────
+class Stm32BridgeShim {
+  pinManager: PinManager;
+  onSerialData: ((ch: string) => void) | null = null;
+  onPinChangeWithTime: ((pin: number, state: boolean, timeMs: number) => void) | null = null;
+  onBaudRateChange: ((baud: number) => void) | null = null;
+  private bridge: Stm32Bridge;
+  private i2cBusInstance: I2CBusManager;
+  private _i2cTransactionListeners = new Map<number, (data: number[]) => void>();
+
+  constructor(bridge: Stm32Bridge, pm: PinManager) {
+    this.bridge = bridge;
+    this.pinManager = pm;
+    this.i2cBusInstance = new I2CBusManager(nullI2CMaster());
+  }
+
+  // ── Lifecycle stubs (the store drives the real bridge via getStm32Bridge) ──
+  start(): void {}
+  stop(): void {}
+  reset(): void {}
+  setSpeed(_s: number): void {}
+  getSpeed(): number { return 1; }
+  loadHex(_hex: string): void {}
+  loadBinary(_b64: string): void {}
+  isRunning(): boolean { return this.bridge.connected; }
+
+  /** Drive a GPIO input from a part. `pin` is the linear pin (port*16+pin). */
+  setPinState(pin: number, state: boolean): void {
+    this.bridge.sendPinEvent(pin, state);
+  }
+
+  // ── Generic sensor registration (delegated to the backend QEMU worker) ──
+  registerSensor(type: string, pin: number, properties: Record<string, unknown>): boolean {
+    this.bridge.sendSensorAttach(type, pin, properties);
+    return true;
+  }
+  updateSensor(pin: number, properties: Record<string, unknown>): void {
+    this.bridge.sendSensorUpdate(pin, properties);
+  }
+  unregisterSensor(pin: number): void {
+    this.bridge.sendSensorDetach(pin);
+  }
+
+  /** Expose the bridge so SPI/ePaper parts can subscribe to backend frames. */
+  getBridge(): Stm32Bridge {
+    return this.bridge;
+  }
+
+  // ── I2C write-only device relay (SSD1306, PCF8574) ────────────────────────
+  addI2CTransactionListener(addr: number, fn: (data: number[]) => void): void {
+    this._i2cTransactionListeners.set(addr, fn);
+    this.bridge.onI2cTransaction = (a: number, data: number[]) => {
+      this._i2cTransactionListeners.get(a)?.(data);
+    };
+  }
+  removeI2CTransactionListener(addr: number): void {
+    this._i2cTransactionListeners.delete(addr);
+    if (this._i2cTransactionListeners.size === 0) {
+      this.bridge.onI2cTransaction = null;
+    }
+  }
+
+  // ── Cross-board I2C bus surface (for Interconnect bridges) ────────────────
+  getI2CBus(_bus: 0 | 1 = 0): I2CBusManager {
+    return this.i2cBusInstance;
+  }
+  addI2CDevice(device: I2CDevice, _bus: 0 | 1 = 0): void {
+    this.i2cBusInstance.addDevice(device);
+  }
+  removeI2CDevice(addr: number, _bus: 0 | 1 = 0): void {
+    this.i2cBusInstance.removeDevice(addr);
+  }
+
+  // ── Generic SPI bus adapter (same shape as AVRSimulator.spi) ──────────────
+  // SPI panels (ILI9341, SSD1306-SPI) hook `.spi.onByte`; STM32 runs SPI in
+  // the backend, so the MOSI bytes arrive batched over `spi_batch` and we
+  // replay them one at a time. MISO is driven by the worker, so
+  // `completeTransfer` is a no-op (mirrors the ESP32 adapter).
+  private _spiAdapter: {
+    onByte: ((mosi: number) => void) | null;
+    completeTransfer: (miso: number) => void;
+  } | null = null;
+  get spi(): {
+    onByte: ((mosi: number) => void) | null;
+    completeTransfer: (miso: number) => void;
+  } {
+    if (!this._spiAdapter) {
+      const adapter = {
+        onByte: null as ((mosi: number) => void) | null,
+        completeTransfer: (_miso: number) => {},
+      };
+      this.bridge.onSpiBatch = (bytes: Uint8Array) => {
+        for (const b of bytes) adapter.onByte?.(b);
+      };
+      this._spiAdapter = adapter;
+    }
+    return this._spiAdapter;
+  }
+}
+
 // ── Runtime Maps (outside Zustand — not serialisable) ─────────────────────
 const simulatorMap = new Map<
   string,
-  AVRSimulator | RP2040Simulator | RiscVSimulator | Esp32C3Simulator | Esp32BridgeShim
+  AVRSimulator | RP2040Simulator | RiscVSimulator | Esp32C3Simulator | Esp32BridgeShim | Stm32BridgeShim
 >();
 const pinManagerMap = new Map<string, PinManager>();
 // Per-board ESP32 GPIO Matrix mirror.  Populated for boards whose kind
@@ -580,6 +689,8 @@ const pinManagerMap = new Map<string, PinManager>();
 const signalRouterMap = new Map<string, SignalRouter>();
 const bridgeMap = new Map<string, RaspberryPi3Bridge>();
 const esp32BridgeMap = new Map<string, Esp32Bridge>();
+// STM32 bridge — created lazily, only when isStm32BoardKind(boardKind).
+const stm32BridgeMap = new Map<string, Stm32Bridge>();
 // Pico W WiFi (CYW43439) bridge — created lazily, only when boardKind === 'pi-pico-w'.
 const cyw43BridgeMap = new Map<string, Cyw43Bridge>();
 
@@ -587,6 +698,7 @@ export const getBoardSimulator = (id: string) => simulatorMap.get(id);
 export const getBoardPinManager = (id: string) => pinManagerMap.get(id);
 export const getBoardBridge = (id: string) => bridgeMap.get(id);
 export const getEsp32Bridge = (id: string) => esp32BridgeMap.get(id);
+export const getStm32Bridge = (id: string) => stm32BridgeMap.get(id);
 export const getCyw43Bridge = (id: string) => cyw43BridgeMap.get(id);
 
 // Xtensa-based ESP32 boards — use QEMU bridge (backend)
@@ -983,6 +1095,30 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           try { existingShim.clearAllProxies(); } catch { /* ignore */ }
         }
         simulatorMap.set(id, shim);
+      } else if (isStm32BoardKind(boardKind)) {
+        const bridge = new Stm32Bridge(id, boardKind);
+        bridge.onSerialData = serialCallback;
+        bridge.onPinChange = (gpioPin, state) => {
+          const boardPm = pinManagerMap.get(id);
+          if (boardPm) boardPm.triggerPinChange(gpioPin, state, 'mcu');
+          // Onboard LED on PC13 (linear pin 45) is active-LOW: lit when LOW.
+          if (gpioPin === stm32PinNameToLinear('PC13')) {
+            const dom = document.getElementById(id) as (HTMLElement & { led?: boolean }) | null;
+            if (dom && 'led' in dom) dom.led = !state;
+          }
+        };
+        bridge.onPinChangeWithTime = getOscilloscopeCallback(id);
+        bridge.onDisconnected = () => {
+          set((s) => {
+            const boards = s.boards.map((b) => (b.id === id ? { ...b, running: false } : b));
+            const isActive = s.activeBoardId === id;
+            return { boards, ...(isActive ? { running: false } : {}) };
+          });
+        };
+        stm32BridgeMap.set(id, bridge);
+        // Shim so PartSimulationRegistry parts (I2C displays, sensors, SPI
+        // panels) attach to this STM32 the same way they do on ESP32.
+        simulatorMap.set(id, new Stm32BridgeShim(bridge, pm));
       } else {
         const sim = createSimulator(
           boardKind,
@@ -1069,6 +1205,11 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
       if (esp32Bridge) {
         esp32Bridge.disconnect();
         esp32BridgeMap.delete(boardId);
+      }
+      const stm32Bridge = getStm32Bridge(boardId);
+      if (stm32Bridge) {
+        stm32Bridge.disconnect();
+        stm32BridgeMap.delete(boardId);
       }
       const cyw43Bridge = getCyw43Bridge(boardId);
       if (cyw43Bridge) {
@@ -1194,6 +1335,9 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         // for full WiFi/BLE emulation via qemu-system-riscv32.
         const esp32Bridge = getEsp32Bridge(boardId);
         if (esp32Bridge) esp32Bridge.loadFirmware(program);
+      } else if (isStm32BoardKind(board.boardKind)) {
+        // STM32: send the compiled .elf (base64) to QEMU via the bridge.
+        getStm32Bridge(boardId)?.loadFirmware(program);
       } else if (isRiscVEsp32Kind(board.boardKind)) {
         // Fallback: browser-only RV32IMC emulation (no WiFi/BLE support).
         // Currently unreachable because isEsp32Kind() above includes C3 boards.
@@ -1425,6 +1569,14 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
       const board = get().boards.find((b) => b.id === boardId);
       if (!board) return;
 
+      // Pro gate (run backstop): catches STM32/Pi boards that entered the
+      // canvas via an example or a loaded project (which bypass the picker's
+      // add gate). Non-paid web users get the upgrade prompt instead of a run.
+      if (boardGateDecision(board.boardKind) === 'block') {
+        triggerProUpgradePrompt(proBoardFeatureName(board.boardKind));
+        return;
+      }
+
       if (isPiBoardKind(board.boardKind)) {
         getBoardBridge(boardId)?.connect();
       } else if (isEsp32Kind(board.boardKind)) {
@@ -1557,6 +1709,55 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
 
           esp32Bridge.connect();
         }
+      } else if (isStm32BoardKind(board.boardKind)) {
+        const stm32Bridge = getStm32Bridge(boardId);
+        if (stm32Bridge) {
+          // Pre-register I2C devices (BMP280, MPU6050, SSD1306, …) so the QEMU
+          // worker builds each slave on the bus BEFORE the firmware's Wire
+          // master starts probing. Address-based — no wire resolution needed
+          // (virtual pin = 200 + i2c_addr). Mirrors the ESP32 path.
+          const { components } = get();
+          const sensors: Array<Record<string, unknown>> = [];
+          for (const comp of components) {
+            const i2cDef = I2C_SENSOR_MAP[comp.metadataId];
+            if (!i2cDef) continue;
+            let addr = i2cDef.defaultAddr;
+            if (i2cDef.addrProp) {
+              const rawAddr = comp.properties[i2cDef.addrProp];
+              if (rawAddr !== undefined) {
+                if (i2cDef.addrIsBool) {
+                  if (rawAddr === true || rawAddr === 'true' || rawAddr === '1') {
+                    addr = i2cDef.addrBoolHigh ?? i2cDef.defaultAddr;
+                  }
+                } else {
+                  const parsed =
+                    typeof rawAddr === 'string'
+                      ? rawAddr.startsWith('0x')
+                        ? parseInt(rawAddr, 16)
+                        : parseInt(rawAddr, 10)
+                      : Number(rawAddr);
+                  if (!isNaN(parsed)) addr = parsed;
+                }
+              }
+            }
+            const props: Record<string, unknown> = {
+              sensor_type: i2cDef.sensorType,
+              pin: 200 + addr,
+              addr,
+            };
+            for (const key of i2cDef.propertyKeys ?? []) {
+              const val = comp.properties[key];
+              if (val !== undefined) props[key] = typeof val === 'string' ? parseFloat(val) : val;
+            }
+            sensors.push(props);
+          }
+          stm32Bridge.setSensors(sensors);
+
+          if (!stm32Bridge.hasFirmware() && board.compiledProgram) {
+            stm32Bridge.loadFirmware(board.compiledProgram);
+          }
+          stm32Bridge.connect();
+        }
       } else {
         getBoardSimulator(boardId)?.start();
         // Pico W: open the network bridge here too, alongside the local
@@ -1598,6 +1799,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         getBoardBridge(boardId)?.disconnect();
       } else if (isEsp32Kind(board.boardKind)) {
         getEsp32Bridge(boardId)?.disconnect();
+      } else if (isStm32BoardKind(board.boardKind)) {
+        getStm32Bridge(boardId)?.disconnect();
       } else {
         // Stop is "cut power": pressing Run again must boot from setup()
         // not resume mid-loop, so reset the CPU to PC=0 here. Without
@@ -2568,6 +2771,7 @@ setInterconnectRuntime({
   getBoardPinManager: (id: string) => pinManagerMap.get(id),
   getBoardBridge: (id: string) => bridgeMap.get(id),
   getEsp32Bridge: (id: string) => esp32BridgeMap.get(id),
+  getStm32Bridge: (id: string) => stm32BridgeMap.get(id),
 });
 
 // Bind the initial Arduino Uno that ships with the store.

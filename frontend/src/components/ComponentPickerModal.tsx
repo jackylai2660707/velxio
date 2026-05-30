@@ -15,10 +15,12 @@ import { ComponentRegistry } from '../services/ComponentRegistry';
 import type { ComponentMetadata, ComponentCategory } from '../types/component-metadata';
 import type { BoardKind } from '../types/board';
 import { BOARD_KIND_LABELS } from '../types/board';
+import { isProBoardKind } from '../lib/proBoardGate';
 import raspberryPi3Svg from '../assets/Raspberry_Pi_3_illustration.svg';
 import { Attiny85 } from './velxio-components/Attiny85';
 import './velxio-components/Esp32Element'; // registers velxio-esp32
 import './velxio-components/PiPicoWElement'; // registers velxio-pi-pico-w
+import './velxio-components/Stm32BluePillElement'; // registers velxio-stm32-bluepill
 // Register every wokwi tag that the picker might try to instantiate as a
 // thumbnail. The picker calls `document.createElement(tagName)`, so any tag
 // that isn't already a registered custom element renders as an empty
@@ -53,6 +55,8 @@ const BOARD_DESCRIPTIONS: Record<BoardKind, string> = {
   'esp32-c3': 'RISC-V single-core, WiFi+BLE, 22 GPIO (QEMU)',
   'xiao-esp32-c3': 'Seeed XIAO ESP32-C3 mini board (QEMU)',
   'aitewinrobot-esp32c3-supermini': 'ESP32-C3 SuperMini (QEMU)',
+  'stm32-bluepill': 'STM32F103C8 Cortex-M3, 64KB flash, 37 GPIO (QEMU)',
+  'stm32-blackpill': 'STM32F411CE Cortex-M4, 512KB flash, 50 GPIO (QEMU)',
   attiny85: '8-bit AVR, 8KB flash, 6 GPIO (browser)',
 };
 
@@ -75,6 +79,8 @@ const ALL_BOARDS: BoardKind[] = [
   'esp32-c3',
   'xiao-esp32-c3',
   'aitewinrobot-esp32c3-supermini',
+  'stm32-bluepill',
+  'stm32-blackpill',
   'attiny85',
 ];
 
@@ -416,6 +422,8 @@ const BOARD_TAG: Partial<Record<BoardKind, string>> = {
   'esp32-c3': 'velxio-esp32',
   'xiao-esp32-c3': 'velxio-esp32',
   'aitewinrobot-esp32c3-supermini': 'velxio-esp32',
+  'stm32-bluepill': 'velxio-stm32-bluepill',
+  'stm32-blackpill': 'velxio-stm32-blackpill',
 };
 
 interface BoardCardProps {
@@ -475,7 +483,27 @@ const BoardCard: React.FC<BoardCardProps> = ({ kind, onSelect }) => {
     ) : null;
 
   return (
-    <button className="component-card" onClick={onSelect}>
+    <button className="component-card" onClick={onSelect} style={{ position: 'relative' }}>
+      {isProBoardKind(kind) && (
+        <span
+          title="Pro feature — paid plan or Velxio Desktop"
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 6,
+            zIndex: 1,
+            padding: '1px 6px',
+            borderRadius: 4,
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: 0.5,
+            color: '#1a1205',
+            background: 'linear-gradient(180deg,#ffd566,#f5a623)',
+          }}
+        >
+          PRO
+        </span>
+      )}
       <div className="card-thumbnail">
         {reactThumbnail ? reactThumbnail : <div ref={thumbnailRef} className="component-preview" />}
       </div>
