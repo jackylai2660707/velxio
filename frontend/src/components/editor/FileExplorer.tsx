@@ -141,6 +141,12 @@ const BOARD_ICON: Record<BoardKind, string> = {
   'esp32-c3': '⬡',
   'stm32-bluepill': '◈',
   'stm32-blackpill': '◈',
+  'stm32-bluepill-f103cb': '◈',
+  'stm32-blackpill-f401': '◈',
+  'stm32-f4-discovery': '◈',
+  'stm32-olimex-h405': '◈',
+  'stm32-netduino-plus2': '◈',
+  'stm32-netduino2': '◈',
 };
 
 // Color accent per board family
@@ -155,6 +161,12 @@ const BOARD_COLOR: Record<BoardKind, string> = {
   'esp32-c3': '#a5d6a7',
   'stm32-bluepill': '#80cbc4',
   'stm32-blackpill': '#b0bec5',
+  'stm32-bluepill-f103cb': '#80cbc4',
+  'stm32-blackpill-f401': '#b0bec5',
+  'stm32-f4-discovery': '#90caf9',
+  'stm32-olimex-h405': '#a5d6a7',
+  'stm32-netduino-plus2': '#ce93d8',
+  'stm32-netduino2': '#ce93d8',
 };
 
 function FileIcon({ name }: { name: string }) {

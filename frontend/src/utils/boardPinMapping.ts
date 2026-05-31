@@ -228,6 +228,13 @@ export const BOARD_COMPONENT_IDS = [
   'xiao-esp32-c3',
   'aitewinrobot-esp32c3-supermini',
   'stm32-bluepill',
+  'stm32-blackpill',
+  'stm32-bluepill-f103cb',
+  'stm32-blackpill-f401',
+  'stm32-f4-discovery',
+  'stm32-olimex-h405',
+  'stm32-netduino-plus2',
+  'stm32-netduino2',
   'attiny85',
 ];
 

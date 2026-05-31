@@ -22,6 +22,12 @@ export type BoardKind =
   | 'aitewinrobot-esp32c3-supermini' // ESP32-C3 SuperMini, QEMU backend
   | 'stm32-bluepill' // STM32F103C8 (Cortex-M3), QEMU backend (libqemu-arm)
   | 'stm32-blackpill' // STM32F411CE (Cortex-M4), QEMU backend (libqemu-arm)
+  | 'stm32-bluepill-f103cb' // STM32F103CB (Cortex-M3, 128KB), QEMU (F100 SoC)
+  | 'stm32-blackpill-f401' // STM32F401CE (Cortex-M4), QEMU (F405 SoC)
+  | 'stm32-f4-discovery' // STM32F407VG Discovery (Cortex-M4), QEMU (F405 SoC)
+  | 'stm32-olimex-h405' // Olimex STM32-H405 (F405RG, Cortex-M4), QEMU
+  | 'stm32-netduino-plus2' // Netduino Plus 2 (F405, Cortex-M4), QEMU
+  | 'stm32-netduino2' // Netduino 2 (F205, Cortex-M3), QEMU (serial until F205 GPIO wired)
   | 'attiny85'; // AVR ATtiny85, browser emulation (avr8js)
 
 export type LanguageMode = 'arduino' | 'micropython';
@@ -114,6 +120,12 @@ export const BOARD_KIND_LABELS: Record<BoardKind, string> = {
   'aitewinrobot-esp32c3-supermini': 'ESP32-C3 SuperMini',
   'stm32-bluepill': 'STM32 Blue Pill',
   'stm32-blackpill': 'STM32 Black Pill',
+  'stm32-bluepill-f103cb': 'STM32 Blue Pill (F103CB)',
+  'stm32-blackpill-f401': 'STM32 Black Pill (F401)',
+  'stm32-f4-discovery': 'STM32F4 Discovery',
+  'stm32-olimex-h405': 'Olimex STM32-H405',
+  'stm32-netduino-plus2': 'Netduino Plus 2',
+  'stm32-netduino2': 'Netduino 2',
   attiny85: 'ATtiny85',
 };
 
@@ -141,5 +153,11 @@ export const BOARD_KIND_FQBN: Record<BoardKind, string | null> = {
   'aitewinrobot-esp32c3-supermini': 'esp32:esp32:esp32c3',
   'stm32-bluepill': 'STMicroelectronics:stm32:GenF1:pnum=BLUEPILL_F103C8',
   'stm32-blackpill': 'STMicroelectronics:stm32:GenF4:pnum=BLACKPILL_F411CE',
+  'stm32-bluepill-f103cb': 'STMicroelectronics:stm32:GenF1:pnum=BLUEPILL_F103CB',
+  'stm32-blackpill-f401': 'STMicroelectronics:stm32:GenF4:pnum=BLACKPILL_F401CE',
+  'stm32-f4-discovery': 'STMicroelectronics:stm32:Disco:pnum=DISCO_F407VG',
+  'stm32-olimex-h405': 'STMicroelectronics:stm32:GenF4:pnum=GENERIC_F405RGTX',
+  'stm32-netduino-plus2': 'STMicroelectronics:stm32:GenF4:pnum=GENERIC_F405RGTX',
+  'stm32-netduino2': 'STMicroelectronics:stm32:GenF2:pnum=GENERIC_F205RGTX',
   attiny85: 'ATTinyCore:avr:attinyx5:chip=85,clock=16pll',
 };

@@ -13,7 +13,16 @@ import { RaspberryPi5 } from '../velxio-components/RaspberryPi5';
 import { Esp32 } from '../velxio-components/Esp32';
 import { Attiny85 } from '../velxio-components/Attiny85';
 import { PiPicoW } from '../velxio-components/PiPicoW';
-import { Stm32BluePill, Stm32BlackPill } from '../velxio-components/Stm32BluePill';
+import {
+  Stm32BluePill,
+  Stm32BlackPill,
+  Stm32BluePillF103CB,
+  Stm32BlackPillF401,
+  Stm32F4Discovery,
+  Stm32OlimexH405,
+  Stm32NetduinoPlus2,
+  Stm32Netduino2,
+} from '../velxio-components/Stm32BluePill';
 import { PinOverlay } from './PinOverlay';
 
 // Board visual dimensions (width × height) for the drag-overlay sizing.
@@ -47,6 +56,14 @@ const BOARD_SIZE: Record<string, { w: number; h: number }> = {
   'aitewinrobot-esp32c3-supermini': { w: 90, h: 123 },
   'stm32-bluepill': { w: 114, h: 271 }, // 22.855 × 54.193 mm (wokwi-boards SVG)
   'stm32-blackpill': { w: 103, h: 266 }, // 20.695 × 53.125 mm (wokwi-boards SVG)
+  'stm32-bluepill-f103cb': { w: 114, h: 271 }, // reuses Blue Pill SVG
+  'stm32-blackpill-f401': { w: 103, h: 266 }, // reuses Black Pill SVG
+  // Inline-rendered boards — sizes match Stm32BoardElement.inlineConfig()
+  // (INLINE_W=158; h = 24 + rows*13 + 16).
+  'stm32-f4-discovery': { w: 158, h: 235 }, // 15 rows per side
+  'stm32-olimex-h405': { w: 158, h: 196 }, // 12 rows per side
+  'stm32-netduino-plus2': { w: 158, h: 196 }, // 12 rows per side
+  'stm32-netduino2': { w: 158, h: 196 }, // 12 rows per side
   attiny85: { w: 160, h: 132 },
 };
 
@@ -123,6 +140,18 @@ export const BoardOnCanvas = ({
         return <Stm32BluePill id={id} x={x} y={y} />;
       case 'stm32-blackpill':
         return <Stm32BlackPill id={id} x={x} y={y} />;
+      case 'stm32-bluepill-f103cb':
+        return <Stm32BluePillF103CB id={id} x={x} y={y} />;
+      case 'stm32-blackpill-f401':
+        return <Stm32BlackPillF401 id={id} x={x} y={y} />;
+      case 'stm32-f4-discovery':
+        return <Stm32F4Discovery id={id} x={x} y={y} />;
+      case 'stm32-olimex-h405':
+        return <Stm32OlimexH405 id={id} x={x} y={y} />;
+      case 'stm32-netduino-plus2':
+        return <Stm32NetduinoPlus2 id={id} x={x} y={y} />;
+      case 'stm32-netduino2':
+        return <Stm32Netduino2 id={id} x={x} y={y} />;
       case 'attiny85':
         return <Attiny85 id={id} x={x} y={y} led1={led13} />;
     }

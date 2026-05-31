@@ -158,6 +158,216 @@ void loop() {
     tags: ['stm32', 'blue pill', 'serial', 'usart', 'qemu'],
   },
   {
+    id: 'stm32-f4-discovery-blink',
+    title: 'STM32F4 Discovery LED Blink',
+    description:
+      'Blink the onboard PD12 green LED and print to Serial on an STM32F4 Discovery (STM32F407VG, Cortex-M4) under QEMU.',
+    category: 'basics',
+    difficulty: 'beginner',
+    boardFilter: 'stm32-f4-discovery',
+    boards: [
+      {
+        boardKind: 'stm32-f4-discovery',
+        x: 100,
+        y: 100,
+        code: `// STM32F4 Discovery (STM32F407VG) — onboard LEDs PD12..PD15 (active HIGH).
+// PD12 green, PD13 orange, PD14 red, PD15 blue. Runs under QEMU (libqemu-arm).
+
+void setup() {
+  pinMode(PD12, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("velxio stm32f4 discovery");
+}
+
+void loop() {
+  digitalWrite(PD12, HIGH);
+  delay(200);
+  digitalWrite(PD12, LOW);
+  delay(200);
+}`,
+      },
+    ],
+    code: '',
+    components: [],
+    wires: [],
+    tags: ['stm32', 'discovery', 'f407', 'cortex-m4', 'qemu', 'blink'],
+  },
+  {
+    id: 'stm32-olimex-h405-blink',
+    title: 'Olimex STM32-H405 Blink',
+    description:
+      'Blink the onboard PC12 status LED and print to Serial on an Olimex STM32-H405 (STM32F405RG, Cortex-M4) under QEMU.',
+    category: 'basics',
+    difficulty: 'beginner',
+    boardFilter: 'stm32-olimex-h405',
+    boards: [
+      {
+        boardKind: 'stm32-olimex-h405',
+        x: 100,
+        y: 100,
+        code: `// Olimex STM32-H405 (STM32F405RG) — onboard status LED on PC12 (active HIGH).
+
+void setup() {
+  pinMode(PC12, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("velxio olimex h405");
+}
+
+void loop() {
+  digitalWrite(PC12, HIGH);
+  delay(250);
+  digitalWrite(PC12, LOW);
+  delay(250);
+}`,
+      },
+    ],
+    code: '',
+    components: [],
+    wires: [],
+    tags: ['stm32', 'olimex', 'h405', 'f405', 'cortex-m4', 'qemu'],
+  },
+  {
+    id: 'stm32-netduino-plus2-blink',
+    title: 'Netduino Plus 2 Blink',
+    description:
+      'Blink the onboard PA10 LED and print to Serial on a Netduino Plus 2 (STM32F405, Cortex-M4) under QEMU.',
+    category: 'basics',
+    difficulty: 'beginner',
+    boardFilter: 'stm32-netduino-plus2',
+    boards: [
+      {
+        boardKind: 'stm32-netduino-plus2',
+        x: 100,
+        y: 100,
+        code: `// Netduino Plus 2 (STM32F405) — onboard LED on PA10 (active HIGH).
+
+void setup() {
+  pinMode(PA10, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("velxio netduino plus 2");
+}
+
+void loop() {
+  digitalWrite(PA10, HIGH);
+  delay(300);
+  digitalWrite(PA10, LOW);
+  delay(300);
+}`,
+      },
+    ],
+    code: '',
+    components: [],
+    wires: [],
+    tags: ['stm32', 'netduino', 'f405', 'cortex-m4', 'qemu', 'blink'],
+  },
+  {
+    id: 'stm32-netduino2-serial',
+    title: 'Netduino 2 Serial Counter',
+    description:
+      'Netduino 2 (STM32F205, Cortex-M3) prints an incrementing counter over Serial. GPIO/LED support arrives once the F205 SoC is wired; serial works today under QEMU.',
+    category: 'communication',
+    difficulty: 'beginner',
+    boardFilter: 'stm32-netduino2',
+    boards: [
+      {
+        boardKind: 'stm32-netduino2',
+        x: 100,
+        y: 100,
+        code: `// Netduino 2 (STM32F205) — serial counter at 115200 baud.
+// Onboard LED is on PA10; GPIO becomes visual once the F205 SoC is wired.
+unsigned long n = 0;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(PA10, OUTPUT);
+  Serial.println("Netduino 2 ready");
+}
+
+void loop() {
+  n++;
+  Serial.print("count=");
+  Serial.print(n);
+  Serial.print("  uptime_ms=");
+  Serial.println(millis());
+  digitalWrite(PA10, n % 2 ? HIGH : LOW);
+  delay(1000);
+}`,
+      },
+    ],
+    code: '',
+    components: [],
+    wires: [],
+    tags: ['stm32', 'netduino', 'f205', 'serial', 'qemu'],
+  },
+  {
+    id: 'stm32-blackpill-f401-blink',
+    title: 'STM32 Black Pill (F401) Blink',
+    description:
+      'Blink the onboard PC13 LED and print to Serial on an STM32F401CE Black Pill (Cortex-M4) under QEMU.',
+    category: 'basics',
+    difficulty: 'beginner',
+    boardFilter: 'stm32-blackpill-f401',
+    boards: [
+      {
+        boardKind: 'stm32-blackpill-f401',
+        x: 100,
+        y: 100,
+        code: `// STM32 Black Pill (STM32F401CE) — onboard LED on PC13 (active LOW).
+
+void setup() {
+  pinMode(PC13, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("velxio stm32 f401 blackpill");
+}
+
+void loop() {
+  digitalWrite(PC13, LOW);   // LED on
+  delay(200);
+  digitalWrite(PC13, HIGH);  // LED off
+  delay(200);
+}`,
+      },
+    ],
+    code: '',
+    components: [],
+    wires: [],
+    tags: ['stm32', 'black pill', 'f401', 'cortex-m4', 'qemu', 'blink'],
+  },
+  {
+    id: 'stm32-bluepill-f103cb-blink',
+    title: 'STM32 Blue Pill (F103CB) Blink',
+    description:
+      'Blink the onboard PC13 LED and print to Serial on an STM32F103CB Blue Pill (Cortex-M3, 128KB flash) under QEMU.',
+    category: 'basics',
+    difficulty: 'beginner',
+    boardFilter: 'stm32-bluepill-f103cb',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill-f103cb',
+        x: 100,
+        y: 100,
+        code: `// STM32 Blue Pill (STM32F103CB, 128KB flash) — onboard LED on PC13 (active LOW).
+
+void setup() {
+  pinMode(PC13, OUTPUT);
+  Serial.begin(115200);
+  Serial.println("velxio stm32 f103cb blue pill");
+}
+
+void loop() {
+  digitalWrite(PC13, LOW);   // LED on
+  delay(200);
+  digitalWrite(PC13, HIGH);  // LED off
+  delay(200);
+}`,
+      },
+    ],
+    code: '',
+    components: [],
+    wires: [],
+    tags: ['stm32', 'blue pill', 'f103cb', 'cortex-m3', 'qemu', 'blink'],
+  },
+  {
     id: 'stm32-uno-gpio-mirror',
     title: '[STM32 + Arduino] GPIO Mirror',
     description:

@@ -54,13 +54,21 @@ EventCallback = Callable[[str, dict], Awaitable[None]]
 # the bridge today (F100 / F405) get full GPIO; F2 (netduino2) is serial-only
 # until its GPIO is wired.
 _MACHINE: dict[str, str] = {
-    'stm32-bluepill':    'stm32vldiscovery',   # F103 approximated by F100 SoC
-    'stm32-blackpill':   'netduinoplus2',      # F411 approximated by F405 SoC (Cortex-M4)
-    'stm32-vldiscovery': 'stm32vldiscovery',
-    'stm32f4-discovery': 'netduinoplus2',      # F407 approximated by F405 SoC
-    'netduinoplus2':     'netduinoplus2',
-    'olimex-stm32-h405': 'olimex-stm32-h405',
-    'netduino2':         'netduino2',
+    # Canonical BoardKind strings (sent verbatim by the frontend Stm32Bridge).
+    'stm32-bluepill':        'stm32vldiscovery',   # F103 approximated by F100 SoC
+    'stm32-blackpill':       'netduinoplus2',      # F411 approximated by F405 SoC (Cortex-M4)
+    'stm32-bluepill-f103cb': 'stm32vldiscovery',   # F103CB approximated by F100 SoC
+    'stm32-blackpill-f401':  'netduinoplus2',      # F401 approximated by F405 SoC
+    'stm32-f4-discovery':    'netduinoplus2',      # F407 approximated by F405 SoC
+    'stm32-olimex-h405':     'olimex-stm32-h405',  # F405 (native machine)
+    'stm32-netduino-plus2':  'netduinoplus2',      # F405 (native machine)
+    'stm32-netduino2':       'netduino2',          # F205 (serial-only until GPIO wired)
+    # Legacy / alias keys (kept so older saved projects still resolve).
+    'stm32-vldiscovery':     'stm32vldiscovery',
+    'stm32f4-discovery':     'netduinoplus2',
+    'netduinoplus2':         'netduinoplus2',
+    'olimex-stm32-h405':     'olimex-stm32-h405',
+    'netduino2':             'netduino2',
 }
 
 

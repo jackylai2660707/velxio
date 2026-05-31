@@ -57,6 +57,12 @@ const BOARD_DESCRIPTIONS: Record<BoardKind, string> = {
   'aitewinrobot-esp32c3-supermini': 'ESP32-C3 SuperMini (QEMU)',
   'stm32-bluepill': 'STM32F103C8 Cortex-M3, 64KB flash, 37 GPIO (QEMU)',
   'stm32-blackpill': 'STM32F411CE Cortex-M4, 512KB flash, 50 GPIO (QEMU)',
+  'stm32-bluepill-f103cb': 'STM32F103CB Cortex-M3, 128KB flash, 37 GPIO (QEMU)',
+  'stm32-blackpill-f401': 'STM32F401CE Cortex-M4, 512KB flash, 50 GPIO (QEMU)',
+  'stm32-f4-discovery': 'STM32F407VG Cortex-M4, 1MB flash, 4 onboard LEDs (QEMU)',
+  'stm32-olimex-h405': 'Olimex STM32-H405, F405RG Cortex-M4, 1MB flash (QEMU)',
+  'stm32-netduino-plus2': 'Netduino Plus 2, STM32F405 Cortex-M4 (QEMU)',
+  'stm32-netduino2': 'Netduino 2, STM32F205 Cortex-M3 (QEMU, serial)',
   attiny85: '8-bit AVR, 8KB flash, 6 GPIO (browser)',
 };
 
@@ -81,6 +87,12 @@ const ALL_BOARDS: BoardKind[] = [
   'aitewinrobot-esp32c3-supermini',
   'stm32-bluepill',
   'stm32-blackpill',
+  'stm32-bluepill-f103cb',
+  'stm32-blackpill-f401',
+  'stm32-f4-discovery',
+  'stm32-olimex-h405',
+  'stm32-netduino-plus2',
+  'stm32-netduino2',
   'attiny85',
 ];
 
@@ -424,6 +436,12 @@ const BOARD_TAG: Partial<Record<BoardKind, string>> = {
   'aitewinrobot-esp32c3-supermini': 'velxio-esp32',
   'stm32-bluepill': 'velxio-stm32-bluepill',
   'stm32-blackpill': 'velxio-stm32-blackpill',
+  'stm32-bluepill-f103cb': 'velxio-stm32-bluepill-f103cb',
+  'stm32-blackpill-f401': 'velxio-stm32-blackpill-f401',
+  'stm32-f4-discovery': 'velxio-stm32-f4-discovery',
+  'stm32-olimex-h405': 'velxio-stm32-olimex-h405',
+  'stm32-netduino-plus2': 'velxio-stm32-netduino-plus2',
+  'stm32-netduino2': 'velxio-stm32-netduino2',
 };
 
 interface BoardCardProps {

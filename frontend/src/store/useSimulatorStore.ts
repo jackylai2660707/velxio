@@ -25,6 +25,7 @@ import { useOscilloscopeStore } from './useOscilloscopeStore';
 import { RaspberryPi3Bridge } from '../simulation/RaspberryPi3Bridge';
 import { Esp32Bridge } from '../simulation/Esp32Bridge';
 import { Stm32Bridge, stm32PinNameToLinear } from '../simulation/Stm32Bridge';
+import { STM32_LED } from '../components/velxio-components/Stm32BluePillElement';
 import { useEditorStore } from './useEditorStore';
 import { useVfsStore } from './useVfsStore';
 import { boardPinToNumber, isBoardComponent } from '../utils/boardPinMapping';
@@ -1097,14 +1098,18 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         simulatorMap.set(id, shim);
       } else if (isStm32BoardKind(boardKind)) {
         const bridge = new Stm32Bridge(id, boardKind);
+        // Onboard-LED pin + polarity per board kind. Blue/Black Pill drive PC13
+        // active-LOW; the F4 Discovery / Olimex / Netduino boards drive their LED
+        // active-HIGH on a different port pin (see STM32_LED).
+        const ledCfg = STM32_LED[boardKind] ?? { pin: 'PC13', activeLow: true };
+        const ledLinear = stm32PinNameToLinear(ledCfg.pin);
         bridge.onSerialData = serialCallback;
         bridge.onPinChange = (gpioPin, state) => {
           const boardPm = pinManagerMap.get(id);
           if (boardPm) boardPm.triggerPinChange(gpioPin, state, 'mcu');
-          // Onboard LED on PC13 (linear pin 45) is active-LOW: lit when LOW.
-          if (gpioPin === stm32PinNameToLinear('PC13')) {
+          if (gpioPin === ledLinear) {
             const dom = document.getElementById(id) as (HTMLElement & { led?: boolean }) | null;
-            if (dom && 'led' in dom) dom.led = !state;
+            if (dom && 'led' in dom) dom.led = ledCfg.activeLow ? !state : !!state;
           }
         };
         bridge.onPinChangeWithTime = getOscilloscopeCallback(id);
