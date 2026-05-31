@@ -1231,7 +1231,20 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         const wires = s.wires.filter(
           (w) => w.start.componentId !== boardId && w.end.componentId !== boardId,
         );
-        return { boards, activeBoardId, wires };
+        // Reconcile the flat `running` mirror. This flag tracks the ACTIVE
+        // board's run state (see startBoard/stopBoard/setActiveBoardId's
+        // `isActive` sync). Removing the active board reassigns
+        // `activeBoardId` above, but used to leave `running` stale — so
+        // deleting the running/active board left the UI stuck in a fake
+        // "running" state, and SimulatorCanvas's auto-start effect (which
+        // treats `running` as a master switch for remote boards) then spun
+        // a sibling board up. Re-derive it from whatever board is active
+        // now (false if none remain).
+        const nextActive = activeBoardId
+          ? boards.find((b) => b.id === activeBoardId) ?? null
+          : null;
+        const running = nextActive ? nextActive.running : false;
+        return { boards, activeBoardId, wires, running };
       });
       // Clean up file group in editor store
       if (board) {

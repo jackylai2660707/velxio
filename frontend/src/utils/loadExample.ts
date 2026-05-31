@@ -196,6 +196,17 @@ export async function loadExample(
       currentIds.forEach((id) => removeBoard(id));
     } else {
       const targetBoard = example.boardType || 'arduino-uno';
+      // A previous MULTI-board example may have left several boards on the
+      // canvas. A single-board example must end with exactly one board, so
+      // drop every board past the first before retyping it. Without this
+      // the extra boards (and their editor file groups) linger as residue
+      // from the previous example. setComponents/setWires below already
+      // replace the components and wires wholesale; boards were the one
+      // piece of state this path never reset.
+      const existing = useSimulatorStore.getState().boards;
+      if (existing.length > 1) {
+        existing.slice(1).forEach((b) => removeBoard(b.id));
+      }
       // If boards[] is empty (e.g. a previous analog example removed every
       // board), setBoardType can't work — it only maps over existing entries.
       // Add a fresh board instead.
@@ -207,6 +218,9 @@ export async function loadExample(
         );
         setActiveBoardId(newId);
       } else {
+        // Reuse the surviving board, but make sure it's the active one
+        // first — setBoardType retypes whatever board is active.
+        setActiveBoardId(useSimulatorStore.getState().boards[0].id);
         setBoardType(targetBoard);
       }
     }
