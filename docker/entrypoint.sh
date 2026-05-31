@@ -28,6 +28,11 @@ if [ ! -f /root/.arduino15/arduino-cli.yaml ]; then
     # See https://github.com/SpenceKonde/ATTinyCore
     arduino-cli config add board_manager.additional_urls \
         http://drazzy.com/package_drazzy.com_index.json 2>/dev/null || true
+    # STM32duino (STMicroelectronics:stm32) — needed for STM32 Blue/Black Pill
+    # FQBNs. Without this URL `core install STMicroelectronics:stm32` fails with
+    #   "Platform 'STMicroelectronics:stm32' not found: platform not installed".
+    arduino-cli config add board_manager.additional_urls \
+        https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json 2>/dev/null || true
 fi
 
 # Install missing cores.
@@ -36,6 +41,7 @@ arduino-cli core update-index 2>/dev/null || true
 arduino-cli core install arduino:avr 2>/dev/null || true
 arduino-cli core install rp2040:rp2040 2>/dev/null || true
 arduino-cli core install ATTinyCore:avr@1.4.1 2>/dev/null || true
+arduino-cli core install STMicroelectronics:stm32 2>/dev/null || true
 
 # ESP32 compilation now uses ESP-IDF instead of arduino-cli.
 # arduino-cli ESP32 core is no longer needed for QEMU-compatible builds.
