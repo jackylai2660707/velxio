@@ -9109,6 +9109,289 @@ void loop() {
     ],
   },
 
+  {
+    id: 'esp32-doom',
+    title: 'ESP32 Doom — Raycaster (ILI9341)',
+    description:
+      'A Wolfenstein / early-Doom style first-person raycaster on an ESP32 + ILI9341 320x240 colour TFT. The whole screen is redrawn every frame over hardware SPI (VSPI) with Adafruit_ILI9341 block writes (one startWrite/endWrite burst per frame), plus distance fog and darker E/W faces for depth. Four buttons move and turn the player; an auto-demo walks the 16x16 map when idle. Built as an emulation-speed benchmark — it overlays the on-device FPS and prints frame/FPS stats over Serial.',
+    libraries: ['Adafruit GFX Library', 'Adafruit ILI9341'],
+    category: 'games',
+    difficulty: 'advanced',
+    boardType: 'esp32',
+    tags: ['esp32', 'doom', 'raycaster', 'ili9341', 'tft', '3d', 'game', 'benchmark'],
+    code: `/*
+ * VELXIO DOOM - ESP32 raycaster on an ILI9341 320x240 color TFT.
+ *
+ * Purpose: stress-test Velxio's QEMU ESP32 emulation by redrawing the whole
+ * 320x240 screen every frame with a Wolfenstein/early-Doom style raycaster.
+ * Rendering uses Adafruit_ILI9341 over HARDWARE SPI (VSPI) with the fast
+ * block-transfer transaction API: a single startWrite()/endWrite() per frame
+ * and writeFastVLine() column fills, so each frame is one big SPI burst
+ * (the path QEMU forwards to the display sim as batched bytes).
+ *
+ * Every 10 frames it prints "STAT frame=.. t_ms=.. devfps=.." over Serial so
+ * the host can compute BOTH on-device FPS (frames per emulated second) and
+ * emulation speed (frames per real wall-clock second).
+ *
+ * Wiring (VSPI):  SCK=18  MOSI=23  MISO=19  CS=5  DC=2  RST=4  LED/VCC=3V3
+ * Buttons (active-LOW, INPUT_PULLUP, other leg to GND):
+ *   FWD=32  BACK=33  LEFT=25  RIGHT=26   (auto-demo runs with no input)
+ */
+#include <SPI.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ILI9341.h>
+#include <math.h>
+
+#define TFT_SCK  18
+#define TFT_MOSI 23
+#define TFT_MISO 19
+#define TFT_DC    2
+#define TFT_CS    5
+#define TFT_RST   4
+
+#define BTN_FWD   32
+#define BTN_BACK  33
+#define BTN_LEFT  25
+#define BTN_RIGHT 26
+
+#define RGB565(r, g, b) ((uint16_t)((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | ((b) >> 3)))
+
+SPIClass tftSPI(VSPI);
+Adafruit_ILI9341 tft = Adafruit_ILI9341(&tftSPI, TFT_DC, TFT_CS, TFT_RST);
+
+static const int SCREEN_W = 320;
+static const int SCREEN_H = 240;
+
+#define MAP_W 16
+#define MAP_H 16
+const uint8_t worldMap[MAP_H][MAP_W] = {
+  {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+  {1,0,0,0,0,0,0,2,2,2,0,0,0,0,0,1},
+  {1,0,1,1,0,0,0,0,0,0,0,0,3,3,0,1},
+  {1,0,1,0,0,0,4,4,0,0,0,0,0,0,0,1},
+  {1,0,1,0,0,0,0,0,0,0,5,5,5,0,0,1},
+  {1,0,1,1,1,0,0,2,2,0,0,0,0,0,0,1},
+  {1,0,0,0,0,0,0,0,0,0,0,3,0,0,0,1},
+  {1,0,4,4,4,4,0,0,0,2,2,0,0,0,0,1},
+  {1,0,0,0,0,0,0,0,0,0,0,0,0,5,5,1},
+  {1,0,0,0,0,3,3,0,0,4,0,0,0,0,0,1},
+  {1,0,2,2,0,0,0,0,0,0,0,1,1,0,0,1},
+  {1,0,0,0,0,0,5,5,0,0,0,0,0,0,0,1},
+  {1,0,3,0,0,0,0,0,0,2,2,2,0,0,0,1},
+  {1,0,0,0,4,4,0,0,0,0,0,0,0,3,0,1},
+  {1,0,0,0,0,0,0,0,5,0,0,0,0,0,0,1},
+  {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+};
+
+static uint16_t wallColor(uint8_t t) {
+  switch (t) {
+    case 1: return RGB565(150, 150, 165); // slate
+    case 2: return RGB565(190,  35,  35); // blood
+    case 3: return RGB565(165, 100,  45); // brown
+    case 4: return RGB565( 45, 180,  70); // toxic green
+    case 5: return RGB565(180, 140,  50); // bronze door
+  }
+  return RGB565(100, 100, 100);
+}
+
+// Darken an RGB565 colour by a 0..256 factor (256 = unchanged).
+static uint16_t shade(uint16_t c, uint16_t f) {
+  uint16_t r = (c >> 11) & 0x1F, g = (c >> 5) & 0x3F, b = c & 0x1F;
+  r = (r * f) >> 8; g = (g * f) >> 8; b = (b * f) >> 8;
+  return (uint16_t)((r << 11) | (g << 5) | b);
+}
+
+const uint16_t CEIL_COLOR  = RGB565(28, 28, 44);
+const uint16_t FLOOR_COLOR = RGB565(48, 42, 36);
+
+// Player camera (DDA raycaster state).
+float posX = 8.5f, posY = 8.5f;
+float dirX = -1.0f, dirY = 0.0f;
+float planeX = 0.0f, planeY = 0.66f;
+
+uint32_t frames = 0;
+uint32_t fpsT0 = 0;
+int fpsWhole = 0, fpsFrac = 0;
+
+static void rotate(float a) {
+  float od = dirX;
+  dirX = dirX * cosf(a) - dirY * sinf(a);
+  dirY = od   * sinf(a) + dirY * cosf(a);
+  float op = planeX;
+  planeX = planeX * cosf(a) - planeY * sinf(a);
+  planeY = op     * sinf(a) + planeY * cosf(a);
+}
+
+static bool isWall(float x, float y) {
+  int mx = (int)x, my = (int)y;
+  if (mx < 0 || mx >= MAP_W || my < 0 || my >= MAP_H) return true;
+  return worldMap[my][mx] != 0;
+}
+
+static void moveStep(float dist) {
+  float nx = posX + dirX * dist;
+  float ny = posY + dirY * dist;
+  if (!isWall(nx, posY)) posX = nx;
+  if (!isWall(posX, ny)) posY = ny;
+}
+
+static void handleInput() {
+  bool any = false;
+  if (digitalRead(BTN_FWD)   == LOW) { moveStep( 0.10f); any = true; }
+  if (digitalRead(BTN_BACK)  == LOW) { moveStep(-0.10f); any = true; }
+  if (digitalRead(BTN_LEFT)  == LOW) { rotate( 0.06f);   any = true; }
+  if (digitalRead(BTN_RIGHT) == LOW) { rotate(-0.06f);   any = true; }
+  if (!any) {
+    // Auto-demo: walk forward, slowly pan, and turn hard if about to hit a wall.
+    rotate(0.013f);
+    moveStep(0.05f);
+    if (isWall(posX + dirX * 0.25f, posY + dirY * 0.25f)) rotate(0.25f);
+  }
+}
+
+static void renderFrame() {
+  tft.startWrite();
+  for (int x = 0; x < SCREEN_W; x++) {
+    float cameraX = 2.0f * x / (float)SCREEN_W - 1.0f;
+    float rayDirX = dirX + planeX * cameraX;
+    float rayDirY = dirY + planeY * cameraX;
+
+    int mapX = (int)posX, mapY = (int)posY;
+    float deltaX = (rayDirX == 0.0f) ? 1e30f : fabsf(1.0f / rayDirX);
+    float deltaY = (rayDirY == 0.0f) ? 1e30f : fabsf(1.0f / rayDirY);
+
+    int stepX, stepY;
+    float sideX, sideY;
+    if (rayDirX < 0) { stepX = -1; sideX = (posX - mapX) * deltaX; }
+    else             { stepX =  1; sideX = (mapX + 1.0f - posX) * deltaX; }
+    if (rayDirY < 0) { stepY = -1; sideY = (posY - mapY) * deltaY; }
+    else             { stepY =  1; sideY = (mapY + 1.0f - posY) * deltaY; }
+
+    int side = 0;
+    uint8_t tile = 1;
+    for (int guard = 0; guard < 64; guard++) {
+      if (sideX < sideY) { sideX += deltaX; mapX += stepX; side = 0; }
+      else               { sideY += deltaY; mapY += stepY; side = 1; }
+      if (mapX < 0 || mapX >= MAP_W || mapY < 0 || mapY >= MAP_H) { tile = 1; break; }
+      tile = worldMap[mapY][mapX];
+      if (tile != 0) break;
+    }
+
+    float perp = (side == 0) ? (sideX - deltaX) : (sideY - deltaY);
+    if (perp < 0.05f) perp = 0.05f;
+
+    int lineH = (int)(SCREEN_H / perp);
+    int drawStart = SCREEN_H / 2 - lineH / 2;
+    int drawEnd   = SCREEN_H / 2 + lineH / 2;
+    if (drawStart < 0) drawStart = 0;
+    if (drawEnd > SCREEN_H - 1) drawEnd = SCREEN_H - 1;
+
+    // Distance fog + darker E/W faces for a sense of depth.
+    float fog = 1.0f - perp / 16.0f;
+    if (fog < 0.18f) fog = 0.18f;
+    uint16_t f = (uint16_t)(fog * 256.0f);
+    if (side == 1) f = (f * 180) >> 8;
+    uint16_t col = shade(wallColor(tile), f);
+
+    if (drawStart > 0)
+      tft.writeFastVLine(x, 0, drawStart, CEIL_COLOR);
+    tft.writeFastVLine(x, drawStart, drawEnd - drawStart + 1, col);
+    if (drawEnd < SCREEN_H - 1)
+      tft.writeFastVLine(x, drawEnd + 1, SCREEN_H - 1 - drawEnd, FLOOR_COLOR);
+  }
+  tft.endWrite();
+}
+
+static void drawHud() {
+  tft.fillRect(0, 0, 168, 16, RGB565(0, 0, 0));
+  tft.setTextSize(1);
+  tft.setTextColor(RGB565(0, 255, 80));
+  tft.setCursor(4, 4);
+  tft.print("VELXIO DOOM  FPS ");
+  tft.print(fpsWhole);
+  tft.print('.');
+  tft.print(fpsFrac);
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(200);
+  Serial.println("VELXIO DOOM raycaster -- ESP32 + ILI9341 (Adafruit, HW SPI)");
+  pinMode(BTN_FWD,   INPUT_PULLUP);
+  pinMode(BTN_BACK,  INPUT_PULLUP);
+  pinMode(BTN_LEFT,  INPUT_PULLUP);
+  pinMode(BTN_RIGHT, INPUT_PULLUP);
+
+  tftSPI.begin(TFT_SCK, TFT_MISO, TFT_MOSI, TFT_CS);
+  tft.begin(40000000); // 40 MHz nominal SPI
+  tft.setRotation(1);  // landscape 320x240
+  tft.fillScreen(RGB565(0, 0, 0));
+  tft.setTextSize(3);
+  tft.setTextColor(RGB565(0, 255, 80));
+  tft.setCursor(36, 96);
+  tft.print("VELXIO DOOM");
+  tft.setTextSize(1);
+  tft.setTextColor(RGB565(180, 180, 180));
+  tft.setCursor(60, 140);
+  tft.print("raycaster emulation benchmark");
+  delay(600);
+  fpsT0 = millis();
+}
+
+void loop() {
+  handleInput();
+  renderFrame();
+  drawHud();
+  frames++;
+
+  if (frames % 10 == 0) {
+    uint32_t now = millis();
+    uint32_t dms = now - fpsT0;
+    if (dms == 0) dms = 1;
+    // FPS x10 (tenths), integer math to avoid %f (nano newlib has no float printf).
+    uint32_t fps_x10 = (10u * 1000u * 10u) / dms;
+    fpsWhole = fps_x10 / 10;
+    fpsFrac  = fps_x10 % 10;
+    fpsT0 = now;
+    Serial.print("STAT frame=");
+    Serial.print(frames);
+    Serial.print(" t_ms=");
+    Serial.print(now);
+    Serial.print(" devfps=");
+    Serial.print(fpsWhole);
+    Serial.print('.');
+    Serial.println(fpsFrac);
+  }
+}
+`,
+    components: [
+      { type: 'wokwi-ili9341',    id: 'tft1',      x: 380, y: 40,  properties: {} },
+      { type: 'wokwi-pushbutton', id: 'btn_fwd',   x: 360, y: 330, properties: { color: 'green' } },
+      { type: 'wokwi-pushbutton', id: 'btn_back',  x: 470, y: 330, properties: { color: 'red' } },
+      { type: 'wokwi-pushbutton', id: 'btn_left',  x: 580, y: 330, properties: { color: 'blue' } },
+      { type: 'wokwi-pushbutton', id: 'btn_right', x: 690, y: 330, properties: { color: 'yellow' } },
+    ],
+    wires: [
+      { id: 'd-sck',  start: { componentId: 'esp32', pinName: '18'  }, end: { componentId: 'tft1', pinName: 'SCK'  }, color: '#27ae60' },
+      { id: 'd-mosi', start: { componentId: 'esp32', pinName: '23'  }, end: { componentId: 'tft1', pinName: 'MOSI' }, color: '#3498db' },
+      { id: 'd-miso', start: { componentId: 'esp32', pinName: '19'  }, end: { componentId: 'tft1', pinName: 'MISO' }, color: '#9b59b6' },
+      { id: 'd-cs',   start: { componentId: 'esp32', pinName: '5'   }, end: { componentId: 'tft1', pinName: 'CS'   }, color: '#e67e22' },
+      { id: 'd-dc',   start: { componentId: 'esp32', pinName: '2'   }, end: { componentId: 'tft1', pinName: 'D/C'  }, color: '#f1c40f' },
+      { id: 'd-rst',  start: { componentId: 'esp32', pinName: '4'   }, end: { componentId: 'tft1', pinName: 'RST'  }, color: '#ecf0f1' },
+      { id: 'd-vcc',  start: { componentId: 'esp32', pinName: '3V3' }, end: { componentId: 'tft1', pinName: 'VCC'  }, color: '#e74c3c' },
+      { id: 'd-led',  start: { componentId: 'esp32', pinName: '3V3' }, end: { componentId: 'tft1', pinName: 'LED'  }, color: '#e74c3c' },
+      { id: 'd-gnd',  start: { componentId: 'esp32', pinName: 'GND' }, end: { componentId: 'tft1', pinName: 'GND'  }, color: '#2c3e50' },
+      { id: 'd-bf-s', start: { componentId: 'esp32', pinName: '32'   }, end: { componentId: 'btn_fwd',   pinName: '1.l' }, color: '#16a085' },
+      { id: 'd-bf-g', start: { componentId: 'esp32', pinName: 'GND'  }, end: { componentId: 'btn_fwd',   pinName: '2.l' }, color: '#000000' },
+      { id: 'd-bb-s', start: { componentId: 'esp32', pinName: '33'   }, end: { componentId: 'btn_back',  pinName: '1.l' }, color: '#c0392b' },
+      { id: 'd-bb-g', start: { componentId: 'esp32', pinName: 'GND2' }, end: { componentId: 'btn_back',  pinName: '2.l' }, color: '#000000' },
+      { id: 'd-bl-s', start: { componentId: 'esp32', pinName: '25'   }, end: { componentId: 'btn_left',  pinName: '1.l' }, color: '#2980b9' },
+      { id: 'd-bl-g', start: { componentId: 'esp32', pinName: 'GND'  }, end: { componentId: 'btn_left',  pinName: '2.l' }, color: '#000000' },
+      { id: 'd-br-s', start: { componentId: 'esp32', pinName: '26'   }, end: { componentId: 'btn_right', pinName: '1.l' }, color: '#f39c12' },
+      { id: 'd-br-g', start: { componentId: 'esp32', pinName: 'GND2' }, end: { componentId: 'btn_right', pinName: '2.l' }, color: '#000000' },
+    ],
+  },
+
   // ── Raspberry Pi 3 / 4 / 5 — single-board GPIO examples ──────────────────
   // These run a Python (gpiozero) script on the QEMU Linux board. gpiozero is
   // board-agnostic (works on Pi 3/4/5). Only DIGITAL GPIO is wired — output
