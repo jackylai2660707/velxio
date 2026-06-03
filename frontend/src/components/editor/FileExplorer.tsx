@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useEditorStore } from '../../store/useEditorStore';
+import { useEditorStore, chipFileGroupId } from '../../store/useEditorStore';
 import { useSimulatorStore } from '../../store/useSimulatorStore';
 import type { BoardKind } from '../../types/board';
 import { BOARD_KIND_LABELS } from '../../types/board';
@@ -129,6 +129,31 @@ const IcoChevron = ({ open }: { open: boolean }) => (
   </svg>
 );
 
+// Integrated-circuit (chip) icon — a DIP package with pins. Marks a
+// programmable custom-chip's program section, distinct from board sections.
+const IcoChip = () => (
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="7" y="7" width="10" height="10" rx="1" />
+    <line x1="10" y1="3" x2="10" y2="7" />
+    <line x1="14" y1="3" x2="14" y2="7" />
+    <line x1="10" y1="17" x2="10" y2="21" />
+    <line x1="14" y1="17" x2="14" y2="21" />
+    <line x1="3" y1="10" x2="7" y2="10" />
+    <line x1="3" y1="14" x2="7" y2="14" />
+    <line x1="17" y1="10" x2="21" y2="10" />
+    <line x1="17" y1="14" x2="21" y2="14" />
+  </svg>
+);
+
 // Board emoji icons — mirrors BoardPickerModal
 const BOARD_ICON: Record<BoardKind, string> = {
   'arduino-uno': '⬤',
@@ -254,6 +279,33 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewCl
   const boards = useSimulatorStore((s) => s.boards);
   const activeBoardId = useSimulatorStore((s) => s.activeBoardId);
   const setActiveBoardId = useSimulatorStore((s) => s.setActiveBoardId);
+  const components = useSimulatorStore((s) => s.components);
+
+  // Programmable custom-chips (those with a `programFile`) own a program the
+  // user can edit — a ROM source / C — shown as its own section below the
+  // boards. Behaviour/driver chips and predefined chips carry no programFile
+  // and don't appear here (they're edited in the chip designer).
+  const programmableChips = components.filter(
+    (c) =>
+      c.metadataId === 'custom-chip' &&
+      String((c.properties as Record<string, unknown>)?.programFile ?? '').trim() !== '',
+  );
+
+  // Ensure each programmable chip has its editor group. loadExample seeds these
+  // from the example's files; this is the safety net for chips dropped onto the
+  // canvas (or older projects) — create an empty program file to edit.
+  useEffect(() => {
+    const ed = useEditorStore.getState();
+    for (const chip of programmableChips) {
+      const gid = chipFileGroupId(chip.id);
+      if (ed.fileGroups[gid]) continue;
+      const pf = String((chip.properties as Record<string, unknown>).programFile ?? '').trim();
+      if (!pf) continue;
+      const seed = String((chip.properties as Record<string, unknown>).programSource ?? '');
+      ed.createFileGroup(gid, [{ name: pf, content: seed }]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [components]);
 
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -306,6 +358,23 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewCl
       openFile(fileId);
     },
     [activeBoardId, switchToBoard, openFile],
+  );
+
+  // Chip program groups aren't tied to a board — switching to one just makes
+  // the chip's group active in the editor (no activeBoardId change).
+  const switchToChip = useCallback(
+    (groupId: string) => {
+      setActiveGroup(groupId);
+    },
+    [setActiveGroup],
+  );
+
+  const handleChipFileClick = useCallback(
+    (fileId: string, groupId: string) => {
+      if (groupId !== activeGroupId) switchToChip(groupId);
+      openFile(fileId);
+    },
+    [activeGroupId, switchToChip, openFile],
   );
 
   const handleContextMenu = (e: React.MouseEvent, fileId: string, boardGroupId: string) => {
@@ -536,8 +605,76 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewCl
           );
         })}
 
-        {/* Fallback: no boards yet */}
-        {boards.length === 0 && (
+        {/* Programmable custom-chip program sections — one per chip, each its
+            own collapsible group (the chip's ROM source / C), separate from the
+            board sketch above. */}
+        {programmableChips.map((chip) => {
+          const groupId = chipFileGroupId(chip.id);
+          const groupFiles = fileGroups[groupId] ?? [];
+          if (groupFiles.length === 0) return null;
+          const isActiveGroup = activeGroupId === groupId;
+          const isOpen = !collapsed[chip.id];
+          const chipName =
+            String((chip.properties as Record<string, unknown>)?.chipName ?? '').trim() ||
+            'Custom Chip';
+
+          return (
+            <div key={chip.id} className="fe-board-section">
+              <div
+                className={`fe-board-header${isActiveGroup ? ' fe-board-header-active' : ''}`}
+                onClick={() => {
+                  switchToChip(groupId);
+                  if (!isOpen) toggleCollapse(chip.id);
+                }}
+                title={`${chipName} — ${t('editor.fileExplorer.clickToEdit')}`}
+              >
+                <button
+                  className="fe-collapse-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleCollapse(chip.id);
+                  }}
+                  title={isOpen ? t('editor.fileExplorer.collapse') : t('editor.fileExplorer.expand')}
+                >
+                  <IcoChevron open={isOpen} />
+                </button>
+
+                <span className="fe-board-icon" style={{ color: '#c4b5fd' }}>
+                  <IcoChip />
+                </span>
+
+                <span className="fe-board-label">{chipName}</span>
+              </div>
+
+              {isOpen && (
+                <div className="fe-board-files">
+                  {groupFiles.map((file) => {
+                    const isActiveFile = isActiveGroup && file.id === activeFileId;
+                    return (
+                      <div
+                        key={file.id}
+                        className={`file-explorer-item fe-file-item${isActiveFile ? ' file-explorer-item-active' : ''}`}
+                        onClick={() => handleChipFileClick(file.id, groupId)}
+                        title={`${file.name}${file.modified ? ` (${t('editor.fileExplorer.unsavedSuffix')})` : ''}`}
+                      >
+                        <span className="file-explorer-icon">
+                          <FileIcon name={file.name} />
+                        </span>
+                        <span className="file-explorer-name">{file.name}</span>
+                        {file.modified && (
+                          <span className="file-explorer-dot" title={t('editor.fileExplorer.unsavedChanges')} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Fallback: nothing on the canvas yet */}
+        {boards.length === 0 && programmableChips.length === 0 && (
           <div style={{ color: '#666', fontSize: 11, padding: '12px 12px', lineHeight: 1.5 }}>
             {t('editor.fileExplorer.emptyState')}
           </div>

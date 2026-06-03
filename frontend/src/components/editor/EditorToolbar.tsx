@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useEditorStore } from '../../store/useEditorStore';
+import { useEditorStore, chipFileGroupId } from '../../store/useEditorStore';
 import { useSimulatorStore } from '../../store/useSimulatorStore';
 import { useElectricalStore } from '../../store/useElectricalStore';
 import { verifyCircuit, type VerificationResult } from '../../simulation/verify/circuitVerifier';
@@ -259,12 +259,21 @@ export const EditorToolbar = ({
         //    when there's no ROM yet or the user edited code since last build.
         const programFile = String(props.programFile ?? '').trim();
         if (programFile && (!String(props.romBytes ?? '') || codeChanged)) {
-          const file = boardFiles.find((f) => f.name === programFile);
+          // The program lives in the chip's OWN editor group (its collapsible
+          // section in the file explorer), separate from the board sketch.
+          // Fall back to the board files for older projects that still carried
+          // the program alongside sketch.ino in the board group.
+          const chipGroupFiles = useEditorStore
+            .getState()
+            .getGroupFiles(chipFileGroupId(chip.id));
+          const file =
+            chipGroupFiles.find((f) => f.name === programFile) ??
+            boardFiles.find((f) => f.name === programFile);
           if (!file) {
             addLog({
               timestamp: new Date(),
               type: 'error',
-              message: `Chip "${chipLabel}": program file "${programFile}" not found in this board's files.`,
+              message: `Chip "${chipLabel}": program file "${programFile}" not found in the chip's files.`,
             });
           } else {
             const target = targetForChip(chipJson);

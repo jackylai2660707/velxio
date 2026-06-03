@@ -6,7 +6,7 @@
 import type { ExampleProject } from '../data/examples';
 import type { BoardKind } from '../types/board';
 import { isPiBoardKind } from '../types/board';
-import { useEditorStore } from '../store/useEditorStore';
+import { useEditorStore, chipFileGroupId, CHIP_GROUP_PREFIX } from '../store/useEditorStore';
 import { useSimulatorStore, DEFAULT_BOARD_POSITION } from '../store/useSimulatorStore';
 import { useElectricalStore } from '../store/useElectricalStore';
 import { useProjectStore } from '../store/useProjectStore';
@@ -48,6 +48,45 @@ export async function ensureLibraries(
   } catch {
     onProgress?.(null);
   }
+}
+
+/**
+ * Programmable custom-chips (those with a `programFile`) keep their program
+ * (ROM source / C) in their OWN editor file group — group-chip-<chipId> — so
+ * it shows as a separate collapsible section in the file explorer, never mixed
+ * into the board's sketch. This mirrors how every board owns a group.
+ *
+ * Seeds those groups from the example's `files[]` (matched by programFile
+ * name), clearing any chip groups left over from a previously-loaded example.
+ * Returns the set of program filenames (so the caller keeps them OUT of the
+ * board's own group) and the created group ids (so a board-less example can
+ * open the program as the active group).
+ */
+function seedChipProgramGroups(example: ExampleProject): {
+  programFileNames: Set<string>;
+  chipGroupIds: string[];
+} {
+  const editor = useEditorStore.getState();
+  // Drop chip groups from a previously-loaded example so they don't linger.
+  Object.keys(editor.fileGroups)
+    .filter((g) => g.startsWith(CHIP_GROUP_PREFIX))
+    .forEach((g) => editor.deleteFileGroup(g));
+
+  const programFileNames = new Set<string>();
+  const chipGroupIds: string[] = [];
+  for (const comp of example.components) {
+    if (stripBrandPrefix(comp.type) !== 'custom-chip') continue;
+    const pf = String(
+      (comp.properties as Record<string, unknown>)?.programFile ?? '',
+    ).trim();
+    if (!pf) continue; // behaviour / predefined chips have no editable program
+    programFileNames.add(pf);
+    const content = example.files?.find((f) => f.name === pf)?.content ?? '';
+    const gid = chipFileGroupId(comp.id);
+    editor.createFileGroup(gid, [{ name: pf, content }]);
+    chipGroupIds.push(gid);
+  }
+  return { programFileNames, chipGroupIds };
 }
 
 /**
@@ -155,6 +194,10 @@ export async function loadExample(
       setActiveBoardId(boardIds[firstArduinoIdx]);
     }
 
+    // Programmable chips own their program in a dedicated editor group so it
+    // shows as its own section (the per-board code came from eb.code above).
+    seedChipProgramGroups(example);
+
     const componentsWithoutBoard = example.components.filter(
       (comp) =>
         !comp.type.includes('arduino') &&
@@ -213,7 +256,15 @@ export async function loadExample(
       setActiveBoardId(newId);
     }
 
-    // ── MicroPython + multi-file payloads ────────────────────────────────
+    // ── Program / file routing ───────────────────────────────────────────
+    // A programmable chip's program (larson.s, chaser.c, …) goes into the
+    // chip's OWN editor group — its own collapsible section — never into the
+    // board's sketch group. Everything else (sketch.ino) stays with the board.
+    const { programFileNames, chipGroupIds } = seedChipProgramGroups(example);
+    const boardOwnedFiles = (example.files ?? []).filter(
+      (f) => !programFileNames.has(f.name),
+    );
+
     // When the example specifies languageMode='micropython' or ships a
     // files[] array, we go through setBoardLanguageMode + loadFiles instead
     // of the legacy setCode() path so the editor opens the right file
@@ -227,42 +278,40 @@ export async function loadExample(
       setBoardLanguageMode(liveBoard.id, 'micropython');
     }
 
-    if (example.files && example.files.length > 0 && liveBoard) {
-      // Re-resolve the file group ID — setBoardLanguageMode replaces it.
+    const editorStore = useEditorStore.getState();
+    if (liveBoard) {
+      // Board present: the board group shows the sketch; chip programs sit in
+      // their own sections. Re-resolve the group ID — setBoardLanguageMode
+      // replaces it. We use `loadFiles` (not legacy `setCode`) and switch the
+      // editor to the board's group first: after a board-less → board
+      // transition the editor's `activeFileId` still points at an orphan ID
+      // from the deleted group, so `setCode` would silently no-op and the
+      // editor would appear blank. (Regression: load-example-transitions.test.ts.)
       const updatedBoard = useSimulatorStore
         .getState()
         .boards.find((b) => b.id === liveBoard.id);
       const groupId = updatedBoard?.activeFileGroupId ?? liveBoard.activeFileGroupId;
-      const editorStore = useEditorStore.getState();
       editorStore.setActiveGroup(groupId);
-      editorStore.loadFiles(example.files);
-    } else if (liveBoard) {
-      // Single-file Arduino-style example. We must use `loadFiles` (not the
-      // legacy `setCode`) and explicitly switch the editor store to the
-      // board's file group: in board-less → board transitions the editor's
-      // `activeFileId` still points at an orphan ID from the deleted
-      // group, so `setCode` would silently no-op and the editor would
-      // appear blank. (Regression test: load-example-transitions.test.ts.)
-      const editorStore = useEditorStore.getState();
-      editorStore.setActiveGroup(liveBoard.activeFileGroupId);
-      const filename = isPiBoardKind(liveBoard.boardKind) ? 'main.cpp' : 'sketch.ino';
-      editorStore.loadFiles([{ name: filename, content: example.code }]);
-    } else {
-      // Truly board-less. There is no board file-group, so point the editor at
-      // the default group and load the example's files THERE — otherwise the
-      // editor's activeGroupId still points at a deleted board's group and
-      // setCode silently no-ops, leaving the editor blank/uneditable. This is
-      // what lets a board-less custom-chip example show its program (.s/.c) on
-      // the left, editable, just like the board-backed examples.
-      const editorStore = useEditorStore.getState();
-      if (example.files && example.files.length > 0) {
-        editorStore.setActiveGroup('group-arduino-uno'); // = DEFAULT_GROUP_ID
-        editorStore.loadFiles(example.files);
+      if (boardOwnedFiles.length > 0) {
+        editorStore.loadFiles(boardOwnedFiles);
       } else {
-        // Pure analog/digital circuits ship no editable program — keep the
-        // legacy behaviour (write the placeholder to the current file).
-        editorStore.setCode(example.code);
+        const filename = isPiBoardKind(liveBoard.boardKind) ? 'main.cpp' : 'sketch.ino';
+        editorStore.loadFiles([{ name: filename, content: example.code }]);
       }
+    } else if (chipGroupIds.length > 0) {
+      // Board-less custom-chip example. The chip's program IS the only code
+      // here, so open its group on the left, editable — just like an Arduino
+      // sketch. (This is what makes /example/z80-larson-no-board show larson.s.)
+      editorStore.setActiveGroup(chipGroupIds[0]);
+    } else if (boardOwnedFiles.length > 0) {
+      // Board-less but ships plain files (rare) — point the editor at the
+      // default group and load them there so it isn't blank/uneditable.
+      editorStore.setActiveGroup('group-arduino-uno'); // = DEFAULT_GROUP_ID
+      editorStore.loadFiles(boardOwnedFiles);
+    } else {
+      // Pure analog/digital circuit, no editable program — keep the legacy
+      // behaviour (write the placeholder to the current file).
+      editorStore.setCode(example.code);
     }
 
     const componentsWithoutBoard = example.components.filter(

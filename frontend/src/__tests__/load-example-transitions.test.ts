@@ -83,3 +83,59 @@ describe('loadExample — board-less → board-based transition', () => {
     expect(code, 'editor must contain the Uno example body').toContain(uno.code.slice(0, 40));
   });
 });
+
+describe('loadExample — programmable-chip program lives in its own group', () => {
+  beforeEach(() => {
+    resetStores();
+  });
+
+  it('board-less chip example opens the chip program (larson.s) as the active group, editable', async () => {
+    await loadExample(findExample('z80-larson-no-board'));
+
+    const ed = useEditorStore.getState();
+    expect(useSimulatorStore.getState().boards.length).toBe(0);
+
+    // The chip owns a group-chip-<id> group with its program file.
+    const chipGroupId = 'group-chip-z80cpu';
+    expect(ed.fileGroups[chipGroupId], 'chip group exists').toBeDefined();
+    expect(ed.fileGroups[chipGroupId].map((f) => f.name)).toContain('larson.s');
+
+    // That group is the active one (program shows on the left, editable).
+    expect(ed.activeGroupId).toBe(chipGroupId);
+    const larson = ed.fileGroups[chipGroupId].find((f) => f.name === 'larson.s');
+    expect(larson?.content.length ?? 0, 'larson.s is non-empty').toBeGreaterThan(0);
+    expect(activeSketchContent(), 'editor shows the larson.s program').toBe(larson?.content);
+  });
+
+  it('board + chip example keeps the chip program OUT of the board sketch group', async () => {
+    await loadExample(findExample('z80-led-chaser-c'));
+
+    const ed = useEditorStore.getState();
+    const sim = useSimulatorStore.getState();
+
+    // Board group shows only the sketch — chaser.c is NOT a sibling tab.
+    const board = sim.boards.find((b) => b.id === sim.activeBoardId) ?? sim.boards[0];
+    const boardFiles = (ed.fileGroups[board.activeFileGroupId] ?? []).map((f) => f.name);
+    expect(boardFiles).toContain('sketch.ino');
+    expect(boardFiles, 'chaser.c must not pollute the board group').not.toContain('chaser.c');
+
+    // The chip program lives in its own group instead.
+    const chipGroupId = 'group-chip-z80cpu';
+    expect(ed.fileGroups[chipGroupId]?.map((f) => f.name)).toContain('chaser.c');
+
+    // With a board present the board sketch stays the active group.
+    expect(ed.activeGroupId).toBe(board.activeFileGroupId);
+  });
+
+  it('chip groups from a previous example do not leak into the next', async () => {
+    await loadExample(findExample('z80-led-chaser-c'));
+    expect(useEditorStore.getState().fileGroups['group-chip-z80cpu']).toBeDefined();
+
+    // A plain board example with no custom chip must clear the stale chip group.
+    await loadExample(findExample('blink-led'));
+    expect(
+      useEditorStore.getState().fileGroups['group-chip-z80cpu'],
+      'stale chip group swept on next load',
+    ).toBeUndefined();
+  });
+});

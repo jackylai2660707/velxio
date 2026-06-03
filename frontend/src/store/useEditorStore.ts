@@ -79,6 +79,21 @@ const DEFAULT_FILE: WorkspaceFile = {
 const DEFAULT_GROUP_ID = 'group-arduino-uno';
 
 /**
+ * Editor file group id for a programmable custom-chip's program.
+ *
+ * A custom chip that loads a ROM / runs a user program (a CPU emulator such
+ * as the Z80 or 8080) keeps that program (`larson.s`, `chaser.c`, …) in its
+ * OWN file group, exactly like each board owns one. The file explorer renders
+ * it as a separate collapsible section, so the chip's program never gets
+ * mixed into the board's sketch. Behaviour/driver chips (a servo driver, a
+ * sensor) and predefined chips carry no program file and get no group — they
+ * are edited in the chip designer instead.
+ */
+export const chipFileGroupId = (chipId: string): string => `group-chip-${chipId}`;
+/** Prefix shared by every chip program group — used to sweep stale ones. */
+export const CHIP_GROUP_PREFIX = 'group-chip-';
+
+/**
  * Editor view layout. Lets the user collapse either pane to give the chat
  * (right-docked) more breathing room, or to focus on one half of the
  * workflow.

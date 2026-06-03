@@ -625,8 +625,9 @@ export const retroIntelExamples: ExampleProject[] = [
   // ── Z80 Larson Scanner — NO board (general-purpose electronics) ──
   // A programmable Z80 chip + 8 LEDs + a regulated power supply, with NO
   // Arduino/ESP32 on the canvas. Demonstrates that Velxio runs custom chips
-  // standalone. Board-less (boardFilter: 'digital'); the ROM is pre-baked so
-  // only the chip WASM compiles on Run.
+  // standalone. Board-less (boardFilter: 'digital'); larson.s is the chip's
+  // editable program (its own section in the file explorer) — Run assembles
+  // it to ROM and compiles the chip WASM.
   {
     id: 'z80-larson-no-board',
     title: 'Z80 Larson Scanner (no board)',

@@ -32,7 +32,7 @@
 import type { BoardInstance } from '../types/board';
 import type { Component } from '../types/component';
 import type { Wire } from '../types/wire';
-import { useEditorStore } from '../store/useEditorStore';
+import { useEditorStore, chipFileGroupId } from '../store/useEditorStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 
 const VLX_FORMAT = 'velxio-project';
@@ -78,9 +78,15 @@ export function buildVlxPayload(opts: { name?: string } = {}): VlxPayload {
   const sim = useSimulatorStore.getState();
   const editor = useEditorStore.getState();
 
-  // Only persist file groups that are actually referenced by a board.
-  // Stray groups left over from deleted boards don't need to round-trip.
+  // Persist file groups referenced by a board, plus each programmable chip's
+  // own program group (group-chip-<id>) — otherwise the chip's program would
+  // be dropped on export. Stray groups from deleted boards don't round-trip.
   const referencedGroupIds = new Set(sim.boards.map((b) => b.activeFileGroupId));
+  for (const c of sim.components) {
+    if (c.metadataId !== 'custom-chip') continue;
+    const gid = chipFileGroupId(c.id);
+    if (editor.fileGroups[gid]?.length) referencedGroupIds.add(gid);
+  }
   const fileGroups: VlxPayload['fileGroups'] = {};
   for (const gid of referencedGroupIds) {
     fileGroups[gid] = (editor.fileGroups[gid] ?? []).map((f) => ({
