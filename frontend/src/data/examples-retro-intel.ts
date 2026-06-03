@@ -57,6 +57,15 @@ static void delay(unsigned int loops) {
 }
 
 void main(void) {
+    /* Park the stack at the top of the chip's 16 KB RAM (0x8000-0xBFFF).
+       SDCC's crt0 defaults SP to 0x0000; on this chip's memory map (RAM
+       0x8000-0xBFFF, MMIO at 0xC000+) that would push the stack onto
+       unmapped high memory and crash on the first CALL. The asm Larson
+       example does the same with "LD SP, 0xBFFF". */
+    __asm
+        ld sp, #0xBFFF
+    __endasm;
+
     unsigned char bit = 0x01;
     char dir = 1;          /* +1 = walking left, -1 = walking right */
     while (1) {
