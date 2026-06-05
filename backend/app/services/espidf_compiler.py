@@ -630,6 +630,79 @@ class ESPIDFCompiler:
         'WiFiServer.h', 'WiFiType.h', 'esp_wifi.h',
     })
 
+    # arduino-esp32 uses a single library architecture id ("esp32") across
+    # every chip variant (esp32 / esp32c3 / esp32s3 ...). A library whose
+    # library.properties declares architectures= without "esp32" or "*" is
+    # built for another platform and must not be pulled into an ESP32 build.
+    _ESP32_LIB_ARCH = 'esp32'
+
+    def _core_provided_headers(self) -> frozenset[str]:
+        """Header filenames provided by the arduino-esp32 core itself
+        (its `cores/` tree plus every bundled library under `libraries/`).
+
+        These are compiled into the arduino-esp32 IDF component, so a user
+        library must NEVER shadow them — even when a lib installed in
+        ~/Arduino/libraries happens to ship a file by the same name. The
+        canonical break this guards against: `WiFiEspAT/src/WiFi.h` (an
+        ESP8266 AT-modem library) shadowing the core `WiFi.h`, which drags
+        `EspAtDrv.cpp` into the build where its `const char OK[]` /
+        `const char STATUS[]` collide with ESP-IDF's
+        `enum STATUS { ...OK... }` in rom/ets_sys.h and the compile fails.
+
+        Computed once from the core tree and cached. Always unions the
+        static `_CORE_ESP32_HEADERS` fallback so the guard still holds even
+        when the core path is unknown (e.g. translation-only mode).
+        """
+        cached = getattr(self, '_core_headers_cache', None)
+        if cached is not None:
+            return cached
+        headers: set[str] = set(self._CORE_ESP32_HEADERS)
+        root = Path(self.arduino_path) if self.arduino_path else None
+        if root and root.is_dir():
+            for sub in ('cores', 'libraries'):
+                base = root / sub
+                if not base.is_dir():
+                    continue
+                for pattern in ('*.h', '*.hpp'):
+                    for f in base.rglob(pattern):
+                        headers.add(f.name)
+        result = frozenset(headers)
+        self._core_headers_cache = result
+        logger.info('[espidf] core-provided header set: %d headers', len(result))
+        return result
+
+    @staticmethod
+    def _parse_library_properties(lib_root: Path) -> dict[str, str]:
+        """Best-effort parse of an Arduino library.properties into a dict."""
+        props: dict[str, str] = {}
+        try:
+            text = (lib_root / 'library.properties').read_text(
+                encoding='utf-8', errors='ignore'
+            )
+        except OSError:
+            return props
+        for line in text.splitlines():
+            line = line.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+            key, _, value = line.partition('=')
+            props[key.strip().lower()] = value.strip()
+        return props
+
+    def _library_supports_esp32(self, lib_root: Path) -> bool:
+        """True if the library may be used on the ESP32 platform.
+
+        A missing/empty `architectures` field means "all architectures"
+        (the Arduino default), so we allow it. Only libraries that
+        explicitly enumerate architectures WITHOUT esp32/* are rejected —
+        those are written for another platform and would not compile.
+        """
+        arch = self._parse_library_properties(lib_root).get('architectures', '').strip()
+        if not arch:
+            return True
+        arches = {a.strip().lower() for a in arch.split(',') if a.strip()}
+        return '*' in arches or self._ESP32_LIB_ARCH in arches
+
     def _resolve_library_components(
         self,
         ext_headers: list[str],
@@ -678,11 +751,38 @@ class ESPIDFCompiler:
                 continue
             resolved_headers.add(header)
 
+            # Core-first. arduino-esp32 core headers (WiFi.h, Wire.h, SPI.h,
+            # WebServer.h, HTTPClient.h, ...) are compiled into the
+            # arduino-esp32 component. They must NEVER resolve to a user
+            # library, even when an installed lib ships a same-named file
+            # (e.g. WiFiEspAT/src/WiFi.h). Resolving to it would merge that
+            # foreign library and break the build. Skip resolution entirely
+            # and let the core provide the header.
+            if header in self._core_provided_headers():
+                logger.info(
+                    f'[espidf] <{header}> is provided by the arduino-esp32 core '
+                    f'— never resolving against user libraries'
+                )
+                continue
+
             src_root = (
                 self._find_library_for_header(header, arduino_libs)
                 if arduino_libs and arduino_libs.is_dir()
                 else None
             )
+
+            # Architecture guard. A user lib that resolves the header but
+            # whose library.properties declares architectures= without
+            # esp32/* is written for a different platform (AVR-only AT-modem
+            # shims, etc.) and would not compile against ESP-IDF. Drop it.
+            if src_root is not None:
+                _lib_root = src_root.parent if src_root.name == 'src' else src_root
+                if not self._library_supports_esp32(_lib_root):
+                    logger.warning(
+                        f'[espidf] <{header}> resolved to "{_lib_root.name}" but its '
+                        f'library.properties architectures exclude esp32 — skipping'
+                    )
+                    src_root = None
 
             # Tracks the "resolved to a core lib that's already compiled into
             # the arduino-esp32 component" case, so we don't fall through to
