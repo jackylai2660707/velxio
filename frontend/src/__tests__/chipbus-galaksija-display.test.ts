@@ -51,18 +51,15 @@ describe.skipIf(!have)('chipbus Phase 3 — Galaksija display renders a characte
     pm.triggerPinChange(WR, true); // rising edge -> latch + render
 
     expect(fb, 'framebuffer produced').not.toBeNull();
-    // Cell (col 2, row 0) spans x 16..23, y 0..7. Count lit (white) pixels there.
-    let lit = 0;
-    for (let y = 0; y < 8; y++) {
-      for (let x = 16; x < 24; x++) {
-        const o = (y * 256 + x) * 4;
-        if (fb![o] === 0xff) lit++;
-      }
-    }
-    expect(lit, 'the R glyph lit some pixels in its cell').toBeGreaterThan(3);
+    // A lit pixel is bright green (G channel high); background is dark green.
+    const lit = (x: number, y: number) => fb![(y * 256 + x) * 4 + 1] > 0x80;
+    // Cell (col 2, row 0) spans x 16..23, y 0..7. Count lit pixels there.
+    let litCount = 0;
+    for (let y = 0; y < 8; y++) for (let x = 16; x < 24; x++) if (lit(x, y)) litCount++;
+    expect(litCount, 'the R glyph lit some pixels in its cell').toBeGreaterThan(3);
     // A blank cell elsewhere (col 0) stays dark.
     let litBlank = 0;
-    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) if (fb![(y * 256 + x) * 4] === 0xff) litBlank++;
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) if (lit(x, y)) litBlank++;
     expect(litBlank, 'an unwritten cell stays blank').toBe(0);
 
     disp.dispose();

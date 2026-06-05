@@ -77,9 +77,9 @@ describe.skipIf(!have)('chipbus Phase 3 — full Galaksija computer renders READ
 
     expect(fb, 'display produced a framebuffer').not.toBeNull();
     // "READY" lives at video offset 2 (0x2802) -> row 0, cols 2..6. Count lit
-    // pixels across those five character cells (x 16..55, y 0..7).
+    // pixels (bright-green G channel) across those five character cells.
     let litReady = 0;
-    for (let y = 0; y < 8; y++) for (let x = 16; x < 56; x++) if (fb![(y * 256 + x) * 4] === 0xff) litReady++;
+    for (let y = 0; y < 8; y++) for (let x = 16; x < 56; x++) if (fb![(y * 256 + x) * 4 + 1] > 0x80) litReady++;
     expect(litReady, 'the READY prompt is rendered on screen').toBeGreaterThan(20);
 
     z80.dispose(); rom.dispose(); ram.dispose(); inv.dispose(); disp.dispose();
