@@ -7,7 +7,7 @@
  * for sources.
  */
 
-export type EPaperControllerFamily = 'ssd168x' | 'uc8159c';
+export type EPaperControllerFamily = 'ssd168x' | 'uc8159c' | 'uc8179';
 
 /**
  * Visible palette for a panel.
@@ -150,7 +150,7 @@ export const PANEL_CONFIGS: Record<string, EPaperPanelConfig> = {
     bezelPx: 24,
     fpcStripPx: 36,
     refreshMs: 100,
-    controllerFamily: 'ssd168x',
+    controllerFamily: 'uc8179',
     controllerIc: 'UC8179 / GD7965',
     palette: 'bw',
   },

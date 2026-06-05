@@ -448,3 +448,132 @@ class Uc8159cEpaperSlave:
             if self._write_idx < total:
                 self.ram[self._write_idx] = byte & 0x07
                 self._write_idx += 1
+
+
+# ── UC8179 / GD7965 (mono B/W 7.5" 800x480 Waveshare/GoodDisplay) ────────────
+#
+# UltraChip UC8179 — same command FAMILY as the UC8159c (0x10/0x13 DTM, 0x12
+# refresh) but MONO (1 bit/px, 8 px/byte) with a partial window (0x90).
+# GxEPD2_750_T7 writes the VISIBLE image to 0x13 (DTM2 "current"); 0x10 is the
+# "previous" buffer (ignored). Each image write is framed 0x91 (partial in) /
+# 0x90 (window x0/x1/y0/y1 in pixels, MSB-first, byte-aligned x) / 0x13 +
+# row-major 1bpp data / 0x92 (partial out). Latches on 0x12. The composed Frame
+# uses the SSD168x palette (0=black, 1=white) — `0xFF is white` per the driver —
+# so the existing frontend paintFrame renders it. Data lands at ABSOLUTE pixel
+# coords inside the window, so compose is just the RAM (no rotation/no union).
+
+UC8179_CMD_POWER_OFF        = 0x02
+UC8179_CMD_POWER_ON         = 0x04
+UC8179_CMD_DEEP_SLEEP       = 0x07
+UC8179_CMD_DTM1             = 0x10   # previous/old buffer (ignored)
+UC8179_CMD_DISPLAY_REFRESH  = 0x12
+UC8179_CMD_DTM2             = 0x13   # current/new image (the visible one)
+UC8179_CMD_PARTIAL_WINDOW   = 0x90
+
+
+@dataclass
+class Uc8179EpaperSlave:
+    """Mono UC8179/GD7965 decoder (7.5" 800x480). Latches on 0x12 DRF and emits
+    a Frame with 1 byte/pixel (0=black, 1=white)."""
+
+    component_id: str
+    width: int
+    height: int
+    on_flush: Optional[Callable[[Frame], None]] = None
+
+    ram: bytearray = field(init=False)
+    _current_cmd: int = -1
+    _params: List[int] = field(default_factory=list)
+    _active_visible: bool = False       # True while streaming 0x13 (DTM2)
+    _win_x0: int = 0
+    _win_x1: int = 0
+    _win_y0: int = 0
+    _win_y1: int = 0
+    _cx: int = 0
+    _cy: int = 0
+    refreshed_count: int = 0
+    unknown_cmds: List[int] = field(default_factory=list)
+    in_deep_sleep: bool = False
+
+    def __post_init__(self) -> None:
+        self.ram = bytearray([1] * (self.width * self.height))  # white
+        self._win_x1 = self.width - 1
+        self._win_y1 = self.height - 1
+
+    def feed(self, byte: int, dc_high: bool) -> None:
+        if not dc_high:
+            self._begin_command(byte & 0xFF)
+        else:
+            self._handle_data(byte & 0xFF)
+
+    def reset(self) -> None:
+        self.ram = bytearray([1] * (self.width * self.height))
+        self._current_cmd = -1
+        self._params = []
+        self._active_visible = False
+        self._win_x0 = 0
+        self._win_x1 = self.width - 1
+        self._win_y0 = 0
+        self._win_y1 = self.height - 1
+        self._cx = 0
+        self._cy = 0
+        self.in_deep_sleep = False
+
+    def compose_frame(self) -> Frame:
+        return Frame(self.width, self.height, bytes(self.ram))
+
+    def compose_frame_b64(self) -> str:
+        return base64.b64encode(bytes(self.ram)).decode("ascii")
+
+    def _begin_command(self, cmd: int) -> None:
+        self._current_cmd = cmd
+        self._params = []
+        if cmd == UC8179_CMD_DTM2:
+            self._active_visible = True
+            self._cx, self._cy = self._win_x0, self._win_y0
+            return
+        if cmd == UC8179_CMD_DTM1:
+            self._active_visible = False    # old buffer — ignore its data
+            return
+        if cmd == UC8179_CMD_DISPLAY_REFRESH:
+            self.refreshed_count += 1
+            frame = self.compose_frame()
+            if self.on_flush:
+                try:
+                    self.on_flush(frame)
+                except Exception:
+                    pass
+            return
+        # 0x90 + init commands consume their data in _handle_data; others no-op.
+
+    def _handle_data(self, byte: int) -> None:
+        cmd = self._current_cmd
+        self._params.append(byte)
+        if cmd == UC8179_CMD_DEEP_SLEEP:
+            if byte == 0xA5:
+                self.in_deep_sleep = True
+            return
+        if cmd == UC8179_CMD_PARTIAL_WINDOW and len(self._params) == 9:
+            p = self._params
+            self._win_x0 = (p[0] << 8) | p[1]
+            self._win_x1 = (p[2] << 8) | p[3]
+            self._win_y0 = (p[4] << 8) | p[5]
+            self._win_y1 = (p[6] << 8) | p[7]
+            return
+        if cmd == UC8179_CMD_DTM2 and self._active_visible:
+            self._write_image_byte(byte)
+
+    def _write_image_byte(self, byte: int) -> None:
+        # 8 px, MSB = leftmost. bit=1 -> white(1), bit=0 -> black(0).
+        w, h = self.width, self.height
+        cy = self._cy
+        if 0 <= cy < h:
+            base = cy * w
+            for k in range(8):
+                x = self._cx + k
+                if self._win_x0 <= x <= self._win_x1 and 0 <= x < w:
+                    self.ram[base + x] = 1 if (byte & (0x80 >> k)) else 0
+        self._cx += 8
+        if self._cx > self._win_x1:
+            self._cx = self._win_x0
+            self._cy += 1

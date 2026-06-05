@@ -76,6 +76,7 @@ try:
     from app.services.esp32_spi_slaves import (
         Ssd168xEpaperSlave as _Ssd168xEpaperSlave,
         Uc8159cEpaperSlave as _Uc8159cEpaperSlave,
+        Uc8179EpaperSlave as _Uc8179EpaperSlave,
     )
 except ImportError:
     import importlib.util, pathlib, sys as _sys
@@ -87,6 +88,7 @@ except ImportError:
     _spec.loader.exec_module(_mod)  # type: ignore[union-attr]
     _Ssd168xEpaperSlave = _mod.Ssd168xEpaperSlave  # type: ignore[assignment]
     _Uc8159cEpaperSlave = _mod.Uc8159cEpaperSlave  # type: ignore[assignment]
+    _Uc8179EpaperSlave = _mod.Uc8179EpaperSlave  # type: ignore[assignment]
 
 # ─── stdout helpers ──────────────────────────────────────────────────────────
 
@@ -1292,12 +1294,12 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                 # polarity, because the two controller families use opposite
                 # active levels in GxEPD2:
                 #
-                #   SSD168x family (1.54 / 2.13 / 2.9 / 4.2 / 7.5"):
+                #   SSD168x family (1.54 / 2.13 / 2.9 / 4.2"):
                 #     `_busy_level = HIGH` → BUSY=HIGH means "busy",
                 #                            BUSY=LOW means "ready".
                 #
-                #   UC8159c family (5.65" 7-colour ACeP GDEP0565D90):
-                #     `_busy_level = LOW`  → BUSY=LOW  means "busy",
+                #   UltraChip family — UC8159c (5.65" ACeP) and UC8179/GD7965
+                #   (7.5" 800x480): `_busy_level = LOW` → BUSY=LOW means "busy",
                 #                            BUSY=HIGH means "ready".
                 #
                 # Pick the IDLE level per family and (a) seed the pin to IDLE
@@ -1313,7 +1315,9 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                 # Read controller_family early; default to ssd168x for
                 # back-compat with old frontends that didn't send it.
                 ctl_family_early = str(s.get('controller_family', 'ssd168x'))
-                busy_idle_level = 1 if ctl_family_early == 'uc8159c' else 0
+                # UltraChip controllers (uc8159c, uc8179) idle BUSY HIGH; the
+                # SSD168x family idles BUSY LOW.
+                busy_idle_level = 1 if ctl_family_early in ('uc8159c', 'uc8179') else 0
                 busy_busy_level = 1 - busy_idle_level
                 if busy_pin is not None and busy_pin >= 0:
                     try:
@@ -1373,6 +1377,11 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                 ctl_family = str(s.get('controller_family', 'ssd168x'))
                 if ctl_family == 'uc8159c':
                     slave = _Uc8159cEpaperSlave(
+                        component_id=comp_id, width=width, height=height,
+                        on_flush=_flush_factory(),
+                    )
+                elif ctl_family == 'uc8179':
+                    slave = _Uc8179EpaperSlave(
                         component_id=comp_id, width=width, height=height,
                         on_flush=_flush_factory(),
                     )
@@ -1741,15 +1750,16 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                                 frame_b64 = base64.b64encode(frame.pixels).decode('ascii')
                             except Exception:
                                 return
+                            # Emit FLAT (see the _init_sensors path) — the backend
+                            # re-wraps under 'data', so a nested 'data' here would
+                            # double-wrap and the frontend would never render.
                             _emit({
                                 'type': 'epaper_update',
-                                'data': {
-                                    'component_id': _comp_id,
-                                    'width': _w,
-                                    'height': _h,
-                                    'frame_b64': frame_b64,
-                                    'refresh_ms': _refresh,
-                                },
+                                'component_id': _comp_id,
+                                'width': _w,
+                                'height': _h,
+                                'frame_b64': frame_b64,
+                                'refresh_ms': _refresh,
                             })
                             if _busy is not None and _busy >= 0:
                                 try:
@@ -1769,6 +1779,11 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                     ctl_family = str(cmd.get('controller_family', 'ssd168x'))
                     if ctl_family == 'uc8159c':
                         slave = _Uc8159cEpaperSlave(
+                            component_id=comp_id, width=width, height=height,
+                            on_flush=_flush_factory_rt(),
+                        )
+                    elif ctl_family == 'uc8179':
+                        slave = _Uc8179EpaperSlave(
                             component_id=comp_id, width=width, height=height,
                             on_flush=_flush_factory_rt(),
                         )

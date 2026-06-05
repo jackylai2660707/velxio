@@ -23,6 +23,7 @@ import {
   type UC8159cFrame,
   ACEP_PALETTE_RGB,
 } from '../displays/UC8159cDecoder';
+import { Uc8179Decoder } from '../displays/Uc8179Decoder';
 import { PANEL_CONFIGS, getPanelConfig, PANEL_IDS } from '../displays/EPaperPanels';
 import { RP2040Simulator } from '../RP2040Simulator';
 import type { AVRSimulator } from '../AVRSimulator';
@@ -229,25 +230,21 @@ const epaperSimulation = {
       // Pick the decoder that matches the panel's controller family. Both
       // expose .feed(byte, dcHigh) + .reset() so the SPI hook below stays
       // family-agnostic.
+      const onDecoderFlush = (frame: Frame | UC8159cFrame) => {
+        scheduleFlush(frame);
+        pulseBusy(refreshMs);
+      };
       const decoder =
         cfg.controllerFamily === 'uc8159c'
-          ? new UC8159cDecoder({
-              width: cfg.width,
-              height: cfg.height,
-              onFlush: (frame) => {
-                scheduleFlush(frame);
-                pulseBusy(refreshMs);
-              },
-            })
-          : new SSD168xDecoder({
-              width: cfg.width,
-              height: cfg.height,
-              palette: cfg.palette,
-              onFlush: (frame) => {
-                scheduleFlush(frame);
-                pulseBusy(refreshMs);
-              },
-            });
+          ? new UC8159cDecoder({ width: cfg.width, height: cfg.height, onFlush: onDecoderFlush })
+          : cfg.controllerFamily === 'uc8179'
+            ? new Uc8179Decoder({ width: cfg.width, height: cfg.height, onFlush: onDecoderFlush })
+            : new SSD168xDecoder({
+                width: cfg.width,
+                height: cfg.height,
+                palette: cfg.palette,
+                onFlush: onDecoderFlush,
+              });
 
       // CS / DC / RST pin tracking.
       let csLow = false; // start with CS de-asserted (idle)
