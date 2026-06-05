@@ -22,6 +22,7 @@ import { BoardOnCanvas } from './BoardOnCanvas';
 import { CanvasMinimap } from './CanvasMinimap';
 import { PartSimulationRegistry } from '../../simulation/parts';
 import { PROPERTY_CHANGE_EVENT, type PropertyChangeDetail } from '../../simulation/parts/partUtils';
+import { mountDigitalGateEngine } from '../../simulation/digital/digitalGateController';
 import { isSpiceMapped } from '../../simulation/spice/componentToSpice';
 import { PinOverlay } from './PinOverlay';
 import { isBoardComponent, boardPinToNumber } from '../../utils/boardPinMapping';
@@ -432,6 +433,12 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
     window.addEventListener(PROPERTY_CHANGE_EVENT, onPropertyChange);
     return () => window.removeEventListener(PROPERTY_CHANGE_EVENT, onPropertyChange);
   }, []);
+
+  // Digital-gate engine (project/digital-gate-engine): when ?digitalgates=on and
+  // the board-less circuit is all-digital, evaluate the logic gates on the
+  // event-driven settle kernel and paint the LEDs, instead of ngspice B-sources.
+  // No-op when the flag is off (default).
+  useEffect(() => mountDigitalGateEngine(), []);
 
   // Auto-start/stop Pi bridges when simulation state changes
   const startBoard = useSimulatorStore((s) => s.startBoard);
