@@ -82,10 +82,22 @@ describe.skipIf(!haveFixtures)('chipbus Phase 0 — two REAL chips exchange a by
       ...range(8).map((i) => [`OUT${i}`, pinKey('reader', `OUT${i}`)] as [string, number]),
     ]);
 
-    const driver = await ChipInstance.create({ wasm: driverWasm, pinManager: pm, wires: driverWires });
+    // componentId must be distinct so each chip's bus drivers are keyed apart
+    // (the real app always passes it; busNets keys drivers by `${id}::${pin}`).
+    const driver = await ChipInstance.create({
+      wasm: driverWasm,
+      componentId: 'driver',
+      pinManager: pm,
+      wires: driverWires,
+    });
     driver.start(); // chip_setup drives 0xA5 onto the shared D0..D7 net keys.
 
-    const reader = await ChipInstance.create({ wasm: readerWasm, pinManager: pm, wires: readerWires });
+    const reader = await ChipInstance.create({
+      wasm: readerWasm,
+      componentId: 'reader',
+      pinManager: pm,
+      wires: readerWires,
+    });
     reader.start();
 
     // Fire the reader's 1ms polling timer (advance sim time well past it).
