@@ -26,6 +26,7 @@ import {
 } from '../simulation/PinResolver';
 import { BOARD_PIN_GROUPS } from '../simulation/spice/boardPinGroups';
 import { syntheticChipPin } from '../simulation/customChips/syntheticPins';
+import { resolveChipNetKey } from '../simulation/customChips/chipNets';
 import { getMixedModeScheduler } from '../simulation/spice/MixedModeScheduler';
 import { getBoardLogicFamily } from '../simulation/LogicFamilies';
 
@@ -166,6 +167,23 @@ function traceDetailed(
         );
         if (result.arduinoPin !== null) return result;
       }
+    }
+  }
+
+  // No board pin reachable. Multi-chip digital bus (chipbus flag, Phase 0 of
+  // project/multichip-bus/): when this net has two or more chip endpoints and
+  // no board pin, collapse every endpoint onto ONE net-canonical synthetic key
+  // so a write on one chip is visible to another through the synchronous
+  // PinManager fan-out (fixes root cause A: per-endpoint keys never matching).
+  // resolveChipNetKey returns null when the flag is off, when a board owns the
+  // net, or when there is a single chip endpoint — so the chip-to-component
+  // rules below (2 and 3) are left exactly as-is. Scoped to depth 0 (the
+  // starting chip pin); the key is net-bound, so a pin flipping INPUT<->OUTPUT
+  // keeps the same key with no re-trace.
+  if (depth === 0) {
+    const netKey = resolveChipNetKey(state, fromId, fromPin);
+    if (netKey !== null) {
+      return { arduinoPin: netKey, crossedActiveDevice: activeSeen };
     }
   }
 
