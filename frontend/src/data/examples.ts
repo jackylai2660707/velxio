@@ -2725,6 +2725,7 @@ void loop() {
     description: 'Display text on a 20x4 LCD using the LiquidCrystal library',
     category: 'displays',
     difficulty: 'intermediate',
+    libraries: ['LiquidCrystal'],
     code: `// LiquidCrystal Library - Hello World
 // Demonstrates the use a 20x4 LCD display
 
@@ -6491,6 +6492,7 @@ void loop() {
     category: 'robotics',
     difficulty: 'beginner',
     boardFilter: 'arduino-uno',
+    libraries: ['Servo'],
     code: `// Arduino Uno — Servo Motor Sweep
 // Wiring: PWM → pin 9  |  V+ → 5V  |  GND → GND
 // Uses the built-in Servo library (no install needed)
