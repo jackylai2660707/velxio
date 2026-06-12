@@ -236,6 +236,20 @@ function normalizePinName(boardKind: string, pinName: string): string | null {
   // wemos-lolin32-lite — works, mirroring tableFor(). esp32-c3 has its own pins.
   const isEsp32 = boardKind.startsWith('esp32');
   const isEsp32C3 = boardKind.startsWith('esp32-c3');
+
+  // Arduino Mega exposes 4 hardware UARTs + I2C by silkscreen label. Its UART
+  // pins are also numbered (0/1, 18/19, 16/17, 14/15) and classify on those,
+  // but the dedicated SDA/SCL pins are ONLY labelled, so I2C links drawn on
+  // them never classified. Map every Mega function label here.
+  if (boardKind === 'arduino-mega') {
+    const mega: Record<string, string> = {
+      TX: '1', RX: '0', TX0: '1', RX0: '0',
+      TX1: '18', RX1: '19', TX2: '16', RX2: '17', TX3: '14', RX3: '15',
+      SDA: '20', SCL: '21',
+    };
+    if (mega[trimmed]) return mega[trimmed];
+  }
+
   if (trimmed === 'TX' || trimmed === 'TX0' || trimmed === 'TXD' || trimmed === 'TXD0') {
     if (boardKind === 'arduino-uno' || boardKind === 'arduino-nano') return '1';
     if (boardKind === 'raspberry-pi-pico' || boardKind === 'pi-pico-w') return '0';
