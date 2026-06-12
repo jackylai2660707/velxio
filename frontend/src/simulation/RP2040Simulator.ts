@@ -280,10 +280,14 @@ export class RP2040Simulator {
     files: Array<{ name: string; content: string }>,
     onProgress?: (loaded: number, total: number) => void,
   ): Promise<void> {
-    console.log('[RP2040] Loading MicroPython firmware...');
+    // Pico W needs the RPI_PICO_W build (network + CYW43 driver + bigger,
+    // higher LittleFS). The cyw43 emulator is attached (via attachCyw43) only
+    // for pi-pico-w boards, so its presence selects the firmware variant.
+    const variant = this.cyw43 ? 'pico-w' : 'pico';
+    console.log(`[RP2040] Loading MicroPython firmware (${variant})...`);
 
     // 1. Get MicroPython UF2 firmware (cached in IndexedDB)
-    const firmware = await getFirmware(onProgress);
+    const firmware = await getFirmware(variant, onProgress);
 
     // 2. Create fresh RP2040 instance
     this.rp2040 = new RP2040();
@@ -294,8 +298,9 @@ export class RP2040Simulator {
     loadUF2(firmware, this.rp2040.flash);
     console.log(`[RP2040] MicroPython UF2 loaded (${firmware.length} bytes)`);
 
-    // 4. Create LittleFS with user files and load into flash
-    await loadUserFiles(files, this.rp2040.flash);
+    // 4. Create LittleFS with user files and load into flash (variant-specific
+    //    flash offset — the Pico W FS lives higher than the plain Pico's).
+    await loadUserFiles(files, this.rp2040.flash, variant);
     console.log(`[RP2040] LittleFS loaded with ${files.length} file(s)`);
 
     // Keep a flash copy for reset
@@ -358,6 +363,16 @@ export class RP2040Simulator {
       };
     }
     this.pioStepAccum = 0;
+
+    // Pico W: attachCyw43 installed the gSPI PIO-FIFO hooks on the RP2040
+    // instance that existed at board-creation time. loadMicroPython just swapped
+    // in a fresh RP2040, so those hooks now point at the discarded instance.
+    // Re-install them on the new PIO FIFOs or the cyw43 driver's bit-banged
+    // traffic never reaches the emulator and WiFi never connects.
+    if (this.cyw43) {
+      this.cyw43HookedFifos = [];
+      this.installCyw43PioHooks();
+    }
 
     this.setupGpioListeners();
     this.micropythonMode = true;

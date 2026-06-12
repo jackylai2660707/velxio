@@ -6153,10 +6153,10 @@ from machine import Pin
 from umqttsimple import MQTTClient
 
 # --- Configuration ---
-WIFI_SSID = "kritish"  #
-WIFI_PASSWORD = "@pass"
+WIFI_SSID = "Velxio-GUEST"   # Velxio simulator's built-in WiFi network
+WIFI_PASSWORD = ""           # the simulator AP is open
 THINGSBOARD_HOST = "eu.thingsboard.cloud"
-ACCESS_TOKEN = "tokenn" 
+ACCESS_TOKEN = "tokenn"      # replace with YOUR ThingsBoard device token
 
 # --- Hardware Setup ---
 # Using "LED" for Pico W onboard LED, or Pin(15) for an external LED
