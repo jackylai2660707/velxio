@@ -70,24 +70,27 @@ async def wifi_connect():
     print("IP:", ip)
     print("Open browser: http://%s/" % ip)
 
-HTML = """<!DOCTYPE html>
-<html><body><h2>Pico W Async LED</h2>
-<button onclick="fetch('on')">ON</button>
-<button onclick="fetch('off')">OFF</button>
-</body></html>"""
+led_on = False
+
+def page():
+    # The board's onboard LED isn't drawn on the canvas, so show the state
+    # here; the buttons reload the page so you can see it flip.
+    state = "ON" if led_on else "OFF"
+    return ("<!DOCTYPE html><html><body><h2>Pico W LED: %s</h2>"
+            "<button onclick=\\"fetch('on').then(()=>location.reload())\\">ON</button> "
+            "<button onclick=\\"fetch('off').then(()=>location.reload())\\">OFF</button>"
+            "</body></html>") % state
 
 async def handle_client(reader, writer):
-    request_line = await reader.readline()
-    request = request_line.decode()
+    global led_on
+    request = (await reader.readline()).decode()
     while await reader.readline() != b"\\r\\n":
         pass
     if "GET /on" in request:
-        led.on(); body = "ON"
+        led.on(); led_on = True
     elif "GET /off" in request:
-        led.off(); body = "OFF"
-    else:
-        body = HTML
-    writer.write(("HTTP/1.1 200 OK\\r\\nContent-Type: text/html\\r\\nConnection: close\\r\\n\\r\\n" + body).encode())
+        led.off(); led_on = False
+    writer.write(("HTTP/1.1 200 OK\\r\\nContent-Type: text/html\\r\\nConnection: close\\r\\n\\r\\n" + page()).encode())
     await writer.drain()
     await writer.wait_closed()
 

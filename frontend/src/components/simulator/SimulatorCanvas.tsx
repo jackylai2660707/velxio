@@ -1,5 +1,6 @@
 import { useSimulatorStore, getEsp32Bridge } from '../../store/useSimulatorStore';
 import { useElectricalStore } from '../../store/useElectricalStore';
+import { openDeviceGateway } from '../../lib/openDeviceGateway';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Undo2, Redo2 } from 'lucide-react';
@@ -2202,7 +2203,13 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
                     __velxio_iot_gateway_open_gate__?: () => boolean;
                   }).__velxio_iot_gateway_open_gate__;
                   if (gate && gate()) return;
-                  window.open(gatewayUrl, '_blank');
+                  // Pico W runs in THIS tab — a new tab would background and
+                  // freeze the emulation. Show the page in an in-app iframe.
+                  if (activeBoard.boardKind === 'pi-pico-w') {
+                    openDeviceGateway(gatewayUrl);
+                  } else {
+                    window.open(gatewayUrl, '_blank');
+                  }
                 };
                 return (
                   <span
