@@ -51,12 +51,9 @@ export function openDeviceGateway(url: string): void {
   reload.textContent = 'Reload';
   reload.style.cssText = 'background:none;border:none;color:#4fc3f7;cursor:pointer;font-size:12px;padding:0;';
 
-  const openTab = document.createElement('a');
-  openTab.textContent = 'Open in tab';
-  openTab.href = url;
-  openTab.target = '_blank';
-  openTab.rel = 'noreferrer';
-  openTab.style.cssText = 'color:#4fc3f7;text-decoration:none;font-size:12px;';
+  // No "open in a new tab" affordance: a background tab pauses the chip's
+  // rAF loop, freezing the emulated server (502). The in-tab iframe is the
+  // only way the Pico W's device page stays reachable.
 
   const close = document.createElement('button');
   close.type = 'button';
@@ -98,7 +95,7 @@ export function openDeviceGateway(url: string): void {
     document.addEventListener('mouseup', onUp);
   });
 
-  right.append(reload, openTab, close);
+  right.append(reload, close);
   bar.append(title, right);
   panel.append(bar, iframe);
   document.body.append(panel);
