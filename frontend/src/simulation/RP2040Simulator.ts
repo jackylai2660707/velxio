@@ -165,6 +165,12 @@ export class RP2040Simulator {
   //    in OSS (no factory installed); attached for boards a factory supports.
   private pioPeripheral: PioPeripheral | null = null;
   private pioHookedFifos: Array<{ restore: () => void }> = [];
+  // The board kind this simulator runs (set by attachPioPeripheral). A
+  // 'pi-pico-w' boots the RPI_PICO_W firmware (with the `network` module)
+  // regardless of whether a WiFi peripheral attached, so a Pico W sketch never
+  // crashes with "ImportError: no module named 'network'" — even if the pro
+  // factory hadn't installed yet when the board was added.
+  private boardKind = '';
 
   /** Serial output callback — fires for each byte the Pico sends on UART0 (or USBCDC in MicroPython mode) */
   public onSerialData: ((char: string) => void) | null = null;
@@ -268,10 +274,14 @@ export class RP2040Simulator {
     files: Array<{ name: string; content: string }>,
     onProgress?: (loaded: number, total: number) => void,
   ): Promise<void> {
-    // A WiFi/gSPI peripheral (the pro overlay's CYW43) is attached only for
-    // pi-pico-w boards; its presence selects the RPI_PICO_W firmware variant
-    // (network + driver + bigger LittleFS). OSS has no peripheral -> 'pico'.
-    const variant = this.pioPeripheral ? 'pico-w' : 'pico';
+    // A pi-pico-w boots the RPI_PICO_W firmware variant (network + driver +
+    // bigger LittleFS) whether or not a WiFi peripheral attached — so a Pico W
+    // sketch never crashes on `import network`. The pro overlay registers that
+    // variant; in OSS it isn't registered and firmwareConfig() falls back to
+    // 'pico' (a self-hosted Pico W has no WiFi anyway). The pioPeripheral check
+    // stays as a belt-and-suspenders for any future factory-backed board.
+    const variant =
+      this.boardKind === 'pi-pico-w' || this.pioPeripheral ? 'pico-w' : 'pico';
     console.log(`[RP2040] Loading MicroPython firmware (${variant})...`);
 
     // 1. Get MicroPython UF2 firmware (cached in IndexedDB)
@@ -385,6 +395,10 @@ export class RP2040Simulator {
    * fragile FIFO plumbing + GPIO24 host-wake lifecycle stay here.
    */
   attachPioPeripheral(boardKind: string, boardId: string): PioPeripheral | null {
+    // Record the kind even when no peripheral attaches (free user / OSS /
+    // factory-not-installed-yet) so loadMicroPython still picks the W firmware
+    // for a pi-pico-w board.
+    this.boardKind = boardKind;
     if (this.pioPeripheral) return this.pioPeripheral;
     const peripheral = createPioPeripheral(boardKind, boardId);
     if (!peripheral) return null;

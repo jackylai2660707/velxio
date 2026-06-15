@@ -1557,6 +1557,15 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         // RP2040 path: load firmware + filesystem in browser
         const sim = getBoardSimulator(boardId);
         if (!(sim instanceof RP2040Simulator)) return;
+        // (Re)attach the PIO peripheral before loading firmware. An example
+        // deep-link adds the board during render, which can race the pro
+        // overlay's async mountPro that installs the CYW43 factory — so the
+        // board-add attach returned null and a paid user's Pico W would boot
+        // the plain firmware (no `network` -> ImportError). attachPioPeripheral
+        // is idempotent; by run time the factory is installed, so a paid user
+        // gets the W peripheral -> the RPI_PICO_W firmware variant. No-op in
+        // OSS (no factory) and for free users (factory returns null).
+        sim.attachPioPeripheral(board.boardKind, boardId);
         await sim.loadMicroPython(files);
       }
 
