@@ -700,9 +700,11 @@ const MAPPERS: Record<string, Mapper> = {
   },
 
   // NTC temperature sensor — 3-pin breakout module (VCC, GND, OUT).
-  // Internal topology: NTC thermistor between VCC and OUT, plus an internal
-  // 10k pull-down from OUT to GND. Temperature up → R_ntc down → V_OUT up.
-  // Matches the β-model math used in the ntc-temperature example.
+  // Internal topology: a 10k pull-up from VCC to OUT, with the NTC thermistor
+  // from OUT to GND, so V_OUT = Vcc · R_ntc / (R_ntc + R_pull). Temperature up
+  // → R_ntc down → V_OUT down. This is the exact divider the ntc-temperature
+  // example sketch inverts to recover R_ntc (rNtc = R_PULL · v / (5 − v)); with
+  // VCC and GND swapped (NTC on top) the decoded temperature ran backwards.
   'ntc-temperature-sensor': (comp, netLookup) => {
     const vcc = netLookup('VCC');
     const gnd = netLookup('GND');
@@ -719,7 +721,7 @@ const MAPPERS: Record<string, Mapper> = {
     }
     const Rpull = parseValueWithUnits(comp.properties.pullup, 10_000);
     return {
-      cards: [`R_${comp.id}_ntc ${vcc} ${out} ${Rntc}`, `R_${comp.id}_pull ${out} ${gnd} ${Rpull}`],
+      cards: [`R_${comp.id}_pull ${vcc} ${out} ${Rpull}`, `R_${comp.id}_ntc ${out} ${gnd} ${Rntc}`],
       modelsUsed: new Set(),
     };
   },

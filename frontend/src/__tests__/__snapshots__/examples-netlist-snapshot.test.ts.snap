@@ -1416,8 +1416,8 @@ R_autopull_n6 n6 0 100Meg
 exports[`netlist snapshot — circuits (41 examples) > nano-sensor-station 1`] = `
 "* Velxio circuit
 V_VCC_RAIL vcc_rail 0 DC 5
-R_ntc_ntc vcc_rail n1 11441.484668193882
-R_ntc_pull n1 0 10000
+R_ntc_pull vcc_rail n1 10000
+R_ntc_ntc n1 0 11441.484668193882
 R_ldr_ldr vcc_rail n0 400000
 R_ldr_pull n0 0 10000
 .op
@@ -1446,8 +1446,8 @@ R_autopull_n5 n5 0 100Meg
 exports[`netlist snapshot — circuits (41 examples) > ntc-temperature 1`] = `
 "* Velxio circuit
 V_VCC_RAIL vcc_rail 0 DC 5
-R_ntc_ntc vcc_rail n0 10000
-R_ntc_pull n0 0 10000
+R_ntc_pull vcc_rail n0 10000
+R_ntc_ntc n0 0 10000
 .op
 .end"
 `;

@@ -37,6 +37,8 @@ import {
   updateWires as icUpdateWires,
   setInterconnectRuntime,
 } from '../simulation/Interconnect';
+import { SENSOR_CONTROLS } from '../simulation/sensorControlConfig';
+import { dispatchSensorUpdate } from '../simulation/SensorUpdateRegistry';
 
 // ── Sensor pre-registration ──────────────────────────────────────────────────
 // Maps component metadataId → { sensorType, dataPinName, propertyKeys }
@@ -817,6 +819,9 @@ interface SimulatorState {
   running: boolean;
   compiledHex: string | null;
   hexEpoch: number;
+  /** Bumped on every Reset so the open SensorControlPanel remounts and
+   *  re-reads each interactive sensor's freshly-defaulted value. */
+  sensorResetNonce: number;
   serialOutput: string;
   serialBaudRate: number;
   serialMonitorOpen: boolean;
@@ -1914,6 +1919,29 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           ...(isActive ? { running: false, serialOutput: '', serialBaudRate: 0 } : {}),
         };
       });
+
+      // Reset interactive sensors (temperature / lux / gas sliders, etc.) back
+      // to their configured defaults so a restart starts from a clean state
+      // instead of freezing on the last slider position the user dragged to.
+      // dispatchSensorUpdate re-injects the default into the running sim (so the
+      // NTC's injected ADC voltage and the SPICE solve both return to 25°C /
+      // 2.5V) and refreshes the panel's cached value; bumping sensorResetNonce
+      // remounts the open SensorControlPanel so its slider snaps back too.
+      const sensorComps = get().components.filter(
+        (c) => c.metadataId && SENSOR_CONTROLS[c.metadataId],
+      );
+      if (sensorComps.length > 0) {
+        set((s) => ({
+          components: s.components.map((c) => {
+            const def = c.metadataId ? SENSOR_CONTROLS[c.metadataId] : undefined;
+            return def ? { ...c, properties: { ...c.properties, ...def.defaultValues } } : c;
+          }),
+          sensorResetNonce: s.sensorResetNonce + 1,
+        }));
+        for (const c of sensorComps) {
+          dispatchSensorUpdate(c.id, SENSOR_CONTROLS[c.metadataId].defaultValues);
+        }
+      }
     },
 
     // ── Legacy single-board API ───────────────────────────────────────────
@@ -1924,6 +1952,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
     running: false,
     compiledHex: null,
     hexEpoch: 0,
+    sensorResetNonce: 0,
     serialOutput: '',
     serialBaudRate: 0,
     serialMonitorOpen: false,

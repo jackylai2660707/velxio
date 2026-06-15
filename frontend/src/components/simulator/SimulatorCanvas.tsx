@@ -118,6 +118,7 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
     addBoard,
     components,
     running,
+    sensorResetNonce,
     pinManager,
     initSimulator,
     updateComponentState,
@@ -2490,14 +2491,15 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
               key={sensorControlComponentId} forces a fresh mount when the user clicks a
               different instance of the same sensor type (e.g. a second photoresistor); the
               slider state is local and would otherwise show the previously-clicked sensor's
-              value until the user manually moved it. */}
+              value until the user manually moved it. The sensorResetNonce suffix also remounts
+              it on Reset, so the slider snaps back to the sensor's default value. */}
           {sensorControlComponentId &&
             sensorControlMetadataId &&
             (() => {
               const meta = registry.getById(sensorControlMetadataId);
               return (
                 <SensorControlPanel
-                  key={sensorControlComponentId}
+                  key={`${sensorControlComponentId}:${sensorResetNonce}`}
                   componentId={sensorControlComponentId}
                   metadataId={sensorControlMetadataId}
                   sensorName={meta?.name ?? sensorControlMetadataId}
