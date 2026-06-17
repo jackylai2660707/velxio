@@ -17,6 +17,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PartSimulationRegistry } from '../simulation/parts/PartSimulationRegistry';
+import { useElectricalStore } from '../store/useElectricalStore';
 
 // Side-effect imports — register all parts
 import '../simulation/parts/BasicParts';
@@ -181,6 +182,91 @@ describe('LED — attachEvents (anode + cathode check)', () => {
     expect((el as any).value).toBe(true);
     anodeCall![1](13, false);
     expect((el as any).value).toBe(false);
+  });
+});
+
+// ─── LED overcurrent burnout (SPICE forward current) ──────────────────────────
+describe('LED — overcurrent burnout', () => {
+  afterEach(() => {
+    useElectricalStore.setState({ branchCurrents: {}, timeWaveforms: undefined });
+  });
+
+  function attachLed(id: string) {
+    const logic = PartSimulationRegistry.get('led')!;
+    const el = makeElement({ value: false, brightness: 0 });
+    const sim = makeSimulator();
+    logic.attachEvents!(el, sim as any, pinMap({ A: 13, C: -1 }), id);
+    const anode = sim.pinManager.onPinChange.mock.calls.find((c: any) => c[0] === 13)![1];
+    return { el: el as any, trigger: () => anode(13, true) };
+  }
+
+  it('burns out (goes dark) at destructive forward current', () => {
+    const { el, trigger } = attachLed('led-burn');
+    useElectricalStore.setState({ branchCurrents: { 'v_led-burn_sense': 4.6 } }); // 9V/no resistor
+    trigger();
+    expect(el.brightness).toBe(0);
+    expect(el.value).toBe(false);
+    // latched: stays dark even if the current later drops to a safe value
+    useElectricalStore.setState({ branchCurrents: { 'v_led-burn_sense': 0.01 } });
+    trigger();
+    expect(el.brightness).toBe(0);
+    expect(el.value).toBe(false);
+  });
+
+  it('does NOT burn out at a normal bright current (15 mA)', () => {
+    const { el, trigger } = attachLed('led-ok');
+    useElectricalStore.setState({ branchCurrents: { 'v_led-ok_sense': 0.015 } });
+    trigger();
+    expect(el.value).toBe(true);
+    expect(el.brightness).toBeCloseTo(0.75, 2); // 15 mA / 20 mA rated
+  });
+
+  it('does NOT burn out just over the rated max (25 mA) — only destructive current', () => {
+    const { el, trigger } = attachLed('led-warm');
+    useElectricalStore.setState({ branchCurrents: { 'v_led-warm_sense': 0.025 } });
+    trigger();
+    expect(el.value).toBe(true);
+    expect(el.brightness).toBe(1); // bright (clamped), still alive
+  });
+
+  it('does NOT burn out at a legitimate high-power current (80 mA)', () => {
+    // High-power / RGB channels can pull ~100-150 mA legitimately; the burnout
+    // threshold (100 mA) must sit above the bright-but-fine range.
+    const { el, trigger } = attachLed('led-hp');
+    useElectricalStore.setState({ branchCurrents: { 'v_led-hp_sense': 0.08 } });
+    trigger();
+    expect(el.value).toBe(true);
+    expect(el.brightness).toBe(1);
+  });
+
+  it('burns out when the solver returns a non-finite current (no-resistor short)', () => {
+    // A diode straight across a supply with no series resistor often has no
+    // stable operating point → ngspice returns NaN/Infinity. That must burn
+    // the LED out, NOT fall through to the digital fallback and glow.
+    const { el, trigger } = attachLed('led-nan');
+    useElectricalStore.setState({ branchCurrents: { 'v_led-nan_sense': NaN } });
+    trigger();
+    expect(el.value).toBe(false);
+    expect(el.brightness).toBe(0);
+    // latched
+    useElectricalStore.setState({ branchCurrents: { 'v_led-nan_sense': 0.01 } });
+    trigger();
+    expect(el.value).toBe(false);
+  });
+
+  it('recovers after a fresh re-attach (Reset bumps hexEpoch → new closure)', () => {
+    // Burn one instance...
+    const first = attachLed('led-fix');
+    useElectricalStore.setState({ branchCurrents: { 'v_led-fix_sense': 4.6 } });
+    first.trigger();
+    expect(first.el.value).toBe(false);
+    // ...fix the circuit, then re-attach (what a Reset does via hexEpoch).
+    // The new closure starts un-burnt, so the now-safe circuit lights again.
+    useElectricalStore.setState({ branchCurrents: { 'v_led-fix_sense': 0.015 } });
+    const second = attachLed('led-fix');
+    second.trigger();
+    expect(second.el.value).toBe(true);
+    expect(second.el.brightness).toBeCloseTo(0.75, 2);
   });
 });
 

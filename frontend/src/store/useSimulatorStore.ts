@@ -1914,8 +1914,14 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           b.id === boardId ? { ...b, running: false, serialOutput: '', serialBaudRate: 0 } : b,
         );
         const isActive = s.activeBoardId === boardId;
+        // Bump hexEpoch so every component part re-attaches with a fresh
+        // closure. Without this, latched per-part state (e.g. an LED's
+        // `burnt` flag after overcurrent) would survive a Reset and the
+        // part would stay dead even after the user fixes the circuit —
+        // only a recompile would clear it. Mirrors restartParts().
         return {
           boards,
+          hexEpoch: s.hexEpoch + 1,
           ...(isActive ? { running: false, serialOutput: '', serialBaudRate: 0 } : {}),
         };
       });

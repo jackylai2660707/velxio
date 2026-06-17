@@ -150,6 +150,51 @@ PartSimulationRegistry.register('dip-switch-8', {
  * connected to GND (or a LOW GPIO).  If the cathode is not wired at all the
  * LED stays off regardless of the anode state.
  */
+
+// A real 5mm indicator LED survives ~20 mA (datasheet absolute max ~30 mA).
+// A sustained forward current well above that destroys it within moments —
+// the classic "LED straight across a 9V battery with no series resistor"
+// mistake. A professional simulator must model that, not glow happily. Once
+// the solved forward current crosses LED_BURNOUT_A the LED burns out (goes
+// dark and stays dark for the rest of the run) and a fault message is shown.
+//
+// The burnout threshold (100 mA) sits well above both the 20 mA rating AND the
+// ~100-150 mA a high-power / RGB channel may legitimately draw, so a merely
+// bright LED is never falsely destroyed — only a missing or grossly-undersized
+// series resistor trips it. The pre-flight circuitVerifier already warns at the
+// 20 mA datasheet limit BEFORE the run starts (the primary, professional
+// check); this runtime burnout is the last-resort net for users who click
+// "Run Anyway" past that warning, or for faults that only appear mid-run.
+const LED_RATED_MAX_A = 0.02;
+const LED_BURNOUT_A = 0.1;
+
+/** Surface a circuit fault for an LED — console + a UI event the toolbar shows. */
+function reportLedFault(componentId: string, kind: string, message: string): void {
+  console.warn(`[led] ${componentId}: ${message}`);
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    try {
+      window.dispatchEvent(
+        new CustomEvent('velxio-circuit-fault', {
+          detail: { componentId, kind, message },
+        }),
+      );
+    } catch {
+      /* CustomEvent unavailable (test env) — the console.warn is enough */
+    }
+  }
+}
+
+function reportLedBurnout(componentId: string, current: number): void {
+  const mA = current * 1000;
+  const amount = mA >= 1000 ? `${(mA / 1000).toFixed(1)} A` : `${mA.toFixed(0)} mA`;
+  reportLedFault(
+    componentId,
+    'led-burnout',
+    `LED burnt out — it drew ${amount}, far above its ~20 mA limit. ` +
+      `Add a series resistor between the supply and the LED.`,
+  );
+}
+
 PartSimulationRegistry.register('led', {
   attachEvents: (element, simulator, getArduinoPinHelper, componentId, getPinResolver) => {
     const pinManager = (simulator as any).pinManager;
@@ -177,9 +222,19 @@ PartSimulationRegistry.register('led', {
     // dies for good (useful diagnostic).
     let lastSpiceBrightness = 0;
     let lastSpiceTs = 0;
+    // Latches once the LED is destroyed by overcurrent; reset only when the
+    // part re-attaches (a fresh Run / reset re-arms it).
+    let burnt = false;
     const HOLD_MS = 500;
 
     const update = () => {
+      // A burnt-out LED stays dark for the rest of the run, no matter what
+      // the solver reports next.
+      if (burnt) {
+        el.value = false;
+        el.brightness = 0;
+        return;
+      }
       // SPICE is always active. Use real branch current for analog
       // brightness (0..1). The SPICE mapper emits a V-sense zero-volt
       // source in series with the diode (`V_<componentId>_sense`) so
@@ -207,18 +262,40 @@ PartSimulationRegistry.register('led', {
           raw = sum / samples.length;
         }
       }
-      // Guard against NaN / Infinity coming back from ngspice. They
-      // happen on degenerate circuits (a forward-biased diode with no
-      // series resistor — the textbook "missing 220Ω" mistake — is
-      // the most common case). Without this guard the LED would mark
-      // `el.value = NaN > 1e-6 = false` and stay visually dark even
-      // when the user clicks "Run Anyway" past the verifier warning.
-      // Treat non-finite branch currents as "SPICE has nothing useful
-      // to say" → fall through to the digital fallback so at least the
-      // LED visually lights when its driver pin is HIGH.
+      // A non-finite branch current (NaN / Infinity) that ngspice actually
+      // returned is NOT "no data" — it means the solver could not find a
+      // stable operating point for this LED. In practice that is the textbook
+      // degenerate circuit: a forward-biased diode with no series resistor (a
+      // near-short across the supply). Burn the LED out rather than silently
+      // glowing via the digital fallback (the old behaviour, which let the
+      // "missing 220Ω" mistake light up as if it were fine). `raw === undefined`
+      // is different — that is the engine warming up, handled by the HOLD /
+      // digital-fallback path below.
+      if (raw !== undefined && !Number.isFinite(raw)) {
+        burnt = true;
+        el.value = false;
+        el.brightness = 0;
+        reportLedFault(
+          componentId,
+          'led-burnout',
+          `LED destroyed — the circuit has no stable solution (the solver returned ` +
+            `an undefined current). This almost always means the LED has no series ` +
+            `resistor. Add a resistor between the supply and the LED.`,
+        );
+        return;
+      }
       if (raw !== undefined && Number.isFinite(raw)) {
         const current = Math.abs(raw);
-        lastSpiceBrightness = Math.min(1, current / 0.02);
+        // Destructive overcurrent → burn the LED out (and tell the user why).
+        // Latches; the top-of-update guard keeps it dark from here on.
+        if (current > LED_BURNOUT_A) {
+          burnt = true;
+          el.value = false;
+          el.brightness = 0;
+          reportLedBurnout(componentId, current);
+          return;
+        }
+        lastSpiceBrightness = Math.min(1, current / LED_RATED_MAX_A);
         lastSpiceTs = Date.now();
         el.value = current > 1e-6;
         el.brightness = lastSpiceBrightness;

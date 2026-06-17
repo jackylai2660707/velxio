@@ -28,6 +28,7 @@ import type { BuildNetlistInput, ElectricalSolveResult } from '../spice/types';
 export type WarningSeverity = 'error' | 'warning';
 export type WarningCode =
   | 'solver-failed'
+  | 'unstable-solve'
   | 'short-circuit'
   | 'source-overload'
   | 'led-overcurrent'
@@ -85,6 +86,14 @@ export async function verifyCircuit(
   const errors: CircuitWarning[] = [];
   const warnings: CircuitWarning[] = [];
 
+  // Branch-current vectors that the solver returned as NaN / Infinity.
+  // A non-finite branch current is not "no current" — it means ngspice
+  // could not find a stable operating point for that source (the classic
+  // case: a forward-biased LED with no series resistor, or a dead short).
+  // We must NOT silently treat these as 0 A; they get surfaced as a
+  // blocking "cannot emulate" fault below.
+  const nonFiniteBranches = new Set<string>();
+
   // Run a forced .op solve so currents are scalar and deterministic.
   const opInput: BuildNetlistInput = { ...input, analysis: { kind: 'op' } };
   const { netlist } = buildNetlist(opInput);
@@ -101,7 +110,9 @@ export async function verifyCircuit(
         if (Number.isFinite(v)) nodeVoltages[name.slice(2, -1)] = v;
       } else if (name.startsWith('i(')) {
         const v = cooked.dcValue(name);
-        if (Number.isFinite(v)) branchCurrents[name.slice(2, -1)] = v;
+        const key = name.slice(2, -1);
+        if (Number.isFinite(v)) branchCurrents[key] = v;
+        else nonFiniteBranches.add(key);
       }
     }
     solve = {
@@ -141,6 +152,18 @@ export async function verifyCircuit(
     /^(battery|signal-generator|power-supply)/.test(c.metadataId),
   );
   for (const src of sourceComponents) {
+    // A non-finite source current means ngspice could not find a stable
+    // operating point — treat it as a blocking "cannot emulate" fault
+    // rather than waving the circuit through as 0 A.
+    if (nonFiniteBranches.has(`v_${src.id}`)) {
+      errors.push({
+        severity: 'error',
+        code: 'unstable-solve',
+        componentId: src.id,
+        message: `Could not solve a stable current for ${src.metadataId} ${src.id} — the circuit has no stable operating point. This usually means a short circuit, or a part driven with no current limit (for example an LED with no series resistor). Check the wiring or add a series resistor.`,
+      });
+      continue;
+    }
     const i = Math.abs(branchCurrents[`v_${src.id}`] ?? 0);
     const perInstanceLimit =
       src.metadataId === 'power-supply'
@@ -168,6 +191,15 @@ export async function verifyCircuit(
   // that source is the LED forward current.
   const leds = input.components.filter((c) => c.metadataId === 'led');
   for (const led of leds) {
+    if (nonFiniteBranches.has(`v_${led.id}_sense`)) {
+      errors.push({
+        severity: 'error',
+        code: 'unstable-solve',
+        componentId: led.id,
+        message: `LED ${led.id} could not be solved — its forward current has no stable value. This almost always means the LED is wired with no series resistor (a near-short across the supply). Add a series resistor between the supply and the LED.`,
+      });
+      continue;
+    }
     const i = Math.abs(branchCurrents[`v_${led.id}_sense`] ?? 0);
     if (i > config.ledMaxAmps) {
       errors.push({

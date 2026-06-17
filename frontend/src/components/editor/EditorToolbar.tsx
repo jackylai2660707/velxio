@@ -242,6 +242,17 @@ export const EditorToolbar = ({
     return () => window.removeEventListener('velxio-open-library-manager', open);
   }, []);
 
+  // Surface a runtime circuit fault (e.g. an LED that burnt out from
+  // overcurrent during the live SPICE solve) as an inline message.
+  useEffect(() => {
+    const onFault = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { message?: string } | undefined;
+      if (detail?.message) setMessage({ type: 'error', text: detail.message });
+    };
+    window.addEventListener('velxio-circuit-fault', onFault);
+    return () => window.removeEventListener('velxio-circuit-fault', onFault);
+  }, []);
+
   useEffect(() => {
     if (!moreMenuOpen) return;
     const onClickOutside = (e: MouseEvent) => {
