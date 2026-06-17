@@ -39,6 +39,19 @@ import {
 import './EditorToolbar.css';
 
 /**
+ * Output-console group for circuit pre-flight + runtime faults. Routing these
+ * into the compile console (instead of an inline toolbar toast that overlapped
+ * the Run/Stop buttons) gives one unified, red-coloured diagnostics log —
+ * Proteus-style. id is matched when clearing so the findings survive an
+ * auto-compile triggered by the same Run.
+ */
+const CIRCUIT_CHECK_TARGET: CompileTarget = {
+  id: 'circuit-check',
+  label: 'Circuit check',
+  kind: 'board',
+};
+
+/**
  * Clear the output drives of every custom chip on the canvas and re-solve, so
  * chip-driven LEDs go dark on Stop. A chip drives its nets via its own SPICE
  * voltage sources (registered in chipPinDrives); stopBoard / electrical-pause
@@ -243,15 +256,25 @@ export const EditorToolbar = ({
   }, []);
 
   // Surface a runtime circuit fault (e.g. an LED that burnt out from
-  // overcurrent during the live SPICE solve) as an inline message.
+  // overcurrent during the live SPICE solve) in the output console, in red,
+  // under the "Circuit check" group — same place as the pre-flight findings.
+  // (Previously an inline toolbar toast that overlapped the Run/Stop buttons.)
+  // We do NOT auto-open the console here: the continuous solver can fault on
+  // load, and popping the console open then would be intrusive. The pre-flight
+  // (on Run) opens it; this entry then lands in the already-open log.
   useEffect(() => {
     const onFault = (e: Event) => {
       const detail = (e as CustomEvent).detail as { message?: string } | undefined;
-      if (detail?.message) setMessage({ type: 'error', text: detail.message });
+      if (!detail?.message) return;
+      const text = detail.message;
+      setCompileLogs((prev) => [
+        ...prev,
+        { timestamp: new Date(), type: 'error', message: text, target: CIRCUIT_CHECK_TARGET },
+      ]);
     };
     window.addEventListener('velxio-circuit-fault', onFault);
     return () => window.removeEventListener('velxio-circuit-fault', onFault);
-  }, []);
+  }, [setCompileLogs]);
 
   useEffect(() => {
     if (!moreMenuOpen) return;
@@ -660,36 +683,52 @@ export const EditorToolbar = ({
   }, []);
 
   /**
-   * Returns true if the caller should proceed inline. If the verifier finds
-   * errors we stash a resume callback in `pendingRunRef` and pop the
-   * verification modal; the resume callback re-enters `handleRun` with
-   * `skipVerify = true` so we don't loop. Warnings-only results don't
-   * block — they surface inline via `setMessage` and the run continues.
+   * Returns true if the caller should proceed inline. All findings are written
+   * to the output console (red errors / orange warnings, "Circuit check"
+   * group). If the verifier finds errors we also stash a resume callback in
+   * `pendingRunRef` and pop the verification modal; the resume callback
+   * re-enters `handleRun` with `skipVerify = true` so we don't loop.
+   * Warnings-only results don't block — the console entry is enough.
    */
   const checkOrBlock = useCallback(
     async (resume: () => void): Promise<boolean> => {
       const result = await runVerification();
       if (!result) return true;
       if (result.errors.length === 0 && result.warnings.length === 0) return true;
-      if (result.errors.length === 0) {
-        // Warnings only — non-blocking. Surface inline and continue.
-        const summary = result.warnings
-          .slice(0, 3)
-          .map((w) => w.message)
-          .join(' • ');
-        const more = result.warnings.length > 3 ? ` (+${result.warnings.length - 3} more)` : '';
-        setMessage({
-          type: 'error',
-          text: `${result.warnings.length} circuit warning${result.warnings.length === 1 ? '' : 's'}: ${summary}${more}`,
-        });
-        return true;
-      }
-      // Errors → block until the user explicitly chooses Run Anyway.
+
+      // Write every finding to the output console under "Circuit check" — red
+      // for errors, orange for warnings — so there's one persistent, unified
+      // diagnostics log next to the compiler output (Proteus-style). Replace
+      // any prior circuit-check entries so repeated runs stay clean, and open
+      // the console so the findings are visible.
+      const now = new Date();
+      setCompileLogs((prev) => [
+        ...prev.filter((l) => l.target?.id !== CIRCUIT_CHECK_TARGET.id),
+        ...result.errors.map((e) => ({
+          timestamp: now,
+          type: 'error' as const,
+          message: e.message,
+          target: CIRCUIT_CHECK_TARGET,
+        })),
+        ...result.warnings.map((w) => ({
+          timestamp: now,
+          type: 'warning' as const,
+          message: w.message,
+          target: CIRCUIT_CHECK_TARGET,
+        })),
+      ]);
+      setConsoleOpen(true);
+
+      // Warnings only — non-blocking; the console entry is enough, run continues.
+      if (result.errors.length === 0) return true;
+
+      // Errors → also pop the modal so the user makes an explicit Run-anyway /
+      // Cancel decision; the console keeps the persistent red record.
       pendingRunRef.current = resume;
       setVerification(result);
       return false;
     },
-    [runVerification],
+    [runVerification, setCompileLogs, setConsoleOpen],
   );
 
   const handleRun = async (skipVerify = false) => {
@@ -715,7 +754,9 @@ export const EditorToolbar = ({
       if (customChips.length > 0) {
         setCompiling(true);
         setConsoleOpen(true);
-        setCompileLogs([]);
+        // Fresh chip output, but keep the circuit pre-flight findings just
+        // logged by checkOrBlock so they survive a "Run anyway".
+        setCompileLogs((prev) => prev.filter((l) => l.target?.id === CIRCUIT_CHECK_TARGET.id));
         try {
           await prepareCustomChips(customChips, files);
         } catch (e) {
