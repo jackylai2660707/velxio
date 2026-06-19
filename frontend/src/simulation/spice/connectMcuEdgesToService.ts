@@ -84,6 +84,15 @@ export function connectMcuEdgesToService(service: CircuitSimulationService): () 
     if (boardKind.startsWith('esp32')) {
       return `GPIO${arduinoPin}`;
     }
+    // ATtiny85 wires reference port-style names (PB0..PB5), matching the
+    // netlist pin names from collectPinStates. Without this, the reverse
+    // mapping returns "1" instead of "PB1", so the MCU-edge listener is
+    // never attached (pin name not in `pinsInCircuit`) and the SPICE
+    // V-source is never altered on digitalWrite LOW — the LED latches ON
+    // (and analogWrite duty changes never re-solve). See pinNameToArduinoPin.
+    if (boardKind === 'attiny85') {
+      return `PB${arduinoPin}`;
+    }
     return String(arduinoPin);
   }
 
