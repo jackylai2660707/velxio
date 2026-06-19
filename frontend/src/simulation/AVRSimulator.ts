@@ -129,11 +129,16 @@ const MEGA_PIN_TO_PORT = (() => {
 })();
 
 // OCR register addresses → ATtiny85 pin mapping for PWM
-// Timer0: OC0A→PB0, OC0B→PB1 (ATtiny85 Timer0 OCR regs at 0x56, 0x5C)
+// Timer0: OC0A→PB0, OC0B→PB1. ATtiny85 OCR0A = I/O 0x09 → data 0x49,
+//         OCR0B = I/O 0x08 → data 0x48 (verified vs the ATTinyCore
+//         analogWrite disassembly: `out 0x29,OCR0A` / `out 0x28,OCR0B`).
+//         The old 0x56/0x5C values were WRONG — they point at PINB (0x56)
+//         and EECR (0x5C), so analogWrite() duty was never read and PWM
+//         examples (e.g. attiny85-pwm-fade) showed no fade.
 // Timer1: OC1A→PB1, OC1B→PB4 (ATtinyTimer1 OCR regs from attinyTimer1Config)
 const PWM_PINS_TINY85 = [
-  { ocrAddr: 0x56, pin: 0, label: 'OCR0A' }, // Timer0A → PB0
-  { ocrAddr: 0x5c, pin: 1, label: 'OCR0B' }, // Timer0B → PB1
+  { ocrAddr: 0x49, pin: 0, label: 'OCR0A' }, // Timer0A → PB0
+  { ocrAddr: 0x48, pin: 1, label: 'OCR0B' }, // Timer0B → PB1
   { ocrAddr: 0x4e, pin: 1, label: 'OCR1A' }, // Timer1A → PB1 (attinyTimer1Config.OCR1A)
   { ocrAddr: 0x4b, pin: 4, label: 'OCR1B' }, // Timer1B → PB4 (attinyTimer1Config.OCR1B)
 ];
@@ -241,12 +246,16 @@ const attiny85Timer0Config: AVRTimerConfig = {
   compCInterrupt: 0,
   ovfInterrupt: 0x05, // _VECTOR(5)  TIMER0_OVF_vect
   TIFR: 0x58,
-  OCRA: 0x56,
-  OCRB: 0x5c,
+  // ATtiny85 Timer0 data-space addresses (I/O + 0x20), verified against the
+  // ATTinyCore disassembly: TCCR0A `out 0x2a`→0x4A, OCR0A `out 0x29`→0x49,
+  // OCR0B `out 0x28`→0x48. The old 0x4f/0x56/0x5c were wrong (TCNT1/PINB/EECR)
+  // which broke analogWrite()/PWM on the ATtiny85.
+  OCRA: 0x49,
+  OCRB: 0x48,
   OCRC: 0,
   ICR: 0,
   TCNT: 0x52,
-  TCCRA: 0x4f,
+  TCCRA: 0x4a,
   TCCRB: 0x53,
   TCCRC: 0,
   TIMSK: 0x59,
