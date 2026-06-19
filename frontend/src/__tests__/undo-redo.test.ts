@@ -127,6 +127,22 @@ describe('recordRemoveComponent (cascade)', () => {
   });
 });
 
+describe('recordUpdateWire', () => {
+  it('applies the colour change immediately and is undoable / redoable', () => {
+    const s = useSimulatorStore.getState();
+    s.addWire(wire('w1', 'a', 'b')); // starts #22c55e
+    s.recordUpdateWire('w1', { color: '#22c55e' }, { color: '#cc0000' });
+    // Regression: recordUpdateWire used to pass applyNow:false, so the UI
+    // colour change (palette / right-click menu) recorded but never applied.
+    const c1 = () => useSimulatorStore.getState().wires.find((w) => w.id === 'w1')?.color;
+    expect(c1()).toBe('#cc0000');
+    s.undo();
+    expect(c1()).toBe('#22c55e');
+    s.redo();
+    expect(c1()).toBe('#cc0000');
+  });
+});
+
 describe('recordMove', () => {
   it('captures from/to, undo restores from, redo restores to', () => {
     const s = useSimulatorStore.getState();

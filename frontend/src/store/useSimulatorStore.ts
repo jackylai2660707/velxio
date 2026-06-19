@@ -2776,20 +2776,23 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
     },
 
     recordUpdateWire: (wireId, prev, next, description = 'Update wire') => {
-      get().pushCommand(
-        {
-          description,
-          execute: () =>
-            set((s) => ({
-              wires: s.wires.map((w) => (w.id === wireId ? { ...w, ...next } : w)),
-            })),
-          undo: () =>
-            set((s) => ({
-              wires: s.wires.map((w) => (w.id === wireId ? { ...w, ...prev } : w)),
-            })),
-        },
-        { applyNow: false },
-      );
+      // applyNow defaults to true: both callers (the wire color palette and the
+      // wire right-click menu) pass the new value and expect it applied — they
+      // do NOT pre-apply via the raw updateWire mutator. The old `applyNow:false`
+      // recorded the change for undo but never executed it, so changing a wire
+      // colour from the UI was a silent no-op (only the keyboard shortcut, which
+      // calls updateWire directly, actually worked).
+      get().pushCommand({
+        description,
+        execute: () =>
+          set((s) => ({
+            wires: s.wires.map((w) => (w.id === wireId ? { ...w, ...next } : w)),
+          })),
+        undo: () =>
+          set((s) => ({
+            wires: s.wires.map((w) => (w.id === wireId ? { ...w, ...prev } : w)),
+          })),
+      });
     },
 
     toggleSerialMonitor: () => set((s) => ({ serialMonitorOpen: !s.serialMonitorOpen })),
