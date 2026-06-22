@@ -270,6 +270,8 @@
     "pi": {
       "connected": "Conectado",
       "starting": "Iniciando…",
+      "bootingTitle": "Arrancando {{board}}…",
+      "bootingNote": "Iniciando Linux: puede tardar hasta un minuto la primera vez.",
       "offline": "Desconectado",
       "powerOnTitle": "Encender la Raspberry Pi",
       "startPi": "Iniciar Pi",
@@ -282,7 +284,7 @@
       "offlineTitle": "{{board}} está apagada",
       "offlineSubtitle": "Inicia la Pi para abrir un terminal e interactuar con el sistema Linux.",
       "offlineNote1": "Nota: El explorador de archivos muestra un área de preparación.",
-      "offlineNote2": "Usa \"Subir a Pi\" después de iniciar para transferir archivos a la Pi en ejecución.",
+      "offlineNote2": "\"Subir al Pi\" envía estos archivos al sistema en marcha; arranca el Pi automáticamente si hace falta.",
       "loadingTerminal": "Cargando terminal…",
       "selectFile": "Selecciona un archivo del explorador para editarlo."
     },

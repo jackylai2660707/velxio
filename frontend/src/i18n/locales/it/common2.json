@@ -270,6 +270,8 @@
     "pi": {
       "connected": "Connesso",
       "starting": "Avvio…",
+      "bootingTitle": "Avvio di {{board}}…",
+      "bootingNote": "Avvio di Linux: può richiedere fino a un minuto la prima volta.",
       "offline": "Offline",
       "powerOnTitle": "Accendi il Raspberry Pi",
       "startPi": "Avvia Pi",
@@ -282,7 +284,7 @@
       "offlineTitle": "{{board}} è spento",
       "offlineSubtitle": "Avvia il Pi per aprire un terminale e interagire con il sistema Linux.",
       "offlineNote1": "Nota: L'esplora file mostra un'area di staging.",
-      "offlineNote2": "Usa \"Carica su Pi\" dopo l'avvio per trasferire file al Pi in esecuzione.",
+      "offlineNote2": "\"Carica sul Pi\" invia questi file al sistema in esecuzione e avvia il Pi automaticamente se necessario.",
       "loadingTerminal": "Caricamento terminale…",
       "selectFile": "Seleziona un file dall'esplora per modificarlo."
     },

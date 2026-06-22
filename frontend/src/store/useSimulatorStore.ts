@@ -1057,6 +1057,23 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         bridge.onPinChange = (_gpioPin, _state) => {
           // Cross-board routing now handled by Interconnect (see bind below).
         };
+        // Guest Linux finished booting (shell prompt reached). Flip piBooted so
+        // the workspace swaps the "Booting…" overlay for the live terminal and
+        // uploads know the shell is ready.
+        bridge.onBooted = () => {
+          set((s) => ({
+            boards: s.boards.map((b) => (b.id === id ? { ...b, piBooted: true } : b)),
+          }));
+        };
+        bridge.onDisconnected = () => {
+          set((s) => {
+            const boards = s.boards.map((b) =>
+              b.id === id ? { ...b, running: false, piBooted: false } : b,
+            );
+            const isActive = s.activeBoardId === id;
+            return { boards, ...(isActive ? { running: false } : {}) };
+          });
+        };
         bridgeMap.set(id, bridge);
       } else if (isEsp32Kind(boardKind)) {
         const bridge = new Esp32Bridge(id, boardKind);

@@ -56,9 +56,19 @@ export class RaspberryPi3Bridge {
   onDisconnected: (() => void) | null = null;
   onError: ((msg: string) => void) | null = null;
   onSystemEvent: ((event: string, data: Record<string, unknown>) => void) | null = null;
+  /** Fires once when the guest Linux has finished booting and reached an
+   * interactive shell prompt. `connected` only means the WebSocket is open
+   * (~1s); the guest still takes 30-60s to boot. Drives the "booting" UI and
+   * gates file uploads. */
+  onBooted: (() => void) | null = null;
 
   private socket: WebSocket | null = null;
   private _connected = false;
+  private _booted = false;
+  /** Rolling, escape-stripped tail of recent guest output, used to detect the
+   * boot-complete marker and shell prompts for flow-controlled sends. */
+  private _serialTail = '';
+  private _promptWaiters: Array<() => void> = [];
 
   constructor(boardId: string, boardKind: string = 'raspberry-pi-3') {
     this.boardId = boardId;
@@ -101,6 +111,7 @@ export class RaspberryPi3Bridge {
           if (this.onSerialData) {
             for (const ch of text) this.onSerialData(ch);
           }
+          this._observeSerial(text);
           break;
         }
         case 'gpio_change': {
@@ -121,6 +132,7 @@ export class RaspberryPi3Bridge {
     socket.onclose = () => {
       this._connected = false;
       this.socket = null;
+      this._resetBootState();
       this.onDisconnected?.();
     };
 
@@ -137,6 +149,17 @@ export class RaspberryPi3Bridge {
       this.socket = null;
     }
     this._connected = false;
+    this._resetBootState();
+  }
+
+  /** Clear boot/prompt state and release any pending prompt waiters so an
+   * in-flight upload resolves (rather than hanging) when the Pi stops. */
+  private _resetBootState(): void {
+    this._booted = false;
+    this._serialTail = '';
+    const waiters = this._promptWaiters;
+    this._promptWaiters = [];
+    for (const w of waiters) w();
   }
 
   /** Send a byte to the Pi's ttyAMA0 (user serial) */
@@ -148,6 +171,63 @@ export class RaspberryPi3Bridge {
   sendSerialBytes(bytes: number[]): void {
     if (bytes.length === 0) return;
     this._send({ type: 'serial_input', data: { bytes } });
+  }
+
+  /** Write a UTF-8 string to the guest shell. */
+  sendSerialText(text: string): void {
+    this.sendSerialBytes(Array.from(new TextEncoder().encode(text)));
+  }
+
+  /**
+   * Send a line to the guest shell and resolve once the shell prompt returns
+   * (i.e. the command has been consumed and executed), or after `timeoutMs`.
+   * This replaces fixed setTimeout pacing for uploads so long lines are not
+   * dropped by the unflow-controlled console. Always resolves (never rejects)
+   * so a missed prompt degrades to a time-bounded wait rather than a hang.
+   */
+  sendAndWaitForPrompt(text: string, timeoutMs = 5000): Promise<void> {
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (): void => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        const i = this._promptWaiters.indexOf(waiter);
+        if (i >= 0) this._promptWaiters.splice(i, 1);
+        resolve();
+      };
+      const waiter = finish;
+      const timer = setTimeout(finish, timeoutMs);
+      // Forget any prompt already on screen so we wait for the NEXT one,
+      // which only reappears after this command has run.
+      this._serialTail = '';
+      this._promptWaiters.push(waiter);
+      this.sendSerialText(text);
+    });
+  }
+
+  private static _stripAnsi(s: string): string {
+    return s.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').replace(/\x1b[=>]/g, '');
+  }
+
+  /** Update the rolling tail, fire onBooted once, and release prompt waiters. */
+  private _observeSerial(text: string): void {
+    this._serialTail = (this._serialTail + text).slice(-512);
+    const clean = RaspberryPi3Bridge._stripAnsi(this._serialTail);
+    if (!this._booted && (/login on 'hvc0'/.test(clean) || /:~[#$]/.test(clean))) {
+      this._booted = true;
+      this.onBooted?.();
+    }
+    // A shell prompt ends in "# " / "$ " (trailing space, no newline). Trim
+    // only trailing spaces/tabs (not newlines) so command OUTPUT ending in
+    // "#\n" is NOT mistaken for a prompt; heredoc continuation "> " is also
+    // excluded since it ends in ">".
+    const promptTail = clean.replace(/[ \t]+$/, '');
+    if (this._promptWaiters.length && (promptTail.endsWith('#') || promptTail.endsWith('$'))) {
+      const waiters = this._promptWaiters;
+      this._promptWaiters = [];
+      for (const w of waiters) w();
+    }
   }
 
   /** Drive a GPIO pin from an external source (e.g. connected Arduino) */

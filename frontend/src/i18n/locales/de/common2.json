@@ -270,6 +270,8 @@
     "pi": {
       "connected": "Verbunden",
       "starting": "Starte…",
+      "bootingTitle": "{{board}} wird gestartet…",
+      "bootingNote": "Linux startet — das kann beim ersten Mal bis zu einer Minute dauern.",
       "offline": "Offline",
       "powerOnTitle": "Raspberry Pi einschalten",
       "startPi": "Pi starten",
@@ -282,7 +284,7 @@
       "offlineTitle": "{{board}} ist ausgeschaltet",
       "offlineSubtitle": "Starten Sie den Pi, um ein Terminal zu öffnen und mit dem Linux-System zu interagieren.",
       "offlineNote1": "Hinweis: Der Dateiexplorer zeigt einen Staging-Bereich an.",
-      "offlineNote2": "Verwenden Sie „Auf Pi hochladen“ nach dem Start, um Dateien auf den laufenden Pi zu übertragen.",
+      "offlineNote2": "„Auf den Pi hochladen“ überträgt diese Dateien auf das laufende System und startet den Pi bei Bedarf automatisch.",
       "loadingTerminal": "Terminal wird geladen…",
       "selectFile": "Wählen Sie eine Datei aus dem Explorer aus, um sie zu bearbeiten."
     },

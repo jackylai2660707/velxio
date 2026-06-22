@@ -270,6 +270,8 @@
     "pi": {
       "connected": "Connecté",
       "starting": "Démarrage…",
+      "bootingTitle": "Démarrage de {{board}}…",
+      "bootingNote": "Démarrage de Linux — cela peut prendre jusqu'à une minute la première fois.",
       "offline": "Hors ligne",
       "powerOnTitle": "Allumer le Raspberry Pi",
       "startPi": "Démarrer Pi",
@@ -282,7 +284,7 @@
       "offlineTitle": "{{board}} est éteint",
       "offlineSubtitle": "Démarrez le Pi pour ouvrir un terminal et interagir avec le système Linux.",
       "offlineNote1": "Remarque : L'explorateur de fichiers affiche une zone de préparation.",
-      "offlineNote2": "Utilisez \"Téléverser vers Pi\" après le démarrage pour transférer des fichiers vers le Pi en cours d'exécution.",
+      "offlineNote2": "« Envoyer vers le Pi » transfère ces fichiers vers le système en cours d'exécution et démarre le Pi automatiquement si nécessaire.",
       "loadingTerminal": "Chargement du terminal…",
       "selectFile": "Sélectionnez un fichier dans l'explorateur pour l'éditer."
     },

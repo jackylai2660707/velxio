@@ -83,6 +83,12 @@ export interface BoardInstance {
   x: number;
   y: number;
   running: boolean;
+  // QEMU-Linux (Raspberry Pi 3/4/5/Zero/1/2) only. `running` flips true the
+  // instant the user clicks Start (the WebSocket opens in ~1s), but the guest
+  // Linux still takes 30-60s to reach a shell. `piBooted` flips true only when
+  // the bridge sees the boot-complete marker, and drives the "Booting…" overlay
+  // and gates file uploads. Undefined/false for non-Pi boards and pre-boot.
+  piBooted?: boolean;
   compiledProgram: string | null; // hex for AVR/RP2040, null for Pi (runs Python)
   serialOutput: string;
   serialBaudRate: number;
