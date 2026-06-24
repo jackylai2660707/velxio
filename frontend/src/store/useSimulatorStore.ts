@@ -1072,8 +1072,14 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           serialCallback(ch);
           // Cross-board routing now handled by Interconnect (see bind below).
         };
-        bridge.onPinChange = (_gpioPin, _state) => {
-          // Cross-board routing now handled by Interconnect (see bind below).
+        bridge.onPinChange = (gpioPin, state) => {
+          // Feed the guest's GPIO writes into this board's PinManager so they
+          // reach wired components and the SPICE solver (the LED brightness
+          // path) — same as the ESP32 branch. Without this the Pi could print
+          // "LED on" but the canvas LEDs stayed dark. Interconnect preserves
+          // and calls this before its own cross-board routing.
+          const boardPm = pinManagerMap.get(id);
+          if (boardPm) boardPm.triggerPinChange(gpioPin, state, 'mcu');
         };
         // Guest Linux finished booting (shell prompt reached). Flip piBooted so
         // the workspace swaps the "Booting…" overlay for the live terminal and
