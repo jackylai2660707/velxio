@@ -582,7 +582,7 @@ function makePinPullHandler(boardId: string) {
     // several-second QEMU boot finishes — so it's lost and the pin reads LOW.
     // This fires when the guest actually programs the pull (inside pinMode,
     // post-boot), so it sticks. A real button press/release overrides it after.
-    if (pull !== 0) getBoardBridge(boardId)?.sendPinEvent?.(gpio, pull === 1);
+    if (pull !== 0) getEsp32Bridge(boardId)?.sendPinEvent(gpio, pull === 1);
     // The pull also feeds the SPICE netlist (a weak resistor); re-solve so the
     // electrical view matches.
     requestElectricalResolve();
