@@ -6,6 +6,7 @@ import type { I2CDevice } from './I2CBusManager';
 import { bootromB1 } from './rp2040-bootrom';
 import { loadUF2, loadUserFiles, getFirmware } from './MicroPythonLoader';
 import { type PioPeripheral, createPioPeripheral } from './PioPeripheral';
+import { requestElectricalResolve } from './spice/electricalResolveHook';
 
 /**
  * RP2040Simulator — Emulates Raspberry Pi Pico (RP2040) using rp2040js
@@ -145,6 +146,14 @@ export class IdleSpinDetector {
 export type RP2040I2CDevice = I2CDevice;
 
 export class RP2040Simulator {
+  // Drive digital INPUT pins from the solved circuit (connectDigitalInputsToMcu)
+  // instead of the legacy part-seed, so digitalRead() reflects the REAL wiring:
+  // a pin tied to a rail reads that rail, a button-to-GND on an INPUT_PULLUP pin
+  // reads idle-HIGH / pressed-LOW. The internal pull is surfaced from the pad
+  // config in the GPIO listener below (see setupGpioListeners). Mirrors AVR /
+  // ESP32. Event-driven parts with no SPICE model (rotary encoder, keypad) are
+  // protected by the `sourcedNets` gate inside the connector.
+  readonly spiceDrivenInputs = true;
   private rp2040: RP2040 | null = null;
   private running = false;
   private animationFrame: number | null = null;
@@ -768,7 +777,30 @@ export class RP2040Simulator {
       if (!gpio) continue;
 
       const unsub = gpio.addListener((state: GPIOPinState) => {
-        const isHigh = state === GPIOPinState.High || state === GPIOPinState.InputPullUp;
+        // rp2040js reports the pin's MODE here, not its external value: Low/High
+        // mean the MCU is driving the pad (outputEnable), while Input/
+        // InputPullUp/InputPullDown/InputBusKeeper mean it's a high-Z input
+        // whose pad pull config is encoded in the state. The listener only fires
+        // on a mode/pull change (an external value change via setInputValue does
+        // not alter `value` for an input pin), so we can split cleanly.
+        if (state >= GPIOPinState.Input) {
+          // INPUT pin. Surface the internal pull so NetlistBuilder stamps the
+          // weak resistor; the actual logic level is injected from the SPICE
+          // solve by connectDigitalInputsToMcu. We do NOT mark the pin as an MCU
+          // output (triggerPinChange 'mcu'), or the connector would skip it.
+          const pull =
+            state === GPIOPinState.InputPullUp ? 1 : state === GPIOPinState.InputPullDown ? 2 : 0;
+          this.pinManager.setPinPull(pin, pull);
+          // Seed the idle level the pull alone would produce (rp2040js does not
+          // auto-apply the pad pull to the readable input register). The
+          // connector overrides this whenever the pin's net is actually sourced
+          // (rail / button / divider); an unwired pulled input keeps this level.
+          if (pull === 1) gpio.setInputValue(true);
+          else if (pull === 2) gpio.setInputValue(false);
+          requestElectricalResolve();
+          return;
+        }
+        const isHigh = state === GPIOPinState.High;
         this.pinManager.triggerPinChange(pin, isHigh, 'mcu');
         if (this.onPinChangeWithTime && this.rp2040) {
           // IClock interface exposes `nanos` (not `timeUs`)

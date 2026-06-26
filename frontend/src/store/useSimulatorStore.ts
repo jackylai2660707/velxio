@@ -599,6 +599,13 @@ function makePinPullHandler(boardId: string) {
 // channel through the `.spi` adapter — identical surface to Esp32BridgeShim,
 // minus the ESP32-only WiFi / proxy-resync machinery. ──────────────────────
 class Stm32BridgeShim {
+  // Drive digital INPUT pins from the solved circuit (connectDigitalInputsToMcu)
+  // instead of the legacy part-seed, so digitalRead() reflects the REAL wiring.
+  // The internal pull is reported by the backend QEMU worker via the bridge's
+  // `gpio_pull` message (wired to makePinPullHandler in the store). Mirrors AVR
+  // / RP2040 / ESP32; event-driven parts with no SPICE model are protected by
+  // the `sourcedNets` gate in the connector.
+  readonly spiceDrivenInputs = true;
   pinManager: PinManager;
   onSerialData: ((ch: string) => void) | null = null;
   onPinChangeWithTime: ((pin: number, state: boolean, timeMs: number) => void) | null = null;
@@ -1175,6 +1182,9 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           }
         };
         bridge.onPinChangeWithTime = getOscilloscopeCallback(id);
+        // Record the guest's internal pull so NetlistBuilder stamps the weak
+        // resistor; the connector then drives the pin from the solved circuit.
+        bridge.onPinPull = makePinPullHandler(id);
         bridge.onDisconnected = () => {
           set((s) => {
             const boards = s.boards.map((b) => (b.id === id ? { ...b, running: false } : b));
