@@ -4316,13 +4316,23 @@ void loop() {
   delay(500);
 }`,
     components: [
-      { type: 'wokwi-led', id: 'led-ext', x: 460, y: 190, properties: { color: 'red' } },
+      // 220 Ohm current-limiting resistor in series with the external LED —
+      // never drive an LED straight off a GPIO. (3.3V - ~2V)/220R ~= 6 mA,
+      // well under the LED's 20 mA rating.
+      { type: 'wokwi-resistor', id: 'r-led', x: 320, y: 205, properties: { value: '220' } },
+      { type: 'wokwi-led', id: 'led-ext', x: 470, y: 190, properties: { color: 'red' } },
     ],
     wires: [
-      // GPIO4 → LED anode
+      // GPIO4 → resistor → LED anode
       {
-        id: 'w-gpio4-led',
+        id: 'w-gpio4-r',
         start: { componentId: 'arduino-uno', pinName: '4' },
+        end: { componentId: 'r-led', pinName: '1' },
+        color: '#e74c3c',
+      },
+      {
+        id: 'w-r-led',
+        start: { componentId: 'r-led', pinName: '2' },
         end: { componentId: 'led-ext', pinName: 'A' },
         color: '#e74c3c',
       },
