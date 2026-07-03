@@ -480,7 +480,7 @@ export const EditorPage: React.FC = () => {
                 >
                   <path d={m.path} />
                 </svg>
-                <span>{m.label}</span>
+                <span className="vm-label">{m.label}</span>
               </button>
             ))}
           </div>

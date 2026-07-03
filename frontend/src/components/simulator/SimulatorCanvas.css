@@ -398,6 +398,53 @@
   }
 }
 
+/* ── Narrow shared toolbar (desktop, AI chat open) ────────────────────────
+   When the canvas header is portaled into the unified top toolbar, it shares
+   one row with the editor actions. As that *bar* narrows (mainly when the
+   right-docked AI chat opens), collapse the canvas controls the same way the
+   mobile block does — but keyed to the bar's own width via a container query,
+   not the viewport, so it triggers on a wide screen with the chat open too.
+   Priority: labels -> icons, then drop the non-interactive count, then the
+   zoom buttons (mouse-wheel zoom still works). Mirrors the thresholds the
+   editor toolbar and view-mode toggle collapse at, so the whole bar degrades
+   together and nothing overlaps. */
+@container unified-toolbar (max-width: 1010px) {
+  .canvas-serial-btn {
+    padding: 0 8px;
+    font-size: 0; /* hide "Serial" / "Scope" text, keep the icon */
+  }
+  .canvas-serial-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  .add-component-btn {
+    padding: 0 9px;
+    font-size: 0; /* hide "Add" text, keep the icon */
+  }
+  .add-component-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  .board-selector {
+    max-width: 120px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+}
+@container unified-toolbar (max-width: 905px) {
+  .component-count {
+    display: none;
+  }
+  .board-selector {
+    max-width: 96px;
+  }
+}
+@container unified-toolbar (max-width: 835px) {
+  .zoom-controls {
+    display: none; /* mouse-wheel / trackpad zoom still available */
+  }
+}
+
 /* ── WiFi / BLE status badges ─────────────────────────────────────────── */
 .canvas-wifi-badge,
 .canvas-ble-badge {
