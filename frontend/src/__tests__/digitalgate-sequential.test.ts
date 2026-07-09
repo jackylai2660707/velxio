@@ -27,8 +27,8 @@ describe('digital-gate-engine Phase 5 — flip-flops', () => {
   it('D flip-flop: Q <- D on the rising edge, holds between edges', () => {
     const comps = [src, sw('clk'), sw('d'), { id: 'ff', metadataId: 'flip-flop-d' }];
     const wires = [
-      W('src', 'SIG', 'clk', '1'), W('clk', '2', 'ff', 'CLK'),
-      W('src', 'SIG', 'd', '1'), W('d', '2', 'ff', 'D'),
+      W('src', 'SIG', 'clk', '3'), W('clk', '2', 'ff', 'CLK'),
+      W('src', 'SIG', 'd', '3'), W('d', '2', 'ff', 'D'),
     ];
     const net = buildDigitalNetwork(comps, wires);
     const Q = net.netOf('ff', 'Q')!;
@@ -45,7 +45,7 @@ describe('digital-gate-engine Phase 5 — flip-flops', () => {
 
   it('T flip-flop: toggles on each rising edge when T=1', () => {
     const comps = [src, sw('clk'), { id: 'ff', metadataId: 'flip-flop-t' }];
-    const wires = [W('src', 'SIG', 'clk', '1'), W('clk', '2', 'ff', 'CLK'), W('src', 'SIG', 'ff', 'T')]; // T tied high
+    const wires = [W('src', 'SIG', 'clk', '3'), W('clk', '2', 'ff', 'CLK'), W('src', 'SIG', 'ff', 'T')]; // T tied high
     const net = buildDigitalNetwork(comps, wires);
     const Q = net.netOf('ff', 'Q')!;
     const seq: number[] = [net.readNet(Q)];
@@ -56,9 +56,9 @@ describe('digital-gate-engine Phase 5 — flip-flops', () => {
   it('JK flip-flop: hold / set / reset / toggle', () => {
     const comps = [src, sw('clk'), sw('j'), sw('k'), { id: 'ff', metadataId: 'flip-flop-jk' }];
     const wires = [
-      W('src', 'SIG', 'clk', '1'), W('clk', '2', 'ff', 'CLK'),
-      W('src', 'SIG', 'j', '1'), W('j', '2', 'ff', 'J'),
-      W('src', 'SIG', 'k', '1'), W('k', '2', 'ff', 'K'),
+      W('src', 'SIG', 'clk', '3'), W('clk', '2', 'ff', 'CLK'),
+      W('src', 'SIG', 'j', '3'), W('j', '2', 'ff', 'J'),
+      W('src', 'SIG', 'k', '3'), W('k', '2', 'ff', 'K'),
     ];
     const net = buildDigitalNetwork(comps, wires);
     const Q = net.netOf('ff', 'Q')!;
@@ -81,7 +81,7 @@ describe('digital-gate-engine Phase 5 — flip-flops', () => {
       { id: 'ff1', metadataId: 'flip-flop-t' },
     ];
     const wires = [
-      W('src', 'SIG', 'clk', '1'), W('clk', '2', 'ff0', 'CLK'),
+      W('src', 'SIG', 'clk', '3'), W('clk', '2', 'ff0', 'CLK'),
       W('src', 'SIG', 'ff0', 'T'), W('src', 'SIG', 'ff1', 'T'), // both T high
       W('ff0', 'Qbar', 'ff1', 'CLK'), // ripple: FF0.Qbar clocks FF1
     ];

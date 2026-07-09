@@ -89,7 +89,9 @@ const MINIMAL_FIXTURES: Record<string, Fixture> = {
     topology: { '+': 'load', '−': 'gnd' },
   },
   pushbutton: { pins: ['A', 'B'] },
-  'slide-switch': { pins: ['1', '2'], properties: { value: 1 } },
+  // SPDT: pin 2 is the common wiper; at value=1 it shorts to pin 3, so pin 3
+  // must be wired or the mapper emits no card.
+  'slide-switch': { pins: ['1', '2', '3'], properties: { value: 1 } },
   'slide-potentiometer': {
     pins: ['VCC', 'SIG', 'GND'],
     properties: { value: '10k', position: 50 },

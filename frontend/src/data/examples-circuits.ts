@@ -923,12 +923,12 @@ void loop()  {}`,
     ],
     wires: [
       // Switch 1 → AND input A (slide ON = rail HIGH; pull-down holds it LOW when OFF)
-      w('w1', ['src', 'SIG'], ['sw1', '1'], '#ff3030'),
+      w('w1', ['src', 'SIG'], ['sw1', '3'], '#ff3030'),
       w('w2', ['sw1', '2'], ['u1', 'A']),
       w('w3', ['sw1', '2'], ['rpd1', '1']),
       w('w4', ['rpd1', '2'], ['src', 'GND'], '#000000'),
       // Switch 2 → AND input B
-      w('w5', ['src', 'SIG'], ['sw2', '1'], '#ff3030'),
+      w('w5', ['src', 'SIG'], ['sw2', '3'], '#ff3030'),
       w('w6', ['sw2', '2'], ['u1', 'B']),
       w('w7', ['sw2', '2'], ['rpd2', '1']),
       w('w8', ['rpd2', '2'], ['src', 'GND'], '#000000'),

@@ -252,8 +252,9 @@ describe('digitalExamples — no loose wires', () => {
   });
 
   it('every slide switch routes pin 2 (output) to something', () => {
-    // SPICE only models pin 1 ↔ pin 2 of a slide-switch. If pin 2 is
-    // floating, toggling the switch produces no visible effect.
+    // A slide-switch is an SPDT whose common wiper is pin 2 (it selects pin 1
+    // at value=0 or pin 3 at value=1). If pin 2 is floating, toggling the
+    // switch produces no visible effect.
     const failures: string[] = [];
     for (const ex of digitalExamples) {
       const sws = ex.components.filter((c) => c.type === 'wokwi-slide-switch');

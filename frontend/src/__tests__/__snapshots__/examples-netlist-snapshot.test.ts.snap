@@ -1027,8 +1027,8 @@ R_vm_vmR n0 0 10Meg
 exports[`netlist snapshot — circuits (41 examples) > and-gate-alarm 1`] = `
 "* Velxio circuit
 V_src n1 0 DC 5
-R_sw1 n1 n2 1000000000
-R_sw2 n1 n3 1000000000
+R_sw1_3 n2 n1 1000000000
+R_sw2_3 n3 n1 1000000000
 R_rpd1 n2 0 10000
 R_rpd2 n3 0 10000
 B_u1 n4 0 V = 5 * u(V(n2)-2.5) * u(V(n3)-2.5)
@@ -1939,23 +1939,23 @@ R_autopull_n2 n2 0 100Meg
 exports[`netlist snapshot — digital (39 examples) > digital-adder-subtractor-4bit 1`] = `
 "* Velxio circuit
 V_src n38 0 DC 5
-R_asM n38 n16 1000000000
+R_asM_3 n16 n38 1000000000
 R_asRM n16 0 10000
-R_asA0 n38 n0 1000000000
+R_asA0_3 n0 n38 1000000000
 R_asRA0 n0 0 10000
-R_asB0 n38 n12 1000000000
+R_asB0_3 n12 n38 1000000000
 R_asRB0 n12 0 10000
-R_asA1 n38 n1 1000000000
+R_asA1_3 n1 n38 1000000000
 R_asRA1 n1 0 10000
-R_asB1 n38 n13 1000000000
+R_asB1_3 n13 n38 1000000000
 R_asRB1 n13 0 10000
-R_asA2 n38 n6 1000000000
+R_asA2_3 n6 n38 1000000000
 R_asRA2 n6 0 10000
-R_asB2 n38 n14 1000000000
+R_asB2_3 n14 n38 1000000000
 R_asRB2 n14 0 10000
-R_asA3 n38 n11 1000000000
+R_asA3_3 n11 n38 1000000000
 R_asRA3 n11 0 10000
-R_asB3 n38 n15 1000000000
+R_asB3_3 n15 n38 1000000000
 R_asRB3 n15 0 10000
 B_asXm0 n34 0 V = 5 * (u(V(n12)-2.5) + u(V(n16)-2.5) - 2*u(V(n12)-2.5)*u(V(n16)-2.5))
 R_asXm0_load n34 0 1Meg
@@ -2031,15 +2031,15 @@ D_asLCo asLCo_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-alu-slice-1bit 1`] = `
 "* Velxio circuit
 V_src n22 0 DC 5
-R_aluA n22 n0 1000000000
+R_aluA_3 n0 n22 1000000000
 R_aluRA n0 0 10000
-R_aluB n22 n2 1000000000
+R_aluB_3 n2 n22 1000000000
 R_aluRB n2 0 10000
-R_aluCi n22 n5 1000000000
+R_aluCi_3 n5 n22 1000000000
 R_aluRCi n5 0 10000
-R_aluM0 n22 n11 1000000000
+R_aluM0_3 n11 n22 1000000000
 R_aluRM0 n11 0 10000
-R_aluM1 n22 n12 1000000000
+R_aluM1_3 n12 n22 1000000000
 R_aluRM1 n12 0 10000
 B_aluAnd n1 0 V = 5 * u(V(n0)-2.5) * u(V(n2)-2.5)
 R_aluAnd_load n1 0 1Meg
@@ -2086,9 +2086,9 @@ D_aluLCo aluLCo_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-and-two-switches 1`] = `
 "* Velxio circuit
 V_src n3 0 DC 5
-R_s1 n3 n1 1000000000
+R_s1_3 n1 n3 1000000000
 R_rpd1 n1 0 10000
-R_s2 n3 n2 1000000000
+R_s2_3 n2 n3 1000000000
 R_rpd2 n2 0 10000
 B_u1 n4 0 V = 5 * u(V(n1)-2.5) * u(V(n2)-2.5)
 R_u1_load n4 0 1Meg
@@ -2103,11 +2103,11 @@ D_led led_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-and3-all-on 1`] = `
 "* Velxio circuit
 V_src n4 0 DC 5
-R_s1 n4 n1 1000000000
+R_s1_3 n1 n4 1000000000
 R_rpd1 n1 0 10000
-R_s2 n4 n2 1000000000
+R_s2_3 n2 n4 1000000000
 R_rpd2 n2 0 10000
-R_s3 n4 n3 1000000000
+R_s3_3 n3 n4 1000000000
 R_rpd3 n3 0 10000
 B_u1 n5 0 V = 5 * u(V(n1)-2.5) * u(V(n2)-2.5) * u(V(n3)-2.5)
 R_u1_load n5 0 1Meg
@@ -2122,13 +2122,13 @@ D_led led_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-and4-all-on 1`] = `
 "* Velxio circuit
 V_src n5 0 DC 5
-R_s1 n5 n1 1000000000
+R_s1_3 n1 n5 1000000000
 R_r1 n1 0 10000
-R_s2 n5 n2 1000000000
+R_s2_3 n2 n5 1000000000
 R_r2 n2 0 10000
-R_s3 n5 n3 1000000000
+R_s3_3 n3 n5 1000000000
 R_r3 n3 0 10000
-R_s4 n5 n4 1000000000
+R_s4_3 n4 n5 1000000000
 R_r4 n4 0 10000
 B_u1 n6 0 V = 5 * u(V(n1)-2.5) * u(V(n2)-2.5) * u(V(n3)-2.5) * u(V(n4)-2.5)
 R_u1_load n6 0 1Meg
@@ -2143,13 +2143,13 @@ D_led led_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-aoi-gate 1`] = `
 "* Velxio circuit
 V_src n8 0 DC 5
-R_sA n8 n4 1000000000
+R_sA_3 n4 n8 1000000000
 R_rA n4 0 10000
-R_sB n8 n5 1000000000
+R_sB_3 n5 n8 1000000000
 R_rB n5 0 10000
-R_sC n8 n6 1000000000
+R_sC_3 n6 n8 1000000000
 R_rC n6 0 10000
-R_sD n8 n7 1000000000
+R_sD_3 n7 n8 1000000000
 R_rD n7 0 10000
 B_aAB n0 0 V = 5 * u(V(n4)-2.5) * u(V(n5)-2.5)
 R_aAB_load n0 0 1Meg
@@ -2168,13 +2168,13 @@ D_led led_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-bcd-7seg-segment-a 1`] = `
 "* Velxio circuit
 V_src n10 0 DC 5
-R_saB0 n10 n1 1000000000
+R_saB0_3 n1 n10 1000000000
 R_saR0 n1 0 10000
-R_saB1 n10 n2 1000000000
+R_saB1_3 n2 n10 1000000000
 R_saR1 n2 0 10000
-R_saB2 n10 n3 1000000000
+R_saB2_3 n3 n10 1000000000
 R_saR2 n3 0 10000
-R_saB3 n10 n5 1000000000
+R_saB3_3 n5 n10 1000000000
 R_saR3 n5 0 10000
 B_saNB0 n6 0 V = 5 * (1 - u(V(n1)-2.5))
 R_saNB0_load n6 0 1Meg
@@ -2197,13 +2197,13 @@ D_saLed saLed_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-bcd-validity 1`] = `
 "* Velxio circuit
 V_src n9 0 DC 5
-R_bcdB0 n9 n2 1000000000
+R_bcdB0_3 n2 n9 1000000000
 R_bcdR0 n2 0 10000
-R_bcdB1 n9 n3 1000000000
+R_bcdB1_3 n3 n9 1000000000
 R_bcdR1 n3 0 10000
-R_bcdB2 n9 n4 1000000000
+R_bcdB2_3 n4 n9 1000000000
 R_bcdR2 n4 0 10000
-R_bcdB3 n9 n5 1000000000
+R_bcdB3_3 n5 n9 1000000000
 R_bcdR3 n5 0 10000
 B_bcdA32 n1 0 V = 5 * u(V(n5)-2.5) * u(V(n4)-2.5)
 R_bcdA32_load n1 0 1Meg
@@ -2224,11 +2224,11 @@ D_bcdLed bcdLed_sense_mid 0 LED_GREEN
 exports[`netlist snapshot — digital (39 examples) > digital-binary-to-gray-3bit 1`] = `
 "* Velxio circuit
 V_src n8 0 DC 5
-R_grB0 n8 n0 1000000000
+R_grB0_3 n0 n8 1000000000
 R_grRB0 n0 0 10000
-R_grB1 n8 n1 1000000000
+R_grB1_3 n1 n8 1000000000
 R_grRB1 n1 0 10000
-R_grB2 n8 n2 1000000000
+R_grB2_3 n2 n8 1000000000
 R_grRB2 n2 0 10000
 B_grX10 n6 0 V = 5 * (u(V(n1)-2.5) + u(V(n0)-2.5) - 2*u(V(n1)-2.5)*u(V(n0)-2.5))
 R_grX10_load n6 0 1Meg
@@ -2253,7 +2253,7 @@ D_grLG2 grLG2_sense_mid 0 LED_GREEN
 exports[`netlist snapshot — digital (39 examples) > digital-buffer-three-inverters 1`] = `
 "* Velxio circuit
 V_src n5 0 DC 5
-R_s1 n5 n4 1000000000
+R_s1_3 n4 n5 1000000000
 R_rpd n4 0 10000
 B_n1 n0 0 V = 5 * (1 - u(V(n4)-2.5))
 R_n1_load n0 0 1Meg
@@ -2272,23 +2272,23 @@ D_led led_sense_mid 0 LED_YELLOW
 exports[`netlist snapshot — digital (39 examples) > digital-carry-lookahead-adder-4bit 1`] = `
 "* Velxio circuit
 V_src n42 0 DC 5
-R_claA0 n42 n0 1000000000
+R_claA0_3 n0 n42 1000000000
 R_claRA0 n0 0 10000
-R_claB0 n42 n4 1000000000
+R_claB0_3 n4 n42 1000000000
 R_claRB0 n4 0 10000
-R_claA1 n42 n1 1000000000
+R_claA1_3 n1 n42 1000000000
 R_claRA1 n1 0 10000
-R_claB1 n42 n5 1000000000
+R_claB1_3 n5 n42 1000000000
 R_claRB1 n5 0 10000
-R_claA2 n42 n2 1000000000
+R_claA2_3 n2 n42 1000000000
 R_claRA2 n2 0 10000
-R_claB2 n42 n6 1000000000
+R_claB2_3 n6 n42 1000000000
 R_claRB2 n6 0 10000
-R_claA3 n42 n3 1000000000
+R_claA3_3 n3 n42 1000000000
 R_claRA3 n3 0 10000
-R_claB3 n42 n7 1000000000
+R_claB3_3 n7 n42 1000000000
 R_claRB3 n7 0 10000
-R_claC0 n42 n8 1000000000
+R_claC0_3 n8 n42 1000000000
 R_claRC0 n8 0 10000
 B_claG0 n14 0 V = 5 * u(V(n0)-2.5) * u(V(n4)-2.5)
 R_claG0_load n14 0 1Meg
@@ -2372,21 +2372,21 @@ D_claLCo claLCo_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-comparator-4bit 1`] = `
 "* Velxio circuit
 V_src n29 0 DC 5
-R_cmpA0 n29 n0 1000000000
+R_cmpA0_3 n0 n29 1000000000
 R_cmpRA0 n0 0 10000
-R_cmpB0 n29 n4 1000000000
+R_cmpB0_3 n4 n29 1000000000
 R_cmpRB0 n4 0 10000
-R_cmpA1 n29 n1 1000000000
+R_cmpA1_3 n1 n29 1000000000
 R_cmpRA1 n1 0 10000
-R_cmpB1 n29 n5 1000000000
+R_cmpB1_3 n5 n29 1000000000
 R_cmpRB1 n5 0 10000
-R_cmpA2 n29 n2 1000000000
+R_cmpA2_3 n2 n29 1000000000
 R_cmpRA2 n2 0 10000
-R_cmpB2 n29 n6 1000000000
+R_cmpB2_3 n6 n29 1000000000
 R_cmpRB2 n6 0 10000
-R_cmpA3 n29 n3 1000000000
+R_cmpA3_3 n3 n29 1000000000
 R_cmpRA3 n3 0 10000
-R_cmpB3 n29 n7 1000000000
+R_cmpB3_3 n7 n29 1000000000
 R_cmpRB3 n7 0 10000
 B_cmpEq0 n11 0 V = 5 * (1 - (u(V(n0)-2.5) + u(V(n4)-2.5) - 2*u(V(n0)-2.5)*u(V(n4)-2.5)))
 R_cmpEq0_load n11 0 1Meg
@@ -2443,13 +2443,13 @@ D_cmpLedLt cmpLedLt_sense_mid 0 LED_GREEN
 exports[`netlist snapshot — digital (39 examples) > digital-comparator-equal-2bit 1`] = `
 "* Velxio circuit
 V_src n6 0 DC 5
-R_sA0 n6 n2 1000000000
+R_sA0_3 n2 n6 1000000000
 R_rA0 n2 0 10000
-R_sA1 n6 n3 1000000000
+R_sA1_3 n3 n6 1000000000
 R_rA1 n3 0 10000
-R_sB0 n6 n4 1000000000
+R_sB0_3 n4 n6 1000000000
 R_rB0 n4 0 10000
-R_sB1 n6 n5 1000000000
+R_sB1_3 n5 n6 1000000000
 R_rB1 n5 0 10000
 B_xn0 n7 0 V = 5 * (1 - (u(V(n2)-2.5) + u(V(n4)-2.5) - 2*u(V(n2)-2.5)*u(V(n4)-2.5)))
 R_xn0_load n7 0 1Meg
@@ -2468,9 +2468,9 @@ D_led led_sense_mid 0 LED_GREEN
 exports[`netlist snapshot — digital (39 examples) > digital-comparator-magnitude-1bit 1`] = `
 "* Velxio circuit
 V_src n10 0 DC 5
-R_sA n10 n8 1000000000
+R_sA_3 n8 n10 1000000000
 R_rA n8 0 10000
-R_sB n10 n9 1000000000
+R_sB_3 n9 n10 1000000000
 R_rB n9 0 10000
 B_notA n3 0 V = 5 * (1 - u(V(n8)-2.5))
 R_notA_load n3 0 1Meg
@@ -2501,15 +2501,15 @@ D_ledLt ledLt_sense_mid 0 LED_GREEN
 exports[`netlist snapshot — digital (39 examples) > digital-compressor-4to2 1`] = `
 "* Velxio circuit
 V_src n18 0 DC 5
-R_cmpX1 n18 n14 1000000000
+R_cmpX1_3 n14 n18 1000000000
 R_cmpRX1 n14 0 10000
-R_cmpX2 n18 n15 1000000000
+R_cmpX2_3 n15 n18 1000000000
 R_cmpRX2 n15 0 10000
-R_cmpX3 n18 n16 1000000000
+R_cmpX3_3 n16 n18 1000000000
 R_cmpRX3 n16 0 10000
-R_cmpX4 n18 n17 1000000000
+R_cmpX4_3 n17 n18 1000000000
 R_cmpRX4 n17 0 10000
-R_cmpCin n18 n13 1000000000
+R_cmpCin_3 n13 n18 1000000000
 R_cmpRCin n13 0 10000
 B_cmFA1_x1 n3 0 V = 5 * (u(V(n14)-2.5) + u(V(n15)-2.5) - 2*u(V(n14)-2.5)*u(V(n15)-2.5))
 R_cmFA1_x1_load n3 0 1Meg
@@ -2550,9 +2550,9 @@ D_cmLCo cmLCo_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-decoder-2to4 1`] = `
 "* Velxio circuit
 V_src n12 0 DC 5
-R_sA n12 n10 1000000000
+R_sA_3 n10 n12 1000000000
 R_rA n10 0 10000
-R_sB n12 n11 1000000000
+R_sB_3 n11 n12 1000000000
 R_rB n11 0 10000
 B_notA n4 0 V = 5 * (1 - u(V(n10)-2.5))
 R_notA_load n4 0 1Meg
@@ -2589,11 +2589,11 @@ D_led3 led3_sense_mid 0 LED_BLUE
 exports[`netlist snapshot — digital (39 examples) > digital-decoder-3to8 1`] = `
 "* Velxio circuit
 V_src n22 0 DC 5
-R_dec3A0 n22 n0 1000000000
+R_dec3A0_3 n0 n22 1000000000
 R_dec3R0 n0 0 10000
-R_dec3A1 n22 n1 1000000000
+R_dec3A1_3 n1 n22 1000000000
 R_dec3R1 n1 0 10000
-R_dec3A2 n22 n2 1000000000
+R_dec3A2_3 n2 n22 1000000000
 R_dec3R2 n2 0 10000
 B_dec3N0 n3 0 V = 5 * (1 - u(V(n0)-2.5))
 R_dec3N0_load n3 0 1Meg
@@ -2653,11 +2653,11 @@ D_dec3l7 dec3l7_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-full-adder 1`] = `
 "* Velxio circuit
 V_src n8 0 DC 5
-R_sA n8 n5 1000000000
+R_sA_3 n5 n8 1000000000
 R_rpdA n5 0 10000
-R_sB n8 n6 1000000000
+R_sB_3 n6 n8 1000000000
 R_rpdB n6 0 10000
-R_sCi n8 n7 1000000000
+R_sCi_3 n7 n8 1000000000
 R_rpdCi n7 0 10000
 B_x1 n9 0 V = 5 * (u(V(n5)-2.5) + u(V(n6)-2.5) - 2*u(V(n5)-2.5)*u(V(n6)-2.5))
 R_x1_load n9 0 1Meg
@@ -2684,11 +2684,11 @@ D_ledCo ledCo_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-gray-to-binary-3bit 1`] = `
 "* Velxio circuit
 V_src n8 0 DC 5
-R_gbG0 n8 n0 1000000000
+R_gbG0_3 n0 n8 1000000000
 R_gbRG0 n0 0 10000
-R_gbG1 n8 n1 1000000000
+R_gbG1_3 n1 n8 1000000000
 R_gbRG1 n1 0 10000
-R_gbG2 n8 n2 1000000000
+R_gbG2_3 n2 n8 1000000000
 R_gbRG2 n2 0 10000
 B_gbX21 n7 0 V = 5 * (u(V(n1)-2.5) + u(V(n2)-2.5) - 2*u(V(n1)-2.5)*u(V(n2)-2.5))
 R_gbX21_load n7 0 1Meg
@@ -2713,9 +2713,9 @@ D_gbLB2 gbLB2_sense_mid 0 LED_GREEN
 exports[`netlist snapshot — digital (39 examples) > digital-half-adder 1`] = `
 "* Velxio circuit
 V_src n6 0 DC 5
-R_sA n6 n4 1000000000
+R_sA_3 n4 n6 1000000000
 R_rpdA n4 0 10000
-R_sB n6 n5 1000000000
+R_sB_3 n5 n6 1000000000
 R_rpdB n5 0 10000
 B_gSum n1 0 V = 5 * (u(V(n4)-2.5) + u(V(n5)-2.5) - 2*u(V(n4)-2.5)*u(V(n5)-2.5))
 R_gSum_load n1 0 1Meg
@@ -2736,9 +2736,9 @@ D_ledC ledC_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-half-adder-nand-only 1`] = `
 "* Velxio circuit
 V_src n10 0 DC 5
-R_hnA n10 n0 1000000000
+R_hnA_3 n0 n10 1000000000
 R_hnRA n0 0 10000
-R_hnB n10 n1 1000000000
+R_hnB_3 n1 n10 1000000000
 R_hnRB n1 0 10000
 B_hnN1 n4 0 V = 5 * (1 - u(V(n0)-2.5) * u(V(n1)-2.5))
 R_hnN1_load n4 0 1Meg
@@ -2767,9 +2767,9 @@ D_hnLC hnLC_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-half-subtractor 1`] = `
 "* Velxio circuit
 V_src n7 0 DC 5
-R_sA n7 n5 1000000000
+R_sA_3 n5 n7 1000000000
 R_rA n5 0 10000
-R_sB n7 n6 1000000000
+R_sB_3 n6 n7 1000000000
 R_rB n6 0 10000
 B_gDiff n1 0 V = 5 * (u(V(n5)-2.5) + u(V(n6)-2.5) - 2*u(V(n5)-2.5)*u(V(n6)-2.5))
 R_gDiff_load n1 0 1Meg
@@ -2792,13 +2792,13 @@ D_ledBo ledBo_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-hamming-encoder-74 1`] = `
 "* Velxio circuit
 V_src n17 0 DC 5
-R_hmD0 n17 n0 1000000000
+R_hmD0_3 n0 n17 1000000000
 R_hmRD0 n0 0 10000
-R_hmD1 n17 n1 1000000000
+R_hmD1_3 n1 n17 1000000000
 R_hmRD1 n1 0 10000
-R_hmD2 n17 n2 1000000000
+R_hmD2_3 n2 n17 1000000000
 R_hmRD2 n2 0 10000
-R_hmD3 n17 n3 1000000000
+R_hmD3_3 n3 n17 1000000000
 R_hmRD3 n3 0 10000
 B_hmP1a n4 0 V = 5 * (u(V(n0)-2.5) + u(V(n1)-2.5) - 2*u(V(n0)-2.5)*u(V(n1)-2.5))
 R_hmP1a_load n4 0 1Meg
@@ -2844,11 +2844,11 @@ D_hmL7 hmL7_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-majority-voter 1`] = `
 "* Velxio circuit
 V_src n8 0 DC 5
-R_sA n8 n5 1000000000
+R_sA_3 n5 n8 1000000000
 R_rA n5 0 10000
-R_sB n8 n6 1000000000
+R_sB_3 n6 n8 1000000000
 R_rB n6 0 10000
-R_sC n8 n7 1000000000
+R_sC_3 n7 n8 1000000000
 R_rC n7 0 10000
 B_aAB n0 0 V = 5 * u(V(n5)-2.5) * u(V(n6)-2.5)
 R_aAB_load n0 0 1Meg
@@ -2869,13 +2869,13 @@ D_led led_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-multiplier-2x2 1`] = `
 "* Velxio circuit
 V_src n16 0 DC 5
-R_sA0 n16 n12 1000000000
+R_sA0_3 n12 n16 1000000000
 R_rA0 n12 0 10000
-R_sA1 n16 n13 1000000000
+R_sA1_3 n13 n16 1000000000
 R_rA1 n13 0 10000
-R_sB0 n16 n14 1000000000
+R_sB0_3 n14 n16 1000000000
 R_rB0 n14 0 10000
-R_sB1 n16 n15 1000000000
+R_sB1_3 n15 n16 1000000000
 R_rB1 n15 0 10000
 B_pA0B0 n4 0 V = 5 * u(V(n12)-2.5) * u(V(n14)-2.5)
 R_pA0B0_load n4 0 1Meg
@@ -2916,11 +2916,11 @@ D_ledP3 ledP3_sense_mid 0 LED_BLUE
 exports[`netlist snapshot — digital (39 examples) > digital-mux-2to1 1`] = `
 "* Velxio circuit
 V_src n8 0 DC 5
-R_sSel n8 n7 1000000000
+R_sSel_3 n7 n8 1000000000
 R_rpdSel n7 0 10000
-R_sD0 n8 n5 0.01
+R_sD0_3 n5 n8 0.01
 R_rpdD0 n5 0 10000
-R_sD1 n8 n6 1000000000
+R_sD1_3 n6 n8 1000000000
 R_rpdD1 n6 0 10000
 B_nSel n2 0 V = 5 * (1 - u(V(n7)-2.5))
 R_nSel_load n2 0 1Meg
@@ -2941,17 +2941,17 @@ D_led led_sense_mid 0 LED_GREEN
 exports[`netlist snapshot — digital (39 examples) > digital-mux-4to1 1`] = `
 "* Velxio circuit
 V_src n18 0 DC 5
-R_d0 n18 n4 1000000000
+R_d0_3 n4 n18 1000000000
 R_rd0 n4 0 10000
-R_d1 n18 n5 1000000000
+R_d1_3 n5 n18 1000000000
 R_rd1 n5 0 10000
-R_d2 n18 n6 1000000000
+R_d2_3 n6 n18 1000000000
 R_rd2 n6 0 10000
-R_d3 n18 n7 1000000000
+R_d3_3 n7 n18 1000000000
 R_rd3 n7 0 10000
-R_s0 n18 n16 1000000000
+R_s0_3 n16 n18 1000000000
 R_rs0 n16 0 10000
-R_s1 n18 n17 1000000000
+R_s1_3 n17 n18 1000000000
 R_rs1 n17 0 10000
 B_ns0 n12 0 V = 5 * (1 - u(V(n16)-2.5))
 R_ns0_load n12 0 1Meg
@@ -2986,9 +2986,9 @@ D_led led_sense_mid 0 LED_GREEN
 exports[`netlist snapshot — digital (39 examples) > digital-nand-two-switches 1`] = `
 "* Velxio circuit
 V_src n3 0 DC 5
-R_s1 n3 n1 1000000000
+R_s1_3 n1 n3 1000000000
 R_rpd1 n1 0 10000
-R_s2 n3 n2 1000000000
+R_s2_3 n2 n3 1000000000
 R_rpd2 n2 0 10000
 B_u1 n4 0 V = 5 * (1 - u(V(n1)-2.5) * u(V(n2)-2.5))
 R_u1_load n4 0 1Meg
@@ -3003,9 +3003,9 @@ D_led led_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-nor-idle-light 1`] = `
 "* Velxio circuit
 V_src n3 0 DC 5
-R_s1 n3 n1 1000000000
+R_s1_3 n1 n3 1000000000
 R_rpd1 n1 0 10000
-R_s2 n3 n2 1000000000
+R_s2_3 n2 n3 1000000000
 R_rpd2 n2 0 10000
 B_u1 n4 0 V = 5 * (1-u(V(n1)-2.5)) * (1-u(V(n2)-2.5))
 R_u1_load n4 0 1Meg
@@ -3020,7 +3020,7 @@ D_led led_sense_mid 0 LED_GREEN
 exports[`netlist snapshot — digital (39 examples) > digital-not-inverter 1`] = `
 "* Velxio circuit
 V_src n2 0 DC 5
-R_s1 n2 n1 1000000000
+R_s1_3 n1 n2 1000000000
 R_rpd n1 0 10000
 B_u1 n3 0 V = 5 * (1 - u(V(n1)-2.5))
 R_u1_load n3 0 1Meg
@@ -3035,9 +3035,9 @@ D_led led_sense_mid 0 LED_GREEN
 exports[`netlist snapshot — digital (39 examples) > digital-or-any-switch 1`] = `
 "* Velxio circuit
 V_src n3 0 DC 5
-R_s1 n3 n1 1000000000
+R_s1_3 n1 n3 1000000000
 R_rpd1 n1 0 10000
-R_s2 n3 n2 1000000000
+R_s2_3 n2 n3 1000000000
 R_rpd2 n2 0 10000
 B_u1 n4 0 V = 5 * (1 - (1-u(V(n1)-2.5)) * (1-u(V(n2)-2.5)))
 R_u1_load n4 0 1Meg
@@ -3052,13 +3052,13 @@ D_led led_sense_mid 0 LED_BLUE
 exports[`netlist snapshot — digital (39 examples) > digital-parity-4bit 1`] = `
 "* Velxio circuit
 V_src n5 0 DC 5
-R_s0 n5 n1 1000000000
+R_s0_3 n1 n5 1000000000
 R_r0 n1 0 10000
-R_s1 n5 n2 1000000000
+R_s1_3 n2 n5 1000000000
 R_r1 n2 0 10000
-R_s2 n5 n3 1000000000
+R_s2_3 n3 n5 1000000000
 R_r2 n3 0 10000
-R_s3 n5 n4 1000000000
+R_s3_3 n4 n5 1000000000
 R_r3 n4 0 10000
 B_x01 n6 0 V = 5 * (u(V(n1)-2.5) + u(V(n2)-2.5) - 2*u(V(n1)-2.5)*u(V(n2)-2.5))
 R_x01_load n6 0 1Meg
@@ -3077,13 +3077,13 @@ D_led led_sense_mid 0 LED_YELLOW
 exports[`netlist snapshot — digital (39 examples) > digital-popcount-4bit 1`] = `
 "* Velxio circuit
 V_src n18 0 DC 5
-R_pcX0 n18 n14 1000000000
+R_pcX0_3 n14 n18 1000000000
 R_pcR0 n14 0 10000
-R_pcX1 n18 n15 1000000000
+R_pcX1_3 n15 n18 1000000000
 R_pcR1 n15 0 10000
-R_pcX2 n18 n16 1000000000
+R_pcX2_3 n16 n18 1000000000
 R_pcR2 n16 0 10000
-R_pcX3 n18 n17 1000000000
+R_pcX3_3 n17 n18 1000000000
 R_pcR3 n17 0 10000
 B_pcSA n10 0 V = 5 * (u(V(n14)-2.5) + u(V(n15)-2.5) - 2*u(V(n14)-2.5)*u(V(n15)-2.5))
 R_pcSA_load n10 0 1Meg
@@ -3126,21 +3126,21 @@ D_pcLed2 pcLed2_sense_mid 0 LED_GREEN
 exports[`netlist snapshot — digital (39 examples) > digital-priority-encoder-8to3 1`] = `
 "* Velxio circuit
 V_src n22 0 DC 5
-R_pe0 n22 n0 1000000000
+R_pe0_3 n0 n22 1000000000
 R_peR0 n0 0 10000
-R_pe1 n22 n1 1000000000
+R_pe1_3 n1 n22 1000000000
 R_peR1 n1 0 10000
-R_pe2 n22 n2 1000000000
+R_pe2_3 n2 n22 1000000000
 R_peR2 n2 0 10000
-R_pe3 n22 n3 1000000000
+R_pe3_3 n3 n22 1000000000
 R_peR3 n3 0 10000
-R_pe4 n22 n4 1000000000
+R_pe4_3 n4 n22 1000000000
 R_peR4 n4 0 10000
-R_pe5 n22 n5 1000000000
+R_pe5_3 n5 n22 1000000000
 R_peR5 n5 0 10000
-R_pe6 n22 n6 1000000000
+R_pe6_3 n6 n22 1000000000
 R_peR6 n6 0 10000
-R_pe7 n22 n7 1000000000
+R_pe7_3 n7 n22 1000000000
 R_peR7 n7 0 10000
 B_peY2 n17 0 V = 5 * (1 - (1-u(V(n4)-2.5)) * (1-u(V(n5)-2.5)) * (1-u(V(n6)-2.5)) * (1-u(V(n7)-2.5)))
 R_peY2_load n17 0 1Meg
@@ -3185,23 +3185,23 @@ D_lV lV_sense_mid 0 LED_BLUE
 exports[`netlist snapshot — digital (39 examples) > digital-ripple-adder-4bit 1`] = `
 "* Velxio circuit
 V_src n26 0 DC 5
-R_sA0 n26 n17 1000000000
+R_sA0_3 n17 n26 1000000000
 R_rA0 n17 0 10000
-R_sB0 n26 n21 1000000000
+R_sB0_3 n21 n26 1000000000
 R_rB0 n21 0 10000
-R_sA1 n26 n18 1000000000
+R_sA1_3 n18 n26 1000000000
 R_rA1 n18 0 10000
-R_sB1 n26 n22 1000000000
+R_sB1_3 n22 n26 1000000000
 R_rB1 n22 0 10000
-R_sA2 n26 n19 1000000000
+R_sA2_3 n19 n26 1000000000
 R_rA2 n19 0 10000
-R_sB2 n26 n23 1000000000
+R_sB2_3 n23 n26 1000000000
 R_rB2 n23 0 10000
-R_sA3 n26 n20 1000000000
+R_sA3_3 n20 n26 1000000000
 R_rA3 n20 0 10000
-R_sB3 n26 n24 1000000000
+R_sB3_3 n24 n26 1000000000
 R_rB3 n24 0 10000
-R_sCin n26 n25 1000000000
+R_sCin_3 n25 n26 1000000000
 R_rCin n25 0 10000
 B_x1_0 n27 0 V = 5 * (u(V(n17)-2.5) + u(V(n21)-2.5) - 2*u(V(n17)-2.5)*u(V(n21)-2.5))
 R_x1_0_load n27 0 1Meg
@@ -3269,7 +3269,7 @@ D_ledCo ledCo_sense_mid 0 LED_RED
 exports[`netlist snapshot — digital (39 examples) > digital-ripple-counter-4bit 1`] = `
 "* Velxio circuit
 V_src n12 0 DC 5
-R_cnt_clk n12 n0 1000000000
+R_cnt_clk_3 n0 n12 1000000000
 R_cnt_clk_r n0 0 10000
 R_cnt_lr0 n1 n8 220
 V_cnt_led0_sense n8 cnt_led0_sense_mid DC 0
@@ -3305,9 +3305,9 @@ R_autopull_n11 n11 0 100Meg
 exports[`netlist snapshot — digital (39 examples) > digital-xnor-equality 1`] = `
 "* Velxio circuit
 V_src n3 0 DC 5
-R_s1 n3 n1 0.01
+R_s1_3 n1 n3 0.01
 R_rpd1 n1 0 10000
-R_s2 n3 n2 0.01
+R_s2_3 n2 n3 0.01
 R_rpd2 n2 0 10000
 B_u1 n4 0 V = 5 * (1 - (u(V(n1)-2.5) + u(V(n2)-2.5) - 2*u(V(n1)-2.5)*u(V(n2)-2.5)))
 R_u1_load n4 0 1Meg
@@ -3322,9 +3322,9 @@ D_led led_sense_mid 0 LED_YELLOW
 exports[`netlist snapshot — digital (39 examples) > digital-xor-difference 1`] = `
 "* Velxio circuit
 V_src n3 0 DC 5
-R_s1 n3 n1 1000000000
+R_s1_3 n1 n3 1000000000
 R_rpd1 n1 0 10000
-R_s2 n3 n2 1000000000
+R_s2_3 n2 n3 1000000000
 R_rpd2 n2 0 10000
 B_u1 n4 0 V = 5 * (u(V(n1)-2.5) + u(V(n2)-2.5) - 2*u(V(n1)-2.5)*u(V(n2)-2.5))
 R_u1_load n4 0 1Meg
@@ -3339,9 +3339,9 @@ D_led led_sense_mid 0 LED_YELLOW
 exports[`netlist snapshot — digital (39 examples) > digital-xor-from-nands 1`] = `
 "* Velxio circuit
 V_src n7 0 DC 5
-R_sA n7 n5 1000000000
+R_sA_3 n5 n7 1000000000
 R_rA n5 0 10000
-R_sB n7 n6 1000000000
+R_sB_3 n6 n7 1000000000
 R_rB n6 0 10000
 B_n1 n0 0 V = 5 * (1 - u(V(n5)-2.5) * u(V(n6)-2.5))
 R_n1_load n0 0 1Meg

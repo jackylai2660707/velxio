@@ -258,20 +258,25 @@ export function buildDigitalNetwork(
     // else: pass-through (already merged) — contributes no driver.
   }
 
-  // ── Switches: closed passes the rail-side level to the other pin ───────────
+  // ── Switches: SPDT. Pin 2 is the common wiper; it connects to pin 1 at
+  // value=0 or pin 3 at value=1 and passes that throw's level to the common.
+  // A throw that isn't wired leaves the common floating (any pull resistor then
+  // decides), mirroring the SPICE model which omits an unwired leg.
+  const wiredPins = new Set<string>();
+  for (const w of wires) {
+    wiredPins.add(epKey(w.start.componentId, w.start.pinName));
+    wiredPins.add(epKey(w.end.componentId, w.end.pinName));
+  }
   const switchState = new Map<string, 0 | 1>();
   const driveSwitch = (c: DigitalComponent) => {
-    const closed = switchState.get(c.id) ?? (Number(c.properties?.value) === 1 ? 1 : 0);
-    const n1 = netKey(c.id, '1'), n2 = netKey(c.id, '2');
-    const root1 = pinNet(c.id, '1');
-    // switchInput() wires pin '1' to the rail, pin '2' to the gate input. Drive
-    // the gate side with the source side's level when closed, else release.
-    const [src, dst] = isRail(root1) || !isGnd(pinNet(c.id, '2')) ? [n1, n2] : [n2, n1];
-    if (closed) {
-      const srcLevel = pm.getPinState(src) ? 1 : 0;
-      setBusDrive(pm, dst, `${c.id}::pass`, STRONG(srcLevel as 0 | 1));
+    const value = switchState.get(c.id) ?? (Number(c.properties?.value) === 1 ? 1 : 0);
+    const common = netKey(c.id, '2');
+    const throwPin = value === 1 ? '3' : '1';
+    if (wiredPins.has(epKey(c.id, throwPin))) {
+      const level = pm.getPinState(netKey(c.id, throwPin)) ? 1 : 0;
+      setBusDrive(pm, common, `${c.id}::pass`, STRONG(level as 0 | 1));
     } else {
-      setBusDrive(pm, dst, `${c.id}::pass`, { value: 0, strength: Strength.HIGHZ });
+      setBusDrive(pm, common, `${c.id}::pass`, { value: 0, strength: Strength.HIGHZ });
     }
   };
   for (const c of components) if (isSwitch(kindOf(c))) driveSwitch(c);
@@ -380,14 +385,6 @@ export function buildMixedNetwork(
   for (const w of wires) uf.union(epKey(w.start.componentId, w.start.pinName), epKey(w.end.componentId, w.end.pinName));
   const pinNet = (id: string, pin: string) => uf.find(epKey(id, pin));
 
-  const gndRoots = new Set<string>();
-  const railRoots = new Set<string>();
-  for (const c of components) {
-    if (isPower(kindOf(c))) { gndRoots.add(pinNet(c.id, 'GND')); railRoots.add(pinNet(c.id, 'SIG')); }
-  }
-  const isGnd = (r: string) => gndRoots.has(r);
-  const isRail = (r: string) => railRoots.has(r);
-
   const keyOf = new Map<string, number>();
   let nextKey = 1;
   const netKey = (id: string, pin: string): number => {
@@ -418,13 +415,24 @@ export function buildMixedNetwork(
       setBusDrive(pm, netKey(c.id, 'GND'), `${c.id}::GND`, STRONG(0));
     }
   }
+  // SPDT (same model as the all-digital path): pin 2 is the common wiper,
+  // connecting to pin 1 at value=0 or pin 3 at value=1; an unwired throw leaves
+  // the common floating.
+  const wiredPins = new Set<string>();
+  for (const w of wires) {
+    wiredPins.add(epKey(w.start.componentId, w.start.pinName));
+    wiredPins.add(epKey(w.end.componentId, w.end.pinName));
+  }
   const switchState = new Map<string, 0 | 1>();
   const driveSwitch = (c: DigitalComponent) => {
-    const closed = switchState.get(c.id) ?? (Number(c.properties?.value) === 1 ? 1 : 0);
-    const n1 = netKey(c.id, '1'), n2 = netKey(c.id, '2');
-    const [src, dst] = isRail(pinNet(c.id, '1')) ? [n1, n2] : [n2, n1];
-    if (closed) setBusDrive(pm, dst, `${c.id}::pass`, STRONG(pm.getPinState(src) ? 1 : 0));
-    else setBusDrive(pm, dst, `${c.id}::pass`, { value: 0, strength: Strength.HIGHZ });
+    const value = switchState.get(c.id) ?? (Number(c.properties?.value) === 1 ? 1 : 0);
+    const common = netKey(c.id, '2');
+    const throwPin = value === 1 ? '3' : '1';
+    if (wiredPins.has(epKey(c.id, throwPin))) {
+      setBusDrive(pm, common, `${c.id}::pass`, STRONG(pm.getPinState(netKey(c.id, throwPin)) ? 1 : 0));
+    } else {
+      setBusDrive(pm, common, `${c.id}::pass`, { value: 0, strength: Strength.HIGHZ });
+    }
   };
   for (const c of components) if (isSwitch(kindOf(c))) driveSwitch(c);
   for (const c of components) {

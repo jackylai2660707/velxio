@@ -83,9 +83,13 @@ void loop()  {}
 
 /** Wire a slide-switch as a clean HIGH/LOW source.
  *
- *   src.SIG ─[ sw.1 ── sw.2 ]── gate_input
- *                          │
- *                          └──[R_pd 10k]── src.GND
+ * The switch is an SPDT whose common wiper is pin 2: value=1 connects it to
+ * pin 3 (the rail, HIGH), value=0 connects it to pin 1 (here left open, so the
+ * pull-down defines LOW). This matches the wokwi-slide-switch handle direction.
+ *
+ *   src.SIG ──[ sw.3 ]  sw.2 ── gate_input
+ *                    (wiper)  │
+ *                             └──[R_pd 10k]── src.GND
  *
  * Returns the components + wires that have to be added per switch.
  */
@@ -103,7 +107,7 @@ function switchInput(
   return {
     components: [sw(switchId, x, y, initial), res(resId, x + 90, y + 30, '10000')],
     wires: [
-      w(`${wirePrefix}_pwr`, [srcId, 'SIG'], [switchId, '1'], C_PWR),
+      w(`${wirePrefix}_pwr`, [srcId, 'SIG'], [switchId, '3'], C_PWR),
       w(`${wirePrefix}_sig`, [switchId, '2'], [targetCompId, targetPin], C_SIG),
       w(`${wirePrefix}_pd`, [switchId, '2'], [resId, '1'], C_SIG),
       w(`${wirePrefix}_gnd`, [resId, '2'], [srcId, 'GND'], C_GND),
@@ -182,7 +186,7 @@ export const digitalExamples: ExampleProject[] = [
       led('led', 580, 220, 'green'),
     ],
     [
-      w('w1', ['src', 'SIG'], ['s1', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['s1', '3'], C_PWR),
       w('w2', ['s1', '2'], ['u1', 'A'], C_SIG),
       w('w3', ['s1', '2'], ['rpd', '1'], C_SIG),
       w('w4', ['rpd', '2'], ['src', 'GND'], C_GND),
@@ -209,11 +213,11 @@ export const digitalExamples: ExampleProject[] = [
       led('led', 600, 220, 'red'),
     ],
     [
-      w('w1', ['src', 'SIG'], ['s1', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['s1', '3'], C_PWR),
       w('w2', ['s1', '2'], ['u1', 'A'], C_SIG),
       w('w3', ['s1', '2'], ['rpd1', '1'], C_SIG),
       w('w4', ['rpd1', '2'], ['src', 'GND'], C_GND),
-      w('w5', ['src', 'SIG'], ['s2', '1'], C_PWR),
+      w('w5', ['src', 'SIG'], ['s2', '3'], C_PWR),
       w('w6', ['s2', '2'], ['u1', 'B'], C_SIG),
       w('w7', ['s2', '2'], ['rpd2', '1'], C_SIG),
       w('w8', ['rpd2', '2'], ['src', 'GND'], C_GND),
@@ -240,11 +244,11 @@ export const digitalExamples: ExampleProject[] = [
       led('led', 600, 220, 'blue'),
     ],
     [
-      w('w1', ['src', 'SIG'], ['s1', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['s1', '3'], C_PWR),
       w('w2', ['s1', '2'], ['u1', 'A'], C_SIG),
       w('w3', ['s1', '2'], ['rpd1', '1'], C_SIG),
       w('w4', ['rpd1', '2'], ['src', 'GND'], C_GND),
-      w('w5', ['src', 'SIG'], ['s2', '1'], C_PWR),
+      w('w5', ['src', 'SIG'], ['s2', '3'], C_PWR),
       w('w6', ['s2', '2'], ['u1', 'B'], C_SIG),
       w('w7', ['s2', '2'], ['rpd2', '1'], C_SIG),
       w('w8', ['rpd2', '2'], ['src', 'GND'], C_GND),
@@ -271,11 +275,11 @@ export const digitalExamples: ExampleProject[] = [
       led('led', 600, 220, 'red'),
     ],
     [
-      w('w1', ['src', 'SIG'], ['s1', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['s1', '3'], C_PWR),
       w('w2', ['s1', '2'], ['u1', 'A'], C_SIG),
       w('w3', ['s1', '2'], ['rpd1', '1'], C_SIG),
       w('w4', ['rpd1', '2'], ['src', 'GND'], C_GND),
-      w('w5', ['src', 'SIG'], ['s2', '1'], C_PWR),
+      w('w5', ['src', 'SIG'], ['s2', '3'], C_PWR),
       w('w6', ['s2', '2'], ['u1', 'B'], C_SIG),
       w('w7', ['s2', '2'], ['rpd2', '1'], C_SIG),
       w('w8', ['rpd2', '2'], ['src', 'GND'], C_GND),
@@ -302,11 +306,11 @@ export const digitalExamples: ExampleProject[] = [
       led('led', 600, 220, 'green'),
     ],
     [
-      w('w1', ['src', 'SIG'], ['s1', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['s1', '3'], C_PWR),
       w('w2', ['s1', '2'], ['u1', 'A'], C_SIG),
       w('w3', ['s1', '2'], ['rpd1', '1'], C_SIG),
       w('w4', ['rpd1', '2'], ['src', 'GND'], C_GND),
-      w('w5', ['src', 'SIG'], ['s2', '1'], C_PWR),
+      w('w5', ['src', 'SIG'], ['s2', '3'], C_PWR),
       w('w6', ['s2', '2'], ['u1', 'B'], C_SIG),
       w('w7', ['s2', '2'], ['rpd2', '1'], C_SIG),
       w('w8', ['rpd2', '2'], ['src', 'GND'], C_GND),
@@ -333,11 +337,11 @@ export const digitalExamples: ExampleProject[] = [
       led('led', 600, 220, 'yellow'),
     ],
     [
-      w('w1', ['src', 'SIG'], ['s1', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['s1', '3'], C_PWR),
       w('w2', ['s1', '2'], ['u1', 'A'], C_SIG),
       w('w3', ['s1', '2'], ['rpd1', '1'], C_SIG),
       w('w4', ['rpd1', '2'], ['src', 'GND'], C_GND),
-      w('w5', ['src', 'SIG'], ['s2', '1'], C_PWR),
+      w('w5', ['src', 'SIG'], ['s2', '3'], C_PWR),
       w('w6', ['s2', '2'], ['u1', 'B'], C_SIG),
       w('w7', ['s2', '2'], ['rpd2', '1'], C_SIG),
       w('w8', ['rpd2', '2'], ['src', 'GND'], C_GND),
@@ -364,11 +368,11 @@ export const digitalExamples: ExampleProject[] = [
       led('led', 600, 220, 'yellow'),
     ],
     [
-      w('w1', ['src', 'SIG'], ['s1', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['s1', '3'], C_PWR),
       w('w2', ['s1', '2'], ['u1', 'A'], C_SIG),
       w('w3', ['s1', '2'], ['rpd1', '1'], C_SIG),
       w('w4', ['rpd1', '2'], ['src', 'GND'], C_GND),
-      w('w5', ['src', 'SIG'], ['s2', '1'], C_PWR),
+      w('w5', ['src', 'SIG'], ['s2', '3'], C_PWR),
       w('w6', ['s2', '2'], ['u1', 'B'], C_SIG),
       w('w7', ['s2', '2'], ['rpd2', '1'], C_SIG),
       w('w8', ['rpd2', '2'], ['src', 'GND'], C_GND),
@@ -398,17 +402,17 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // Switch 1
-      w('w1', ['src', 'SIG'], ['s1', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['s1', '3'], C_PWR),
       w('w2', ['s1', '2'], ['u1', 'A'], C_SIG),
       w('w3', ['s1', '2'], ['rpd1', '1'], C_SIG),
       w('w4', ['rpd1', '2'], ['src', 'GND'], C_GND),
       // Switch 2
-      w('w5', ['src', 'SIG'], ['s2', '1'], C_PWR),
+      w('w5', ['src', 'SIG'], ['s2', '3'], C_PWR),
       w('w6', ['s2', '2'], ['u1', 'B'], C_SIG),
       w('w7', ['s2', '2'], ['rpd2', '1'], C_SIG),
       w('w8', ['rpd2', '2'], ['src', 'GND'], C_GND),
       // Switch 3
-      w('w9', ['src', 'SIG'], ['s3', '1'], C_PWR),
+      w('w9', ['src', 'SIG'], ['s3', '3'], C_PWR),
       w('w10', ['s3', '2'], ['u1', 'C'], C_SIG),
       w('w11', ['s3', '2'], ['rpd3', '1'], C_SIG),
       w('w12', ['rpd3', '2'], ['src', 'GND'], C_GND),
@@ -444,13 +448,13 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // A
-      w('w1', ['src', 'SIG'], ['sA', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['sA', '3'], C_PWR),
       w('w2', ['sA', '2'], ['gSum', 'A'], C_SIG),
       w('w3', ['sA', '2'], ['gC', 'A'], C_SIG),
       w('w4', ['sA', '2'], ['rpdA', '1'], C_SIG),
       w('w5', ['rpdA', '2'], ['src', 'GND'], C_GND),
       // B
-      w('w6', ['src', 'SIG'], ['sB', '1'], C_PWR),
+      w('w6', ['src', 'SIG'], ['sB', '3'], C_PWR),
       w('w7', ['sB', '2'], ['gSum', 'B'], C_SIG),
       w('w8', ['sB', '2'], ['gC', 'B'], C_SIG),
       w('w9', ['sB', '2'], ['rpdB', '1'], C_SIG),
@@ -495,19 +499,19 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // A
-      w('w1', ['src', 'SIG'], ['sA', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['sA', '3'], C_PWR),
       w('w2', ['sA', '2'], ['x1', 'A'], C_SIG),
       w('w3', ['sA', '2'], ['a1', 'A'], C_SIG),
       w('w4', ['sA', '2'], ['rpdA', '1'], C_SIG),
       w('w5', ['rpdA', '2'], ['src', 'GND'], C_GND),
       // B
-      w('w6', ['src', 'SIG'], ['sB', '1'], C_PWR),
+      w('w6', ['src', 'SIG'], ['sB', '3'], C_PWR),
       w('w7', ['sB', '2'], ['x1', 'B'], C_SIG),
       w('w8', ['sB', '2'], ['a1', 'B'], C_SIG),
       w('w9', ['sB', '2'], ['rpdB', '1'], C_SIG),
       w('w10', ['rpdB', '2'], ['src', 'GND'], C_GND),
       // Cin
-      w('w11', ['src', 'SIG'], ['sCi', '1'], C_PWR),
+      w('w11', ['src', 'SIG'], ['sCi', '3'], C_PWR),
       w('w12', ['sCi', '2'], ['x2', 'B'], C_SIG),
       w('w13', ['sCi', '2'], ['a2', 'B'], C_SIG),
       w('w14', ['sCi', '2'], ['rpdCi', '1'], C_SIG),
@@ -552,18 +556,18 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // SEL
-      w('w1', ['src', 'SIG'], ['sSel', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['sSel', '3'], C_PWR),
       w('w2', ['sSel', '2'], ['nSel', 'A'], C_SIG),
       w('w3', ['sSel', '2'], ['a1', 'B'], C_SIG),
       w('w4', ['sSel', '2'], ['rpdSel', '1'], C_SIG),
       w('w5', ['rpdSel', '2'], ['src', 'GND'], C_GND),
       // D0
-      w('w6', ['src', 'SIG'], ['sD0', '1'], C_PWR),
+      w('w6', ['src', 'SIG'], ['sD0', '3'], C_PWR),
       w('w7', ['sD0', '2'], ['a0', 'A'], C_SIG),
       w('w8', ['sD0', '2'], ['rpdD0', '1'], C_SIG),
       w('w9', ['rpdD0', '2'], ['src', 'GND'], C_GND),
       // D1
-      w('w10', ['src', 'SIG'], ['sD1', '1'], C_PWR),
+      w('w10', ['src', 'SIG'], ['sD1', '3'], C_PWR),
       w('w11', ['sD1', '2'], ['a1', 'A'], C_SIG),
       w('w12', ['sD1', '2'], ['rpdD1', '1'], C_SIG),
       w('w13', ['rpdD1', '2'], ['src', 'GND'], C_GND),
@@ -603,22 +607,22 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // A0
-      w('w1', ['src', 'SIG'], ['sA0', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['sA0', '3'], C_PWR),
       w('w2', ['sA0', '2'], ['xn0', 'A'], C_SIG),
       w('w3', ['sA0', '2'], ['rA0', '1'], C_SIG),
       w('w4', ['rA0', '2'], ['src', 'GND'], C_GND),
       // A1
-      w('w5', ['src', 'SIG'], ['sA1', '1'], C_PWR),
+      w('w5', ['src', 'SIG'], ['sA1', '3'], C_PWR),
       w('w6', ['sA1', '2'], ['xn1', 'A'], C_SIG),
       w('w7', ['sA1', '2'], ['rA1', '1'], C_SIG),
       w('w8', ['rA1', '2'], ['src', 'GND'], C_GND),
       // B0
-      w('w9', ['src', 'SIG'], ['sB0', '1'], C_PWR),
+      w('w9', ['src', 'SIG'], ['sB0', '3'], C_PWR),
       w('w10', ['sB0', '2'], ['xn0', 'B'], C_SIG),
       w('w11', ['sB0', '2'], ['rB0', '1'], C_SIG),
       w('w12', ['rB0', '2'], ['src', 'GND'], C_GND),
       // B1
-      w('w13', ['src', 'SIG'], ['sB1', '1'], C_PWR),
+      w('w13', ['src', 'SIG'], ['sB1', '3'], C_PWR),
       w('w14', ['sB1', '2'], ['xn1', 'B'], C_SIG),
       w('w15', ['sB1', '2'], ['rB1', '1'], C_SIG),
       w('w16', ['rB1', '2'], ['src', 'GND'], C_GND),
@@ -655,19 +659,19 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // A
-      w('w1', ['src', 'SIG'], ['sA', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['sA', '3'], C_PWR),
       w('w2', ['sA', '2'], ['aAB', 'A'], C_SIG),
       w('w3', ['sA', '2'], ['aAC', 'A'], C_SIG),
       w('w4', ['sA', '2'], ['rA', '1'], C_SIG),
       w('w5', ['rA', '2'], ['src', 'GND'], C_GND),
       // B
-      w('w6', ['src', 'SIG'], ['sB', '1'], C_PWR),
+      w('w6', ['src', 'SIG'], ['sB', '3'], C_PWR),
       w('w7', ['sB', '2'], ['aAB', 'B'], C_SIG),
       w('w8', ['sB', '2'], ['aBC', 'A'], C_SIG),
       w('w9', ['sB', '2'], ['rB', '1'], C_SIG),
       w('w10', ['rB', '2'], ['src', 'GND'], C_GND),
       // C
-      w('w11', ['src', 'SIG'], ['sC', '1'], C_PWR),
+      w('w11', ['src', 'SIG'], ['sC', '3'], C_PWR),
       w('w12', ['sC', '2'], ['aAC', 'B'], C_SIG),
       w('w13', ['sC', '2'], ['aBC', 'B'], C_SIG),
       w('w14', ['sC', '2'], ['rC', '1'], C_SIG),
@@ -704,13 +708,13 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // A
-      w('w1', ['src', 'SIG'], ['sA', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['sA', '3'], C_PWR),
       w('w2', ['sA', '2'], ['n1', 'A'], C_SIG),
       w('w3', ['sA', '2'], ['n2', 'A'], C_SIG),
       w('w4', ['sA', '2'], ['rA', '1'], C_SIG),
       w('w5', ['rA', '2'], ['src', 'GND'], C_GND),
       // B
-      w('w6', ['src', 'SIG'], ['sB', '1'], C_PWR),
+      w('w6', ['src', 'SIG'], ['sB', '3'], C_PWR),
       w('w7', ['sB', '2'], ['n1', 'B'], C_SIG),
       w('w8', ['sB', '2'], ['n3', 'A'], C_SIG),
       w('w9', ['sB', '2'], ['rB', '1'], C_SIG),
@@ -752,22 +756,22 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // A
-      w('w1', ['src', 'SIG'], ['sA', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['sA', '3'], C_PWR),
       w('w2', ['sA', '2'], ['aAB', 'A'], C_SIG),
       w('w3', ['sA', '2'], ['rA', '1'], C_SIG),
       w('w4', ['rA', '2'], ['src', 'GND'], C_GND),
       // B
-      w('w5', ['src', 'SIG'], ['sB', '1'], C_PWR),
+      w('w5', ['src', 'SIG'], ['sB', '3'], C_PWR),
       w('w6', ['sB', '2'], ['aAB', 'B'], C_SIG),
       w('w7', ['sB', '2'], ['rB', '1'], C_SIG),
       w('w8', ['rB', '2'], ['src', 'GND'], C_GND),
       // C
-      w('w9', ['src', 'SIG'], ['sC', '1'], C_PWR),
+      w('w9', ['src', 'SIG'], ['sC', '3'], C_PWR),
       w('w10', ['sC', '2'], ['aCD', 'A'], C_SIG),
       w('w11', ['sC', '2'], ['rC', '1'], C_SIG),
       w('w12', ['rC', '2'], ['src', 'GND'], C_GND),
       // D
-      w('w13', ['src', 'SIG'], ['sD', '1'], C_PWR),
+      w('w13', ['src', 'SIG'], ['sD', '3'], C_PWR),
       w('w14', ['sD', '2'], ['aCD', 'B'], C_SIG),
       w('w15', ['sD', '2'], ['rD', '1'], C_SIG),
       w('w16', ['rD', '2'], ['src', 'GND'], C_GND),
@@ -798,7 +802,7 @@ export const digitalExamples: ExampleProject[] = [
       led('led', 900, 220, 'yellow'),
     ],
     [
-      w('w1', ['src', 'SIG'], ['s1', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['s1', '3'], C_PWR),
       w('w2', ['s1', '2'], ['n1', 'A'], C_SIG),
       w('w3', ['s1', '2'], ['rpd', '1'], C_SIG),
       w('w4', ['rpd', '2'], ['src', 'GND'], C_GND),
@@ -831,19 +835,19 @@ export const digitalExamples: ExampleProject[] = [
       led('led', 640, 290, 'red'),
     ],
     [
-      w('w1', ['src', 'SIG'], ['s1', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['s1', '3'], C_PWR),
       w('w2', ['s1', '2'], ['u1', 'A'], C_SIG),
       w('w3', ['s1', '2'], ['r1', '1'], C_SIG),
       w('w4', ['r1', '2'], ['src', 'GND'], C_GND),
-      w('w5', ['src', 'SIG'], ['s2', '1'], C_PWR),
+      w('w5', ['src', 'SIG'], ['s2', '3'], C_PWR),
       w('w6', ['s2', '2'], ['u1', 'B'], C_SIG),
       w('w7', ['s2', '2'], ['r2', '1'], C_SIG),
       w('w8', ['r2', '2'], ['src', 'GND'], C_GND),
-      w('w9', ['src', 'SIG'], ['s3', '1'], C_PWR),
+      w('w9', ['src', 'SIG'], ['s3', '3'], C_PWR),
       w('w10', ['s3', '2'], ['u1', 'C'], C_SIG),
       w('w11', ['s3', '2'], ['r3', '1'], C_SIG),
       w('w12', ['r3', '2'], ['src', 'GND'], C_GND),
-      w('w13', ['src', 'SIG'], ['s4', '1'], C_PWR),
+      w('w13', ['src', 'SIG'], ['s4', '3'], C_PWR),
       w('w14', ['s4', '2'], ['u1', 'D'], C_SIG),
       w('w15', ['s4', '2'], ['r4', '1'], C_SIG),
       w('w16', ['r4', '2'], ['src', 'GND'], C_GND),
@@ -883,14 +887,14 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // A
-      w('w1', ['src', 'SIG'], ['sA', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['sA', '3'], C_PWR),
       w('w2', ['sA', '2'], ['notA', 'A'], C_SIG),
       w('w3', ['sA', '2'], ['gGt', 'A'], C_SIG),
       w('w4', ['sA', '2'], ['gEq', 'A'], C_SIG),
       w('w5', ['sA', '2'], ['rA', '1'], C_SIG),
       w('w6', ['rA', '2'], ['src', 'GND'], C_GND),
       // B
-      w('w7', ['src', 'SIG'], ['sB', '1'], C_PWR),
+      w('w7', ['src', 'SIG'], ['sB', '3'], C_PWR),
       w('w8', ['sB', '2'], ['notB', 'A'], C_SIG),
       w('w9', ['sB', '2'], ['gLt', 'B'], C_SIG),
       w('w10', ['sB', '2'], ['gEq', 'B'], C_SIG),
@@ -942,14 +946,14 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // A
-      w('w1', ['src', 'SIG'], ['sA', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['sA', '3'], C_PWR),
       w('w2', ['sA', '2'], ['notA', 'A'], C_SIG),
       w('w3', ['sA', '2'], ['a1', 'A'], C_SIG),
       w('w4', ['sA', '2'], ['a3', 'A'], C_SIG),
       w('w5', ['sA', '2'], ['rA', '1'], C_SIG),
       w('w6', ['rA', '2'], ['src', 'GND'], C_GND),
       // B
-      w('w7', ['src', 'SIG'], ['sB', '1'], C_PWR),
+      w('w7', ['src', 'SIG'], ['sB', '3'], C_PWR),
       w('w8', ['sB', '2'], ['notB', 'A'], C_SIG),
       w('w9', ['sB', '2'], ['a2', 'B'], C_SIG),
       w('w10', ['sB', '2'], ['a3', 'B'], C_SIG),
@@ -1003,22 +1007,22 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // s0
-      w('w1', ['src', 'SIG'], ['s0', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['s0', '3'], C_PWR),
       w('w2', ['s0', '2'], ['x01', 'A'], C_SIG),
       w('w3', ['s0', '2'], ['r0', '1'], C_SIG),
       w('w4', ['r0', '2'], ['src', 'GND'], C_GND),
       // s1
-      w('w5', ['src', 'SIG'], ['s1', '1'], C_PWR),
+      w('w5', ['src', 'SIG'], ['s1', '3'], C_PWR),
       w('w6', ['s1', '2'], ['x01', 'B'], C_SIG),
       w('w7', ['s1', '2'], ['r1', '1'], C_SIG),
       w('w8', ['r1', '2'], ['src', 'GND'], C_GND),
       // s2
-      w('w9', ['src', 'SIG'], ['s2', '1'], C_PWR),
+      w('w9', ['src', 'SIG'], ['s2', '3'], C_PWR),
       w('w10', ['s2', '2'], ['x23', 'A'], C_SIG),
       w('w11', ['s2', '2'], ['r2', '1'], C_SIG),
       w('w12', ['r2', '2'], ['src', 'GND'], C_GND),
       // s3
-      w('w13', ['src', 'SIG'], ['s3', '1'], C_PWR),
+      w('w13', ['src', 'SIG'], ['s3', '3'], C_PWR),
       w('w14', ['s3', '2'], ['x23', 'B'], C_SIG),
       w('w15', ['s3', '2'], ['r3', '1'], C_SIG),
       w('w16', ['r3', '2'], ['src', 'GND'], C_GND),
@@ -1074,34 +1078,34 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // Data D0
-      w('d0_pwr', ['src', 'SIG'], ['d0', '1'], C_PWR),
+      w('d0_pwr', ['src', 'SIG'], ['d0', '3'], C_PWR),
       w('d0_in', ['d0', '2'], ['a0', 'A'], C_SIG),
       w('d0_pd', ['d0', '2'], ['rd0', '1'], C_SIG),
       w('d0_gnd', ['rd0', '2'], ['src', 'GND'], C_GND),
       // D1
-      w('d1_pwr', ['src', 'SIG'], ['d1', '1'], C_PWR),
+      w('d1_pwr', ['src', 'SIG'], ['d1', '3'], C_PWR),
       w('d1_in', ['d1', '2'], ['a1', 'A'], C_SIG),
       w('d1_pd', ['d1', '2'], ['rd1', '1'], C_SIG),
       w('d1_gnd', ['rd1', '2'], ['src', 'GND'], C_GND),
       // D2
-      w('d2_pwr', ['src', 'SIG'], ['d2', '1'], C_PWR),
+      w('d2_pwr', ['src', 'SIG'], ['d2', '3'], C_PWR),
       w('d2_in', ['d2', '2'], ['a2', 'A'], C_SIG),
       w('d2_pd', ['d2', '2'], ['rd2', '1'], C_SIG),
       w('d2_gnd', ['rd2', '2'], ['src', 'GND'], C_GND),
       // D3
-      w('d3_pwr', ['src', 'SIG'], ['d3', '1'], C_PWR),
+      w('d3_pwr', ['src', 'SIG'], ['d3', '3'], C_PWR),
       w('d3_in', ['d3', '2'], ['a3', 'A'], C_SIG),
       w('d3_pd', ['d3', '2'], ['rd3', '1'], C_SIG),
       w('d3_gnd', ['rd3', '2'], ['src', 'GND'], C_GND),
       // S0
-      w('s0_pwr', ['src', 'SIG'], ['s0', '1'], C_PWR),
+      w('s0_pwr', ['src', 'SIG'], ['s0', '3'], C_PWR),
       w('s0_not', ['s0', '2'], ['ns0', 'A'], C_SIG),
       w('s0_dec1', ['s0', '2'], ['dec1', 'B'], C_SIG),
       w('s0_dec3', ['s0', '2'], ['dec3', 'B'], C_SIG),
       w('s0_pd', ['s0', '2'], ['rs0', '1'], C_SIG),
       w('s0_gnd', ['rs0', '2'], ['src', 'GND'], C_GND),
       // S1
-      w('s1_pwr', ['src', 'SIG'], ['s1', '1'], C_PWR),
+      w('s1_pwr', ['src', 'SIG'], ['s1', '3'], C_PWR),
       w('s1_not', ['s1', '2'], ['ns1', 'A'], C_SIG),
       w('s1_dec2', ['s1', '2'], ['dec2', 'A'], C_SIG),
       w('s1_dec3', ['s1', '2'], ['dec3', 'A'], C_SIG),
@@ -1151,13 +1155,13 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // A
-      w('w1', ['src', 'SIG'], ['sA', '1'], C_PWR),
+      w('w1', ['src', 'SIG'], ['sA', '3'], C_PWR),
       w('w2', ['sA', '2'], ['gDiff', 'A'], C_SIG),
       w('w3', ['sA', '2'], ['nA', 'A'], C_SIG),
       w('w4', ['sA', '2'], ['rA', '1'], C_SIG),
       w('w5', ['rA', '2'], ['src', 'GND'], C_GND),
       // B
-      w('w6', ['src', 'SIG'], ['sB', '1'], C_PWR),
+      w('w6', ['src', 'SIG'], ['sB', '3'], C_PWR),
       w('w7', ['sB', '2'], ['gDiff', 'B'], C_SIG),
       w('w8', ['sB', '2'], ['gBor', 'B'], C_SIG),
       w('w9', ['sB', '2'], ['rB', '1'], C_SIG),
@@ -1199,10 +1203,10 @@ export const digitalExamples: ExampleProject[] = [
       components.push(sw(`sB${i}`, 200, yB, 0));
       components.push(res(`rB${i}`, 290, yB + 30, '10000'));
       wires.push(
-        w(`A${i}_pwr`, ['src', 'SIG'], [`sA${i}`, '1'], C_PWR),
+        w(`A${i}_pwr`, ['src', 'SIG'], [`sA${i}`, '3'], C_PWR),
         w(`A${i}_pd`, [`sA${i}`, '2'], [`rA${i}`, '1'], C_SIG),
         w(`A${i}_gnd`, [`rA${i}`, '2'], ['src', 'GND'], C_GND),
-        w(`B${i}_pwr`, ['src', 'SIG'], [`sB${i}`, '1'], C_PWR),
+        w(`B${i}_pwr`, ['src', 'SIG'], [`sB${i}`, '3'], C_PWR),
         w(`B${i}_pd`, [`sB${i}`, '2'], [`rB${i}`, '1'], C_SIG),
         w(`B${i}_gnd`, [`rB${i}`, '2'], ['src', 'GND'], C_GND),
       );
@@ -1210,7 +1214,7 @@ export const digitalExamples: ExampleProject[] = [
     components.push(sw('sCin', 200, 40 + N * 200, 0));
     components.push(res('rCin', 290, 40 + N * 200 + 30, '10000'));
     wires.push(
-      w('Cin_pwr', ['src', 'SIG'], ['sCin', '1'], C_PWR),
+      w('Cin_pwr', ['src', 'SIG'], ['sCin', '3'], C_PWR),
       w('Cin_pd', ['sCin', '2'], ['rCin', '1'], C_SIG),
       w('Cin_gnd', ['rCin', '2'], ['src', 'GND'], C_GND),
     );
@@ -1323,25 +1327,25 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // A0
-      w('a0_pwr', ['src', 'SIG'], ['sA0', '1'], C_PWR),
+      w('a0_pwr', ['src', 'SIG'], ['sA0', '3'], C_PWR),
       w('a0_pa0b0', ['sA0', '2'], ['pA0B0', 'A'], C_SIG),
       w('a0_pa0b1', ['sA0', '2'], ['pA0B1', 'A'], C_SIG),
       w('a0_pd', ['sA0', '2'], ['rA0', '1'], C_SIG),
       w('a0_gnd', ['rA0', '2'], ['src', 'GND'], C_GND),
       // A1
-      w('a1_pwr', ['src', 'SIG'], ['sA1', '1'], C_PWR),
+      w('a1_pwr', ['src', 'SIG'], ['sA1', '3'], C_PWR),
       w('a1_pa1b0', ['sA1', '2'], ['pA1B0', 'A'], C_SIG),
       w('a1_pa1b1', ['sA1', '2'], ['pA1B1', 'A'], C_SIG),
       w('a1_pd', ['sA1', '2'], ['rA1', '1'], C_SIG),
       w('a1_gnd', ['rA1', '2'], ['src', 'GND'], C_GND),
       // B0
-      w('b0_pwr', ['src', 'SIG'], ['sB0', '1'], C_PWR),
+      w('b0_pwr', ['src', 'SIG'], ['sB0', '3'], C_PWR),
       w('b0_pa0b0', ['sB0', '2'], ['pA0B0', 'B'], C_SIG),
       w('b0_pa1b0', ['sB0', '2'], ['pA1B0', 'B'], C_SIG),
       w('b0_pd', ['sB0', '2'], ['rB0', '1'], C_SIG),
       w('b0_gnd', ['rB0', '2'], ['src', 'GND'], C_GND),
       // B1
-      w('b1_pwr', ['src', 'SIG'], ['sB1', '1'], C_PWR),
+      w('b1_pwr', ['src', 'SIG'], ['sB1', '3'], C_PWR),
       w('b1_pa0b1', ['sB1', '2'], ['pA0B1', 'B'], C_SIG),
       w('b1_pa1b1', ['sB1', '2'], ['pA1B1', 'B'], C_SIG),
       w('b1_pd', ['sB1', '2'], ['rB1', '1'], C_SIG),
@@ -1395,10 +1399,10 @@ export const digitalExamples: ExampleProject[] = [
       components.push(sw(`cmpB${i}`, 200, yB, 0));
       components.push(res(`cmpRB${i}`, 290, yB + 30, '10000'));
       wires.push(
-        w(`cmpA${i}_pwr`, ['src', 'SIG'], [`cmpA${i}`, '1'], C_PWR),
+        w(`cmpA${i}_pwr`, ['src', 'SIG'], [`cmpA${i}`, '3'], C_PWR),
         w(`cmpA${i}_pd`, [`cmpA${i}`, '2'], [`cmpRA${i}`, '1'], C_SIG),
         w(`cmpA${i}_gnd`, [`cmpRA${i}`, '2'], ['src', 'GND'], C_GND),
-        w(`cmpB${i}_pwr`, ['src', 'SIG'], [`cmpB${i}`, '1'], C_PWR),
+        w(`cmpB${i}_pwr`, ['src', 'SIG'], [`cmpB${i}`, '3'], C_PWR),
         w(`cmpB${i}_pd`, [`cmpB${i}`, '2'], [`cmpRB${i}`, '1'], C_SIG),
         w(`cmpB${i}_gnd`, [`cmpRB${i}`, '2'], ['src', 'GND'], C_GND),
       );
@@ -1520,7 +1524,7 @@ export const digitalExamples: ExampleProject[] = [
       components.push(sw(`pe${i}`, 200, y, 0));
       components.push(res(`peR${i}`, 290, y + 30, '10000'));
       wires.push(
-        w(`pe${i}_pwr`, ['src', 'SIG'], [`pe${i}`, '1'], C_PWR),
+        w(`pe${i}_pwr`, ['src', 'SIG'], [`pe${i}`, '3'], C_PWR),
         w(`pe${i}_pd`, [`pe${i}`, '2'], [`peR${i}`, '1'], C_SIG),
         w(`pe${i}_gnd`, [`peR${i}`, '2'], ['src', 'GND'], C_GND),
       );
@@ -1673,17 +1677,17 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // A0
-      w('dec3A0_pwr', ['src', 'SIG'], ['dec3A0', '1'], C_PWR),
+      w('dec3A0_pwr', ['src', 'SIG'], ['dec3A0', '3'], C_PWR),
       w('dec3A0_pd', ['dec3A0', '2'], ['dec3R0', '1'], C_SIG),
       w('dec3A0_gnd', ['dec3R0', '2'], ['src', 'GND'], C_GND),
       w('dec3A0_not', ['dec3A0', '2'], ['dec3N0', 'A'], C_SIG),
       // A1
-      w('dec3A1_pwr', ['src', 'SIG'], ['dec3A1', '1'], C_PWR),
+      w('dec3A1_pwr', ['src', 'SIG'], ['dec3A1', '3'], C_PWR),
       w('dec3A1_pd', ['dec3A1', '2'], ['dec3R1', '1'], C_SIG),
       w('dec3A1_gnd', ['dec3R1', '2'], ['src', 'GND'], C_GND),
       w('dec3A1_not', ['dec3A1', '2'], ['dec3N1', 'A'], C_SIG),
       // A2
-      w('dec3A2_pwr', ['src', 'SIG'], ['dec3A2', '1'], C_PWR),
+      w('dec3A2_pwr', ['src', 'SIG'], ['dec3A2', '3'], C_PWR),
       w('dec3A2_pd', ['dec3A2', '2'], ['dec3R2', '1'], C_SIG),
       w('dec3A2_gnd', ['dec3R2', '2'], ['src', 'GND'], C_GND),
       w('dec3A2_not', ['dec3A2', '2'], ['dec3N2', 'A'], C_SIG),
@@ -1777,15 +1781,15 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // B0
-      w('grB0_pwr', ['src', 'SIG'], ['grB0', '1'], C_PWR),
+      w('grB0_pwr', ['src', 'SIG'], ['grB0', '3'], C_PWR),
       w('grB0_pd', ['grB0', '2'], ['grRB0', '1'], C_SIG),
       w('grB0_gnd', ['grRB0', '2'], ['src', 'GND'], C_GND),
       // B1
-      w('grB1_pwr', ['src', 'SIG'], ['grB1', '1'], C_PWR),
+      w('grB1_pwr', ['src', 'SIG'], ['grB1', '3'], C_PWR),
       w('grB1_pd', ['grB1', '2'], ['grRB1', '1'], C_SIG),
       w('grB1_gnd', ['grRB1', '2'], ['src', 'GND'], C_GND),
       // B2
-      w('grB2_pwr', ['src', 'SIG'], ['grB2', '1'], C_PWR),
+      w('grB2_pwr', ['src', 'SIG'], ['grB2', '3'], C_PWR),
       w('grB2_pd', ['grB2', '2'], ['grRB2', '1'], C_SIG),
       w('grB2_gnd', ['grRB2', '2'], ['src', 'GND'], C_GND),
       // G0 = B1 XOR B0
@@ -1837,19 +1841,19 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // B0
-      w('bcdB0_pwr', ['src', 'SIG'], ['bcdB0', '1'], C_PWR),
+      w('bcdB0_pwr', ['src', 'SIG'], ['bcdB0', '3'], C_PWR),
       w('bcdB0_pd', ['bcdB0', '2'], ['bcdR0', '1'], C_SIG),
       w('bcdB0_gnd', ['bcdR0', '2'], ['src', 'GND'], C_GND),
       // B1
-      w('bcdB1_pwr', ['src', 'SIG'], ['bcdB1', '1'], C_PWR),
+      w('bcdB1_pwr', ['src', 'SIG'], ['bcdB1', '3'], C_PWR),
       w('bcdB1_pd', ['bcdB1', '2'], ['bcdR1', '1'], C_SIG),
       w('bcdB1_gnd', ['bcdR1', '2'], ['src', 'GND'], C_GND),
       // B2
-      w('bcdB2_pwr', ['src', 'SIG'], ['bcdB2', '1'], C_PWR),
+      w('bcdB2_pwr', ['src', 'SIG'], ['bcdB2', '3'], C_PWR),
       w('bcdB2_pd', ['bcdB2', '2'], ['bcdR2', '1'], C_SIG),
       w('bcdB2_gnd', ['bcdR2', '2'], ['src', 'GND'], C_GND),
       // B3
-      w('bcdB3_pwr', ['src', 'SIG'], ['bcdB3', '1'], C_PWR),
+      w('bcdB3_pwr', ['src', 'SIG'], ['bcdB3', '3'], C_PWR),
       w('bcdB3_pd', ['bcdB3', '2'], ['bcdR3', '1'], C_SIG),
       w('bcdB3_gnd', ['bcdR3', '2'], ['src', 'GND'], C_GND),
       // B3·B2
@@ -1901,14 +1905,14 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // A
-      w('hnA_pwr', ['src', 'SIG'], ['hnA', '1'], C_PWR),
+      w('hnA_pwr', ['src', 'SIG'], ['hnA', '3'], C_PWR),
       w('hnA_n1', ['hnA', '2'], ['hnN1', 'A'], C_SIG),
       w('hnA_n2', ['hnA', '2'], ['hnN2', 'A'], C_SIG),
       w('hnA_c1', ['hnA', '2'], ['hnC1', 'A'], C_SIG),
       w('hnA_pd', ['hnA', '2'], ['hnRA', '1'], C_SIG),
       w('hnA_gnd', ['hnRA', '2'], ['src', 'GND'], C_GND),
       // B
-      w('hnB_pwr', ['src', 'SIG'], ['hnB', '1'], C_PWR),
+      w('hnB_pwr', ['src', 'SIG'], ['hnB', '3'], C_PWR),
       w('hnB_n1', ['hnB', '2'], ['hnN1', 'B'], C_SIG),
       w('hnB_n3', ['hnB', '2'], ['hnN3', 'A'], C_SIG),
       w('hnB_c1', ['hnB', '2'], ['hnC1', 'B'], C_SIG),
@@ -1972,15 +1976,15 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // G0
-      w('gbG0_pwr', ['src', 'SIG'], ['gbG0', '1'], C_PWR),
+      w('gbG0_pwr', ['src', 'SIG'], ['gbG0', '3'], C_PWR),
       w('gbG0_pd', ['gbG0', '2'], ['gbRG0', '1'], C_SIG),
       w('gbG0_gnd', ['gbRG0', '2'], ['src', 'GND'], C_GND),
       // G1
-      w('gbG1_pwr', ['src', 'SIG'], ['gbG1', '1'], C_PWR),
+      w('gbG1_pwr', ['src', 'SIG'], ['gbG1', '3'], C_PWR),
       w('gbG1_pd', ['gbG1', '2'], ['gbRG1', '1'], C_SIG),
       w('gbG1_gnd', ['gbRG1', '2'], ['src', 'GND'], C_GND),
       // G2
-      w('gbG2_pwr', ['src', 'SIG'], ['gbG2', '1'], C_PWR),
+      w('gbG2_pwr', ['src', 'SIG'], ['gbG2', '3'], C_PWR),
       w('gbG2_pd', ['gbG2', '2'], ['gbRG2', '1'], C_SIG),
       w('gbG2_gnd', ['gbRG2', '2'], ['src', 'GND'], C_GND),
       // B1 = G1 XOR B2 (= G2)
@@ -2048,23 +2052,23 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // X1
-      w('cmX1_pwr', ['src', 'SIG'], ['cmpX1', '1'], C_PWR),
+      w('cmX1_pwr', ['src', 'SIG'], ['cmpX1', '3'], C_PWR),
       w('cmX1_pd', ['cmpX1', '2'], ['cmpRX1', '1'], C_SIG),
       w('cmX1_gnd', ['cmpRX1', '2'], ['src', 'GND'], C_GND),
       // X2
-      w('cmX2_pwr', ['src', 'SIG'], ['cmpX2', '1'], C_PWR),
+      w('cmX2_pwr', ['src', 'SIG'], ['cmpX2', '3'], C_PWR),
       w('cmX2_pd', ['cmpX2', '2'], ['cmpRX2', '1'], C_SIG),
       w('cmX2_gnd', ['cmpRX2', '2'], ['src', 'GND'], C_GND),
       // X3
-      w('cmX3_pwr', ['src', 'SIG'], ['cmpX3', '1'], C_PWR),
+      w('cmX3_pwr', ['src', 'SIG'], ['cmpX3', '3'], C_PWR),
       w('cmX3_pd', ['cmpX3', '2'], ['cmpRX3', '1'], C_SIG),
       w('cmX3_gnd', ['cmpRX3', '2'], ['src', 'GND'], C_GND),
       // X4
-      w('cmX4_pwr', ['src', 'SIG'], ['cmpX4', '1'], C_PWR),
+      w('cmX4_pwr', ['src', 'SIG'], ['cmpX4', '3'], C_PWR),
       w('cmX4_pd', ['cmpX4', '2'], ['cmpRX4', '1'], C_SIG),
       w('cmX4_gnd', ['cmpRX4', '2'], ['src', 'GND'], C_GND),
       // Cin
-      w('cmCin_pwr', ['src', 'SIG'], ['cmpCin', '1'], C_PWR),
+      w('cmCin_pwr', ['src', 'SIG'], ['cmpCin', '3'], C_PWR),
       w('cmCin_pd', ['cmpCin', '2'], ['cmpRCin', '1'], C_SIG),
       w('cmCin_gnd', ['cmpRCin', '2'], ['src', 'GND'], C_GND),
       // FA1 stage 1: X1 XOR X2, X1 AND X2
@@ -2155,16 +2159,16 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // Inputs
-      w('pc0_pwr', ['src', 'SIG'], ['pcX0', '1'], C_PWR),
+      w('pc0_pwr', ['src', 'SIG'], ['pcX0', '3'], C_PWR),
       w('pc0_pd', ['pcX0', '2'], ['pcR0', '1'], C_SIG),
       w('pc0_gnd', ['pcR0', '2'], ['src', 'GND'], C_GND),
-      w('pc1_pwr', ['src', 'SIG'], ['pcX1', '1'], C_PWR),
+      w('pc1_pwr', ['src', 'SIG'], ['pcX1', '3'], C_PWR),
       w('pc1_pd', ['pcX1', '2'], ['pcR1', '1'], C_SIG),
       w('pc1_gnd', ['pcR1', '2'], ['src', 'GND'], C_GND),
-      w('pc2_pwr', ['src', 'SIG'], ['pcX2', '1'], C_PWR),
+      w('pc2_pwr', ['src', 'SIG'], ['pcX2', '3'], C_PWR),
       w('pc2_pd', ['pcX2', '2'], ['pcR2', '1'], C_SIG),
       w('pc2_gnd', ['pcR2', '2'], ['src', 'GND'], C_GND),
-      w('pc3_pwr', ['src', 'SIG'], ['pcX3', '1'], C_PWR),
+      w('pc3_pwr', ['src', 'SIG'], ['pcX3', '3'], C_PWR),
       w('pc3_pd', ['pcX3', '2'], ['pcR3', '1'], C_SIG),
       w('pc3_gnd', ['pcR3', '2'], ['src', 'GND'], C_GND),
       // HA(X0, X1)
@@ -2256,16 +2260,16 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // Inputs
-      w('hmD0_pwr', ['src', 'SIG'], ['hmD0', '1'], C_PWR),
+      w('hmD0_pwr', ['src', 'SIG'], ['hmD0', '3'], C_PWR),
       w('hmD0_pd', ['hmD0', '2'], ['hmRD0', '1'], C_SIG),
       w('hmD0_gnd', ['hmRD0', '2'], ['src', 'GND'], C_GND),
-      w('hmD1_pwr', ['src', 'SIG'], ['hmD1', '1'], C_PWR),
+      w('hmD1_pwr', ['src', 'SIG'], ['hmD1', '3'], C_PWR),
       w('hmD1_pd', ['hmD1', '2'], ['hmRD1', '1'], C_SIG),
       w('hmD1_gnd', ['hmRD1', '2'], ['src', 'GND'], C_GND),
-      w('hmD2_pwr', ['src', 'SIG'], ['hmD2', '1'], C_PWR),
+      w('hmD2_pwr', ['src', 'SIG'], ['hmD2', '3'], C_PWR),
       w('hmD2_pd', ['hmD2', '2'], ['hmRD2', '1'], C_SIG),
       w('hmD2_gnd', ['hmRD2', '2'], ['src', 'GND'], C_GND),
-      w('hmD3_pwr', ['src', 'SIG'], ['hmD3', '1'], C_PWR),
+      w('hmD3_pwr', ['src', 'SIG'], ['hmD3', '3'], C_PWR),
       w('hmD3_pd', ['hmD3', '2'], ['hmRD3', '1'], C_SIG),
       w('hmD3_gnd', ['hmRD3', '2'], ['src', 'GND'], C_GND),
       // p1 = D0 XOR D1 XOR D3
@@ -2330,7 +2334,7 @@ export const digitalExamples: ExampleProject[] = [
     components.push(sw('asM', 200, 20, 0));
     components.push(res('asRM', 290, 80, '10000'));
     wires.push(
-      w('asM_pwr', ['src', 'SIG'], ['asM', '1'], C_PWR),
+      w('asM_pwr', ['src', 'SIG'], ['asM', '3'], C_PWR),
       w('asM_pd', ['asM', '2'], ['asRM', '1'], C_SIG),
       w('asM_gnd', ['asRM', '2'], ['src', 'GND'], C_GND),
     );
@@ -2344,10 +2348,10 @@ export const digitalExamples: ExampleProject[] = [
       components.push(sw(`asB${i}`, 200, yB, 0));
       components.push(res(`asRB${i}`, 290, yB + 30, '10000'));
       wires.push(
-        w(`asA${i}_pwr`, ['src', 'SIG'], [`asA${i}`, '1'], C_PWR),
+        w(`asA${i}_pwr`, ['src', 'SIG'], [`asA${i}`, '3'], C_PWR),
         w(`asA${i}_pd`, [`asA${i}`, '2'], [`asRA${i}`, '1'], C_SIG),
         w(`asA${i}_gnd`, [`asRA${i}`, '2'], ['src', 'GND'], C_GND),
-        w(`asB${i}_pwr`, ['src', 'SIG'], [`asB${i}`, '1'], C_PWR),
+        w(`asB${i}_pwr`, ['src', 'SIG'], [`asB${i}`, '3'], C_PWR),
         w(`asB${i}_pd`, [`asB${i}`, '2'], [`asRB${i}`, '1'], C_SIG),
         w(`asB${i}_gnd`, [`asRB${i}`, '2'], ['src', 'GND'], C_GND),
       );
@@ -2469,19 +2473,19 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // Inputs
-      w('aluA_pwr', ['src', 'SIG'], ['aluA', '1'], C_PWR),
+      w('aluA_pwr', ['src', 'SIG'], ['aluA', '3'], C_PWR),
       w('aluA_pd', ['aluA', '2'], ['aluRA', '1'], C_SIG),
       w('aluA_gnd', ['aluRA', '2'], ['src', 'GND'], C_GND),
-      w('aluB_pwr', ['src', 'SIG'], ['aluB', '1'], C_PWR),
+      w('aluB_pwr', ['src', 'SIG'], ['aluB', '3'], C_PWR),
       w('aluB_pd', ['aluB', '2'], ['aluRB', '1'], C_SIG),
       w('aluB_gnd', ['aluRB', '2'], ['src', 'GND'], C_GND),
-      w('aluCi_pwr', ['src', 'SIG'], ['aluCi', '1'], C_PWR),
+      w('aluCi_pwr', ['src', 'SIG'], ['aluCi', '3'], C_PWR),
       w('aluCi_pd', ['aluCi', '2'], ['aluRCi', '1'], C_SIG),
       w('aluCi_gnd', ['aluRCi', '2'], ['src', 'GND'], C_GND),
-      w('aluM0_pwr', ['src', 'SIG'], ['aluM0', '1'], C_PWR),
+      w('aluM0_pwr', ['src', 'SIG'], ['aluM0', '3'], C_PWR),
       w('aluM0_pd', ['aluM0', '2'], ['aluRM0', '1'], C_SIG),
       w('aluM0_gnd', ['aluRM0', '2'], ['src', 'GND'], C_GND),
-      w('aluM1_pwr', ['src', 'SIG'], ['aluM1', '1'], C_PWR),
+      w('aluM1_pwr', ['src', 'SIG'], ['aluM1', '3'], C_PWR),
       w('aluM1_pd', ['aluM1', '2'], ['aluRM1', '1'], C_SIG),
       w('aluM1_gnd', ['aluRM1', '2'], ['src', 'GND'], C_GND),
       // AND, OR, XOR result lines: take A and B
@@ -2559,10 +2563,10 @@ export const digitalExamples: ExampleProject[] = [
       components.push(sw(`claB${i}`, 200, yB, 0));
       components.push(res(`claRB${i}`, 290, yB + 30, '10000'));
       wires.push(
-        w(`claA${i}_pwr`, ['src', 'SIG'], [`claA${i}`, '1'], C_PWR),
+        w(`claA${i}_pwr`, ['src', 'SIG'], [`claA${i}`, '3'], C_PWR),
         w(`claA${i}_pd`, [`claA${i}`, '2'], [`claRA${i}`, '1'], C_SIG),
         w(`claA${i}_gnd`, [`claRA${i}`, '2'], ['src', 'GND'], C_GND),
-        w(`claB${i}_pwr`, ['src', 'SIG'], [`claB${i}`, '1'], C_PWR),
+        w(`claB${i}_pwr`, ['src', 'SIG'], [`claB${i}`, '3'], C_PWR),
         w(`claB${i}_pd`, [`claB${i}`, '2'], [`claRB${i}`, '1'], C_SIG),
         w(`claB${i}_gnd`, [`claRB${i}`, '2'], ['src', 'GND'], C_GND),
       );
@@ -2570,7 +2574,7 @@ export const digitalExamples: ExampleProject[] = [
     components.push(sw('claC0', 200, 40 + 2 * N * 80, 0));
     components.push(res('claRC0', 290, 40 + 2 * N * 80 + 30, '10000'));
     wires.push(
-      w('claC0_pwr', ['src', 'SIG'], ['claC0', '1'], C_PWR),
+      w('claC0_pwr', ['src', 'SIG'], ['claC0', '3'], C_PWR),
       w('claC0_pd', ['claC0', '2'], ['claRC0', '1'], C_SIG),
       w('claC0_gnd', ['claRC0', '2'], ['src', 'GND'], C_GND),
     );
@@ -2743,16 +2747,16 @@ export const digitalExamples: ExampleProject[] = [
     ],
     [
       // Inputs
-      w('saB0_pwr', ['src', 'SIG'], ['saB0', '1'], C_PWR),
+      w('saB0_pwr', ['src', 'SIG'], ['saB0', '3'], C_PWR),
       w('saB0_pd', ['saB0', '2'], ['saR0', '1'], C_SIG),
       w('saB0_gnd', ['saR0', '2'], ['src', 'GND'], C_GND),
-      w('saB1_pwr', ['src', 'SIG'], ['saB1', '1'], C_PWR),
+      w('saB1_pwr', ['src', 'SIG'], ['saB1', '3'], C_PWR),
       w('saB1_pd', ['saB1', '2'], ['saR1', '1'], C_SIG),
       w('saB1_gnd', ['saR1', '2'], ['src', 'GND'], C_GND),
-      w('saB2_pwr', ['src', 'SIG'], ['saB2', '1'], C_PWR),
+      w('saB2_pwr', ['src', 'SIG'], ['saB2', '3'], C_PWR),
       w('saB2_pd', ['saB2', '2'], ['saR2', '1'], C_SIG),
       w('saB2_gnd', ['saR2', '2'], ['src', 'GND'], C_GND),
-      w('saB3_pwr', ['src', 'SIG'], ['saB3', '1'], C_PWR),
+      w('saB3_pwr', ['src', 'SIG'], ['saB3', '3'], C_PWR),
       w('saB3_pd', ['saB3', '2'], ['saR3', '1'], C_SIG),
       w('saB3_gnd', ['saR3', '2'], ['src', 'GND'], C_GND),
       // !B0, !B2

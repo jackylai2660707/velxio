@@ -30,7 +30,7 @@ const components: DigitalComponent[] = [
 ];
 const W = (a: string, ap: string, b: string, bp: string): DigitalWire => ({ start: { componentId: a, pinName: ap }, end: { componentId: b, pinName: bp } });
 const wires: DigitalWire[] = [
-  W('src', 'SIG', 'sw1', '1'),
+  W('src', 'SIG', 'sw1', '3'),
   W('sw1', '2', 'g1', 'A'),
   W('g1', 'Y', 'a1', 'B'), // boundary OUT (digital drives, analog reads)
   W('a1', 'C', 'g2', 'A'), // boundary IN  (analog drives, digital reads)

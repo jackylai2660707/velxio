@@ -663,11 +663,26 @@ const MAPPERS: Record<string, Mapper> = {
     }
     return cards.length ? { cards, modelsUsed: new Set() } : null;
   },
+  // Slide switch — a 3-terminal SPDT (matching the wokwi-slide-switch element,
+  // pins '1','2','3' with '2' the middle/common wiper). The handle sits left at
+  // value 0 and right at value 1, so the wiper (pin '2') connects to pin '1' at
+  // value 0 and to pin '3' at value 1; the selected leg is a near-short (0.01Ω)
+  // and the opposite leg is open (1e9Ω). Modeling only the 1<->2 leg (the old
+  // behaviour) ignored pin '3' entirely, so a switch wired GND-1 / signal-2 /
+  // VCC-3 (the natural, Wokwi hookup) could never pull its signal high — the
+  // common was always tied to pin 1 or left floating. A leg whose outer pin is
+  // unwired is simply omitted; with no common wired the switch contributes
+  // nothing.
   'slide-switch': (comp, netLookup) => {
-    const pins = twoPin(comp, netLookup, '1', '2');
-    if (!pins) return null;
-    const closed = comp.properties.value === 1 || comp.properties.value === '1';
-    return emitResistor(comp, pins, closed ? 0.01 : 1e9);
+    const common = netLookup('2');
+    if (!common) return null;
+    const pin1 = netLookup('1');
+    const pin3 = netLookup('3');
+    const toPin3 = comp.properties.value === 1 || comp.properties.value === '1';
+    const cards: string[] = [];
+    if (pin1) cards.push(`R_${comp.id}_1 ${common} ${pin1} ${toPin3 ? 1e9 : 0.01}`);
+    if (pin3) cards.push(`R_${comp.id}_3 ${common} ${pin3} ${toPin3 ? 0.01 : 1e9}`);
+    return cards.length ? { cards, modelsUsed: new Set() } : null;
   },
 
   // Rotary potentiometer — 3-terminal divider. `value` lives in [min..max]
