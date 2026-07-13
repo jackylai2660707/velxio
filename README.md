@@ -532,14 +532,7 @@ See [LICENSE](LICENSE) and [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) for fu
 
 ## Star History
 
-<a href="https://www.star-history.com/?type=date&repos=davidmonterocrespo24%2Fvelxio">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=davidmonterocrespo24/velxio&type=date&theme=dark&legend=top-left&sealed_token=PpQqyAMDzzGb_rZjSbCu03SAE_QKkjzrJvPo4c2zyB3u3m0ZSJ7iW2Zc8kj0gW8jwc1961aHm4Xwbk3VT-Ggih-fIejTP-NWEyTXdIynN0CqzchTPQXiYLFMoNRRa7x099jWjvxwL8MHTfpe9lpmjbdFKRgMcxzTay_O" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=davidmonterocrespo24/velxio&type=date&legend=top-left&sealed_token=PpQqyAMDzzGb_rZjSbCu03SAE_QKkjzrJvPo4c2zyB3u3m0ZSJ7iW2Zc8kj0gW8jwc1961aHm4Xwbk3VT-Ggih-fIejTP-NWEyTXdIynN0CqzchTPQXiYLFMoNRRa7x099jWjvxwL8MHTfpe9lpmjbdFKRgMcxzTay_O" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=davidmonterocrespo24/velxio&type=date&legend=top-left&sealed_token=PpQqyAMDzzGb_rZjSbCu03SAE_QKkjzrJvPo4c2zyB3u3m0ZSJ7iW2Zc8kj0gW8jwc1961aHm4Xwbk3VT-Ggih-fIejTP-NWEyTXdIynN0CqzchTPQXiYLFMoNRRa7x099jWjvxwL8MHTfpe9lpmjbdFKRgMcxzTay_O" />
- </picture>
-</a>
----
+[![Star History Chart](https://api.star-history.com/chart?repos=davidmonterocrespo24/velxio&type=date&legend=top-left&sealed_token=kw0zv7Q1xq7XgYk9MJ3Tzg2RixZ8GK74heH5o8WfUzvGZyY1UbCJox3XLfg2vDtHGdDd-5NE5XQWgC57joU_MyrfKxZkvcehtOQNjmT-PuG2p6d3dUkNM2r41KRyPjthNj3bZ_geKv4v7cnQLV7sll4lQDqxwO7ViC3G)](https://www.star-history.com/?type=date&repos=davidmonterocrespo24%2Fvelxio)
 
 ## References
 
