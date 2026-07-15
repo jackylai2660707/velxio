@@ -39,6 +39,7 @@ import base64
 import ctypes
 import json
 import os
+import queue
 import sys
 import tempfile
 import threading
@@ -107,12 +108,58 @@ except ImportError:
 
 _stdout_lock = threading.Lock()
 
+# _emit is called from QEMU callback context (the iothread — _on_uart_tx fires
+# per UART byte). A blocking stdout write there freezes the ENTIRE guest when
+# the parent's pipe fills (64 KB) because the reader stalls: observed as an
+# intermittent boot hang right after the ROM log (~the point where the
+# accumulated JSON events cross the pipe capacity). Decouple with a bounded
+# queue + dedicated writer thread so QEMU never blocks on stdout. Under
+# extreme backpressure we drop events (counted, reported on stderr) — losing
+# telemetry beats freezing the emulated CPU.
+_emit_q: 'queue.Queue[dict | None]' = queue.Queue(maxsize=20000)
+_emit_dropped = 0
+
 
 def _emit(obj: dict) -> None:
-    """Write one JSON event line to stdout (thread-safe, always flushed)."""
-    with _stdout_lock:
-        sys.stdout.write(json.dumps(obj) + '\n')
-        sys.stdout.flush()
+    """Queue one JSON event line for stdout (never blocks QEMU callbacks)."""
+    global _emit_dropped
+    try:
+        _emit_q.put_nowait(obj)
+    except queue.Full:
+        _emit_dropped += 1
+        if _emit_dropped % 1000 == 1:
+            sys.stderr.write(f'[esp32_worker] WARNING: stdout backpressure, '
+                             f'{_emit_dropped} events dropped\n')
+            sys.stderr.flush()
+
+
+def _emit_writer_loop() -> None:
+    """Drain the event queue to stdout. Runs on its own thread for the whole
+    worker lifetime; a None sentinel (posted at shutdown) ends the loop."""
+    while True:
+        obj = _emit_q.get()
+        if obj is None:
+            return
+        lines = [json.dumps(obj)]
+        done = False
+        # Opportunistically batch whatever else is queued into one write.
+        try:
+            while True:
+                nxt = _emit_q.get_nowait()
+                if nxt is None:
+                    done = True
+                    break
+                lines.append(json.dumps(nxt))
+        except queue.Empty:
+            pass
+        with _stdout_lock:
+            sys.stdout.write('\n'.join(lines) + '\n')
+            sys.stdout.flush()
+        if done:
+            return
+
+
+threading.Thread(target=_emit_writer_loop, name='emit-writer', daemon=True).start()
 
 
 def _log(msg: str) -> None:
@@ -2042,6 +2089,16 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                     os.unlink(firmware_path)
                 except OSError:
                     pass
+            # Drain any queued events (crash/system notifications) before the
+            # hard exit — the emit writer is a daemon thread and would lose
+            # the tail otherwise. The sentinel ends its loop.
+            try:
+                _emit_q.put_nowait(None)
+                for t in threading.enumerate():
+                    if t.name == 'emit-writer':
+                        t.join(timeout=2.0)
+            except Exception:
+                pass
             os._exit(0)
 
 
