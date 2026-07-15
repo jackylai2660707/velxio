@@ -80,14 +80,14 @@ function buildSvg(): string {
   parts.push(
     `<svg width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg">`,
     // body
-    `<rect x="0" y="0" width="${WIDTH}" height="${HEIGHT}" rx="6" fill="#f4f1ec" stroke="#d4d0c8"/>`,
+    `<rect x="0" y="0" width="${WIDTH}" height="${HEIGHT}" rx="6" fill="#fbfaf7" stroke="#d8d4cc"/>`,
     // rail separator lines: red above +, blue below -
     `<line x1="8" y1="9.6" x2="${WIDTH - 8}" y2="9.6" stroke="#e05050" stroke-width="1.6"/>`,
     `<line x1="8" y1="33.6" x2="${WIDTH - 8}" y2="33.6" stroke="#5070e0" stroke-width="1.6"/>`,
     `<line x1="8" y1="182.4" x2="${WIDTH - 8}" y2="182.4" stroke="#e05050" stroke-width="1.6"/>`,
     `<line x1="8" y1="206.4" x2="${WIDTH - 8}" y2="206.4" stroke="#5070e0" stroke-width="1.6"/>`,
     // center channel
-    `<rect x="4" y="${101.5}" width="${WIDTH - 8}" height="13" rx="2" fill="#e6e2da"/>`,
+    `<rect x="4" y="${101.5}" width="${WIDTH - 8}" height="13" rx="2" fill="#efece6"/>`,
   );
   // holes
   for (const p of PINS) parts.push(holeRect(p.x, p.y));
