@@ -16,7 +16,39 @@
  */
 import { UnionFind } from './unionFind';
 import { componentToSpice } from './componentToSpice';
+import { isBreadboard, breadboardGroupKey } from '../../utils/breadboardNets';
 import type { BuildNetlistInput, ComponentForSpice, BoardForSpice, WireForSpice } from './types';
+
+/**
+ * Union the wired pins of every breadboard that share an internal group
+ * (5-hole column or power rail). Breadboard connectivity is static, so it is
+ * modelled at the union-find level — no SPICE cards needed — which makes it
+ * equally visible to buildNetlist, the circuit verifier, and the overlay
+ * net maps (all of which run their own bare union-find over wires).
+ */
+function unionBreadboardGroups(
+  uf: UnionFind,
+  components: ReadonlyArray<{ id: string; metadataId: string }>,
+  wires: WireForSpice[],
+  pinKey: (componentId: string, pinName: string) => string,
+): void {
+  for (const comp of components) {
+    if (!isBreadboard(comp.metadataId)) continue;
+    const anchors = new Map<string, string>(); // groupKey → first pin key
+    for (const pinName of pinsReferencedByWires(comp.id, wires)) {
+      const group = breadboardGroupKey(comp.metadataId, pinName);
+      if (!group) continue;
+      const key = pinKey(comp.id, pinName);
+      uf.add(key);
+      const anchor = anchors.get(group);
+      if (anchor) {
+        uf.union(anchor, key);
+      } else {
+        anchors.set(group, key);
+      }
+    }
+  }
+}
 
 // Matches GND, VSS, VEE, GROUND and any numbered ground pin in the common
 // spellings boards actually emit: GND.1 / GND.2 (dotted), GND2 / GND3 (bare),
@@ -103,6 +135,9 @@ export function buildNetlist(input: BuildNetlistInput): BuildNetlistResult {
       uf.union(a, b);
     }
   }
+
+  // Breadboards: join wired holes that share an internal strip/rail.
+  unionBreadboardGroups(uf, components, wires, pinKey);
 
   // ── 2. Canonicalize ground / VCC pins ────────────────────────────────────
   for (const board of boards) {
@@ -457,6 +492,9 @@ export function buildWireNetMap(
     uf.union(a, b);
   }
 
+  // Breadboards: join wired holes that share an internal strip/rail.
+  unionBreadboardGroups(uf, components, wires, pin);
+
   for (const board of boards) {
     for (const pName of board.groundPinNames ?? []) uf.setCanonical(pin(board.id, pName), '0');
     for (const pName of board.vccPinNames ?? []) uf.setCanonical(pin(board.id, pName), 'vcc_rail');
@@ -503,6 +541,9 @@ export function buildBoardPinNetMap(
     uf.add(b);
     uf.union(a, b);
   }
+
+  // Breadboards: join wired holes that share an internal strip/rail.
+  unionBreadboardGroups(uf, components, wires, pin);
 
   // Canonicalize board ground/vcc pins (from boardPinGroups metadata)
   for (const board of boards) {

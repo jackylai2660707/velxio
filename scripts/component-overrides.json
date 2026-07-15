@@ -2484,6 +2484,44 @@
       "defaultValues": {
         "i2cAddress": "0x3c"
       }
+    },
+    {
+      "$comment": "Velxio-native passive: full 830-point breadboard. id matches the wokwi part type (wokwi-breadboard strips to 'breadboard') so wokwi zip import/export works with no alias. Internal 5-hole strips + power rails are joined in NetlistBuilder/traceDetailed via utils/breadboardNets.ts.",
+      "id": "breadboard",
+      "tagName": "velxio-breadboard",
+      "name": "Breadboard (full)",
+      "category": "passive",
+      "pinCount": 830,
+      "tags": [
+        "breadboard",
+        "protoboard",
+        "prototype",
+        "passive",
+        "wokwi-breadboard"
+      ],
+      "thumbnail": "<svg width=\"64\" height=\"64\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"2\" y=\"14\" width=\"60\" height=\"36\" rx=\"3\" fill=\"#f4f1ec\" stroke=\"#c8c4bc\"/><line x1=\"5\" y1=\"19\" x2=\"59\" y2=\"19\" stroke=\"#e05050\" stroke-width=\"1.5\"/><line x1=\"5\" y1=\"45\" x2=\"59\" y2=\"45\" stroke=\"#5070e0\" stroke-width=\"1.5\"/><rect x=\"4\" y=\"30\" width=\"56\" height=\"4\" fill=\"#e6e2da\"/><rect x=\"7\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"7\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"7\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"7\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"12\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"12\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"12\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"12\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"17\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"17\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"17\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"17\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"22\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"22\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"22\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"22\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"27\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"27\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"27\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"27\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"32\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"32\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"32\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"32\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"37\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"37\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"37\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"37\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"42\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"42\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"42\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"42\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"47\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"47\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"47\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"47\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"52\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"52\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"52\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"52\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/></svg>",
+      "properties": [],
+      "defaultValues": {},
+      "description": "830-point solderless breadboard: 63 columns x two 5-hole banks (a-e / f-j) plus four full-length power rails. Holes in the same column strip or rail are electrically connected."
+    },
+    {
+      "$comment": "Velxio-native passive: 170-point mini breadboard (17x2 banks, no rails). Same wokwi-compatible naming as the full breadboard.",
+      "id": "breadboard-mini",
+      "tagName": "velxio-breadboard-mini",
+      "name": "Breadboard Mini",
+      "category": "passive",
+      "pinCount": 170,
+      "tags": [
+        "breadboard",
+        "mini",
+        "protoboard",
+        "passive",
+        "wokwi-breadboard-mini"
+      ],
+      "thumbnail": "<svg width=\"64\" height=\"64\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"8\" y=\"12\" width=\"48\" height=\"40\" rx=\"3\" fill=\"#ffffff\" stroke=\"#c8c4bc\"/><rect x=\"10\" y=\"29\" width=\"44\" height=\"5\" fill=\"#eceae4\"/><rect x=\"12\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"12\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"12\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"12\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"17\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"17\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"17\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"17\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"22\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"22\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"22\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"22\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"27\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"27\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"27\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"27\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"32\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"32\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"32\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"32\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"37\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"37\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"37\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"37\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"42\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"42\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"42\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"42\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"47\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"47\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"47\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"47\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"52\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"52\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"52\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"52\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/></svg>",
+      "properties": [],
+      "defaultValues": {},
+      "description": "170-point mini solderless breadboard: 17 columns x two 5-hole banks (a-e / f-j), no power rails. Holes in the same column strip are electrically connected."
     }
   ],
   "led": {

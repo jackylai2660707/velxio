@@ -31,6 +31,7 @@ import { syntheticChipPin } from '../simulation/customChips/syntheticPins';
 import { resolveChipNetKey } from '../simulation/customChips/chipNets';
 import { getMixedModeScheduler } from '../simulation/spice/MixedModeScheduler';
 import { getBoardLogicFamily } from '../simulation/LogicFamilies';
+import { breadboardGroupKey } from '../utils/breadboardNets';
 
 // Side-effect imports: register every web component we'll create at runtime.
 // `@wokwi/elements` covers the upstream catalog; `../velxio-elements` adds
@@ -169,6 +170,29 @@ function traceDetailed(
           nowActive,
         );
         if (result.arduinoPin !== null) return result;
+      }
+
+      // Breadboards join N holes per internal group (5-hole strip / power
+      // rail), which the 2-terminal PASSIVE_PIN_PAIRS map can't express.
+      // Continue the trace from every OTHER wired hole in the same group.
+      const bbGroup = comp && breadboardGroupKey(comp.metadataId, otherEp.pinName);
+      if (bbGroup && comp) {
+        const groupPins = new Set<string>();
+        for (const gw of state.wires) {
+          for (const ep of [gw.start, gw.end]) {
+            if (
+              ep.componentId === comp.id &&
+              ep.pinName !== otherEp.pinName &&
+              breadboardGroupKey(comp.metadataId, ep.pinName) === bbGroup
+            ) {
+              groupPins.add(ep.pinName);
+            }
+          }
+        }
+        for (const groupPin of groupPins) {
+          const result = traceDetailed(state, comp.id, groupPin, depth + 1, activeSeen);
+          if (result.arduinoPin !== null) return result;
+        }
       }
     }
   }
