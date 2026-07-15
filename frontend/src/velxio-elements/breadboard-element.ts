@@ -6,6 +6,14 @@
  * Pin names follow the Wokwi convention (see utils/breadboardNets.ts):
  *   holes `${col}t.${a-e}` / `${col}b.${f-j}`, rails `tp.N` `tn.N` `bp.N` `bn.N`.
  *
+ * Artwork: the Fritzing parts-library breadboard (CC-BY-SA 3.0 — see
+ * frontend/public/component-svgs/fritzing/ATTRIBUTION.md), fetched from
+ * /component-svgs/fritzing/breadboard-full.svg and scaled ×4/3 so the hole
+ * pitch is the wokwi-standard 9.6 CSS px (Fritzing draws at 7.2). pinInfo is
+ * computed from the Fritzing hole-grid formula, so wire endpoints land on
+ * the drawn holes exactly. If the asset fails to load, a lightweight
+ * programmatic SVG with identical geometry renders instead.
+ *
  * Purely passive: the electrical joining of each column/rail happens in
  * NetlistBuilder + the digital trace via breadboardGroupKey — this element
  * only renders and exposes pinInfo. The pinInfo array is precomputed at
@@ -13,32 +21,33 @@
  * which re-reads it on every measure (see CLAUDE.md §6a).
  */
 
-const PITCH = 9.6; // 0.1in in wokwi-elements CSS px
+const SCALE = 4 / 3; // fritzing 7.2-unit pitch → 9.6 CSS px
+const F_PITCH = 7.2;
 const COLS = 63;
 const RAIL_HOLES = 50; // 10 groups of 5
 
-// Layout (CSS px). Terminal grid is centered; rails hug the long edges.
-const GRID_LEFT = 19.2; // x of column 1
-const RAIL_LEFT = GRID_LEFT + ((COLS - 1) * PITCH - (RAIL_HOLES - 1 + 9) * PITCH) / 2;
-const ROW_Y: Record<string, number> = {
-  // top rails
-  'tp': 16.8,
-  'tn': 26.4,
-  // bank a-e
-  a: 55.2, b: 64.8, c: 74.4, d: 84.0, e: 93.6,
-  // bank f-j (below the center channel)
-  f: 122.4, g: 132.0, h: 141.6, i: 151.2, j: 160.8,
-  // bottom rails
-  'bp': 189.6,
-  'bn': 199.2,
+/* Fritzing breadboard2.svg hole grid (pre-scale units, measured from the
+ * part's pin groups): terminal column 1 at x=10.92; rail hole 1 at x=25.33
+ * with an extra pitch of gap after every 5 holes. Row letters in the artwork
+ * run J(top)..A(bottom) for the strips — wokwi's a-e top bank maps onto
+ * fritzing J..F — and the rails are Z/Y (top) + X/W (bottom), where the red
+ * stripe marks the LOWER row of each pair (that row is +). */
+const F_GRID_X0 = 10.92;
+const F_RAIL_X0 = 25.33;
+const F_ROW_Y: Record<string, number> = {
+  a: 36.0, b: 43.2, c: 50.4, d: 57.6, e: 64.8,
+  f: 86.4, g: 93.6, h: 100.8, i: 108.0, j: 115.2,
+  tn: 7.2, tp: 14.4, bn: 136.8, bp: 144.0,
 };
-const WIDTH = GRID_LEFT * 2 + (COLS - 1) * PITCH; // 614.4
-const HEIGHT = 216;
+const F_WIDTH = 468.238;
+const F_HEIGHT = 151.2;
 
-function railX(n: number): number {
-  // 10 groups of 5 with one extra pitch between groups
+export const BREADBOARD_WIDTH = F_WIDTH * SCALE;
+export const BREADBOARD_HEIGHT = F_HEIGHT * SCALE;
+
+function railXf(n: number): number {
   const idx = n - 1;
-  return RAIL_LEFT + (idx + Math.floor(idx / 5)) * PITCH;
+  return F_RAIL_X0 + (idx + Math.floor(idx / 5)) * F_PITCH;
 }
 
 export interface BreadboardPin {
@@ -54,16 +63,22 @@ function buildPins(): BreadboardPin[] {
   let n = 1;
   for (const rail of ['tp', 'tn', 'bp', 'bn'] as const) {
     for (let i = 1; i <= RAIL_HOLES; i++) {
-      pins.push({ name: `${rail}.${i}`, x: railX(i), y: ROW_Y[rail], number: n++, signals: [] });
+      pins.push({
+        name: `${rail}.${i}`,
+        x: railXf(i) * SCALE,
+        y: F_ROW_Y[rail] * SCALE,
+        number: n++,
+        signals: [],
+      });
     }
   }
   for (let col = 1; col <= COLS; col++) {
-    const x = GRID_LEFT + (col - 1) * PITCH;
+    const x = (F_GRID_X0 + (col - 1) * F_PITCH) * SCALE;
     for (const row of ['a', 'b', 'c', 'd', 'e'] as const) {
-      pins.push({ name: `${col}t.${row}`, x, y: ROW_Y[row], number: n++, signals: [] });
+      pins.push({ name: `${col}t.${row}`, x, y: F_ROW_Y[row] * SCALE, number: n++, signals: [] });
     }
     for (const row of ['f', 'g', 'h', 'i', 'j'] as const) {
-      pins.push({ name: `${col}b.${row}`, x, y: ROW_Y[row], number: n++, signals: [] });
+      pins.push({ name: `${col}b.${row}`, x, y: F_ROW_Y[row] * SCALE, number: n++, signals: [] });
     }
   }
   return pins;
@@ -71,58 +86,36 @@ function buildPins(): BreadboardPin[] {
 
 const PINS: readonly BreadboardPin[] = buildPins();
 
-function holeRect(x: number, y: number): string {
-  return `<rect x="${(x - 1.6).toFixed(1)}" y="${(y - 1.6).toFixed(1)}" width="3.2" height="3.2" rx="0.8" fill="#333"/>`;
+/* Shared, module-level fetch of the Fritzing artwork (one request no matter
+ * how many breadboards are on the canvas). Resolves to the raw <svg> markup
+ * or null when unavailable (missing asset, offline dev edge cases). */
+let artPromise: Promise<string | null> | null = null;
+function fetchArt(): Promise<string | null> {
+  if (!artPromise) {
+    artPromise = fetch('/component-svgs/fritzing/breadboard-full.svg')
+      .then((r) => (r.ok ? r.text() : null))
+      .catch(() => null);
+  }
+  return artPromise;
 }
 
-function buildSvg(): string {
-  const parts: string[] = [];
-  parts.push(
-    `<svg width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg">`,
-    // body
-    `<rect x="0" y="0" width="${WIDTH}" height="${HEIGHT}" rx="6" fill="#fbfaf7" stroke="#d8d4cc"/>`,
-    // rail separator lines: red above +, blue below -
-    `<line x1="8" y1="9.6" x2="${WIDTH - 8}" y2="9.6" stroke="#e05050" stroke-width="1.6"/>`,
-    `<line x1="8" y1="33.6" x2="${WIDTH - 8}" y2="33.6" stroke="#5070e0" stroke-width="1.6"/>`,
-    `<line x1="8" y1="182.4" x2="${WIDTH - 8}" y2="182.4" stroke="#e05050" stroke-width="1.6"/>`,
-    `<line x1="8" y1="206.4" x2="${WIDTH - 8}" y2="206.4" stroke="#5070e0" stroke-width="1.6"/>`,
-    // center channel
-    `<rect x="4" y="${101.5}" width="${WIDTH - 8}" height="13" rx="2" fill="#efece6"/>`,
-  );
-  // holes
-  for (const p of PINS) parts.push(holeRect(p.x, p.y));
-  // column numbers every 5 columns, in both banks' margins
-  for (let col = 5; col <= COLS; col += 5) {
-    const x = GRID_LEFT + (col - 1) * PITCH;
+/** Minimal programmatic fallback with the same geometry as the artwork. */
+function buildFallbackSvg(): string {
+  const w = BREADBOARD_WIDTH;
+  const h = BREADBOARD_HEIGHT;
+  const parts: string[] = [
+    `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`,
+    `<rect x="0" y="0" width="${w}" height="${h}" rx="6" fill="#fbfaf7" stroke="#d8d4cc"/>`,
+    `<rect x="4" y="${75.6 * SCALE - 8}" width="${w - 8}" height="16" rx="2" fill="#efece6"/>`,
+  ];
+  for (const p of PINS) {
     parts.push(
-      `<text x="${x}" y="${47.5}" font-size="6.5" fill="#8a8578" text-anchor="middle" font-family="sans-serif">${col}</text>`,
-      `<text x="${x}" y="${174}" font-size="6.5" fill="#8a8578" text-anchor="middle" font-family="sans-serif">${col}</text>`,
+      `<rect x="${(p.x - 1.6).toFixed(1)}" y="${(p.y - 1.6).toFixed(1)}" width="3.2" height="3.2" rx="0.8" fill="#333"/>`,
     );
-  }
-  // row letters on both sides
-  for (const row of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']) {
-    for (const x of [8.5, WIDTH - 8.5]) {
-      parts.push(
-        `<text x="${x}" y="${ROW_Y[row] + 2.3}" font-size="6.5" fill="#8a8578" text-anchor="middle" font-family="sans-serif">${row}</text>`,
-      );
-    }
-  }
-  // rail +/- labels
-  for (const [rail, sym, color] of [
-    ['tp', '+', '#e05050'], ['tn', '−', '#5070e0'],
-    ['bp', '+', '#e05050'], ['bn', '−', '#5070e0'],
-  ] as const) {
-    for (const x of [8.5, WIDTH - 8.5]) {
-      parts.push(
-        `<text x="${x}" y="${ROW_Y[rail] + 2.6}" font-size="8" fill="${color}" text-anchor="middle" font-family="sans-serif">${sym}</text>`,
-      );
-    }
   }
   parts.push('</svg>');
   return parts.join('');
 }
-
-let svgCache: string | null = null;
 
 export class BreadboardElement extends HTMLElement {
   constructor() {
@@ -131,8 +124,20 @@ export class BreadboardElement extends HTMLElement {
   }
 
   connectedCallback() {
-    if (!svgCache) svgCache = buildSvg();
-    this.shadowRoot!.innerHTML = svgCache;
+    // Reserve the final size immediately so layout/wire endpoints are stable
+    // while the artwork loads.
+    this.style.display = 'inline-block';
+    this.style.width = `${BREADBOARD_WIDTH}px`;
+    this.style.height = `${BREADBOARD_HEIGHT}px`;
+    fetchArt().then((svg) => {
+      if (!this.isConnected) return;
+      this.shadowRoot!.innerHTML = svg ?? buildFallbackSvg();
+      const el = this.shadowRoot!.querySelector('svg');
+      if (el) {
+        el.setAttribute('width', String(BREADBOARD_WIDTH));
+        el.setAttribute('height', String(BREADBOARD_HEIGHT));
+      }
+    });
   }
 
   get pinInfo() {
