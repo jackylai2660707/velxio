@@ -102,3 +102,11 @@ export async function updateProject(
 export async function deleteProject(id: string): Promise<void> {
   await api.delete(`/projects/${id}`);
 }
+
+/** Clone a project (row + files) into the caller's account. Owners can
+ *  duplicate any of their projects; public projects can be duplicated by
+ *  anyone. Returns the freshly created copy. */
+export async function duplicateProject(id: string): Promise<ProjectResponse> {
+  const { data: result } = await api.post<ProjectResponse>(`/projects/${id}/duplicate`);
+  return result;
+}
