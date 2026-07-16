@@ -103,10 +103,26 @@ export async function deleteProject(id: string): Promise<void> {
   await api.delete(`/projects/${id}`);
 }
 
+/** Optional overrides for a duplicate — the Duplicate dialog supplies name /
+ *  description / visibility; omit any field to inherit the source. */
+export interface DuplicateOptions {
+  name?: string;
+  description?: string;
+  is_public?: boolean;
+  visibility?: ProjectVisibility;
+}
+
 /** Clone a project (row + files) into the caller's account. Owners can
  *  duplicate any of their projects; public projects can be duplicated by
- *  anyone. Returns the freshly created copy. */
-export async function duplicateProject(id: string): Promise<ProjectResponse> {
-  const { data: result } = await api.post<ProjectResponse>(`/projects/${id}/duplicate`);
+ *  anyone. With no options the copy takes the source name + " (copy)" and
+ *  its visibility. Returns the freshly created copy. */
+export async function duplicateProject(
+  id: string,
+  options?: DuplicateOptions,
+): Promise<ProjectResponse> {
+  const { data: result } = await api.post<ProjectResponse>(
+    `/projects/${id}/duplicate`,
+    options ?? {},
+  );
   return result;
 }
