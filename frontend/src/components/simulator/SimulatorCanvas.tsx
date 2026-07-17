@@ -2026,6 +2026,12 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
     const showPinsForComponent =
       !dialogOpen && !isTouchDevice && (wireInProgress || isHovered);
 
+    // Breadboards are the physical base of a circuit — everything plugs into
+    // them — so they always sit at the very back: below boards (z 0), other
+    // components (z 1/2) and wires (z 35). Selection doesn't raise them.
+    const isBreadboard = String(component.metadataId).startsWith('breadboard');
+    const groupZIndex = isBreadboard ? -1 : isSelected ? 2 : 1;
+
     return (
       <React.Fragment key={component.id}>
         <div
@@ -2037,14 +2043,15 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
           // Zero-size positioned wrapper: children keep their absolute canvas
           // coords, but body + pins now share ONE stacking context, so this
           // component's pins can never paint above a component covering it.
-          // Selected components (z 2) still raise above unselected ones (z 1).
+          // Selected components (z 2) still raise above unselected ones (z 1);
+          // breadboards are pinned behind everything (z -1).
           // pointerEvents re-enables hit-testing under .components-area's
           // pointer-events: none.
           style={{
             position: 'absolute',
             left: 0,
             top: 0,
-            zIndex: isSelected ? 2 : 1,
+            zIndex: groupZIndex,
             pointerEvents: 'auto',
           }}
         >
