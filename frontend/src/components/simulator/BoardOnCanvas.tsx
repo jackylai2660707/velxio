@@ -166,7 +166,15 @@ export const BoardOnCanvas = ({
     // coords, but board + pins now share ONE stacking context, so this
     // board's pins can never paint above a component/board covering it.
     // z 0 keeps every board below components (their groups use z 1/2).
-    <div style={{ position: 'absolute', left: 0, top: 0, zIndex: 0 }}>
+    // Hover handlers live HERE, on the wrapper that owns both the drag
+    // overlay AND the pin squares — putting them on the drag overlay (a
+    // sibling of PinOverlay) made moving onto a pin fire mouseleave, which
+    // cleared the hover and hid the pins before you could click one.
+    <div
+      style={{ position: 'absolute', left: 0, top: 0, zIndex: 0 }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
       {boardEl}
 
       {/* Active board highlight ring */}
@@ -223,8 +231,6 @@ export const BoardOnCanvas = ({
             onMouseDown(e);
           }}
           onContextMenu={onContextMenu}
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
         />
       )}
 
