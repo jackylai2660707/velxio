@@ -11,7 +11,7 @@ import {
 import type { BoardKind } from '../../types/board';
 import { boardDisplayName } from '../../types/board';
 import { importProjectFile, PROJECT_FILE_ACCEPT } from '../../utils/importProject';
-import { showMessageDialog } from '../../store/useMessageDialogStore';
+import { showMessageDialog, showConfirmDialog } from '../../store/useMessageDialogStore';
 import './FileExplorer.css';
 
 // SVG icons — same style as EditorToolbar (stroke-based, 16x16)
@@ -237,6 +237,7 @@ interface FileExplorerProps {
 }
 
 export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewClick }) => {
+  const { t } = useTranslation();
   // Hidden <input type="file"> we trigger via ref when the user clicks
   // the Open project button.  Accepts both .vlx (Velxio native) and .zip
   // (Wokwi bundle); the dispatcher in utils/importProject.ts decides which
@@ -252,14 +253,17 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewCl
     e.target.value = '';
     if (!file) return;
     const friendlyName = file.name.toLowerCase().endsWith('.zip') ? 'Wokwi .zip' : '.vlx';
-    if (
-      !window.confirm(
-        `Load this ${friendlyName} project? Your current workspace will be replaced. ` +
-          `This cannot be undone.`,
-      )
-    ) {
-      return;
-    }
+    const confirmed = await showConfirmDialog(
+      t('editor.fileExplorer.confirmLoad.message', { type: friendlyName }),
+      {
+        kind: 'error',
+        title: t('editor.fileExplorer.confirmLoad.title'),
+        confirmLabel: t('editor.fileExplorer.confirmLoad.confirm'),
+        cancelLabel: t('editor.fileTabs.cancel'),
+        danger: true,
+      },
+    );
+    if (!confirmed) return;
     try {
       const result = await importProjectFile(file);
       // .zip needs the caller to apply the payload to the stores (we keep
@@ -287,9 +291,8 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewCl
     } catch (err) {
       showMessageDialog((err as Error).message, { kind: 'error' });
     }
-  }, []);
+  }, [t]);
 
-  const { t } = useTranslation();
   const {
     fileGroups,
     activeFileId,
@@ -503,11 +506,18 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewCl
     setRenamingId(null);
   }, [renamingId, renameValue, renameFile]);
 
-  const handleDelete = (fileId: string, groupId: string) => {
+  const handleDelete = async (fileId: string, groupId: string) => {
     setContextMenu(null);
     const files = fileGroups[groupId] ?? [];
     if (files.length <= 1) return;
-    if (!window.confirm(t('editor.fileExplorer.confirmDelete'))) return;
+    const confirmed = await showConfirmDialog(t('editor.fileExplorer.confirmDelete'), {
+      kind: 'error',
+      title: t('editor.fileExplorer.contextMenu.delete'),
+      confirmLabel: t('editor.fileExplorer.contextMenu.delete'),
+      cancelLabel: t('editor.fileTabs.cancel'),
+      danger: true,
+    });
+    if (!confirmed) return;
     deleteFile(fileId);
   };
 

@@ -38,6 +38,17 @@
     "fileExplorer": {
       "workspace": "ESPACIO DE TRABAJO",
       "newWorkspace": "Nuevo espacio de trabajo (borra placas, componentes, cables y archivos)",
+      "confirmNew": {
+        "title": "¿Iniciar un nuevo espacio de trabajo?",
+        "message": "Esto borra todas las placas, componentes, cables y archivos. No se puede deshacer.",
+        "confirm": "Empezar de nuevo",
+        "cancel": "Cancelar"
+      },
+      "confirmLoad": {
+        "title": "¿Cargar proyecto?",
+        "message": "¿Cargar este proyecto {{type}}? Tu espacio de trabajo actual será reemplazado. No se puede deshacer.",
+        "confirm": "Cargar"
+      },
       "saveProject": "Guardar proyecto (Ctrl+S)",
       "clickToEdit": "clic para editar",
       "collapse": "Contraer",
@@ -269,6 +280,14 @@
       "rotate": "Rotar",
       "delete": "Eliminar"
     },
+    "boardOptions": {
+      "confirmOverwrite": {
+        "title": "¿Sobrescribir archivo?",
+        "message": "Ya existe un archivo llamado \"{{name}}\". ¿Sobrescribir?",
+        "confirm": "Sobrescribir",
+        "cancel": "Omitir"
+      }
+    },
     "pi": {
       "connected": "Conectado",
       "starting": "Iniciando…",
@@ -288,6 +307,12 @@
       "offlineNote1": "Nota: El explorador de archivos muestra un área de preparación.",
       "offlineNote2": "\"Subir al Pi\" envía estos archivos al sistema en marcha; arranca el Pi automáticamente si hace falta.",
       "loadingTerminal": "Cargando terminal…",
+      "confirmDelete": {
+        "title": "Eliminar",
+        "message": "¿Eliminar \"{{name}}\"?",
+        "confirm": "Eliminar",
+        "cancel": "Cancelar"
+      },
       "selectFile": "Selecciona un archivo del explorador para editarlo."
     },
     "sensorPanel": {

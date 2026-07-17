@@ -38,6 +38,17 @@
     "fileExplorer": {
       "workspace": "WORKSPACE",
       "newWorkspace": "New workspace (clears boards, components, wires and files)",
+      "confirmNew": {
+        "title": "Start a new workspace?",
+        "message": "This clears every board, component, wire and file. This cannot be undone.",
+        "confirm": "Start new",
+        "cancel": "Cancel"
+      },
+      "confirmLoad": {
+        "title": "Load project?",
+        "message": "Load this {{type}} project? Your current workspace will be replaced. This cannot be undone.",
+        "confirm": "Load"
+      },
       "saveProject": "Save project (Ctrl+S)",
       "clickToEdit": "click to edit",
       "collapse": "Collapse",
@@ -269,6 +280,14 @@
       "rotate": "Rotate",
       "delete": "Delete"
     },
+    "boardOptions": {
+      "confirmOverwrite": {
+        "title": "Overwrite file?",
+        "message": "A file named \"{{name}}\" already exists. Overwrite?",
+        "confirm": "Overwrite",
+        "cancel": "Skip"
+      }
+    },
     "pi": {
       "connected": "Connected",
       "starting": "Starting…",
@@ -288,6 +307,12 @@
       "offlineNote1": "Note: The file explorer shows a staging area.",
       "offlineNote2": "\"Upload to Pi\" sends these files to the running system, starting the Pi automatically if needed.",
       "loadingTerminal": "Loading terminal…",
+      "confirmDelete": {
+        "title": "Delete",
+        "message": "Delete \"{{name}}\"?",
+        "confirm": "Delete",
+        "cancel": "Cancel"
+      },
       "selectFile": "Select a file from the explorer to edit it."
     },
     "sensorPanel": {

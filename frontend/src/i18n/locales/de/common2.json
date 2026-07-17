@@ -36,6 +36,17 @@
     "fileExplorer": {
       "workspace": "ARBEITSBEREICH",
       "newWorkspace": "Neuer Arbeitsbereich (löscht Boards, Komponenten, Leitungen und Dateien)",
+      "confirmNew": {
+        "title": "Neuen Arbeitsbereich starten?",
+        "message": "Dies löscht alle Boards, Komponenten, Leitungen und Dateien. Dies kann nicht rückgängig gemacht werden.",
+        "confirm": "Neu starten",
+        "cancel": "Abbrechen"
+      },
+      "confirmLoad": {
+        "title": "Projekt laden?",
+        "message": "Dieses {{type}}-Projekt laden? Dein aktueller Arbeitsbereich wird ersetzt. Dies kann nicht rückgängig gemacht werden.",
+        "confirm": "Laden"
+      },
       "saveProject": "Projekt speichern (Strg+S)",
       "clickToEdit": "zum Bearbeiten klicken",
       "collapse": "Einklappen",
@@ -267,6 +278,14 @@
       "rotate": "Drehen",
       "delete": "Löschen"
     },
+    "boardOptions": {
+      "confirmOverwrite": {
+        "title": "Datei überschreiben?",
+        "message": "Eine Datei namens \"{{name}}\" existiert bereits. Überschreiben?",
+        "confirm": "Überschreiben",
+        "cancel": "Überspringen"
+      }
+    },
     "pi": {
       "connected": "Verbunden",
       "starting": "Starte…",
@@ -286,6 +305,12 @@
       "offlineNote1": "Hinweis: Der Dateiexplorer zeigt einen Staging-Bereich an.",
       "offlineNote2": "„Auf den Pi hochladen“ überträgt diese Dateien auf das laufende System und startet den Pi bei Bedarf automatisch.",
       "loadingTerminal": "Terminal wird geladen…",
+      "confirmDelete": {
+        "title": "Löschen",
+        "message": "\"{{name}}\" löschen?",
+        "confirm": "Löschen",
+        "cancel": "Abbrechen"
+      },
       "selectFile": "Wählen Sie eine Datei aus dem Explorer aus, um sie zu bearbeiten."
     },
     "sensorPanel": {

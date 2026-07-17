@@ -29,6 +29,7 @@ import { useEditorStore } from '../store/useEditorStore';
 import { useCompileLogsStore } from '../store/useCompileLogsStore';
 import { useOscilloscopeStore } from '../store/useOscilloscopeStore';
 import { useProjectStore } from '../store/useProjectStore';
+import { showConfirmDialog } from '../store/useMessageDialogStore';
 import { useAutoSaveProject } from '../hooks/useAutoSaveProject';
 import type { CompilationLog } from '../utils/compilationLogger';
 import { isPiBoardKind } from '../types/board';
@@ -195,14 +196,18 @@ export const EditorPage: React.FC = () => {
     triggerSaveAction();
   }, []);
 
-  const handleNewClick = useCallback(() => {
-    if (
-      !window.confirm(
-        'Start a new workspace? This clears every board, component, wire and file. This cannot be undone.',
-      )
-    ) {
-      return;
-    }
+  const handleNewClick = useCallback(async () => {
+    const confirmed = await showConfirmDialog(
+      t('editor.fileExplorer.confirmNew.message'),
+      {
+        kind: 'error',
+        title: t('editor.fileExplorer.confirmNew.title'),
+        confirmLabel: t('editor.fileExplorer.confirmNew.confirm'),
+        cancelLabel: t('editor.fileExplorer.confirmNew.cancel'),
+        danger: true,
+      },
+    );
+    if (!confirmed) return;
     const sim = useSimulatorStore.getState();
     sim.boards.forEach((b) => sim.stopBoard(b.id));
     const ids = sim.boards.map((b) => b.id);
@@ -214,7 +219,7 @@ export const EditorPage: React.FC = () => {
       .getState()
       .addBoard('arduino-uno', DEFAULT_BOARD_POSITION.x, DEFAULT_BOARD_POSITION.y);
     useSimulatorStore.getState().setActiveBoardId(newId);
-  }, []);
+  }, [t]);
 
   // Track mobile breakpoint
   useEffect(() => {

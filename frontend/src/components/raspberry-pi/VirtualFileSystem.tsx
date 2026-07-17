@@ -5,9 +5,11 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useVfsStore } from '../../store/useVfsStore';
 import type { VfsNode } from '../../store/useVfsStore';
 import { getBoardBridge, useSimulatorStore } from '../../store/useSimulatorStore';
+import { showConfirmDialog } from '../../store/useMessageDialogStore';
 
 /** Resolve true once the board's guest Linux has booted to a shell
  * (board.piBooted), or false after timeoutMs. Polls the store. */
@@ -244,6 +246,7 @@ interface VirtualFileSystemProps {
 }
 
 export const VirtualFileSystem: React.FC<VirtualFileSystemProps> = ({ boardId, onFileSelect }) => {
+  const { t } = useTranslation();
   const {
     initBoardVfs,
     getRootId,
@@ -335,11 +338,21 @@ export const VirtualFileSystem: React.FC<VirtualFileSystemProps> = ({ boardId, o
     setNewNodeName('');
   }, [boardId, creatingIn, newNodeName, newNodeType, createNode]);
 
-  const handleDelete = (nodeId: string) => {
+  const handleDelete = async (nodeId: string) => {
     setCtxMenu(null);
     const node = getNode(boardId, nodeId);
     if (!node || node.parentId === null) return;
-    if (!window.confirm(`Delete "${node.name}"?`)) return;
+    const confirmed = await showConfirmDialog(
+      t('editor.pi.confirmDelete.message', { name: node.name }),
+      {
+        kind: 'error',
+        title: t('editor.pi.confirmDelete.title'),
+        confirmLabel: t('editor.pi.confirmDelete.confirm'),
+        cancelLabel: t('editor.pi.confirmDelete.cancel'),
+        danger: true,
+      },
+    );
+    if (!confirmed) return;
     if (selectedNodeId === nodeId) setSelectedNode(boardId, null);
     deleteNode(boardId, nodeId);
   };

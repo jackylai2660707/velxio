@@ -36,6 +36,17 @@
     "fileExplorer": {
       "workspace": "WORKSPACE",
       "newWorkspace": "Nuovo workspace (cancella schede, componenti, cavi e file)",
+      "confirmNew": {
+        "title": "Avviare un nuovo workspace?",
+        "message": "Questo cancella tutte le schede, i componenti, i cavi e i file. Non può essere annullato.",
+        "confirm": "Ricomincia",
+        "cancel": "Annulla"
+      },
+      "confirmLoad": {
+        "title": "Caricare il progetto?",
+        "message": "Caricare questo progetto {{type}}? Il tuo workspace attuale sarà sostituito. Non può essere annullato.",
+        "confirm": "Carica"
+      },
       "saveProject": "Salva progetto (Ctrl+S)",
       "clickToEdit": "clicca per modificare",
       "collapse": "Comprimi",
@@ -267,6 +278,14 @@
       "rotate": "Ruota",
       "delete": "Elimina"
     },
+    "boardOptions": {
+      "confirmOverwrite": {
+        "title": "Sovrascrivere il file?",
+        "message": "Esiste già un file di nome \"{{name}}\". Sovrascrivere?",
+        "confirm": "Sovrascrivi",
+        "cancel": "Salta"
+      }
+    },
     "pi": {
       "connected": "Connesso",
       "starting": "Avvio…",
@@ -286,6 +305,12 @@
       "offlineNote1": "Nota: L'esplora file mostra un'area di staging.",
       "offlineNote2": "\"Carica sul Pi\" invia questi file al sistema in esecuzione e avvia il Pi automaticamente se necessario.",
       "loadingTerminal": "Caricamento terminale…",
+      "confirmDelete": {
+        "title": "Elimina",
+        "message": "Eliminare \"{{name}}\"?",
+        "confirm": "Elimina",
+        "cancel": "Annulla"
+      },
       "selectFile": "Seleziona un file dall'esplora per modificarlo."
     },
     "sensorPanel": {

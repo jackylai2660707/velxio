@@ -36,6 +36,17 @@
     "fileExplorer": {
       "workspace": "WORKSPACE",
       "newWorkspace": "Novo workspace (limpa placas, componentes, fios e arquivos)",
+      "confirmNew": {
+        "title": "Iniciar um novo workspace?",
+        "message": "Isso limpa todas as placas, componentes, fios e arquivos. Não pode ser desfeito.",
+        "confirm": "Começar novo",
+        "cancel": "Cancelar"
+      },
+      "confirmLoad": {
+        "title": "Carregar projeto?",
+        "message": "Carregar este projeto {{type}}? Seu workspace atual será substituído. Não pode ser desfeito.",
+        "confirm": "Carregar"
+      },
       "saveProject": "Salvar projeto (Ctrl+S)",
       "clickToEdit": "clique para editar",
       "collapse": "Recolher",
@@ -267,6 +278,14 @@
       "rotate": "Girar",
       "delete": "Excluir"
     },
+    "boardOptions": {
+      "confirmOverwrite": {
+        "title": "Substituir arquivo?",
+        "message": "Já existe um arquivo chamado \"{{name}}\". Substituir?",
+        "confirm": "Substituir",
+        "cancel": "Ignorar"
+      }
+    },
     "pi": {
       "connected": "Conectado",
       "starting": "Iniciando…",
@@ -286,6 +305,12 @@
       "offlineNote1": "Nota: O explorador de arquivos mostra uma área de preparação.",
       "offlineNote2": "\"Enviar para o Pi\" transfere esses arquivos para o sistema em execução e inicia o Pi automaticamente se necessário.",
       "loadingTerminal": "Carregando terminal…",
+      "confirmDelete": {
+        "title": "Excluir",
+        "message": "Excluir \"{{name}}\"?",
+        "confirm": "Excluir",
+        "cancel": "Cancelar"
+      },
       "selectFile": "Selecione um arquivo no explorador para editá-lo."
     },
     "sensorPanel": {

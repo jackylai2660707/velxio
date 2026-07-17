@@ -18,15 +18,18 @@ const ACCENTS: Record<MessageDialogKind, { bg: string; fg: string; icon: string 
 };
 
 export const MessageDialogHost = () => {
-  const { open, kind, title, message, close } = useMessageDialogStore();
+  const { open, mode, kind, title, message, confirmLabel, cancelLabel, danger, close } =
+    useMessageDialogStore();
   const okRef = useRef<HTMLButtonElement | null>(null);
+  const isConfirm = mode === 'confirm';
 
   useEffect(() => {
     if (!open) return;
-    // Focus OK so Enter dismisses, matching the native alert() flow.
+    // Focus the primary button so Enter confirms/dismisses, matching the
+    // native alert()/confirm() flow.
     okRef.current?.focus();
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
+      if (e.key === 'Escape') close(false);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -40,7 +43,7 @@ export const MessageDialogHost = () => {
     <div
       role="dialog"
       aria-modal="true"
-      onClick={close}
+      onClick={() => close(false)}
       style={{
         position: 'fixed',
         inset: 0,
@@ -92,24 +95,45 @@ export const MessageDialogHost = () => {
           <span style={{ whiteSpace: 'pre-wrap', overflowY: 'auto' }}>{message}</span>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          {isConfirm && (
+            <button
+              type="button"
+              onClick={() => close(false)}
+              style={{
+                padding: '7px 20px',
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#e6e6e9',
+                background: '#2a2d35',
+                border: '1px solid #3a3d45',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
             ref={okRef}
             type="button"
-            onClick={close}
+            onClick={() => close(true)}
             style={{
               padding: '7px 20px',
               fontSize: 13,
               fontWeight: 600,
               color: 'white',
-              background: 'linear-gradient(135deg, #007acc 0%, #005ea1 100%)',
-              border: '1px solid #005ea1',
+              background: danger
+                ? 'linear-gradient(135deg, #d64545 0%, #a12727 100%)'
+                : 'linear-gradient(135deg, #007acc 0%, #005ea1 100%)',
+              border: danger ? '1px solid #a12727' : '1px solid #005ea1',
               borderRadius: 4,
               cursor: 'pointer',
               fontFamily: 'inherit',
             }}
           >
-            OK
+            {isConfirm ? confirmLabel : 'OK'}
           </button>
         </div>
       </div>

@@ -36,6 +36,17 @@
     "fileExplorer": {
       "workspace": "ESPACE DE TRAVAIL",
       "newWorkspace": "Nouvel espace de travail (efface cartes, composants, fils et fichiers)",
+      "confirmNew": {
+        "title": "Démarrer un nouvel espace de travail ?",
+        "message": "Ceci efface toutes les cartes, composants, fils et fichiers. Cette action est irréversible.",
+        "confirm": "Recommencer",
+        "cancel": "Annuler"
+      },
+      "confirmLoad": {
+        "title": "Charger le projet ?",
+        "message": "Charger ce projet {{type}} ? Votre espace de travail actuel sera remplacé. Cette action est irréversible.",
+        "confirm": "Charger"
+      },
       "saveProject": "Enregistrer le projet (Ctrl+S)",
       "clickToEdit": "cliquer pour éditer",
       "collapse": "Réduire",
@@ -267,6 +278,14 @@
       "rotate": "Pivoter",
       "delete": "Supprimer"
     },
+    "boardOptions": {
+      "confirmOverwrite": {
+        "title": "Écraser le fichier ?",
+        "message": "Un fichier nommé « {{name}} » existe déjà. L'écraser ?",
+        "confirm": "Écraser",
+        "cancel": "Ignorer"
+      }
+    },
     "pi": {
       "connected": "Connecté",
       "starting": "Démarrage…",
@@ -286,6 +305,12 @@
       "offlineNote1": "Remarque : L'explorateur de fichiers affiche une zone de préparation.",
       "offlineNote2": "« Envoyer vers le Pi » transfère ces fichiers vers le système en cours d'exécution et démarre le Pi automatiquement si nécessaire.",
       "loadingTerminal": "Chargement du terminal…",
+      "confirmDelete": {
+        "title": "Supprimer",
+        "message": "Supprimer « {{name}} » ?",
+        "confirm": "Supprimer",
+        "cancel": "Annuler"
+      },
       "selectFile": "Sélectionnez un fichier dans l'explorateur pour l'éditer."
     },
     "sensorPanel": {
