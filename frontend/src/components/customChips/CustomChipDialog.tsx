@@ -283,23 +283,18 @@ export const CustomChipDialog = ({ initial, onClose, onSave }: CustomChipDialogP
               {compiling ? t('editor.customChip.compiling') : t('editor.customChip.compile')}
             </button>
           )}
-          <button
-            style={cancelBtn}
-            title="Describe the chip and the AI agent writes, compiles and programs it"
-            onClick={() => {
-              // Pro AI agent hook — no-op when no overlay listener is mounted.
-              window.dispatchEvent(new CustomEvent('velxio:agent-prompt', {
-                detail: {
-                  prompt:
-                    'Crea un custom chip que ... (describe qué debe hacer; ' +
-                    'el agente escribe el C, lo compila y lo programa en el canvas)',
-                },
-              }));
-              onClose();
+          {/* Extension point for the velxio-prod overlay (e.g. a "Create with
+              AI" button). Empty in OSS. The overlay reads `velxioCloseDialog`
+              off this element to dismiss the dialog after it acts. */}
+          <div
+            data-velxio-slot="custom-chip-actions"
+            style={{ display: 'contents' }}
+            ref={(el) => {
+              if (el) {
+                (el as unknown as { velxioCloseDialog?: () => void }).velxioCloseDialog = onClose;
+              }
             }}
-          >
-            ✨ Create with AI
-          </button>
+          />
           <div style={{ flex: 1 }} />
           <button style={cancelBtn} onClick={onClose}>{t('editor.customChip.cancel')}</button>
           <button style={canSave ? saveBtn : saveBtnDisabled} disabled={!canSave} onClick={doSave}>
