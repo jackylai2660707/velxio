@@ -7,6 +7,7 @@ import type { Wire } from '../types/wire';
 import {
   expandOrthogonalPoints,
   simplifyOrthogonalPath,
+  fuseMicroJogs,
   roundedPathFromPoints,
 } from './wireUtils';
 
@@ -191,6 +192,26 @@ export function collectAlignmentTargets(
 }
 
 /**
+ * Add the dragged wire's OWN geometry as snap targets, so a dragged
+ * segment or bend point can align — and, after simplification, fuse —
+ * with the rest of its own wire. `excludeIndices` are the indices of the
+ * points being dragged; including them would pin the drag at its current
+ * position.
+ */
+export function addOwnWireAlignmentTargets(
+  targets: { xs: Set<number>; ys: Set<number> },
+  pts: { x: number; y: number }[],
+  excludeIndices: Iterable<number>,
+): void {
+  const skip = new Set(excludeIndices);
+  for (let i = 0; i < pts.length; i++) {
+    if (skip.has(i)) continue;
+    targets.xs.add(pts[i].x);
+    targets.ys.add(pts[i].y);
+  }
+}
+
+/**
  * Find the nearest candidate from `targets` to `value` within `threshold`.
  * Returns the snapped value and the candidate that triggered it, or null
  * if nothing is in range.
@@ -288,7 +309,7 @@ export function moveSegment(
 export function renderedToWaypoints(
   renderedPts: { x: number; y: number }[],
 ): { x: number; y: number }[] {
-  const simplified = simplifyOrthogonalPath(renderedPts);
+  const simplified = simplifyOrthogonalPath(fuseMicroJogs(renderedPts));
   if (simplified.length <= 2) return [];
   return simplified.slice(1, -1).map((p) => ({ x: p.x, y: p.y }));
 }

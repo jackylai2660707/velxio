@@ -122,6 +122,80 @@ export function simplifyOrthogonalPath(pts: Point[]): Point[] {
 }
 
 /**
+ * Sub-pixel jogs a hand-drag can leave behind: two parallel runs offset by
+ * less than this many world px, joined by a tiny perpendicular step, are
+ * fused onto the same line. Kept below the drag snap threshold so it only
+ * ever swallows accidental offsets, never deliberate routing.
+ */
+export const MICRO_JOG_EPS = 2;
+
+/**
+ * Fuse micro jogs: when two parallel runs are joined by a perpendicular
+ * step shorter than `eps`, align one run onto the other so the wire reads
+ * as a single straight line. The run NOT anchored to a wire endpoint moves
+ * (the shorter one when both are free); a jog anchored to endpoints on
+ * both sides is structural and stays. Runs until stable.
+ */
+export function fuseMicroJogs(pts: Point[], eps: number = MICRO_JOG_EPS): Point[] {
+  const out = pts.map((p) => ({ ...p }));
+  if (out.length < 4) return out;
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 1; i + 2 < out.length; i++) {
+      const a = out[i - 1];
+      const p = out[i];
+      const q = out[i + 1];
+      const b = out[i + 2];
+      const beforeAnchored = i - 1 === 0;
+      const afterAnchored = i + 2 === out.length - 1;
+
+      // Horizontal micro jog joining two vertical runs
+      if (
+        p.y === q.y && p.x !== q.x && Math.abs(p.x - q.x) <= eps &&
+        a.x === p.x && a.y !== p.y && b.x === q.x && b.y !== q.y
+      ) {
+        if (beforeAnchored && afterAnchored) continue;
+        const moveAfter = beforeAnchored
+          ? true
+          : afterAnchored
+            ? false
+            : Math.abs(b.y - q.y) <= Math.abs(p.y - a.y);
+        if (moveAfter) {
+          q.x = p.x;
+          b.x = p.x;
+        } else {
+          a.x = q.x;
+          p.x = q.x;
+        }
+        changed = true;
+      } else if (
+        // Vertical micro jog joining two horizontal runs
+        p.x === q.x && p.y !== q.y && Math.abs(p.y - q.y) <= eps &&
+        a.y === p.y && a.x !== p.x && b.y === q.y && b.x !== q.x
+      ) {
+        if (beforeAnchored && afterAnchored) continue;
+        const moveAfter = beforeAnchored
+          ? true
+          : afterAnchored
+            ? false
+            : Math.abs(b.x - q.x) <= Math.abs(p.x - a.x);
+        if (moveAfter) {
+          q.y = p.y;
+          b.y = p.y;
+        } else {
+          a.y = q.y;
+          p.y = q.y;
+        }
+        changed = true;
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * Build an SVG path through an orthogonal polyline with rounded bends.
  * Every interior corner is shortened by the bend radius on both sides and
  * bridged with a quadratic curve whose control point is the corner itself.
@@ -169,7 +243,9 @@ export function generateOrthogonalPath(
 ): string {
   const points: Point[] = [start, ...(waypoints ?? []), end];
   if (points.length < 2) return '';
-  return roundedPathFromPoints(simplifyOrthogonalPath(expandOrthogonalPoints(points)));
+  return roundedPathFromPoints(
+    simplifyOrthogonalPath(fuseMicroJogs(expandOrthogonalPoints(points))),
+  );
 }
 
 /**
@@ -213,6 +289,8 @@ export function generatePreviewPath(
  * commits) — not with stale/unresolved pins.
  */
 export function normalizeWireWaypoints(start: Point, waypoints: Point[], end: Point): Point[] {
-  const simplified = simplifyOrthogonalPath(expandOrthogonalPoints([start, ...waypoints, end]));
+  const simplified = simplifyOrthogonalPath(
+    fuseMicroJogs(expandOrthogonalPoints([start, ...waypoints, end])),
+  );
   return simplified.slice(1, -1).map((p) => ({ x: p.x, y: p.y }));
 }

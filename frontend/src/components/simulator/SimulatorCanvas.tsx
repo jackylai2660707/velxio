@@ -40,6 +40,7 @@ import {
   simplifyOrthogonalPath,
   insertWaypointAtSegment,
   collectAlignmentTargets,
+  addOwnWireAlignmentTargets,
   snapToNearest,
 } from '../../utils/wireHitDetection';
 import { useIsCoarsePointer } from '../../utils/useTouchDevice';
@@ -1405,6 +1406,10 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
       sd.isDragging = true;
       const threshold = ALIGN_SNAP_PX / zoomRef.current;
       const targets = collectAlignmentTargets(wiresRef.current, sd.wireId);
+      // Snap against the wire's own runs too, so a dragged segment can
+      // line up with (and fuse into) its neighbours instead of ending
+      // up millimetres off.
+      addOwnWireAlignmentTargets(targets, sd.renderedPts, [sd.segIndex, sd.segIndex + 1]);
       const guides: AlignmentGuide[] = [];
       let newValue = sd.axis === 'horizontal' ? world.y : world.x;
       const snap = snapToNearest(
@@ -1432,6 +1437,17 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
       if (wire) {
         const threshold = ALIGN_SNAP_PX / zoomRef.current;
         const targets = collectAlignmentTargets(wiresRef.current, wd.wireId);
+        // Own-wire targets (start, end, other bends) minus the dragged
+        // bend itself, so it can fuse back onto its own wire's lines.
+        addOwnWireAlignmentTargets(
+          targets,
+          [
+            { x: wire.start.x, y: wire.start.y },
+            ...wd.originalWaypoints,
+            { x: wire.end.x, y: wire.end.y },
+          ],
+          [wd.waypointIndex + 1],
+        );
         const guides: AlignmentGuide[] = [];
         let snappedX = world.x;
         let snappedY = world.y;
@@ -1488,6 +1504,7 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
         const world = toWorld(e.clientX, e.clientY);
         const threshold = ALIGN_SNAP_PX / zoomRef.current;
         const targets = collectAlignmentTargets(wiresRef.current, sd.wireId);
+        addOwnWireAlignmentTargets(targets, sd.renderedPts, [sd.segIndex, sd.segIndex + 1]);
         let newValue = sd.axis === 'horizontal' ? world.y : world.x;
         const snap = snapToNearest(
           newValue,
@@ -1514,6 +1531,15 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
         if (wire) {
           const threshold = ALIGN_SNAP_PX / zoomRef.current;
           const targets = collectAlignmentTargets(wiresRef.current, wd.wireId);
+          addOwnWireAlignmentTargets(
+            targets,
+            [
+              { x: wire.start.x, y: wire.start.y },
+              ...wd.originalWaypoints,
+              { x: wire.end.x, y: wire.end.y },
+            ],
+            [wd.waypointIndex + 1],
+          );
           let snappedX = world.x;
           let snappedY = world.y;
           const snapX = snapToNearest(world.x, targets.xs, threshold);

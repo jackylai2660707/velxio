@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import {
   expandOrthogonalPoints,
   simplifyOrthogonalPath,
+  fuseMicroJogs,
   roundedPathFromPoints,
   generateOrthogonalPath,
   generatePreviewPath,
@@ -177,6 +178,61 @@ describe('generatePreviewPath', () => {
       { x: 40, y: 100 },
     );
     expect(preview).toBe(committed);
+  });
+});
+
+describe('fuseMicroJogs', () => {
+  it('fuses two vertical runs offset by a sub-eps step (wire_test2 LCD wire)', () => {
+    // Real saved data: runs at x=440.12 and x=441.39 joined by a 1.27 px
+    // horizontal step — the "milimetrically misaligned" wire.
+    const fused = fuseMicroJogs([
+      { x: 440.12, y: -38.7 },
+      { x: 440.12, y: 169.67 },
+      { x: 441.39, y: 169.67 },
+      { x: 441.39, y: 209.09 },
+      { x: 417.04, y: 209.09 },
+    ]);
+    // The run anchored at the start pin wins; the free run moves onto it.
+    expect(fused.every((p) => p.x !== 441.39)).toBe(true);
+    // After exact simplification the jog is gone entirely.
+    expect(simplifyOrthogonalPath(fused)).toEqual([
+      { x: 440.12, y: -38.7 },
+      { x: 440.12, y: 209.09 },
+      { x: 417.04, y: 209.09 },
+    ]);
+  });
+
+  it('moves the shorter run when neither side is anchored to an endpoint', () => {
+    const fused = fuseMicroJogs([
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 200 }, // long vertical run at x=100
+      { x: 101.5, y: 200 }, // 1.5 px jog
+      { x: 101.5, y: 220 }, // short vertical run at x=101.5
+      { x: 200, y: 220 },
+    ]);
+    expect(fused.every((p) => p.x !== 101.5)).toBe(true);
+  });
+
+  it('leaves a jog anchored to endpoints on both sides alone', () => {
+    const pts = [
+      { x: 0, y: 0 },
+      { x: 0, y: 50 },
+      { x: 1.5, y: 50 },
+      { x: 1.5, y: 100 },
+    ];
+    expect(fuseMicroJogs(pts)).toEqual(pts);
+  });
+
+  it('ignores steps larger than the tolerance', () => {
+    const pts = [
+      { x: 0, y: 0 },
+      { x: 0, y: 50 },
+      { x: 10, y: 50 },
+      { x: 10, y: 100 },
+      { x: 50, y: 100 },
+    ];
+    expect(fuseMicroJogs(pts)).toEqual(pts);
   });
 });
 
