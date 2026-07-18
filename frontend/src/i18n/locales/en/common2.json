@@ -241,7 +241,12 @@
       "rotate90": "Rotate 90°",
       "rotate": "Rotate",
       "delete": "Delete",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "keyboardKey": "Keyboard key",
+      "assignKey": "Assign key",
+      "pressAKey": "Press a key…",
+      "clearKey": "Remove key binding",
+      "keyInUse": "Also assigned to another button — both will press together."
     },
     "selectionBar": {
       "label": "Selection actions",

@@ -418,3 +418,72 @@
   color: #aaa;
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Keyboard binding (pushbuttons) ────────────────────────────────── */
+
+.keybind-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Keycap-styled chip: shows the bound key, or the capture prompt. */
+.keybind-chip {
+  min-width: 44px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  color: #fff;
+  background-color: #3d3d3d;
+  border: 1px solid #555;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.keybind-chip:hover {
+  border-color: var(--color-action-primary);
+}
+
+.keybind-chip--empty {
+  font-family: inherit;
+  font-weight: 500;
+  color: #aaa;
+  border-style: dashed;
+  border-bottom-width: 1px;
+}
+
+.keybind-chip--capturing {
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--color-action-primary);
+  border-color: var(--color-action-primary);
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.25);
+}
+
+.keybind-clear {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: #aaa;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.keybind-clear:hover {
+  color: #fff;
+  background-color: #3d3d3d;
+}
+
+.keybind-hint {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #d19a66;
+}

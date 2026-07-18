@@ -61,6 +61,7 @@ import {
 import { SelectionActionBar } from './SelectionActionBar';
 import { WireModeBanner } from './WireModeBanner';
 import { PinPickerDialog } from './PinPickerDialog';
+import { useButtonKeyBindings } from '../../hooks/useButtonKeyBindings';
 import './SimulatorCanvas.css';
 
 /** World-units of tolerance for alignment snap (scales with zoom). */
@@ -136,6 +137,9 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
 
   // Active board (for WiFi/BLE status display)
   const activeBoard = boards.find((b) => b.id === activeBoardId) ?? null;
+
+  // Keyboard → pushbutton bindings (component `key` property).
+  useButtonKeyBindings(components);
 
   // Legacy derived values for components that still use them
   const boardType = useSimulatorStore((s) => s.boardType);

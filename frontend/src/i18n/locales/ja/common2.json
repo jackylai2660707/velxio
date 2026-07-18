@@ -239,7 +239,12 @@
       "rotate90": "90°回転",
       "rotate": "回転",
       "delete": "削除",
-      "cancel": "キャンセル"
+      "cancel": "キャンセル",
+      "keyboardKey": "キーボードキー",
+      "assignKey": "キーを割り当て",
+      "pressAKey": "キーを押してください…",
+      "clearKey": "キー割り当てを解除",
+      "keyInUse": "他のボタンにも割り当てられています。同時に押されます。"
     },
     "selectionBar": {
       "label": "選択アクション",

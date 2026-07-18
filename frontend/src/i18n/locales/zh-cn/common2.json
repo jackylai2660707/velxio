@@ -239,7 +239,12 @@
       "rotate90": "旋转 90°",
       "rotate": "旋转",
       "delete": "删除",
-      "cancel": "取消"
+      "cancel": "取消",
+      "keyboardKey": "键盘按键",
+      "assignKey": "分配按键",
+      "pressAKey": "请按一个键…",
+      "clearKey": "移除按键绑定",
+      "keyInUse": "也已分配给另一个按钮，两个按钮会同时按下。"
     },
     "selectionBar": {
       "label": "选择操作",

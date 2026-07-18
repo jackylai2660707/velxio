@@ -239,7 +239,12 @@
       "rotate90": "Girar 90°",
       "rotate": "Girar",
       "delete": "Excluir",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "keyboardKey": "Tecla do teclado",
+      "assignKey": "Atribuir tecla",
+      "pressAKey": "Pressione uma tecla…",
+      "clearKey": "Remover tecla",
+      "keyInUse": "Também atribuída a outro botão — os dois serão pressionados juntos."
     },
     "selectionBar": {
       "label": "Ações de seleção",

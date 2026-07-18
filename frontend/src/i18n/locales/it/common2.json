@@ -239,7 +239,12 @@
       "rotate90": "Ruota 90°",
       "rotate": "Ruota",
       "delete": "Elimina",
-      "cancel": "Annulla"
+      "cancel": "Annulla",
+      "keyboardKey": "Tasto della tastiera",
+      "assignKey": "Assegna tasto",
+      "pressAKey": "Premi un tasto…",
+      "clearKey": "Rimuovi il tasto",
+      "keyInUse": "Assegnato anche a un altro pulsante: verranno premuti insieme."
     },
     "selectionBar": {
       "label": "Azioni di selezione",

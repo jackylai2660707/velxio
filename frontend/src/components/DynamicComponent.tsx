@@ -19,6 +19,7 @@ import { useEditorStore } from '../store/useEditorStore';
 import { buildProjectSdImage, decodeSdFiles } from '../utils/sdCardFiles';
 import { PartSimulationRegistry } from '../simulation/parts';
 import { isBoardComponent, boardPinToNumber } from '../utils/boardPinMapping';
+import { isKeyBindable, formatKeyLabel } from '../utils/keyButtonBindings';
 import {
   createDefaultPinResolver,
   createSpiceResolvedPinResolver,
@@ -684,6 +685,25 @@ export const DynamicComponent: React.FC<DynamicComponentProps> = ({
         }}
       >
         {properties.pin !== undefined ? `Pin ${properties.pin}` : metadata.name}
+        {isKeyBindable(metadata.id) && typeof properties.key === 'string' && properties.key && (
+          <span
+            style={{
+              fontSize: '9px',
+              padding: '1px 5px',
+              borderRadius: '3px',
+              backgroundColor: '#2d2d2d',
+              color: '#ddd',
+              border: '1px solid #555',
+              borderBottomWidth: '2px',
+              fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
+              fontWeight: 600,
+              lineHeight: '1.3',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {formatKeyLabel(properties.key)}
+          </span>
+        )}
         {properties.protocol && (
           <span
             style={{

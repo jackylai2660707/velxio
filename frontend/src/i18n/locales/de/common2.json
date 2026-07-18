@@ -239,7 +239,12 @@
       "rotate90": "90° drehen",
       "rotate": "Drehen",
       "delete": "Löschen",
-      "cancel": "Abbrechen"
+      "cancel": "Abbrechen",
+      "keyboardKey": "Tastaturtaste",
+      "assignKey": "Taste zuweisen",
+      "pressAKey": "Taste drücken…",
+      "clearKey": "Tastenzuweisung entfernen",
+      "keyInUse": "Auch einem anderen Button zugewiesen — beide werden zusammen gedrückt."
     },
     "selectionBar": {
       "label": "Auswahlaktionen",

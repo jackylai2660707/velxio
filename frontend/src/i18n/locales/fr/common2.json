@@ -239,7 +239,12 @@
       "rotate90": "Rotation 90°",
       "rotate": "Pivoter",
       "delete": "Supprimer",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "keyboardKey": "Touche du clavier",
+      "assignKey": "Assigner une touche",
+      "pressAKey": "Appuyez sur une touche…",
+      "clearKey": "Supprimer le raccourci",
+      "keyInUse": "Aussi assignée à un autre bouton — les deux seront pressés ensemble."
     },
     "selectionBar": {
       "label": "Actions de sélection",
