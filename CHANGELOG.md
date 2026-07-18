@@ -3,6 +3,93 @@
 All notable changes to Velxio will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [3.0.1] - 2026-07-18
+
+### Added
+- Added keyboard mapping for pushbuttons – assign a key from the component property dialog; keycap badge shows the mapping on the canvas.
+- Introduced global message dialog and confirm modal replacing native `confirm()` and `alert()` calls across the editor, file explorer, and other modals.
+- Preserved in-progress workspace across login redirect using sessionStorage (stashed as `.vlx` and restored after authentication).
+- Added full 830-point and mini 170-point breadboard parts with Fritzing artwork (CC-BY-SA 3.0) and computed pin geometry.
+- Added built-in internal connectivity for breadboard strips and power rails (netlist merging).
+- Added new 4-pin I2C SSD1306 OLED module and gallery examples for Uno, ESP32, Pico, and STM32.
+- Added auto-detecting SSD1306 part that automatically selects I2C or SPI protocol based on wiring.
+- Added ESP32 WiFi + MQTT (PubSubClient) gallery example that round-trips through a public broker.
+- Added ESP32-S3 ILI9341 TFT display example.
+- Added multi-board “Run All” button with split-menu to run only the active board.
+- Added wire color discoverable UI on desktop: context menu with color swatches and floating palette when a wire is selected.
+- Added featured component sorting – breadboards now lead the component picker.
+- Added per-component pin hover highlighting (only the pin under the cursor lights up, matching the breadboard behaviour).
+- Added runtime burnout for resistors, electrolytic capacitors, and LEDs (sustained overload destroys the part; charred visual and open circuit).
+- Added pre-flight circuit verifier rules: missing power, dangling two‑terminal parts, power shorts, over‑voltage warnings for boards and electrolytic capacitors.
+- Added Pico W WiFi emulation (paid feature): virtual DHCP/ARP net, IoT gateway, internet bridge, and full associaton.
+- Added AVR EEPROM emulation (fixes hangs on `EEPROM.read/write/update`).
+- Added ATtiny85 USI I2C bridge enabling SSD1306 OLED support via TinyWireM.
+- Added feedback mechanisms: star banner follow-up for users who dismissed the first prompt, and circuit verification results now appear in the output console.
+
+### Changed
+- Redesigned the examples page: compact toolbar, denser grid with 5:3 thumbnails (no black bars), and filter chips with dropdown selects.
+- Unified editor toolbar controls now collapse by container width instead of viewport, preventing overlap when the AI chat panel is open.
+- Removed redundant file-tabs bar from the toolbar; file switching is now done exclusively from the left explorer.
+- Breadboards now always sit behind all other components (z‑index -1) to reflect their physical role.
+- Pin overlays stack within their component group and no longer leak through covering components.
+- Board pins stay clickable – hover handlers moved to the component wrapper, not the drag overlay.
+- Slide-switch model corrected from SPST to genuine SPDT with pin‑1/pin‑3 throws and a common wiper.
+- NTC temperature sensor SPICE model fixed (pull‑up on top, NTC to GND) so the decode matches the example sketch.
+- SPICE pre-flight and runtime electrical re-solve now triggered on all output pin edges (ESP32, STM32, Raspberry Pi) and on component burnout.
+- Circuit verifier findings are now logged to the output console instead of a toolbar toast.
+- Virtual file system upload now auto‑starts the Pi and waits for the shell before sending files.
+- The Run button shows a spinner and stays disabled while circuit verification is in progress.
+- Non‑English locales (zh‑cn, pt‑br) now load correctly on direct navigation.
+- `/en/*` routes are redirected to the prefix‑free path instead of rendering a blank page.
+- Star banner flags are now separate for dismissal and click‑through, allowing one follow‑up prompt.
+- Built‑In breadboard and minimap artwork switched to the Fritzing parts‑library (CC‑BY‑SA 3.0).
+- ESP32 digital inputs are now driven from the real SPICE solve for accurate `digitalRead()`; AVR inputs include modeled internal pull‑up resistors; RP2040 and STM32 also benefit from SPICE‑driven inputs.
+- Pico W board now loads the `RPI_PICO_W` firmware variant (with `network` module) when a CYW43 peripheral is present.
+
+### Fixed
+- Fixed keyboard‑mapped buttons firing while typing in the Monaco code editor (focus sink detection improved).
+- Fixed board pins being unclickable when the cursor moved from the drag overlay onto a pin square.
+- Fixed wire colour changes from the UI being a no‑op (`applyNow` was `false`).
+- Fixed `recordUpdateWire` being undefined in `SimulatorCanvas` causing JavaScript reference errors.
+- Fixed rotated component pin positions being wrong for wire starting, undo/redo, and import (three separate bugs).
+- Fixed Delete/Backspace key inadvertently triggering board removal instead of only deleting selected components.
+- Fixed ESP32 UART pin classification missing for multi‑board Serial interconnect (TX/RX, TX2/RX2 now properly mapped).
+- Fixed ESP32‑C3 digital inputs not resolving from SPICE (spiceDrivenInputs enabled).
+- Fixed ESP32 dual 3V3/5V pins (e.g., DevKitM‑1) not being tied to the supply rail.
+- Fixed ATtiny85 pin name mapping and Timer0 PWM register addresses (blink/PWM works).
+- Fixed AVR EEPROM not instantiated – `EEPROM.read/write` no longer hangs.
+- Fixed SSD1306 page‑addressing mode (default memory mode set to 2) so Tiny4kOLED and U8g2 render correctly.
+- Fixed breadboard holes not connecting during netlist building (5‑hole strips and power rails now merge).
+- Fixed breadboard pins invisible for dense components – only the pin under the cursor lights up (consistent with other components).
+- Fixed Pico W WiFi emulation: gSPI framing, F2 byte order, host‑wake IRQ, event frames (BDC headers), and virtual DHCP/ARP.
+- Fixed Pico W MicroPython file writing (UTF‑8 byte length for LittleFS) – multi‑byte characters no longer truncate files.
+- Fixed ESP32‑C3/‑S3 compiling with wrong target (`esp32` instead of `esp32s3`) and missing GPIO pins 40‑48.
+- Fixed ESP32 firmware download fast‑path for WiFi emulation (inDiscardableWriteData).
+- Fixed SPICE re‑solve not being triggered on ESP32/STM32/Pi output pin edges (LED stayed stuck on).
+- Fixed SPICE re‑solve not being triggered when a component burns out (burnt part stayed in the circuit).
+- Fixed circuit verifier being blind to current faults in production (branch currents not enumerated via ngspice AllVecs).
+- Fixed circuit pre‑flight verification never running on Run button click (click event mistaken for `skipVerify` argument).
+- Fixed verification findings being wiped when Run auto‑compiled after verification.
+- Fixed tooltip/text fields not being respected when Backspace was used to delete wires (AI chat, etc.).
+- Fixed window blur not releasing keyboard‑mapped buttons (no stuck keys after Alt‑Tab).
+- Fixed minimap red viewport rectangle not updating during canvas drag (now live‑tracked via `requestAnimationFrame`).
+- Fixed Docker build artifact upload exhausting Actions storage quota (disabled).
+- Fixed QEMU/ROM downloads failing on transient deploy blips (added retries).
+- Fixed backend E2E tests failing on fork PRs due to missing secrets (gated gracefully).
+- Fixed non‑English locale bundles not loading on direct navigation (i18next initialisation and case matching corrected).
+- Fixed `/en/*` routes rendering blank (redirected to prefix‑free canonical path).
+- Fixed UI: toolbar controls overlapping on narrow bar when AI chat panel was open (container query collapse).
+- Fixed UI: neon decorative outlines replaced with solid tokenized `#0071e3` accent across editor and landing page.
+- Fixed UI: “Circuit check” findings preserved across Run auto‑compile, no longer cleared.
+- Fixed UI: breadboards now always behind components, and pin overlays stack correctly with their group.
+- Fixed UI: pinned overlays pickers (Add Component, board picker) now render above AI chat panel (z‑index 9000).
+- Fixed UI: rotated component pin boxes incorrect after import/undo/load (re‑measure after layout).
+- Fixed UI: star banner tracking distinguished between dismissal and actual click‑through.
+- Fixed UI: file tab bar removed from toolbar to free up horizontal space.
+- Fixed examples: ESP32 Blink LED example now includes a series resistor.
+- Fixed examples: 8 MicroPython WiFi examples changed from plain Pico to Pico‑W board type.
+- Fixed examples: slide‑switch wiring in digital and circuit examples updated to match corrected SPDT model.
+
 ## [3.0.0] - 2026-06-11
 
 ### Added
@@ -144,3 +231,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 [2.0.1]: https://github.com/davidmonterocrespo24/velxio/releases/tag/v2.0.1
 
 [3.0.0]: https://github.com/davidmonterocrespo24/velxio/releases/tag/v3.0.0
+[3.0.1]: https://github.com/davidmonterocrespo24/velxio/releases/tag/v3.0.1
