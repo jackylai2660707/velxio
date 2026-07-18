@@ -47,6 +47,10 @@ export interface ComponentMetadata {
   // delegate the click on a pro_only component to a window-level gate
   // (see ComponentPickerModal) which the overlay implements.
   pro_only?: boolean;
+  // Everyday parts (e.g. breadboards) surface at the top of the picker:
+  // ComponentRegistry sorts featured components first after loading the
+  // metadata, keeping the original order within each group.
+  featured?: boolean;
 }
 
 export interface ComponentMetadataCollection {

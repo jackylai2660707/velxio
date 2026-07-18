@@ -35,6 +35,24 @@ if [ ! -f /root/.arduino15/arduino-cli.yaml ]; then
         https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json 2>/dev/null || true
 fi
 
+# Seed board-manager indexes vendored into the image (issue #254).
+# A /root/.arduino15 volume created by an older image can lack an index
+# file that the config references; arduino-cli then fails instance init
+# outright, which breaks EVERY compile — not just the boards from that
+# index. A stale index is harmless, a missing one is fatal, so copy any
+# vendored index the volume does not already have. `core update-index`
+# below still refreshes whatever is reachable.
+if [ -d /opt/arduino15-seed ]; then
+    for seed in /opt/arduino15-seed/package_*.json; do
+        [ -f "$seed" ] || continue
+        dest="/root/.arduino15/$(basename "$seed")"
+        if [ ! -f "$dest" ]; then
+            echo "Seeding board index $(basename "$seed") (missing from volume)"
+            cp "$seed" "$dest"
+        fi
+    done
+fi
+
 # Install missing cores.
 # ESP32 core MUST be 2.0.17 (IDF 4.4.x) — newer 3.x is incompatible with QEMU ROM bins.
 arduino-cli core update-index 2>/dev/null || true

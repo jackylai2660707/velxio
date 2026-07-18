@@ -50,6 +50,12 @@ jobs:
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
+        env:
+          # v6 uploads a .dockerbuild provenance artifact per build with NO
+          # expiry — 768 of them silently exhausted the account's Actions
+          # artifact-storage quota (which then broke artifact uploads in
+          # every other repo, e.g. qemu-lcgamboa's libqemu release CI).
+          DOCKER_BUILD_RECORD_UPLOAD: "false"
         with:
           context: .
           file: Dockerfile.standalone

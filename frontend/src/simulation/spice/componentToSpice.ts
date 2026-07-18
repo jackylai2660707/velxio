@@ -639,20 +639,50 @@ const MAPPERS: Record<string, Mapper> = {
     };
   },
 
-  // Switch / pushbutton
+  // Switch / pushbutton — a real 4-pin tactile switch. The two legs of each
+  // terminal are internally shorted (1.l is the same node as 1.r; 2.l as 2.r),
+  // and pressing bridges terminal 1 to terminal 2. Modelling BOTH legs (not
+  // just 1.l/2.l) means a user can wire GND/GPIO to any leg and it behaves like
+  // hardware — and wiring both a GPIO and GND to the SAME terminal is a dead
+  // short, exactly as on a real button. Back-compat: 2-pin variants expose A/B.
   pushbutton: (comp, netLookup) => {
-    const pins = twoPin(comp, netLookup, '1.l', '2.l');
-    const alt = pins ?? twoPin(comp, netLookup, 'A', 'B');
-    if (!alt) return null;
-    const pressed = Boolean(comp.properties.pressed);
-    const R = pressed ? 0.01 : 1e9;
-    return emitResistor(comp, alt, R);
+    const t1l = netLookup('1.l');
+    const t1r = netLookup('1.r');
+    const t2l = netLookup('2.l');
+    const t2r = netLookup('2.r');
+    const cards: string[] = [];
+    // Internal shorts between the two legs of a terminal, when both are wired.
+    if (t1l && t1r && t1l !== t1r) cards.push(`R_${comp.id}_t1 ${t1l} ${t1r} 0.01`);
+    if (t2l && t2r && t2l !== t2r) cards.push(`R_${comp.id}_t2 ${t2l} ${t2r} 0.01`);
+    // The switch itself: terminal 1 to terminal 2 (prefer the .l leg's net).
+    const term1 = t1l ?? t1r ?? netLookup('A');
+    const term2 = t2l ?? t2r ?? netLookup('B');
+    if (term1 && term2) {
+      const R = Boolean(comp.properties.pressed) ? 0.01 : 1e9;
+      cards.push(`R_${comp.id}_sw ${term1} ${term2} ${R}`);
+    }
+    return cards.length ? { cards, modelsUsed: new Set() } : null;
   },
+  // Slide switch — a 3-terminal SPDT (matching the wokwi-slide-switch element,
+  // pins '1','2','3' with '2' the middle/common wiper). The handle sits left at
+  // value 0 and right at value 1, so the wiper (pin '2') connects to pin '1' at
+  // value 0 and to pin '3' at value 1; the selected leg is a near-short (0.01Ω)
+  // and the opposite leg is open (1e9Ω). Modeling only the 1<->2 leg (the old
+  // behaviour) ignored pin '3' entirely, so a switch wired GND-1 / signal-2 /
+  // VCC-3 (the natural, Wokwi hookup) could never pull its signal high — the
+  // common was always tied to pin 1 or left floating. A leg whose outer pin is
+  // unwired is simply omitted; with no common wired the switch contributes
+  // nothing.
   'slide-switch': (comp, netLookup) => {
-    const pins = twoPin(comp, netLookup, '1', '2');
-    if (!pins) return null;
-    const closed = comp.properties.value === 1 || comp.properties.value === '1';
-    return emitResistor(comp, pins, closed ? 0.01 : 1e9);
+    const common = netLookup('2');
+    if (!common) return null;
+    const pin1 = netLookup('1');
+    const pin3 = netLookup('3');
+    const toPin3 = comp.properties.value === 1 || comp.properties.value === '1';
+    const cards: string[] = [];
+    if (pin1) cards.push(`R_${comp.id}_1 ${common} ${pin1} ${toPin3 ? 1e9 : 0.01}`);
+    if (pin3) cards.push(`R_${comp.id}_3 ${common} ${pin3} ${toPin3 ? 0.01 : 1e9}`);
+    return cards.length ? { cards, modelsUsed: new Set() } : null;
   },
 
   // Rotary potentiometer — 3-terminal divider. `value` lives in [min..max]
@@ -700,9 +730,11 @@ const MAPPERS: Record<string, Mapper> = {
   },
 
   // NTC temperature sensor — 3-pin breakout module (VCC, GND, OUT).
-  // Internal topology: NTC thermistor between VCC and OUT, plus an internal
-  // 10k pull-down from OUT to GND. Temperature up → R_ntc down → V_OUT up.
-  // Matches the β-model math used in the ntc-temperature example.
+  // Internal topology: a 10k pull-up from VCC to OUT, with the NTC thermistor
+  // from OUT to GND, so V_OUT = Vcc · R_ntc / (R_ntc + R_pull). Temperature up
+  // → R_ntc down → V_OUT down. This is the exact divider the ntc-temperature
+  // example sketch inverts to recover R_ntc (rNtc = R_PULL · v / (5 − v)); with
+  // VCC and GND swapped (NTC on top) the decoded temperature ran backwards.
   'ntc-temperature-sensor': (comp, netLookup) => {
     const vcc = netLookup('VCC');
     const gnd = netLookup('GND');
@@ -719,7 +751,7 @@ const MAPPERS: Record<string, Mapper> = {
     }
     const Rpull = parseValueWithUnits(comp.properties.pullup, 10_000);
     return {
-      cards: [`R_${comp.id}_ntc ${vcc} ${out} ${Rntc}`, `R_${comp.id}_pull ${out} ${gnd} ${Rpull}`],
+      cards: [`R_${comp.id}_pull ${vcc} ${out} ${Rpull}`, `R_${comp.id}_ntc ${out} ${gnd} ${Rntc}`],
       modelsUsed: new Set(),
     };
   },

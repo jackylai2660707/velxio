@@ -316,11 +316,23 @@ class ESPIDFCompiler:
         """Return True if FQBN targets ESP32-C3 (RISC-V)."""
         return 'esp32c3' in board_fqbn or 'esp32-c3' in board_fqbn
 
+    def _is_esp32s3(self, board_fqbn: str) -> bool:
+        """Return True if FQBN targets an ESP32-S3 (Xtensa LX7).
+
+        Covers all three S3 board FQBNs the frontend emits: esp32s3,
+        XIAO_ESP32S3 (uppercase) and nano_nora (Arduino Nano ESP32 -- carries
+        no 's3' token), so a bare substring test is insufficient.
+        """
+        fq = board_fqbn.lower()
+        return 'esp32s3' in fq or 'nano_nora' in fq
+
     def _idf_target(self, board_fqbn: str) -> str:
         """Map FQBN to IDF_TARGET."""
         if self._is_esp32c3(board_fqbn):
             return 'esp32c3'
-        # Default to esp32 (Xtensa) for all other ESP32 variants
+        if self._is_esp32s3(board_fqbn):
+            return 'esp32s3'
+        # Default to esp32 (Xtensa LX6) for the original ESP32 / ESP32-S2
         return 'esp32'
 
     def _detect_wifi_usage(self, code: str) -> bool:
@@ -1242,8 +1254,11 @@ class ESPIDFCompiler:
             env['IDF_TOOLS_PATH'] = tools_path
             if os.path.isdir(tools_path):
                 extra_paths: list[str] = []
-                # Xtensa toolchain (ESP32, ESP32-S3)
+                # Xtensa toolchain: ESP32/S2 -> xtensa-esp32-elf,
+                # ESP32-S3 -> xtensa-esp32s3-elf (IDF 4.4), unified on 5.x.
                 for tc_dir in Path(tools_path).glob('tools/xtensa-esp32-elf/*/xtensa-esp32-elf/bin'):
+                    extra_paths.append(str(tc_dir))
+                for tc_dir in Path(tools_path).glob('tools/xtensa-esp32s3-elf/*/xtensa-esp32s3-elf/bin'):
                     extra_paths.append(str(tc_dir))
                 for tc_dir in Path(tools_path).glob('tools/xtensa-esp-elf/*/xtensa-esp-elf/bin'):
                     extra_paths.append(str(tc_dir))
@@ -2252,7 +2267,7 @@ class ESPIDFCompiler:
         # Step 4: Merge binaries into flash image
         try:
             merged_path = self._merge_flash_image(
-                build_dir, is_c3,
+                build_dir, is_c3 or idf_target == 'esp32s3',  # S3 bootloader at 0x0 like C3
                 flash_size_bytes=flash_size_bytes,
                 spiffs_bin=spiffs_bin,
                 spiffs_offset=spiffs_offset,

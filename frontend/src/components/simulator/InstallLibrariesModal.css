@@ -102,7 +102,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #00b8d4;
+  color: var(--color-action-primary);
   font-weight: 500;
 }
 
@@ -184,7 +184,7 @@
 }
 
 .ilib-badge--installing {
-  color: #00b8d4;
+  color: var(--color-action-primary);
   background: #0a1f24;
   border: 1px solid #005f7a;
 }
@@ -262,13 +262,13 @@
 }
 
 .ilib-btn--primary {
-  background: #00b8d4;
+  background: var(--color-action-primary);
   color: #000;
 }
 
 .ilib-btn--primary:hover:not(:disabled) {
   background: #00d4f0;
-  box-shadow: 0 0 12px rgba(0, 184, 212, 0.4);
+  box-shadow: 0 0 12px rgba(0, 113, 227, 0.4);
   transform: translateY(-1px);
 }
 

@@ -16,10 +16,15 @@
  * - PWM duty cycle tracking (for servos, RGB LEDs, buzzers)
  */
 
+import { requestElectricalResolve } from './spice/electricalResolveHook';
+
 export type PinState = boolean;
 export type PinChangeCallback = (pin: number, state: PinState) => void;
 export type AnalogCallback = (pin: number, voltage: number) => void;
-export type PwmCallback = (pin: number, dutyCycle: number) => void;
+// timeMs (optional) is the precise simulated time of the duty-cycle change
+// (cpu.cycles / 16000). Parts that schedule audio/output use it for
+// sample-accurate timing instead of the per-frame delivery instant.
+export type PwmCallback = (pin: number, dutyCycle: number, timeMs?: number) => void;
 
 export class PinManager {
   private listeners: Map<number, Set<PinChangeCallback>> = new Map();
@@ -33,6 +38,11 @@ export class PinManager {
   // (NTC + divider on A0, photoresistor, etc.) don't get clamped to
   // the MCU's idle V-source.
   private outputPins: Set<number> = new Set();
+  // Internal pull config the MCU programmed per pin: 0=none, 1=up, 2=down.
+  // Used by the SPICE collector to add a weak pull resistor so INPUT_PULLUP
+  // inputs read the right idle level (the ESP32's internal pulls live inside
+  // QEMU and are otherwise invisible to the netlist).
+  private pinPulls: Map<number, 0 | 1 | 2> = new Map();
 
   // ── Digital pin API ──────────────────────────────────────────────────────
 
@@ -76,6 +86,22 @@ export class PinManager {
     ddrMask?: number,
   ) {
     const legacyOffsets: Record<string, number> = { PORTB: 8, PORTC: 14, PORTD: 0 };
+
+    // AVR internal pull-up: a pin configured as INPUT (DDR bit 0) with its PORT
+    // bit set enables the ~35k internal pull-up. Surface it as a pin pull so the
+    // SPICE netlist stamps the pull resistor and an INPUT_PULLUP input reads the
+    // correct idle level (HIGH) under spice-driven inputs — without this, the
+    // canonical button-to-GND would float LOW. AVR has no internal pull-down.
+    // Runs over all 8 bits (not just changed ones) so DDR/PORT edits both apply.
+    if (ddrMask !== undefined) {
+      for (let bit = 0; bit < 8; bit++) {
+        const mask = 1 << bit;
+        const arduinoPin = pinMap ? pinMap[bit] : (legacyOffsets[portName] ?? 0) + bit;
+        if (arduinoPin < 0) continue;
+        const isInput = (ddrMask & mask) === 0;
+        this.setPinPull(arduinoPin, isInput && (newValue & mask) !== 0 ? 1 : 0);
+      }
+    }
 
     for (let bit = 0; bit < 8; bit++) {
       const mask = 1 << bit;
@@ -131,11 +157,36 @@ export class PinManager {
     if (callbacks) {
       callbacks.forEach((cb) => cb(pin, state));
     }
+    // An MCU output edge changes the circuit: request a SPICE re-solve so the
+    // analog parts on this net (LED brightness, etc.) update. WS-backed boards
+    // (ESP32 / STM32 / Raspberry Pi) reach the electrical sim ONLY through here
+    // — previously they never triggered a re-solve, so a resistor-less LED
+    // stayed at its first solved brightness until unrelated activity (e.g.
+    // serial output) forced a solve. AVR / RP2040 already resolve at their own
+    // toggle sites. Gated to 'mcu' so the solver's own input feedback
+    // (triggerPinChange with the default 'external' source) can't create a
+    // solve loop; the hook coalesces overlapping ticks so per-edge is cheap.
+    if (source === 'mcu') requestElectricalResolve();
   }
 
   /** Pins the MCU has actively driven this session. */
   getOutputPins(): ReadonlySet<number> {
     return this.outputPins;
+  }
+
+  /**
+   * Record the internal pull the MCU programmed for a pin (from the guest's
+   * IO_MUX / pad config): 0 = none, 1 = pull-up, 2 = pull-down. The SPICE
+   * collector reads this back via `getPinPull` to stamp a weak resistor.
+   */
+  setPinPull(pin: number, pull: 0 | 1 | 2): void {
+    if (pull === 0) this.pinPulls.delete(pin);
+    else this.pinPulls.set(pin, pull);
+  }
+
+  /** Internal pull config for a pin: 0 = none, 1 = pull-up, 2 = pull-down. */
+  getPinPull(pin: number): 0 | 1 | 2 {
+    return this.pinPulls.get(pin) ?? 0;
   }
 
   /**
@@ -165,6 +216,7 @@ export class PinManager {
     }
     this.pinStates.clear();
     this.outputPins.clear();
+    this.pinPulls.clear();
     for (const pin of wereHigh) {
       const callbacks = this.listeners.get(pin);
       if (callbacks) {
@@ -190,14 +242,21 @@ export class PinManager {
   }
 
   /**
-   * Called by AVRSimulator each frame when an OCR register changes.
+   * Called by AVRSimulator when an OCR register changes (polled sub-frame).
+   * timeMs is the precise simulated time of the change for accurate audio.
    */
-  updatePwm(pin: number, dutyCycle: number): void {
+  updatePwm(pin: number, dutyCycle: number, timeMs?: number): void {
     this.pwmValues.set(pin, dutyCycle);
     if (dutyCycle > 0) this.outputPins.add(pin);
     const callbacks = this.pwmListeners.get(pin);
     if (callbacks) {
-      callbacks.forEach((cb) => cb(pin, dutyCycle));
+      // Backward-compatible dispatch: the original PwmCallback contract is
+      // (pin, dutyCycle). Only listeners that actually declare a 3rd parameter
+      // (the buzzer, which needs the precise onset time for sample-accurate
+      // audio) receive timeMs. Plain 2-arg listeners — and the existing tests
+      // that assert toHaveBeenCalledWith(pin, dutyCycle) — see an unchanged
+      // 2-arg call instead of a spurious trailing arg.
+      callbacks.forEach((cb) => (cb.length >= 3 ? cb(pin, dutyCycle, timeMs) : cb(pin, dutyCycle)));
     }
   }
 

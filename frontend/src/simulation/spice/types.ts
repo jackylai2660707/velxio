@@ -32,6 +32,9 @@ export interface WireForSpice {
 export interface BoardForSpice {
   /** Stable unique board id (used as prefix in net names). */
   id: string;
+  /** Board kind (e.g. 'arduino-uno', 'esp32') — used to look up over-voltage
+   *  ratings in the verifier. Optional: older callers may omit it. */
+  boardKind?: string;
   /** Supply voltage of this board, V. */
   vcc: number;
   /**
@@ -50,7 +53,11 @@ export interface BoardForSpice {
 export type PinSourceState =
   | { type: 'digital'; v: 0 | 5 | 3.3 | number }
   | { type: 'pwm'; duty: number }
-  | { type: 'input' };
+  // An input pin. `pull` carries the MCU's internal pull config (from
+  // INPUT_PULLUP / INPUT_PULLDOWN): 0/undefined = none, 1 = pull-up,
+  // 2 = pull-down. The NetlistBuilder stamps a weak resistor to the rail so
+  // the idle level is correct; without it a button-to-GND input reads LOW.
+  | { type: 'input'; pull?: 0 | 1 | 2 };
 
 /** Electrical analyses the solver can perform. */
 export type AnalysisMode =

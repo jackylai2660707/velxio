@@ -63,7 +63,7 @@
 }
 
 .vlx-desktop-welcome-primary {
-  background: linear-gradient(135deg, #007acc 0%, #005ea1 100%);
+  background: linear-gradient(135deg, var(--color-action-primary) 0%, #005ea1 100%);
   color: #fff;
   border: 1px solid #005ea1;
   font-weight: 600;
@@ -127,7 +127,7 @@
 
 .vlx-desktop-welcome-paste input:focus {
   outline: none;
-  border-color: #007acc;
+  border-color: var(--color-action-primary);
 }
 
 .vlx-desktop-welcome-trust {
@@ -307,7 +307,7 @@ body.vlx-desktop-readonly [data-velxio-action="save"] {
   width: 28px;
   height: 28px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #007acc 0%, #005ea1 100%);
+  background: linear-gradient(135deg, var(--color-action-primary) 0%, #005ea1 100%);
   color: white;
   font-size: 14px;
   font-weight: 700;
@@ -350,7 +350,7 @@ body.vlx-desktop-readonly [data-velxio-action="save"] {
   font-size: 13px;
   font-weight: 600;
   color: white;
-  background: linear-gradient(135deg, #007acc 0%, #005ea1 100%);
+  background: linear-gradient(135deg, var(--color-action-primary) 0%, #005ea1 100%);
   border: 1px solid #005ea1;
   border-radius: 5px;
   cursor: pointer;
@@ -387,7 +387,7 @@ body.vlx-desktop-readonly [data-velxio-action="save"] {
 
 .vlx-desktop-update-toast-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #007acc 0%, #00a4ff 100%);
+  background: linear-gradient(90deg, var(--color-action-primary) 0%, #00a4ff 100%);
   transition: width 0.2s ease;
 }
 

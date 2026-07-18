@@ -30,6 +30,7 @@ import {
   type ElectricalSnapshot,
 } from './CircuitSimulationService';
 import { connectAnalogInputsToMcu } from './connectAnalogInputsToMcu';
+import { connectDigitalInputsToMcu } from './connectDigitalInputsToMcu';
 import { connectChipInputsToSolve } from './connectChipInputsToSolve';
 import { connectMcuEdgesToService } from './connectMcuEdgesToService';
 import { setElectricalResolveHook } from './electricalResolveHook';
@@ -49,6 +50,7 @@ function createElectricalStorePort(): ElectricalStorePort {
         error: snapshot.warnings[0] ?? null,
         lastSolveMs: 0,
         submittedNetlist: '',
+        sourcedNets: snapshot.sourcedNets,
       });
     },
   };
@@ -82,6 +84,7 @@ export function startSimulation(): () => void {
 
   const unsubService = service.start();
   const unsubAdc = connectAnalogInputsToMcu();
+  const unsubDigitalIn = connectDigitalInputsToMcu();
   const unsubChipIn = connectChipInputsToSolve();
   const unsubEdges = connectMcuEdgesToService(service);
 
@@ -138,6 +141,7 @@ export function startSimulation(): () => void {
     setElectricalResolveHook(null);
     unsubService();
     unsubAdc();
+    unsubDigitalIn();
     unsubChipIn();
     unsubEdges();
   };

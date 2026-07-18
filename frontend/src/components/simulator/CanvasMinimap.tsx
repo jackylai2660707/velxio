@@ -7,42 +7,53 @@
  *   .canvas-content is the viewport, sized to the available area at runtime.
  *   .canvas-world's transform is `translate(pan.x, pan.y) scale(zoom)`.
  *
- * The minimap is MINIMAP_W × MINIMAP_H. SCALE = MINIMAP_W / WORLD_W = 0.05.
- * A world point (wx, wy) renders at (wx * SCALE, wy * SCALE).
+ * The minimap is MINIMAP_W × MINIMAP_H (same 4:3 aspect as the world, so
+ * SCALE_X === SCALE_Y). A world point (wx, wy) renders at (wx*SCALE, wy*SCALE).
  *
- * The viewport rectangle drawn inside the minimap shows what fraction of
- * the world is currently visible:
+ * The viewport rectangle shows what fraction of the world is visible:
  *   rect.x = -pan.x / zoom * SCALE
  *   rect.y = -pan.y / zoom * SCALE
  *   rect.w = viewport.width  / zoom * SCALE
  *   rect.h = viewport.height / zoom * SCALE
  *
+ * LIVE TRACKING: while the user pans/zooms, SimulatorCanvas deliberately
+ * bypasses React state — it writes panRef/zoomRef and mutates the
+ * .canvas-world transform directly for zero-lag dragging, committing to
+ * state only on pointer-up. The minimap therefore CANNOT rely on the pan
+ * prop alone (the red rectangle would freeze mid-drag — reported bug). It
+ * reads panRef/zoomRef inside a requestAnimationFrame loop and updates its
+ * own tiny local state only when the values actually change: the canvas
+ * stays render-free during the gesture, and only this small component
+ * re-renders, at most once per frame.
+ *
  * Interaction:
- *   - Mouse / touch down OUTSIDE the rectangle → teleport: re-center the
- *     viewport on the clicked world point.
- *   - Mouse / touch down INSIDE the rectangle → drag mode: live-pan the
- *     canvas. Inverse of (delta in minimap space) → world delta.
+ *   - Pointer down OUTSIDE the rectangle → teleport: center the viewport
+ *     on the clicked world point.
+ *   - Pointer down INSIDE the rectangle → drag mode: live-pan the canvas.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Component } from '../../types/components';
 import type { BoardInstance } from '../../types/board';
+import { BOARD_SIZE } from './BoardOnCanvas';
 import './CanvasMinimap.css';
 
-const MINIMAP_W = 100;
-const MINIMAP_H = 75;
+const MINIMAP_W = 160;
+const MINIMAP_H = 120;
 const WORLD_W = 4000;
 const WORLD_H = 3000;
 const SCALE_X = MINIMAP_W / WORLD_W;
 const SCALE_Y = MINIMAP_H / WORLD_H;
-// Board footprint is ~120 × 90 in world units; render at that size so the
-// minimap actually shows where each board lives.
-const BOARD_W_WORLD = 120;
-const BOARD_H_WORLD = 90;
+// Fallback footprint for boards missing from the BOARD_SIZE table.
+const BOARD_FALLBACK = { w: 300, h: 200 };
 
 interface Props {
   pan: { x: number; y: number };
   zoom: number;
   setPan: (p: { x: number; y: number }) => void;
+  /** Live pan/zoom refs from SimulatorCanvas. During a canvas drag these are
+   *  the ONLY up-to-date source — React state lags until pointer-up. */
+  panRef: React.MutableRefObject<{ x: number; y: number }>;
+  zoomRef: React.MutableRefObject<number>;
   components: Component[];
   boards: BoardInstance[];
   /** Ref to the .canvas-content element — we read its size to compute the
@@ -55,10 +66,28 @@ export const CanvasMinimap: React.FC<Props> = ({
   pan,
   zoom,
   setPan,
+  panRef,
+  zoomRef,
   components,
   boards,
   viewportRef,
 }) => {
+  // Live pan/zoom mirrored from the refs via rAF (see header comment).
+  const [live, setLive] = useState({ x: pan.x, y: pan.y, zoom });
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      const p = panRef.current;
+      const z = zoomRef.current;
+      setLive((cur) =>
+        cur.x === p.x && cur.y === p.y && cur.zoom === z ? cur : { x: p.x, y: p.y, zoom: z },
+      );
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [panRef, zoomRef]);
+
   // Visible viewport size in CSS pixels — listens for resize so the
   // rectangle stays accurate when the user opens / closes side panels.
   const [vp, setVp] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
@@ -75,11 +104,11 @@ export const CanvasMinimap: React.FC<Props> = ({
     return () => ro.disconnect();
   }, [viewportRef]);
 
-  // The viewport rectangle in minimap coordinates.
-  const rectX = (-pan.x / zoom) * SCALE_X;
-  const rectY = (-pan.y / zoom) * SCALE_Y;
-  const rectW = (vp.w / zoom) * SCALE_X;
-  const rectH = (vp.h / zoom) * SCALE_Y;
+  // The viewport rectangle in minimap coordinates (from LIVE values).
+  const rectX = (-live.x / live.zoom) * SCALE_X;
+  const rectY = (-live.y / live.zoom) * SCALE_Y;
+  const rectW = (vp.w / live.zoom) * SCALE_X;
+  const rectH = (vp.h / live.zoom) * SCALE_Y;
 
   // Clamp the rectangle to the minimap bounds so it never paints outside
   // (transiently during pinch-zoom-out, and persistently when the user
@@ -113,30 +142,32 @@ export const CanvasMinimap: React.FC<Props> = ({
   // is 4000×3000; minimum visible is whatever fits at the current zoom.
   const clampPan = useCallback(
     (next: { x: number; y: number }): { x: number; y: number } => {
+      const z = zoomRef.current;
       // Visible-area limits expressed in pan-space:
       //   pan.x = 0          → world x=0 at left edge of viewport.
       //   pan.x = -(WORLD_W*zoom - vp.w) → world right edge at right of viewport.
-      const minX = -(WORLD_W * zoom - vp.w);
-      const minY = -(WORLD_H * zoom - vp.h);
+      const minX = -(WORLD_W * z - vp.w);
+      const minY = -(WORLD_H * z - vp.h);
       return {
         x: Math.min(0, Math.max(minX, next.x)),
         y: Math.min(0, Math.max(minY, next.y)),
       };
     },
-    [zoom, vp.w, vp.h],
+    [zoomRef, vp.w, vp.h],
   );
 
   const teleportTo = useCallback(
     (worldX: number, worldY: number) => {
+      const z = zoomRef.current;
       // Center the viewport on (worldX, worldY).
       setPan(
         clampPan({
-          x: -worldX * zoom + vp.w / 2,
-          y: -worldY * zoom + vp.h / 2,
+          x: -worldX * z + vp.w / 2,
+          y: -worldY * z + vp.h / 2,
         }),
       );
     },
-    [zoom, vp.w, vp.h, setPan, clampPan],
+    [zoomRef, vp.w, vp.h, setPan, clampPan],
   );
 
   const onPointerDown = useCallback(
@@ -157,8 +188,8 @@ export const CanvasMinimap: React.FC<Props> = ({
         dragRef.current = {
           mouseX: e.clientX,
           mouseY: e.clientY,
-          panX: pan.x,
-          panY: pan.y,
+          panX: panRef.current.x,
+          panY: panRef.current.y,
         };
         e.currentTarget.setPointerCapture(e.pointerId);
       } else {
@@ -166,7 +197,7 @@ export const CanvasMinimap: React.FC<Props> = ({
         teleportTo(localX / SCALE_X, localY / SCALE_Y);
       }
     },
-    [clampedX, clampedY, clampedW, clampedH, pan, teleportTo],
+    [clampedX, clampedY, clampedW, clampedH, panRef, teleportTo],
   );
 
   useEffect(() => {
@@ -177,10 +208,11 @@ export const CanvasMinimap: React.FC<Props> = ({
       const dy = e.clientY - drag.mouseY;
       // (delta in minimap px) / SCALE = (delta in world units, unscaled).
       // (delta in world units) * zoom = (delta to add to pan, but inverted).
+      const z = zoomRef.current;
       setPan(
         clampPan({
-          x: drag.panX - (dx / SCALE_X) * zoom,
-          y: drag.panY - (dy / SCALE_Y) * zoom,
+          x: drag.panX - (dx / SCALE_X) * z,
+          y: drag.panY - (dy / SCALE_Y) * z,
         }),
       );
     };
@@ -195,7 +227,7 @@ export const CanvasMinimap: React.FC<Props> = ({
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
     };
-  }, [zoom, setPan, clampPan]);
+  }, [zoomRef, setPan, clampPan]);
 
   return (
     <div
@@ -206,18 +238,21 @@ export const CanvasMinimap: React.FC<Props> = ({
       aria-label="Canvas minimap"
     >
       <div className="canvas-minimap-world">
-        {boards.map((b) => (
-          <div
-            key={b.id}
-            className="canvas-minimap-board"
-            style={{
-              left: b.x * SCALE_X,
-              top: b.y * SCALE_Y,
-              width: BOARD_W_WORLD * SCALE_X,
-              height: BOARD_H_WORLD * SCALE_Y,
-            }}
-          />
-        ))}
+        {boards.map((b) => {
+          const size = BOARD_SIZE[b.boardKind] ?? BOARD_FALLBACK;
+          return (
+            <div
+              key={b.id}
+              className="canvas-minimap-board"
+              style={{
+                left: b.x * SCALE_X,
+                top: b.y * SCALE_Y,
+                width: Math.max(2, size.w * SCALE_X),
+                height: Math.max(2, size.h * SCALE_Y),
+              }}
+            />
+          );
+        })}
         {components.map((c) => (
           <div
             key={c.id}

@@ -19,6 +19,7 @@ import { useEditorStore } from '../store/useEditorStore';
 import { buildProjectSdImage, decodeSdFiles } from '../utils/sdCardFiles';
 import { PartSimulationRegistry } from '../simulation/parts';
 import { isBoardComponent, boardPinToNumber } from '../utils/boardPinMapping';
+import { isKeyBindable, formatKeyLabel } from '../utils/keyButtonBindings';
 import {
   createDefaultPinResolver,
   createSpiceResolvedPinResolver,
@@ -31,6 +32,7 @@ import { syntheticChipPin } from '../simulation/customChips/syntheticPins';
 import { resolveChipNetKey } from '../simulation/customChips/chipNets';
 import { getMixedModeScheduler } from '../simulation/spice/MixedModeScheduler';
 import { getBoardLogicFamily } from '../simulation/LogicFamilies';
+import { breadboardGroupKey } from '../utils/breadboardNets';
 
 // Side-effect imports: register every web component we'll create at runtime.
 // `@wokwi/elements` covers the upstream catalog; `../velxio-elements` adds
@@ -38,6 +40,7 @@ import { getBoardLogicFamily } from '../simulation/LogicFamilies';
 // <velxio-instr-voltmeter>) that don't exist upstream.
 import '@wokwi/elements';
 import '../velxio-elements';
+import './velxio-components/Ssd1306I2cElement'; // registers velxio-ssd1306-i2c-4pin (4-pin I2C OLED)
 
 // Map metadataId → [pinA, pinB] for 2-terminal passives.
 // "Tracing through" means: if the caller arrived on pinA, continue from pinB
@@ -169,6 +172,29 @@ function traceDetailed(
         );
         if (result.arduinoPin !== null) return result;
       }
+
+      // Breadboards join N holes per internal group (5-hole strip / power
+      // rail), which the 2-terminal PASSIVE_PIN_PAIRS map can't express.
+      // Continue the trace from every OTHER wired hole in the same group.
+      const bbGroup = comp && breadboardGroupKey(comp.metadataId, otherEp.pinName);
+      if (bbGroup && comp) {
+        const groupPins = new Set<string>();
+        for (const gw of state.wires) {
+          for (const ep of [gw.start, gw.end]) {
+            if (
+              ep.componentId === comp.id &&
+              ep.pinName !== otherEp.pinName &&
+              breadboardGroupKey(comp.metadataId, ep.pinName) === bbGroup
+            ) {
+              groupPins.add(ep.pinName);
+            }
+          }
+        }
+        for (const groupPin of groupPins) {
+          const result = traceDetailed(state, comp.id, groupPin, depth + 1, activeSeen);
+          if (result.arduinoPin !== null) return result;
+        }
+      }
     }
   }
 
@@ -252,6 +278,8 @@ export const DynamicComponent: React.FC<DynamicComponentProps> = ({
   // re-created on every stop/play cycle — which previously caused the
   // display to flash blank and lose its frame buffer.
   const hexEpoch = useSimulatorStore((s) => s.hexEpoch);
+  // Runtime burnout (P4): destroyed parts render charred + a smoke badge.
+  const isBurnt = useSimulatorStore((s) => s.burntComponents.has(id));
 
   // Track wires connected to this component so attachEvents re-runs when
   // wires are added or removed (e.g. disconnecting an LED cathode from GND).
@@ -600,7 +628,7 @@ export const DynamicComponent: React.FC<DynamicComponentProps> = ({
   // while simulation is live.
   return (
     <div
-      className="dynamic-component-wrapper"
+      className={`dynamic-component-wrapper${isBurnt ? ' velxio-burnt' : ''}`}
       style={{
         position: 'absolute',
         left: `${x}px`,
@@ -625,6 +653,22 @@ export const DynamicComponent: React.FC<DynamicComponentProps> = ({
       {/* Container for web component */}
       <div ref={containerRef} className="web-component-container" />
 
+      {/* Runtime-burnout smoke badge (P4) */}
+      {isBurnt && (
+        <div
+          className="velxio-burnt-smoke"
+          aria-hidden="true"
+          style={{ position: 'absolute', top: '-7px', right: '-7px', pointerEvents: 'none', zIndex: 6 }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <circle cx="8" cy="14" r="5" fill="#6b7280" opacity="0.85" />
+            <circle cx="14" cy="11" r="6" fill="#9ca3af" opacity="0.85" />
+            <circle cx="17" cy="16" r="4" fill="#4b5563" opacity="0.85" />
+            <circle cx="11" cy="8" r="3.5" fill="#9ca3af" opacity="0.7" />
+          </svg>
+        </div>
+      )}
+
       {/* Component label */}
       <div
         className="component-label"
@@ -641,6 +685,25 @@ export const DynamicComponent: React.FC<DynamicComponentProps> = ({
         }}
       >
         {properties.pin !== undefined ? `Pin ${properties.pin}` : metadata.name}
+        {isKeyBindable(metadata.id) && typeof properties.key === 'string' && properties.key && (
+          <span
+            style={{
+              fontSize: '9px',
+              padding: '1px 5px',
+              borderRadius: '3px',
+              backgroundColor: '#2d2d2d',
+              color: '#ddd',
+              border: '1px solid #555',
+              borderBottomWidth: '2px',
+              fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
+              fontWeight: 600,
+              lineHeight: '1.3',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {formatKeyLabel(properties.key)}
+          </span>
+        )}
         {properties.protocol && (
           <span
             style={{

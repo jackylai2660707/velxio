@@ -27,6 +27,9 @@ import {
   twiConfig,
   ATtinyTimer1,
   attinyTimer1Config,
+  AVREEPROM,
+  EEPROMMemoryBackend,
+  eepromConfig,
 } from 'avr8js';
 import type { AVRTimerConfig } from 'avr8js/dist/esm/peripherals/timer';
 import type { ADCConfig, ADCMuxConfiguration } from 'avr8js/dist/esm/peripherals/adc';
@@ -35,6 +38,7 @@ import { PinManager } from './PinManager';
 import { hexToUint8Array } from '../utils/hexParser';
 import { I2CBusManager, nullI2CMaster } from './I2CBusManager';
 import type { I2CDevice } from './I2CBusManager';
+import { attachUsiI2c } from './UsiI2cBridge';
 
 /**
  * AVRSimulator - Emulates Arduino Uno (ATmega328p) using avr8js
@@ -126,11 +130,16 @@ const MEGA_PIN_TO_PORT = (() => {
 })();
 
 // OCR register addresses → ATtiny85 pin mapping for PWM
-// Timer0: OC0A→PB0, OC0B→PB1 (ATtiny85 Timer0 OCR regs at 0x56, 0x5C)
+// Timer0: OC0A→PB0, OC0B→PB1. ATtiny85 OCR0A = I/O 0x09 → data 0x49,
+//         OCR0B = I/O 0x08 → data 0x48 (verified vs the ATTinyCore
+//         analogWrite disassembly: `out 0x29,OCR0A` / `out 0x28,OCR0B`).
+//         The old 0x56/0x5C values were WRONG — they point at PINB (0x56)
+//         and EECR (0x5C), so analogWrite() duty was never read and PWM
+//         examples (e.g. attiny85-pwm-fade) showed no fade.
 // Timer1: OC1A→PB1, OC1B→PB4 (ATtinyTimer1 OCR regs from attinyTimer1Config)
 const PWM_PINS_TINY85 = [
-  { ocrAddr: 0x56, pin: 0, label: 'OCR0A' }, // Timer0A → PB0
-  { ocrAddr: 0x5c, pin: 1, label: 'OCR0B' }, // Timer0B → PB1
+  { ocrAddr: 0x49, pin: 0, label: 'OCR0A' }, // Timer0A → PB0
+  { ocrAddr: 0x48, pin: 1, label: 'OCR0B' }, // Timer0B → PB1
   { ocrAddr: 0x4e, pin: 1, label: 'OCR1A' }, // Timer1A → PB1 (attinyTimer1Config.OCR1A)
   { ocrAddr: 0x4b, pin: 4, label: 'OCR1B' }, // Timer1B → PB4 (attinyTimer1Config.OCR1B)
 ];
@@ -212,6 +221,22 @@ const attiny85AdcConfig: ADCConfig = {
   ],
 };
 
+// ATtiny85 EEPROM register map. avr8js's default eepromConfig targets the
+// ATmega328P (EECR 0x3F …); the ATtiny85 keeps the same EECR bit layout but
+// at different data-space addresses (I/O addr + 0x20, e.g. EECR I/O 0x1C →
+// 0x3C). Vectors are 1-word RJMP so the ready-interrupt is the raw index
+// (_VECTOR(6) EE_RDY). The Arduino EEPROM library polls EEPE rather than
+// using the interrupt, so only the register addresses matter in practice.
+const attiny85EepromConfig: typeof eepromConfig = {
+  eepromReadyInterrupt: 0x06,
+  EECR: 0x3c,
+  EEDR: 0x3d,
+  EEARL: 0x3e,
+  EEARH: 0x3f,
+  eraseCycles: 28800,
+  writeCycles: 28800,
+};
+
 const attiny85Timer0Config: AVRTimerConfig = {
   bits: 8,
   captureInterrupt: 0,
@@ -222,12 +247,16 @@ const attiny85Timer0Config: AVRTimerConfig = {
   compCInterrupt: 0,
   ovfInterrupt: 0x05, // _VECTOR(5)  TIMER0_OVF_vect
   TIFR: 0x58,
-  OCRA: 0x56,
-  OCRB: 0x5c,
+  // ATtiny85 Timer0 data-space addresses (I/O + 0x20), verified against the
+  // ATTinyCore disassembly: TCCR0A `out 0x2a`→0x4A, OCR0A `out 0x29`→0x49,
+  // OCR0B `out 0x28`→0x48. The old 0x4f/0x56/0x5c were wrong (TCNT1/PINB/EECR)
+  // which broke analogWrite()/PWM on the ATtiny85.
+  OCRA: 0x49,
+  OCRB: 0x48,
   OCRC: 0,
   ICR: 0,
   TCNT: 0x52,
-  TCCRA: 0x4f,
+  TCCRA: 0x4a,
   TCCRB: 0x53,
   TCCRC: 0,
   TIMSK: 0x59,
@@ -266,6 +295,15 @@ const MEGA_PORT_CONFIGS = [
 ];
 
 export class AVRSimulator {
+  // Digital input pins are driven from the SPICE solve
+  // (connectDigitalInputsToMcu) for nets backed by a real source/element, so
+  // `digitalRead()` reflects the real wiring (a pin wired to 5V reads HIGH, a
+  // button to 5V reads HIGH when pressed) instead of a hardcoded part seed.
+  // The connector skips floating nets, so event-driven parts with no SPICE
+  // model (rotary encoder, keypad, dialer, dip-switch, stepper) keep driving
+  // their pins via the part layer. Input-control parts (button / slide-switch)
+  // check this flag and skip their direct seed — see BasicParts.spiceDriven().
+  readonly spiceDrivenInputs = true;
   private cpu: CPU | null = null;
   /** Peripherals kept alive by reference so GC doesn't collect their CPU hooks */
   private peripherals: unknown[] = [];
@@ -288,6 +326,11 @@ export class AVRSimulator {
   public spi: AVRSPI | null = null;
   public usart: AVRUSART | null = null;
   public twi: AVRTWI | null = null;
+  // EEPROM peripheral + its backing store. The backend (the actual cells) is
+  // created once and reused across firmware reloads and resets so written
+  // values persist between boots, like real hardware (GitHub issue #203).
+  private eeprom: AVREEPROM | null = null;
+  private eepromBackend: EEPROMMemoryBackend | null = null;
   public i2cBus!: I2CBusManager;
   private program: Uint16Array | null = null;
   private running = false;
@@ -336,6 +379,26 @@ export class AVRSimulator {
     if (this.boardVariant === 'mega') return PWM_PINS_MEGA;
     if (this.boardVariant === 'tiny85') return PWM_PINS_TINY85;
     return PWM_PINS_UNO;
+  }
+
+  /**
+   * Wire avr8js's EEPROM peripheral to the freshly-built CPU. Called after
+   * every CPU (re)construction. The backend (the actual cells) is created
+   * once per simulator instance and reused, so a value written in one run is
+   * still there on the next boot — matching real hardware, where re-flashing
+   * a sketch leaves EEPROM intact (GitHub issue #203). Without this peripheral
+   * the Arduino EEPROM library's `while (EECR & (1<<EEPE))` write-completion
+   * poll never exits and the sketch hangs on the first EEPROM access.
+   */
+  private attachEeprom(): void {
+    const cpu = this.cpu;
+    if (!cpu) return;
+    const size =
+      this.boardVariant === 'mega' ? 4096 : this.boardVariant === 'tiny85' ? 512 : 1024;
+    const backend = this.eepromBackend ?? new EEPROMMemoryBackend(size);
+    this.eepromBackend = backend;
+    const config = this.boardVariant === 'tiny85' ? attiny85EepromConfig : eepromConfig;
+    this.eeprom = new AVREEPROM(cpu, backend, config);
   }
 
   /**
@@ -388,7 +451,11 @@ export class AVRSimulator {
         new AVRTimer(this.cpu, attiny85Timer0Config),
         new ATtinyTimer1(this.cpu, attinyTimer1Config),
       ];
-      // usart stays null — ATtiny85 has no hardware USART
+      // usart stays null — ATtiny85 has no hardware USART.
+      // The ATtiny85 also has no hardware TWI: TinyWireM / Tiny4kOLED drive I2C
+      // through the USI peripheral on PB0 (SDA) / PB2 (SCL). Bridge that onto the
+      // shared I2C bus so devices (SSD1306 OLED, etc.) receive data.
+      this.peripherals.push(attachUsiI2c(this.cpu, this.portB, this.i2cBus));
     } else {
       // ATmega2560 has more vectors before the timers/USART (8 external INTs, etc.),
       // so the interrupt WORD addresses differ from ATmega328P.
@@ -481,6 +548,8 @@ export class AVRSimulator {
         }
       }
     }
+
+    this.attachEeprom();
 
     this.lastPortBValue = 0;
     this.lastPortCValue = 0;
@@ -727,13 +796,16 @@ export class AVRSimulator {
    */
   private pollPwmRegisters(): void {
     if (!this.cpu) return;
+    // Precise simulated time of this poll (sub-frame). Parts that schedule
+    // audio use it to recover the real onset time instead of the frame edge.
+    const timeMs = this.cpu.cycles / 16_000;
     const pins = this.pwmPins;
     for (let i = 0; i < pins.length; i++) {
       const { ocrAddr, pin } = pins[i];
       const ocrValue = this.cpu.data[ocrAddr];
       if (ocrValue !== this.lastOcrValues[i]) {
         this.lastOcrValues[i] = ocrValue;
-        this.pinManager.updatePwm(pin, ocrValue / 255);
+        this.pinManager.updatePwm(pin, ocrValue / 255, timeMs);
       }
     }
   }
@@ -786,9 +858,14 @@ export class AVRSimulator {
           avrInstruction(this.cpu); // Execute the AVR instruction
           this.cpu.tick(); // Update peripheral timers and cycles
           if (this.scheduledPinChanges.length > 0) this.flushScheduledPinChanges();
+          // Poll PWM sub-frame (~every 256 cycles = 16µs) so short OCR pulses
+          // (e.g. a metronome click that starts and ends within one 16ms frame)
+          // aren't merged or lost at the frame boundary. 256 cycles is far finer
+          // than any audible pulse yet light enough not to perturb frame pacing.
+          if ((i & 0xff) === 0) this.pollPwmRegisters();
         }
 
-        // Poll PWM registers every frame
+        // Final poll at the frame edge to catch the last change.
         this.pollPwmRegisters();
 
         // Try to drain any pending RX byte every frame. The primary
@@ -906,6 +983,10 @@ export class AVRSimulator {
           }
         }
       }
+
+      // Re-attach EEPROM to the new CPU. attachEeprom() reuses the existing
+      // backend, so EEPROM survives a Reset (persists between boots).
+      this.attachEeprom();
 
       this.lastPortBValue = 0;
       this.lastPortCValue = 0;

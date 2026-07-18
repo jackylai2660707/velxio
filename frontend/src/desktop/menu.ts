@@ -29,6 +29,7 @@ import { useSimulatorStore } from '../store/useSimulatorStore';
 import { useEditorStore } from '../store/useEditorStore';
 import { useProjectStore } from '../store/useProjectStore';
 import { useCompileLogsStore } from '../store/useCompileLogsStore';
+import { showMessageDialog } from '../store/useMessageDialogStore';
 import { switchLocale } from '../i18n/path';
 import { LOCALES, type Locale } from '../i18n/config';
 
@@ -148,8 +149,9 @@ function pickAndImportVlx(): void {
       try {
         await importVlxFile(file);
       } catch (err) {
-        // eslint-disable-next-line no-alert
-        alert(`Failed to open .vlx: ${(err as Error).message}`);
+        showMessageDialog(`Failed to open .vlx: ${(err as Error).message}`, {
+          kind: 'error',
+        });
       }
     }
     document.body.removeChild(input);
@@ -181,7 +183,6 @@ function newProject(): void {
     project.currentProject !== null;
 
   if (hasWork) {
-    // eslint-disable-next-line no-alert
     const ok = window.confirm(
       'Start a new project? Any unsaved changes will be lost.',
     );
@@ -230,19 +231,18 @@ async function checkForUpdates(): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updater = (window as any).__TAURI__?.updater;
     if (!updater?.check) {
-      // eslint-disable-next-line no-alert
-      alert('Update plugin not available in this build.');
+      showMessageDialog('Update plugin not available in this build.');
       return;
     }
     const update = await updater.check();
     if (update) {
       await update.downloadAndInstall();
     } else {
-      // eslint-disable-next-line no-alert
-      alert('Velxio Desktop is up to date.');
+      showMessageDialog('Velxio Desktop is up to date.', { kind: 'success' });
     }
   } catch (err) {
-    // eslint-disable-next-line no-alert
-    alert(`Update check failed: ${(err as Error).message}`);
+    showMessageDialog(`Update check failed: ${(err as Error).message}`, {
+      kind: 'error',
+    });
   }
 }

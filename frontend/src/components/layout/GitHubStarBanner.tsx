@@ -6,10 +6,17 @@ const GITHUB_URL = 'https://github.com/davidmonterocrespo24/velxio';
 
 interface Props {
   onClose: () => void;
+  // Fired when the user clicks through to the repo (distinct from a plain
+  // dismiss) — lets the caller never prompt that user again.
+  onStarClick: () => void;
+  // 1 = first ask; 2 = follow-up ask for someone who dismissed the first one.
+  round?: 1 | 2;
 }
 
-export const GitHubStarBanner: React.FC<Props> = ({ onClose }) => {
+export const GitHubStarBanner: React.FC<Props> = ({ onClose, onStarClick, round = 1 }) => {
   const { t } = useTranslation();
+  const titleKey = round === 2 ? 'starBanner.title2' : 'starBanner.title';
+  const bodyKey = round === 2 ? 'starBanner.body2' : 'starBanner.body';
   return (
     <div className="gh-star-banner" role="dialog" aria-label={t('starBanner.ariaLabel')}>
       <div className="gh-star-banner__icon">
@@ -19,14 +26,14 @@ export const GitHubStarBanner: React.FC<Props> = ({ onClose }) => {
       </div>
 
       <div className="gh-star-banner__body">
-        <strong>{t('starBanner.title')}</strong>
-        <p>{t('starBanner.body')}</p>
+        <strong>{t(titleKey)}</strong>
+        <p>{t(bodyKey)}</p>
         <a
           href={GITHUB_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="gh-star-banner__btn"
-          onClick={onClose}
+          onClick={onStarClick}
         >
           ⭐ {t('starBanner.cta')}
         </a>

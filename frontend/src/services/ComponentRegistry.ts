@@ -230,12 +230,18 @@ export class ComponentRegistry {
    * Process and index metadata
    */
   private processMetadata(components: ComponentMetadata[]): void {
-    this.allComponents = components;
+    // Featured (everyday) parts — e.g. breadboards — surface first in the
+    // picker. Array.prototype.sort is stable, so the metadata-file order is
+    // preserved within the featured and non-featured groups.
+    this.allComponents = [...components].sort(
+      (a, b) => Number(!!b.featured) - Number(!!a.featured),
+    );
     this.metadata.clear();
     this.categories.clear();
 
-    // Index by ID
-    components.forEach((component) => {
+    // Index by ID. Iterate the sorted list so the per-category groups keep
+    // featured components first too.
+    this.allComponents.forEach((component) => {
       this.metadata.set(component.id, component);
 
       // Group by category

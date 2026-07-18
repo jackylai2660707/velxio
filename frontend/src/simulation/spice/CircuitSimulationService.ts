@@ -40,6 +40,9 @@ export interface SimulatorStorePort {
       end: { componentId: string; pinName: string };
     }>;
     boards: Array<{ id: string; boardKind: string; pinStates?: Record<string, unknown> }>;
+    /** Components destroyed at runtime (P4) — excluded from the netlist so a
+     *  burnt part actually goes open. Optional for non-store ports. */
+    burntComponents?: Set<string>;
   };
   subscribe(listener: (state: unknown, prev: unknown) => void): () => void;
 }
@@ -64,6 +67,9 @@ export interface ElectricalSnapshot {
   timeWaveforms?: TimeWaveforms;
   /** Convergence warnings from the solver. */
   warnings: string[];
+  /** Nets backed by a real source/element (see NetlistBuilder). Gates which
+   *  MCU input pins connectDigitalInputsToMcu may drive from the solve. */
+  sourcedNets: Set<string>;
 }
 
 /** What the service needs from the scheduler. */
@@ -127,6 +133,7 @@ export class CircuitSimulationService {
     nets: string[];
     voltageSources: string[];
     analysisKind: 'op' | 'tran' | 'ac';
+    sourcedNets: Set<string>;
   } | null = null;
 
   /** Set by `stop()`. Once true, `tick()` and `handleMcuEdge()`
@@ -279,8 +286,14 @@ export class CircuitSimulationService {
 
   private async runSolve(): Promise<void> {
     const state = this.simStore.getState();
+    // P4: a runtime-destroyed part is excluded from the netlist so it actually
+    // goes open — its current stops and anything it fed loses power (cascading
+    // failure), the way real hardware behaves once a component burns out.
+    const burnt = state.burntComponents;
+    const liveComponents =
+      burnt && burnt.size > 0 ? state.components.filter((c) => !burnt.has(c.id)) : state.components;
     const snap = {
-      components: state.components,
+      components: liveComponents,
       wires: state.wires,
       boards: state.boards.map((b) => ({
         id: b.id,
@@ -293,7 +306,7 @@ export class CircuitSimulationService {
       })),
     };
     const input = buildInputFromStore(snap as Parameters<typeof buildInputFromStore>[0]);
-    const { netlist, pinNetMap, nets, voltageSources } = buildNetlist(input);
+    const { netlist, pinNetMap, nets, voltageSources, sourcedNets } = buildNetlist(input);
 
     // Tell the scheduler exactly which vectors we want — every net
     // voltage + every branch current.
@@ -317,6 +330,7 @@ export class CircuitSimulationService {
       nets,
       voltageSources,
       analysisKind: input.analysis.kind,
+      sourcedNets,
     };
     this.publishFromLastResult();
   }
@@ -371,6 +385,7 @@ export class CircuitSimulationService {
       analysisMode: ctx.analysisKind,
       timeWaveforms,
       warnings: result.warnings,
+      sourcedNets: ctx.sourcedNets,
     });
   }
 
@@ -382,7 +397,14 @@ export class CircuitSimulationService {
     const unsubscribe = this.simStore.subscribe((next, prev) => {
       const n = next as ReturnType<typeof this.simStore.getState>;
       const p = prev as ReturnType<typeof this.simStore.getState>;
-      if (n.components !== p.components || n.wires !== p.wires || n.boards !== p.boards) {
+      if (
+        n.components !== p.components ||
+        n.wires !== p.wires ||
+        n.boards !== p.boards ||
+        // P4: a part burning out (or a Reset un-burning it) changes which
+        // components are in the netlist, so re-solve to apply the open.
+        n.burntComponents !== p.burntComponents
+      ) {
         void this.tick();
       }
     });

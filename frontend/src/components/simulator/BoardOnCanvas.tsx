@@ -27,7 +27,7 @@ import { PinOverlay } from './PinOverlay';
 
 // Board visual dimensions (width × height) for the drag-overlay sizing.
 // ESP32 sizes match the wokwi-boards SVG rendered at 5 px/mm.
-const BOARD_SIZE: Record<string, { w: number; h: number }> = {
+export const BOARD_SIZE: Record<string, { w: number; h: number }> = {
   // wokwi-elements: rendered at 96 dpi — 1mm = 3.7795px
   'arduino-uno': { w: 274, h: 202 }, // 72.58mm × 53.34mm
   'arduino-nano': { w: 170, h: 67 }, // 44.9mm  × 17.8mm
@@ -75,6 +75,9 @@ interface BoardOnCanvasProps {
   /** When false, the pin overlay is hidden — keeps the canvas uncluttered when
    * the user isn't hovering, isn't selecting, and isn't actively wiring. */
   showPins?: boolean;
+  /** True while a wire is in progress — forwarded to PinOverlay so dense
+   * boards paint every square (they're all valid wire targets). */
+  wiring?: boolean;
   onMouseDown: (e: React.MouseEvent) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
   onMouseEnter?: () => void;
@@ -89,6 +92,7 @@ export const BoardOnCanvas = ({
   led13 = false,
   isActive = false,
   showPins = true,
+  wiring = false,
   onMouseDown,
   onContextMenu,
   onMouseEnter,
@@ -158,7 +162,19 @@ export const BoardOnCanvas = ({
   })();
 
   return (
-    <>
+    // Zero-size positioned wrapper: children keep their absolute canvas
+    // coords, but board + pins now share ONE stacking context, so this
+    // board's pins can never paint above a component/board covering it.
+    // z 0 keeps every board below components (their groups use z 1/2).
+    // Hover handlers live HERE, on the wrapper that owns both the drag
+    // overlay AND the pin squares — putting them on the drag overlay (a
+    // sibling of PinOverlay) made moving onto a pin fire mouseleave, which
+    // cleared the hover and hid the pins before you could click one.
+    <div
+      style={{ position: 'absolute', left: 0, top: 0, zIndex: 0 }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
       {boardEl}
 
       {/* Active board highlight ring */}
@@ -215,8 +231,6 @@ export const BoardOnCanvas = ({
             onMouseDown(e);
           }}
           onContextMenu={onContextMenu}
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
         />
       )}
 
@@ -230,7 +244,8 @@ export const BoardOnCanvas = ({
         wrapperOffsetX={0}
         wrapperOffsetY={0}
         zoom={zoom}
+        wiring={wiring}
       />
-    </>
+    </div>
   );
 };

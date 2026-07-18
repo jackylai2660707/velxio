@@ -16,9 +16,45 @@
  */
 import { UnionFind } from './unionFind';
 import { componentToSpice } from './componentToSpice';
+import { isBreadboard, breadboardGroupKey } from '../../utils/breadboardNets';
 import type { BuildNetlistInput, ComponentForSpice, BoardForSpice, WireForSpice } from './types';
 
-const GROUND_PIN_RE = /^(gnd|vss|vee|ground|gnd\.\d+)$/i;
+/**
+ * Union the wired pins of every breadboard that share an internal group
+ * (5-hole column or power rail). Breadboard connectivity is static, so it is
+ * modelled at the union-find level — no SPICE cards needed — which makes it
+ * equally visible to buildNetlist, the circuit verifier, and the overlay
+ * net maps (all of which run their own bare union-find over wires).
+ */
+function unionBreadboardGroups(
+  uf: UnionFind,
+  components: ReadonlyArray<{ id: string; metadataId: string }>,
+  wires: WireForSpice[],
+  pinKey: (componentId: string, pinName: string) => string,
+): void {
+  for (const comp of components) {
+    if (!isBreadboard(comp.metadataId)) continue;
+    const anchors = new Map<string, string>(); // groupKey → first pin key
+    for (const pinName of pinsReferencedByWires(comp.id, wires)) {
+      const group = breadboardGroupKey(comp.metadataId, pinName);
+      if (!group) continue;
+      const key = pinKey(comp.id, pinName);
+      uf.add(key);
+      const anchor = anchors.get(group);
+      if (anchor) {
+        uf.union(anchor, key);
+      } else {
+        anchors.set(group, key);
+      }
+    }
+  }
+}
+
+// Matches GND, VSS, VEE, GROUND and any numbered ground pin in the common
+// spellings boards actually emit: GND.1 / GND.2 (dotted), GND2 / GND3 (bare),
+// GND_2 (underscore). Several dev-kit board elements label their extra ground
+// pad "GND2" (no dot), which previously fell through and floated.
+const GROUND_PIN_RE = /^(gnd|vss|vee|ground)([._]?\d+)?$/i;
 // Deliberately excludes "V+" / "V-" (which are probe terminals) and
 // "VBB" (non-standard). VCC-like pins on boards are handled via the
 // board.vccPinNames list, not this regex.
@@ -63,6 +99,18 @@ export interface BuildNetlistResult {
    * request branch currents (`i(v_<name>)`).
    */
   voltageSources: string[];
+  /**
+   * Nets that are backed by a real electrical source/element — a power rail
+   * ('0' / 'vcc_rail'), a board GPIO V-source, an internal pull resistor, or
+   * any net a componentToSpice mapper emitted a card for (resistor, button
+   * switch, divider, etc.). Excludes purely-floating nets (which only get the
+   * step-7 auto-pull-down). `connectDigitalInputsToMcu` drives an MCU input pin
+   * from the solve ONLY when its net is in here, so event-driven parts with no
+   * SPICE model (rotary encoder, keypad, dialer, dip-switch, stepper) keep
+   * driving their own pins via the part layer instead of being forced LOW by a
+   * floating-net read.
+   */
+  sourcedNets: Set<string>;
 }
 
 export function buildNetlist(input: BuildNetlistInput): BuildNetlistResult {
@@ -87,6 +135,9 @@ export function buildNetlist(input: BuildNetlistInput): BuildNetlistResult {
       uf.union(a, b);
     }
   }
+
+  // Breadboards: join wired holes that share an internal strip/rail.
+  unionBreadboardGroups(uf, components, wires, pinKey);
 
   // ── 2. Canonicalize ground / VCC pins ────────────────────────────────────
   for (const board of boards) {
@@ -134,6 +185,11 @@ export function buildNetlist(input: BuildNetlistInput): BuildNetlistResult {
   const cards: string[] = [];
   const modelLines = new Set<string>();
   const dominantVcc = boards[0]?.vcc ?? 5;
+  // Nets backed by a real source/element (see BuildNetlistResult.sourcedNets).
+  // Rails are always sourced; component + GPIO-source + pull nets are added
+  // below. Deliberately NOT populated from the step-7 auto-pull-down cards,
+  // since those mark FLOATING nets.
+  const sourcedNets = new Set<string>(['0', 'vcc_rail']);
 
   for (const comp of components) {
     const localLookup = (pinName: string) => netLookup(comp.id, pinName);
@@ -141,6 +197,11 @@ export function buildNetlist(input: BuildNetlistInput): BuildNetlistResult {
     if (!emission) continue;
     cards.push(...emission.cards);
     for (const m of emission.modelsUsed) modelLines.add(m);
+    // Every net this component connects to now has a real SPICE element on it.
+    for (const pinName of pinsReferencedByWires(comp.id, wires)) {
+      const n = netLookup(comp.id, pinName);
+      if (n) sourcedNets.add(n);
+    }
   }
 
   // ── 5. Board GPIO sources ─────────────────────────────────────────────────
@@ -152,19 +213,45 @@ export function buildNetlist(input: BuildNetlistInput): BuildNetlistResult {
   // hyphenated source names — making MCU pin transitions stop propagating
   // after the very first solve. So MixedModeScheduler.onMcuPinChange must
   // build the same sanitized name we emit here. See sanitizeSpiceId().
+  // Set when an internal pull-up is stamped to vcc_rail but no wired pin
+  // referenced VCC — we must still emit the rail source (step 6) or the
+  // pull-up would hang off a dead node and the input would read LOW anyway.
+  let vccRailNeeded = false;
   for (const board of boards) {
     for (const [pinName, state] of Object.entries(board.pins)) {
-      if (state.type === 'input') continue; // don't drive the pin
       const net = netLookup(board.id, pinName);
+      if (state.type === 'input') {
+        // Internal pull-up / pull-down (INPUT_PULLUP / INPUT_PULLDOWN): a weak
+        // resistor to the rail so the idle level is correct. 45 kΩ matches the
+        // ESP32 internal pull and is weak enough that any real external driver
+        // or pull (<= 10 kΩ) dominates. An input is never driven otherwise.
+        if (state.pull && net && net !== '0' && net !== 'vcc_rail') {
+          const rail = state.pull === 1 ? 'vcc_rail' : '0';
+          if (state.pull === 1) vccRailNeeded = true;
+          cards.push(
+            `R_pull_${sanitizeSpiceId(board.id)}_${sanitizeSpiceId(pinName)} ${net} ${rail} 45000`,
+          );
+          // NOTE: deliberately do NOT add this net to sourcedNets. An internal
+          // pull ALONE must not make connectDigitalInputsToMcu drive the pin —
+          // else an INPUT_PULLUP pin wired to an event-driven part with no SPICE
+          // model (rotary encoder, keypad, …) would be pinned at the idle pull
+          // level and clobber the part's own pulses. A net counts as
+          // source-backed only when a real component card / rail also touches it
+          // (button switch, divider, cross-board output). The pull resistor is
+          // still stamped so component-driven nets read the correct idle level.
+        }
+        continue;
+      }
       if (!net) continue;
       if (net === '0' || net === 'vcc_rail') continue; // already served
       const v = state.type === 'digital' ? state.v : state.duty * board.vcc;
       cards.push(`V_${sanitizeSpiceId(board.id)}_${sanitizeSpiceId(pinName)} ${net} 0 DC ${v}`);
+      sourcedNets.add(net); // board GPIO V-source drives this net (e.g. cross-board input)
     }
   }
 
-  // ── 6. Vcc rail source (if any pin referenced it) ─────────────────────────
-  if (hasNet(netNames, 'vcc_rail')) {
+  // ── 6. Vcc rail source (if any pin referenced it, or a pull-up needs it) ──
+  if (hasNet(netNames, 'vcc_rail') || vccRailNeeded) {
     cards.unshift(`V_VCC_RAIL vcc_rail 0 DC ${dominantVcc}`);
   }
 
@@ -182,6 +269,8 @@ export function buildNetlist(input: BuildNetlistInput): BuildNetlistResult {
     const b = netLookup(w.end.componentId, w.end.pinName);
     if (!a || !b) continue;
     cards.push(`R_wire_${w.id} ${a} ${b} ${ohms}`);
+    sourcedNets.add(a);
+    sourcedNets.add(b);
   }
 
   // ── 7. Auto pull-downs for floating nets ─────────────────────────────────
@@ -258,6 +347,7 @@ export function buildNetlist(input: BuildNetlistInput): BuildNetlistResult {
     pinNetMap,
     nets,
     voltageSources,
+    sourcedNets,
   };
 }
 
@@ -402,6 +492,9 @@ export function buildWireNetMap(
     uf.union(a, b);
   }
 
+  // Breadboards: join wired holes that share an internal strip/rail.
+  unionBreadboardGroups(uf, components, wires, pin);
+
   for (const board of boards) {
     for (const pName of board.groundPinNames ?? []) uf.setCanonical(pin(board.id, pName), '0');
     for (const pName of board.vccPinNames ?? []) uf.setCanonical(pin(board.id, pName), 'vcc_rail');
@@ -448,6 +541,9 @@ export function buildBoardPinNetMap(
     uf.add(b);
     uf.union(a, b);
   }
+
+  // Breadboards: join wired holes that share an internal strip/rail.
+  unionBreadboardGroups(uf, components, wires, pin);
 
   // Canonicalize board ground/vcc pins (from boardPinGroups metadata)
   for (const board of boards) {

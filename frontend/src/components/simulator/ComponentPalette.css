@@ -46,7 +46,7 @@
 
 .palette-item:hover {
   background-color: #4d4d4d;
-  border-color: #007acc;
+  border-color: var(--color-action-primary);
 }
 
 .palette-item:active {

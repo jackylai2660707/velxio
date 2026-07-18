@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { BoardKind } from '../../types/board';
 import { BOARD_KIND_LABELS } from '../../types/board';
 import type {
@@ -19,6 +20,7 @@ import {
   boardSupportsPsram,
   getDefaultOptionsForKind,
 } from '../../types/boardOptions';
+import { showConfirmDialog } from '../../store/useMessageDialogStore';
 import './BoardOptionsModal.css';
 
 interface BoardOptionsModalProps {
@@ -80,6 +82,7 @@ export const BoardOptionsModal = ({
   onApply,
   onSpiffsChange,
 }: BoardOptionsModalProps) => {
+  const { t } = useTranslation();
   const seed = useMemo(
     () => currentOptions ?? getDefaultOptionsForKind(boardKind),
     [currentOptions, boardKind],
@@ -121,8 +124,15 @@ export const BoardOptionsModal = ({
     const next: SpiffsFile[] = [...spiffsFiles];
     for (const f of Array.from(files)) {
       if (next.some((existing) => existing.name === f.name)) {
-        const overwrite = window.confirm(
-          `A file named "${f.name}" already exists. Overwrite?`,
+        const overwrite = await showConfirmDialog(
+          t('editor.boardOptions.confirmOverwrite.message', { name: f.name }),
+          {
+            kind: 'error',
+            title: t('editor.boardOptions.confirmOverwrite.title'),
+            confirmLabel: t('editor.boardOptions.confirmOverwrite.confirm'),
+            cancelLabel: t('editor.boardOptions.confirmOverwrite.cancel'),
+            danger: true,
+          },
         );
         if (!overwrite) continue;
       }

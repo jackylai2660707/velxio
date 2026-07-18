@@ -220,6 +220,58 @@ export const ExamplesGallery: React.FC<ExamplesGalleryProps> = ({ onLoadExample 
     return { label: tab.label, color: tab.color, bg: tab.bg };
   };
 
+  const CATEGORIES = [
+    'all',
+    'basics',
+    'sensors',
+    'displays',
+    'communication',
+    'games',
+    'robotics',
+    'circuits',
+  ] as const;
+  const DIFFICULTIES = ['all', 'beginner', 'intermediate', 'advanced'] as const;
+
+  // Active filters rendered as removable chips (the compact replacement for
+  // the old three rows of always-visible filter buttons). Each chip clears
+  // its own filter; "Clear all" resets everything.
+  const boardTabForChip = BOARD_TABS.find((tb) => tb.id === selectedBoard);
+  const activeChips: { key: string; label: string; onClear: () => void }[] = [];
+  if (selectedBoard !== 'all' && boardTabForChip) {
+    activeChips.push({
+      key: 'board',
+      label: boardTabForChip.label,
+      onClear: () => setSelectedBoard('all'),
+    });
+  }
+  if (selectedCategory !== 'all') {
+    activeChips.push({
+      key: 'cat',
+      label: t(`examples.filters.category.${selectedCategory}`),
+      onClear: () => setSelectedCategory('all'),
+    });
+  }
+  if (selectedDifficulty !== 'all') {
+    activeChips.push({
+      key: 'diff',
+      label: t(`examples.filters.difficulty.${selectedDifficulty}`),
+      onClear: () => setSelectedDifficulty('all'),
+    });
+  }
+  if (search.trim()) {
+    activeChips.push({
+      key: 'search',
+      label: `“${search.trim()}”`,
+      onClear: () => setSearch(''),
+    });
+  }
+  const resetAll = () => {
+    setSearch('');
+    setSelectedBoard('all');
+    setSelectedCategory('all');
+    setSelectedDifficulty('all');
+  };
+
   return (
     <div className="examples-gallery">
       <div className="examples-header">
@@ -227,8 +279,9 @@ export const ExamplesGallery: React.FC<ExamplesGalleryProps> = ({ onLoadExample 
         <p>{t('examples.subtitle')}</p>
       </div>
 
-      {/* Search */}
-      <div className="examples-search">
+      {/* Compact toolbar: search + three dropdowns + live count.
+          Replaces the old search row + 16 board tabs + two filter rows. */}
+      <div className="examples-toolbar">
         <div className="examples-search-wrap">
           <svg
             className="examples-search-icon"
@@ -265,78 +318,76 @@ export const ExamplesGallery: React.FC<ExamplesGalleryProps> = ({ onLoadExample 
             </button>
           )}
         </div>
-        {searchTokens.length > 0 && (
-          <span className="examples-search-count">
-            {t('examples.matchCount', { count: filteredExamples.length })}
-          </span>
-        )}
+
+        <select
+          className="examples-select"
+          value={selectedBoard}
+          onChange={(e) => setSelectedBoard(e.target.value)}
+          aria-label={t('examples.filters.boardLabel', 'Board')}
+        >
+          {BOARD_TABS.map((tab) => (
+            <option key={tab.id} value={tab.id}>
+              {tab.id === 'all' ? t('examples.filters.allBoards', 'All boards') : tab.label}
+              {boardCounts[tab.id] != null ? ` (${boardCounts[tab.id]})` : ''}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="examples-select"
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value as typeof selectedCategory)}
+          aria-label={t('examples.filters.categoryLabel')}
+        >
+          {CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>
+              {t(`examples.filters.category.${cat}`)}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="examples-select"
+          value={selectedDifficulty}
+          onChange={(e) => setSelectedDifficulty(e.target.value as typeof selectedDifficulty)}
+          aria-label={t('examples.filters.difficultyLabel')}
+        >
+          {DIFFICULTIES.map((diff) => (
+            <option key={diff} value={diff}>
+              {t(`examples.filters.difficulty.${diff}`)}
+            </option>
+          ))}
+        </select>
+
+        <span className="examples-count">
+          {t('examples.matchCount', { count: filteredExamples.length })}
+        </span>
       </div>
 
-      {/* Board tabs */}
-      <div className="examples-board-tabs">
-        {BOARD_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            className={`board-tab ${selectedBoard === tab.id ? 'active' : ''}`}
-            style={
-              selectedBoard === tab.id
-                ? { backgroundColor: tab.bg, color: tab.color, borderColor: tab.bg }
-                : {}
-            }
-            onClick={() => setSelectedBoard(tab.id)}
-          >
-            {tab.label}
-            {boardCounts[tab.id] != null && (
-              <span className="board-tab-count">{boardCounts[tab.id]}</span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Category + Difficulty filters */}
-      <div className="examples-filters">
-        <div className="filter-group">
-          <label>{t('examples.filters.categoryLabel')}</label>
-          <div className="filter-buttons">
-            {(
-              [
-                'all',
-                'basics',
-                'sensors',
-                'displays',
-                'communication',
-                'games',
-                'robotics',
-                'circuits',
-              ] as const
-            ).map((cat) => (
+      {/* Active-filter chips (removable badges). */}
+      {activeChips.length > 0 && (
+        <div className="examples-chips">
+          {activeChips.map((chip) => (
+            <span key={chip.key} className="filter-chip">
+              {chip.label}
               <button
-                key={cat}
-                className={`filter-button ${selectedCategory === cat ? 'active' : ''}`}
-                onClick={() => setSelectedCategory(cat)}
+                type="button"
+                className="filter-chip-x"
+                onClick={chip.onClear}
+                aria-label={t('examples.clear')}
+                title={t('examples.clear')}
               >
-                {cat !== 'all' && getCategoryIcon(cat as ExampleProject['category'])}{' '}
-                {t(`examples.filters.category.${cat}`)}
+                ×
               </button>
-            ))}
-          </div>
+            </span>
+          ))}
+          {activeChips.length > 1 && (
+            <button type="button" className="filter-chip-clear-all" onClick={resetAll}>
+              {t('examples.resetFilters')}
+            </button>
+          )}
         </div>
-
-        <div className="filter-group">
-          <label>{t('examples.filters.difficultyLabel')}</label>
-          <div className="filter-buttons">
-            {(['all', 'beginner', 'intermediate', 'advanced'] as const).map((diff) => (
-              <button
-                key={diff}
-                className={`filter-button ${selectedDifficulty === diff ? 'active' : ''}`}
-                onClick={() => setSelectedDifficulty(diff)}
-              >
-                {t(`examples.filters.difficulty.${diff}`)}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Examples Grid */}
       <div className="examples-grid">

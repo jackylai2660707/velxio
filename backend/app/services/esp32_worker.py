@@ -24,6 +24,7 @@ stdout        : JSON event lines (one per line, flushed immediately)
                {"type": "system",       "event": "reboot", "count": N}
                {"type": "gpio_change",  "pin": N,  "state": V}
                {"type": "gpio_dir",     "pin": N,  "dir": V}
+               {"type": "gpio_pull",    "pin": N,  "pull": V}   # 0=none 1=up 2=down
                {"type": "uart_tx",      "uart": N, "byte": V}
                {"type": "ledc_duty",    "channel": N, "duty_pct": F}
                {"type": "rmt_event",    "channel": N, ...}
@@ -38,6 +39,7 @@ import base64
 import ctypes
 import json
 import os
+import queue
 import sys
 import tempfile
 import threading
@@ -106,12 +108,58 @@ except ImportError:
 
 _stdout_lock = threading.Lock()
 
+# _emit is called from QEMU callback context (the iothread — _on_uart_tx fires
+# per UART byte). A blocking stdout write there freezes the ENTIRE guest when
+# the parent's pipe fills (64 KB) because the reader stalls: observed as an
+# intermittent boot hang right after the ROM log (~the point where the
+# accumulated JSON events cross the pipe capacity). Decouple with a bounded
+# queue + dedicated writer thread so QEMU never blocks on stdout. Under
+# extreme backpressure we drop events (counted, reported on stderr) — losing
+# telemetry beats freezing the emulated CPU.
+_emit_q: 'queue.Queue[dict | None]' = queue.Queue(maxsize=20000)
+_emit_dropped = 0
+
 
 def _emit(obj: dict) -> None:
-    """Write one JSON event line to stdout (thread-safe, always flushed)."""
-    with _stdout_lock:
-        sys.stdout.write(json.dumps(obj) + '\n')
-        sys.stdout.flush()
+    """Queue one JSON event line for stdout (never blocks QEMU callbacks)."""
+    global _emit_dropped
+    try:
+        _emit_q.put_nowait(obj)
+    except queue.Full:
+        _emit_dropped += 1
+        if _emit_dropped % 1000 == 1:
+            sys.stderr.write(f'[esp32_worker] WARNING: stdout backpressure, '
+                             f'{_emit_dropped} events dropped\n')
+            sys.stderr.flush()
+
+
+def _emit_writer_loop() -> None:
+    """Drain the event queue to stdout. Runs on its own thread for the whole
+    worker lifetime; a None sentinel (posted at shutdown) ends the loop."""
+    while True:
+        obj = _emit_q.get()
+        if obj is None:
+            return
+        lines = [json.dumps(obj)]
+        done = False
+        # Opportunistically batch whatever else is queued into one write.
+        try:
+            while True:
+                nxt = _emit_q.get_nowait()
+                if nxt is None:
+                    done = True
+                    break
+                lines.append(json.dumps(nxt))
+        except queue.Empty:
+            pass
+        with _stdout_lock:
+            sys.stdout.write('\n'.join(lines) + '\n')
+            sys.stdout.flush()
+        if done:
+            return
+
+
+threading.Thread(target=_emit_writer_loop, name='emit-writer', daemon=True).start()
 
 
 def _log(msg: str) -> None:
@@ -267,9 +315,14 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
         except Exception as _e:  # noqa: BLE001
             _log(f'[sd] failed to attach microSD: {_e!r}')
 
-    # Adjust GPIO pinmap based on chip: ESP32-C3 has only 22 GPIOs
+    # Adjust GPIO pinmap based on chip: ESP32-C3 has only 22 GPIOs; the
+    # ESP32-S3 has 49 (GPIO0..48). The identity pinmap's length is what
+    # picsimlab_wire_gpio iterates, so the S3 needs 49 for pins 40..48 to be
+    # wired to the host (bank-1 named outputs in the widened esp32_gpio model).
     if 'c3' in machine:
         _build_pinmap(22)
+    elif 's3' in machine:
+        _build_pinmap(49)
 
     # ── 2. Load DLL ───────────────────────────────────────────────────────────
     _MINGW64_BIN = r'C:\msys64\mingw64\bin'
@@ -518,6 +571,62 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                        'signal_id': signal_id})
             for gpio_pin in cleared:
                 _emit({'type': 'gpio_routing_clear', 'gpio': gpio_pin})
+        except Exception:
+            pass
+
+    # GPIO pull-up / pull-down state, keyed by GPIO number → 0=none 1=up 2=down.
+    # Diff-based like the SignalRouter snapshot so we only emit real changes.
+    _pull_state: dict[int, int] = {}
+
+    def _refresh_pin_pulls() -> None:
+        """Scan IO_MUX FUN_WPU/FUN_WPD bits and emit `gpio_pull` on change.
+
+        The ESP32's internal pull resistors are configured per pad in the
+        IO_MUX register: FUN_WPU (bit 8) enables the pull-up, FUN_WPD
+        (bit 7) the pull-down. The frontend needs this to model
+        INPUT_PULLUP / INPUT_PULLDOWN — without it an input wired to a
+        button-to-GND floats to 0 V in the SPICE solve and reads LOW even
+        at idle, so the canonical active-low button never works. The
+        `muxgpios[40]` array is exposed read-only via get_internals(3) and
+        is indexed by GPIO number. Idempotent + diff-based; runs every
+        100 ms from the LEDC poll thread (off the QEMU iothread, so the
+        _emit here can't stall the guest the way _on_gpio_matrix would).
+        """
+        # RTC-capable GPIOs route their pull through the RTC_IO peripheral
+        # (RTC pad RUE/RDE bits), not IO_MUX — so a button on GPIO4/15/etc.
+        # with INPUT_PULLUP is invisible in muxgpios. Read both and let RTC win
+        # for its pads. Map: GPIO -> (rtcio word index, RUE bit, RDE bit), from
+        # the esp32 rtc_gpio_desc table (TOUCH_PADn / PDAC / XTAL_32K pads).
+        rtc_map = {
+            0: (0x98 >> 2, 27, 28), 2: (0x9c >> 2, 27, 28), 4: (0x94 >> 2, 27, 28),
+            12: (0xa8 >> 2, 27, 28), 13: (0xa4 >> 2, 27, 28), 14: (0xac >> 2, 27, 28),
+            15: (0xa0 >> 2, 27, 28), 25: (0x84 >> 2, 27, 28), 26: (0x88 >> 2, 27, 28),
+            27: (0xb0 >> 2, 27, 28), 32: (0x8c >> 2, 22, 23), 33: (0x8c >> 2, 27, 28),
+        }
+        try:
+            pulls: dict[int, int] = {}
+            iomux_ptr = lib.qemu_picsimlab_get_internals(3)  # QEMU_INTERNAL_IOMUX_GPIOS
+            if iomux_ptr:
+                # The exposed array is indexed by GPIO and sized per chip:
+                # classic muxgpios[40], S3 iomux regs[49] (GPIO0..48). A
+                # fixed 40 here missed S3 GPIO40-48 pulls entirely.
+                n_gpio = _GPIO_COUNT
+                mux = (ctypes.c_uint32 * n_gpio).from_address(iomux_ptr)
+                for gpio_pin in range(n_gpio):
+                    reg = int(mux[gpio_pin])
+                    pulls[gpio_pin] = 1 if (reg >> 8) & 1 else (2 if (reg >> 7) & 1 else 0)
+            rtcio_ptr = lib.qemu_picsimlab_get_internals(10)  # QEMU_INTERNAL_RTCIO
+            if rtcio_ptr:
+                rtc = (ctypes.c_uint32 * 256).from_address(rtcio_ptr)
+                for gpio_pin, (idx, ub, db) in rtc_map.items():
+                    reg = int(rtc[idx])
+                    rtc_pull = 1 if (reg >> ub) & 1 else (2 if (reg >> db) & 1 else 0)
+                    if rtc_pull:
+                        pulls[gpio_pin] = rtc_pull  # RTC pad pull is authoritative
+            for gpio_pin, pull in pulls.items():
+                if _pull_state.get(gpio_pin, 0) != pull:
+                    _pull_state[gpio_pin] = pull
+                    _emit({'type': 'gpio_pull', 'pin': gpio_pin, 'pull': pull})
         except Exception:
             pass
 
@@ -1631,6 +1740,9 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                 # `gpio_routing` events so frontend's SignalRouter is
                 # in sync before duty updates land.
                 _refresh_signal_routing()
+                # Reconcile internal pull-up/down config (INPUT_PULLUP etc.)
+                # so the frontend's netlist can add the matching resistor.
+                _refresh_pin_pulls()
                 for ch in range(16):
                     duty_pct = float(arr[ch])
                     if abs(duty_pct - _last_duty[ch]) < 0.01:
@@ -1977,6 +2089,16 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                     os.unlink(firmware_path)
                 except OSError:
                     pass
+            # Drain any queued events (crash/system notifications) before the
+            # hard exit — the emit writer is a daemon thread and would lose
+            # the tail otherwise. The sentinel ends its loop.
+            try:
+                _emit_q.put_nowait(None)
+                for t in threading.enumerate():
+                    if t.name == 'emit-writer':
+                        t.join(timeout=2.0)
+            except Exception:
+                pass
             os._exit(0)
 
 

@@ -8,11 +8,18 @@ import { circuitExamples } from './examples-circuits';
 import { analogExamples } from './examples-analog';
 import { digitalExamples } from './examples-digital';
 import { hundredDaysExamples } from './examples-100-days';
-import { picowWifiExamples } from './examples-picow-wifi';
+// Pro overlay examples (the Pico W WiFi showcase) — resolves to the real list
+// when built with the overlay (VITE_PRO_BUILD), else an empty stub in OSS.
+// Static import so the build-time SSR prerender + gallery + sitemap pick them
+// up. See pro/frontend/src/pro/data/proExamples.ts (overlay) and
+// src/__pro_stub__/data/proExamples.ts (OSS no-op).
+import { proExamples } from '@pro/data/proExamples';
 import { epaperExamples } from './examples-displays-epaper';
 import { retroIntelExamples } from './examples-retro-intel';
 import { robotDesktopExamples } from './examples-robot-desktop';
 import { microsdExamples } from './examples-storage-microsd';
+import { esp32MqttExamples } from './examples-esp32-mqtt';
+import { esp32s3TftExamples } from './examples-esp32s3-tft';
 
 /** Per-board setup for multi-board examples */
 export interface ExampleBoard {
@@ -85,6 +92,249 @@ export interface ExampleProject {
 }
 
 const legacyExamples: ExampleProject[] = [
+  // ── SSD1306 OLED — 4-pin I2C module (velxio-ssd1306-i2c-4pin) across boards.
+  //    The cheap GND/VCC/SCL/SDA module beginners actually own (issue #215). ──
+  {
+    id: 'uno-oled-4pin-i2c',
+    title: 'Arduino Uno: SSD1306 OLED (4-pin I2C)',
+    description:
+      'Drive the cheap 4-pin SSD1306 OLED module (GND/VCC/SCL/SDA) over I2C from an Arduino Uno (SDA=A4, SCL=A5). Shows "Hello Velxio!" with a live counter.',
+    libraries: ['Adafruit SSD1306', 'Adafruit GFX Library'],
+    category: 'displays',
+    difficulty: 'intermediate',
+    boardFilter: 'arduino-uno',
+    boards: [
+      {
+        boardKind: 'arduino-uno',
+        x: 60,
+        y: 60,
+        code: `// Arduino Uno — SSD1306 128x64 OLED (4-pin I2C module)
+// Wiring: SDA -> A4  |  SCL -> A5  |  VCC -> 5V  |  GND -> GND
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
+int n = 0;
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("SSD1306 not found!");
+    while (true) delay(10);
+  }
+  display.clearDisplay();
+  Serial.println("OLED ready");
+}
+
+void loop() {
+  n++;
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println("Hello");
+  display.println("Velxio!");
+  display.setTextSize(1);
+  display.setCursor(0, 48);
+  display.print("Count: ");
+  display.print(n);
+  display.display();
+  delay(500);
+}`,
+      },
+    ],
+    code: '',
+    components: [{ type: 'velxio-ssd1306-i2c-4pin', id: 'oled', x: 470, y: 100, properties: {} }],
+    wires: [
+      { id: 'w-vcc', start: { componentId: 'arduino-uno', pinName: '5V' }, end: { componentId: 'oled', pinName: 'VCC' }, color: '#ff4444' },
+      { id: 'w-gnd', start: { componentId: 'arduino-uno', pinName: 'GND.2' }, end: { componentId: 'oled', pinName: 'GND' }, color: '#000000' },
+      { id: 'w-sda', start: { componentId: 'arduino-uno', pinName: 'A4' }, end: { componentId: 'oled', pinName: 'SDA' }, color: '#22aaff' },
+      { id: 'w-scl', start: { componentId: 'arduino-uno', pinName: 'A5' }, end: { componentId: 'oled', pinName: 'SCL' }, color: '#ff8800' },
+    ],
+  },
+  {
+    id: 'esp32-oled-4pin-i2c',
+    title: 'ESP32: SSD1306 OLED (4-pin I2C)',
+    description:
+      'Drive the cheap 4-pin SSD1306 OLED module (GND/VCC/SCL/SDA) over I2C from an ESP32 (SDA=21, SCL=22).',
+    libraries: ['Adafruit SSD1306', 'Adafruit GFX Library'],
+    category: 'displays',
+    difficulty: 'intermediate',
+    boardFilter: 'esp32',
+    boards: [
+      {
+        boardKind: 'esp32',
+        x: 60,
+        y: 60,
+        code: `// ESP32 — SSD1306 128x64 OLED (4-pin I2C module)
+// Wiring: SDA -> 21  |  SCL -> 22  |  VCC -> 3V3  |  GND -> GND
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
+int n = 0;
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin(21, 22);
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("SSD1306 not found!");
+    while (true) delay(10);
+  }
+  display.clearDisplay();
+  Serial.println("OLED ready");
+}
+
+void loop() {
+  n++;
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println("Hello");
+  display.println("Velxio!");
+  display.setTextSize(1);
+  display.setCursor(0, 48);
+  display.printf("Count: %d", n);
+  display.display();
+  delay(500);
+}`,
+      },
+    ],
+    code: '',
+    components: [{ type: 'velxio-ssd1306-i2c-4pin', id: 'oled', x: 470, y: 100, properties: {} }],
+    wires: [
+      { id: 'w-vcc', start: { componentId: 'esp32', pinName: '3V3' }, end: { componentId: 'oled', pinName: 'VCC' }, color: '#ff4444' },
+      { id: 'w-gnd', start: { componentId: 'esp32', pinName: 'GND' }, end: { componentId: 'oled', pinName: 'GND' }, color: '#000000' },
+      { id: 'w-sda', start: { componentId: 'esp32', pinName: '21' }, end: { componentId: 'oled', pinName: 'SDA' }, color: '#22aaff' },
+      { id: 'w-scl', start: { componentId: 'esp32', pinName: '22' }, end: { componentId: 'oled', pinName: 'SCL' }, color: '#ff8800' },
+    ],
+  },
+  {
+    id: 'pico-oled-4pin-i2c',
+    title: 'Raspberry Pi Pico: SSD1306 OLED (4-pin I2C)',
+    description:
+      'Drive the cheap 4-pin SSD1306 OLED module (GND/VCC/SCL/SDA) over I2C from a Raspberry Pi Pico (SDA=GP4, SCL=GP5).',
+    libraries: ['Adafruit SSD1306', 'Adafruit GFX Library'],
+    category: 'displays',
+    difficulty: 'intermediate',
+    boardFilter: 'raspberry-pi-pico',
+    boards: [
+      {
+        boardKind: 'raspberry-pi-pico',
+        x: 60,
+        y: 60,
+        code: `// Raspberry Pi Pico — SSD1306 128x64 OLED (4-pin I2C module)
+// Wiring: SDA -> GP4  |  SCL -> GP5  |  VCC -> 3V3  |  GND -> GND
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
+int n = 0;
+
+void setup() {
+  Serial.begin(115200);
+  Wire.setSDA(4);
+  Wire.setSCL(5);
+  Wire.begin();
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("SSD1306 not found!");
+    while (true) delay(10);
+  }
+  display.clearDisplay();
+  Serial.println("OLED ready");
+}
+
+void loop() {
+  n++;
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println("Hello");
+  display.println("Velxio!");
+  display.setTextSize(1);
+  display.setCursor(0, 48);
+  display.print("Count: ");
+  display.print(n);
+  display.display();
+  delay(500);
+}`,
+      },
+    ],
+    code: '',
+    components: [{ type: 'velxio-ssd1306-i2c-4pin', id: 'oled', x: 470, y: 100, properties: {} }],
+    wires: [
+      { id: 'w-vcc', start: { componentId: 'raspberry-pi-pico', pinName: '3V3' }, end: { componentId: 'oled', pinName: 'VCC' }, color: '#ff4444' },
+      { id: 'w-gnd', start: { componentId: 'raspberry-pi-pico', pinName: 'GND.3' }, end: { componentId: 'oled', pinName: 'GND' }, color: '#000000' },
+      { id: 'w-sda', start: { componentId: 'raspberry-pi-pico', pinName: 'GP4' }, end: { componentId: 'oled', pinName: 'SDA' }, color: '#22aaff' },
+      { id: 'w-scl', start: { componentId: 'raspberry-pi-pico', pinName: 'GP5' }, end: { componentId: 'oled', pinName: 'SCL' }, color: '#ff8800' },
+    ],
+  },
+  {
+    id: 'stm32-oled-4pin-i2c',
+    title: 'STM32 Blue Pill: SSD1306 OLED (4-pin I2C)',
+    description:
+      'Drive the cheap 4-pin SSD1306 OLED module (GND/VCC/SCL/SDA) over I2C1 from an STM32 Blue Pill (SDA=PB7, SCL=PB6).',
+    libraries: ['Adafruit SSD1306', 'Adafruit GFX Library'],
+    category: 'displays',
+    difficulty: 'intermediate',
+    boardFilter: 'stm32-bluepill',
+    boards: [
+      {
+        boardKind: 'stm32-bluepill',
+        x: 60,
+        y: 60,
+        code: `// STM32 Blue Pill (F103) — SSD1306 128x64 OLED (4-pin I2C module)
+// Wiring: SDA -> PB7  |  SCL -> PB6  |  VCC -> 3V3  |  GND -> GND
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
+int n = 0;
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("SSD1306 not found!");
+    while (true) delay(10);
+  }
+  display.clearDisplay();
+  Serial.println("OLED ready");
+}
+
+void loop() {
+  n++;
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println("Hello");
+  display.println("Velxio!");
+  display.setTextSize(1);
+  display.setCursor(0, 48);
+  display.print("Count: ");
+  display.print(n);
+  display.display();
+  delay(500);
+}`,
+      },
+    ],
+    code: '',
+    components: [{ type: 'velxio-ssd1306-i2c-4pin', id: 'oled', x: 470, y: 100, properties: {} }],
+    wires: [
+      { id: 'w-vcc', start: { componentId: 'stm32-bluepill', pinName: '3V3' }, end: { componentId: 'oled', pinName: 'VCC' }, color: '#ff4444' },
+      { id: 'w-gnd', start: { componentId: 'stm32-bluepill', pinName: 'GND' }, end: { componentId: 'oled', pinName: 'GND' }, color: '#000000' },
+      { id: 'w-sda', start: { componentId: 'stm32-bluepill', pinName: 'PB7' }, end: { componentId: 'oled', pinName: 'SDA' }, color: '#22aaff' },
+      { id: 'w-scl', start: { componentId: 'stm32-bluepill', pinName: 'PB6' }, end: { componentId: 'oled', pinName: 'SCL' }, color: '#ff8800' },
+    ],
+  },
   {
     id: 'ky-040-rotary-encoder',
     title: 'KY-040 Rotary Encoder',
@@ -4310,13 +4560,23 @@ void loop() {
   delay(500);
 }`,
     components: [
-      { type: 'wokwi-led', id: 'led-ext', x: 460, y: 190, properties: { color: 'red' } },
+      // 220 Ohm current-limiting resistor in series with the external LED —
+      // never drive an LED straight off a GPIO. (3.3V - ~2V)/220R ~= 6 mA,
+      // well under the LED's 20 mA rating.
+      { type: 'wokwi-resistor', id: 'r-led', x: 320, y: 205, properties: { value: '220' } },
+      { type: 'wokwi-led', id: 'led-ext', x: 470, y: 190, properties: { color: 'red' } },
     ],
     wires: [
-      // GPIO4 → LED anode
+      // GPIO4 → resistor → LED anode
       {
-        id: 'w-gpio4-led',
+        id: 'w-gpio4-r',
         start: { componentId: 'arduino-uno', pinName: '4' },
+        end: { componentId: 'r-led', pinName: '1' },
+        color: '#e74c3c',
+      },
+      {
+        id: 'w-r-led',
+        start: { componentId: 'r-led', pinName: '2' },
         end: { componentId: 'led-ext', pinName: 'A' },
         color: '#e74c3c',
       },
@@ -9734,11 +9994,13 @@ export const exampleProjects: ExampleProject[] = [
   ...analogExamples,
   ...digitalExamples,
   ...hundredDaysExamples,
-  ...picowWifiExamples,
+  ...proExamples,
   ...epaperExamples,
   ...retroIntelExamples,
   ...robotDesktopExamples,
   ...microsdExamples,
+  ...esp32MqttExamples,
+  ...esp32s3TftExamples,
 ];
 
 // Get examples by category

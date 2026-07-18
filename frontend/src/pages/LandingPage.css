@@ -809,10 +809,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 113, 227, 0.12);
+  background: var(--color-action-primary);
   border-radius: 12px;
   margin-bottom: 22px;
-  color: var(--accent);
+  color: #fff;
   flex-shrink: 0;
 }
 
@@ -1140,15 +1140,15 @@
   text-transform: uppercase;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(0, 113, 227, 0.18);
-  color: #4ea3ff;
-  border: 1px solid rgba(0, 113, 227, 0.3);
+  background: var(--color-action-primary);
+  color: #fff;
+  border: none;
 }
 
 .licensing-card-badge-commercial {
-  background: rgba(245, 158, 11, 0.16);
-  color: #f5a623;
-  border-color: rgba(245, 158, 11, 0.3);
+  background: var(--color-feedback-warning);
+  color: #1d1d1f;
+  border: none;
 }
 
 .licensing-card-title {
@@ -1206,7 +1206,7 @@
 
 .ai-card {
   background: linear-gradient(180deg, rgba(0, 113, 227, 0.07), rgba(255, 255, 255, 0.03));
-  border: 1px solid rgba(0, 113, 227, 0.18);
+  border: 1px solid var(--color-border-default);
   border-radius: 18px;
   padding: 28px 26px;
 }
@@ -1262,7 +1262,7 @@
 }
 
 .pricing-card-featured {
-  border-color: rgba(0, 113, 227, 0.55);
+  border-color: var(--color-action-primary);
   background: linear-gradient(180deg, rgba(0, 113, 227, 0.10), rgba(255, 255, 255, 0.04));
 }
 
@@ -1359,13 +1359,13 @@
 }
 
 .pricing-card-cta-secondary {
-  background: transparent;
-  color: var(--text);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--color-action-secondary);
+  color: #fff;
+  border: none;
 }
 
 .pricing-card-cta-secondary:hover {
-  border-color: rgba(255, 255, 255, 0.35);
+  background: var(--color-action-secondary-hover);
 }
 
 .pricing-classroom-banner {
@@ -1378,15 +1378,15 @@
   gap: 14px;
   padding: 14px 22px;
   border-radius: 10px;
-  background: rgba(0, 184, 212, 0.06);
-  border: 1px solid rgba(0, 184, 212, 0.2);
+  background: rgba(0, 113, 227, 0.06);
+  border: 1px solid var(--color-border-default);
   color: #b5b5b5;
   font-size: 14px;
   text-align: center;
 }
 
 .pricing-classroom-banner-cta {
-  color: #4fc3f7;
+  color: var(--color-action-primary);
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;

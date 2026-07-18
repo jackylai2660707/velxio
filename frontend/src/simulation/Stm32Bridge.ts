@@ -16,6 +16,7 @@
  *     { type: 'serial_output', data: { data: string, uart?: number } }
  *     { type: 'gpio_change',   data: { pin: number, state: 0|1 } }   // linear pin (port*16+pin)
  *     { type: 'gpio_dir',      data: { pin: number, dir: 0|1 } }
+ *     { type: 'gpio_pull',     data: { pin: number, pull: 0|1|2 } } // 0=none 1=up 2=down
  *     { type: 'system',        data: { event: string, ... } }
  *     { type: 'error',         data: { message: string } }
  *
@@ -82,6 +83,10 @@ export class Stm32Bridge {
   onPinChange: ((gpioPin: number, state: boolean) => void) | null = null;
   onPinChangeWithTime: ((gpioPin: number, state: boolean, timeMs: number) => void) | null = null;
   onPinDir: ((gpioPin: number, dir: 0 | 1) => void) | null = null;
+  /** Internal pull the guest programmed for an INPUT pin (from PUPDR / CRL+ODR):
+   *  0 = none, 1 = pull-up, 2 = pull-down. gpioPin is the linear pin. The store
+   *  records it so the netlist stamps the weak resistor (mirrors ESP32). */
+  onPinPull: ((gpioPin: number, pull: 0 | 1 | 2) => void) | null = null;
   onConnected: (() => void) | null = null;
   onDisconnected: (() => void) | null = null;
   onError: ((msg: string) => void) | null = null;
@@ -164,6 +169,10 @@ export class Stm32Bridge {
         }
         case 'gpio_dir': {
           this.onPinDir?.(msg.data.pin as number, msg.data.dir as 0 | 1);
+          break;
+        }
+        case 'gpio_pull': {
+          this.onPinPull?.(msg.data.pin as number, msg.data.pull as 0 | 1 | 2);
           break;
         }
         case 'system': {

@@ -22,6 +22,7 @@
  *     { type: 'serial_output', data: { data: string, uart?: number } }
  *     { type: 'gpio_change',   data: { pin: number, state: 0 | 1 } }
  *     { type: 'gpio_dir',      data: { pin: number, dir: 0 | 1 } }
+ *     { type: 'gpio_pull',     data: { pin: number, pull: 0 | 1 | 2 } }  // 0=none 1=up 2=down
  *     { type: 'ledc_duty',     data: { channel: number, duty_pct: number } }
  *     { type: 'gpio_routing',  data: { gpio: number, signal_id: number } }
  *     { type: 'gpio_routing_clear', data: { gpio: number } }
@@ -134,6 +135,11 @@ export class Esp32Bridge {
    */
   onPinChangeWithTime: ((gpioPin: number, state: boolean, timeMs: number) => void) | null = null;
   onPinDir: ((gpioPin: number, dir: 0 | 1) => void) | null = null;
+  /** Internal pull config the guest programmed into IO_MUX (INPUT_PULLUP /
+   *  INPUT_PULLDOWN). 0 = none, 1 = pull-up, 2 = pull-down. The frontend
+   *  netlist adds the matching weak resistor so idle inputs read the right
+   *  level (real ESP32 internal pulls aren't otherwise visible to SPICE). */
+  onPinPull: ((gpioPin: number, pull: 0 | 1 | 2) => void) | null = null;
   /**
    * Override baud rate used to space synthesized UART bits.  QEMU
    * transmits bytes "instantly" so the backend doesn't surface a real
@@ -403,6 +409,12 @@ export class Esp32Bridge {
           const pin = msg.data.pin as number;
           const dir = msg.data.dir as 0 | 1;
           this.onPinDir?.(pin, dir);
+          break;
+        }
+        case 'gpio_pull': {
+          const pin = msg.data.pin as number;
+          const pull = msg.data.pull as 0 | 1 | 2;
+          this.onPinPull?.(pin, pull);
           break;
         }
         case 'ledc_duty': {

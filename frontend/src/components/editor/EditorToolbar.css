@@ -37,33 +37,14 @@
   gap: 4px;
 }
 
-/* Center slot — fills the gap between left/right groups, allows file tabs
-   to scroll horizontally inside it without pushing the icons off-screen. */
+/* Center slot — a flexible spacer between the left and right action groups
+   that keeps the right icons pinned to the far right. Normally empty. */
 .toolbar-center-slot {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   align-items: stretch;
   overflow: hidden;
-}
-.toolbar-center-slot > .file-tabs {
-  flex: 1;
-  min-width: 0;
-  border-bottom: none;
-  background: transparent;
-  min-height: 0;
-  height: 100%;
-}
-.toolbar-center-slot .file-tab {
-  height: 100%;
-  padding: 0 8px;
-  min-width: 70px;
-  max-width: 160px;
-  font-size: 11.5px;
-}
-.toolbar-center-slot .file-tab-active {
-  background: #1e1e1e;
-  border-top: 2px solid #4fc3f7;
 }
 
 /* ── Divider ─────────────────────────────────────── */
@@ -99,34 +80,34 @@
   cursor: not-allowed;
 }
 
-/* Compile */
+/* Compile — accent blue (token, not neon) */
 .tb-btn-compile {
-  color: #4fc3f7;
+  color: var(--color-action-primary);
 }
 .tb-btn-compile:hover:not(:disabled) {
-  background: rgba(79, 195, 247, 0.12);
-  color: #81d4fa;
+  background: rgba(0, 113, 227, 0.14);
+  color: var(--color-action-primary-hover);
 }
 .tb-btn-compile:active:not(:disabled) {
-  background: rgba(79, 195, 247, 0.2);
+  background: rgba(0, 113, 227, 0.22);
 }
 
-/* Run */
+/* Run — semantic success green (token) */
 .tb-btn-run {
-  color: #4caf50;
+  color: var(--color-feedback-success);
 }
 .tb-btn-run:hover:not(:disabled) {
-  background: rgba(76, 175, 80, 0.12);
-  color: #66bb6a;
+  background: rgba(48, 209, 88, 0.14);
+  color: var(--color-feedback-success);
 }
 
-/* Stop */
+/* Stop — semantic error red (token) */
 .tb-btn-stop {
-  color: #ef5350;
+  color: var(--color-feedback-error);
 }
 .tb-btn-stop:hover:not(:disabled) {
-  background: rgba(239, 83, 80, 0.12);
-  color: #f44336;
+  background: rgba(255, 69, 58, 0.14);
+  color: var(--color-feedback-error);
 }
 
 /* Reset */
@@ -142,35 +123,35 @@
   gap: 4px;
   height: 26px;
   padding: 0 8px 0 7px;
-  border: 1px solid rgba(0, 184, 212, 0.3);
+  border: none;
   border-radius: 5px;
   cursor: pointer;
-  background: rgba(0, 184, 212, 0.08);
-  color: #00e5ff;
+  background: var(--color-action-primary);
+  color: #fff;
   font-size: 11px;
   font-weight: 500;
   font-family: inherit;
   white-space: nowrap;
   transition:
     background 0.15s,
-    border-color 0.15s,
     color 0.15s;
   flex-shrink: 0;
   align-self: center;
 }
 .tb-btn-libraries:hover {
-  background: rgba(0, 184, 212, 0.18);
-  border-color: rgba(0, 184, 212, 0.5);
+  background: var(--color-action-primary-hover);
   color: #fff;
 }
 .tb-libraries-label {
   line-height: 1;
 }
-/* Hide the label when the toolbar is narrow — icon alone keeps the button
-   reachable without stealing horizontal space from the file tabs. The
-   container query reacts to the toolbar's own width, so it triggers when
-   the user drags the editor/canvas divider, not just on small viewports. */
-@container editor-toolbar (max-width: 600px) {
+/* Hide the label only when the toolbar is genuinely cramped — keep the
+   "Libraries" text visible in the default 50/50 split (~376px toolbar) so
+   the button reads clearly. Below 360px the icon alone keeps it reachable
+   without stealing horizontal space from the file tabs. The container query
+   reacts to the toolbar's own width, so it triggers when the user drags the
+   editor/canvas divider very narrow, not just on small viewports. */
+@container editor-toolbar (max-width: 360px) {
   .tb-libraries-label {
     display: none;
   }
@@ -222,11 +203,11 @@
 
 /* Legacy lib icon-only button (for overflow items) */
 .tb-btn-lib {
-  color: #00b8d4;
+  color: var(--color-action-primary);
 }
 .tb-btn-lib:hover {
-  background: rgba(0, 184, 212, 0.1);
-  color: #00e5ff;
+  background: rgba(0, 113, 227, 0.12);
+  color: var(--color-action-primary-hover);
 }
 
 /* Missing library hint banner */
@@ -235,21 +216,21 @@
   align-items: center;
   gap: 6px;
   padding: 5px 12px;
-  background: rgba(255, 152, 0, 0.1);
-  border-bottom: 1px solid rgba(255, 152, 0, 0.25);
-  color: #ffb74d;
+  background: rgba(255, 159, 10, 0.1);
+  border-bottom: 1px solid rgba(255, 159, 10, 0.25);
+  color: var(--color-feedback-warning);
   font-size: 12px;
   font-family: inherit;
 }
 .tb-lib-hint svg {
   flex-shrink: 0;
-  color: #ffa726;
+  color: var(--color-feedback-warning);
 }
 .tb-lib-hint-btn {
-  background: rgba(0, 184, 212, 0.15);
-  border: 1px solid rgba(0, 184, 212, 0.4);
+  background: var(--color-action-primary);
+  border: none;
   border-radius: 4px;
-  color: #00e5ff;
+  color: #fff;
   font-size: 12px;
   font-weight: 600;
   font-family: inherit;
@@ -258,7 +239,7 @@
   transition: background 0.12s;
 }
 .tb-lib-hint-btn:hover {
-  background: rgba(0, 184, 212, 0.3);
+  background: var(--color-action-primary-hover);
   color: #fff;
 }
 .tb-lib-hint-close {
@@ -284,12 +265,12 @@
   color: #ccc;
 }
 .tb-btn-output-active {
-  color: #4fc3f7;
-  background: rgba(79, 195, 247, 0.1);
+  color: var(--color-action-primary);
+  background: rgba(0, 113, 227, 0.12);
 }
 .tb-btn-output-active:hover {
-  background: rgba(79, 195, 247, 0.18);
-  color: #81d4fa;
+  background: rgba(0, 113, 227, 0.2);
+  color: var(--color-action-primary-hover);
 }
 
 /* ── Spin animation (compiling) ─────────────────── */
@@ -317,13 +298,13 @@
 }
 
 .tb-status-success {
-  color: #4caf50;
-  background: rgba(76, 175, 80, 0.1);
+  color: var(--color-feedback-success);
+  background: rgba(48, 209, 88, 0.1);
 }
 
 .tb-status-error {
-  color: #ef5350;
-  background: rgba(239, 83, 80, 0.1);
+  color: var(--color-feedback-error);
+  background: rgba(255, 69, 58, 0.1);
 }
 
 .tb-status-text {
@@ -334,19 +315,19 @@
 
 /* ── Compile All / Run All buttons ─────────────── */
 .tb-btn-compile-all {
-  color: #80cbc4;
+  color: var(--color-action-primary);
 }
 .tb-btn-compile-all:hover:not(:disabled) {
-  background: rgba(128, 203, 196, 0.12);
-  color: #a7ffeb;
+  background: rgba(0, 113, 227, 0.14);
+  color: var(--color-action-primary-hover);
 }
 
 .tb-btn-run-all {
-  color: #aed581;
+  color: var(--color-feedback-success);
 }
 .tb-btn-run-all:hover:not(:disabled) {
-  background: rgba(174, 213, 129, 0.12);
-  color: #ccff90;
+  background: rgba(48, 209, 88, 0.14);
+  color: var(--color-feedback-success);
 }
 
 /* ── Board context pill ─────────────────────────── */
@@ -381,7 +362,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #4caf50;
+  background: var(--color-feedback-success);
   flex-shrink: 0;
   animation: pulse-run 1.4s ease-in-out infinite;
 }
@@ -456,7 +437,63 @@
 
 .tb-overflow-item svg {
   flex-shrink: 0;
-  color: #00b8d4;
+  color: var(--color-fg-default);
+}
+
+/* ── Run split-button (multi-board: primary Run = all boards + menu) ──── */
+.tb-run-split {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.tb-btn-run-caret {
+  width: 16px;
+  color: var(--color-feedback-success);
+}
+.tb-btn-run-caret:hover:not(:disabled) {
+  background: rgba(48, 209, 88, 0.14);
+  color: var(--color-feedback-success);
+}
+.tb-run-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  background: #2a2a2c;
+  border: 1px solid #3a3a3c;
+  border-radius: 10px;
+  padding: 6px;
+  min-width: 200px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tb-run-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  color: #ccc;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.tb-run-menu-item:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+.tb-run-menu-item:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .tb-overflow-label {

@@ -146,20 +146,20 @@
 }
 .pin-role-item--interactive:hover {
   background-color: #4a4a4a;
-  border-color: #007acc;
+  border-color: var(--color-action-primary);
 }
 .pin-role-item--interactive:active {
   transform: scale(0.98);
   background-color: #2a2d2e;
 }
 .pin-role-item--interactive:focus-visible {
-  outline: 2px solid #007acc;
+  outline: 2px solid var(--color-action-primary);
   outline-offset: 1px;
 }
 
 .pin-role-action {
   margin-left: auto;
-  color: #007acc;
+  color: var(--color-action-primary);
   font-weight: 700;
   font-size: 14px;
 }
@@ -231,12 +231,12 @@
 }
 
 .property-edit-select:hover {
-  border-color: #007acc;
+  border-color: var(--color-action-primary);
 }
 
 .property-edit-select:focus {
-  border-color: #007acc;
-  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.25);
+  border-color: var(--color-action-primary);
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.25);
 }
 
 .property-edit-select option {
@@ -260,12 +260,12 @@
 }
 
 .property-edit-input:hover {
-  border-color: #007acc;
+  border-color: var(--color-action-primary);
 }
 
 .property-edit-input:focus {
-  border-color: #007acc;
-  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.25);
+  border-color: var(--color-action-primary);
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.25);
 }
 
 .property-actions {
@@ -304,14 +304,14 @@
 }
 
 .rotate-button {
-  background-color: #007acc;
+  background-color: var(--color-action-primary);
   color: white;
 }
 
 .rotate-button:hover {
   background-color: #005a9e;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 122, 204, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 113, 227, 0.3);
 }
 
 .delete-button {
@@ -403,7 +403,7 @@
   padding: 5px 12px;
   border: none;
   border-radius: 4px;
-  background-color: #007acc;
+  background-color: var(--color-action-primary);
   color: #fff;
   cursor: pointer;
   transition: all 0.2s;
@@ -411,10 +411,79 @@
 .sd-card-add:hover {
   background-color: #005a9e;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 122, 204, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 113, 227, 0.3);
 }
 .sd-card-total {
   font-size: 11px;
   color: #aaa;
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Keyboard binding (pushbuttons) ────────────────────────────────── */
+
+.keybind-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Keycap-styled chip: shows the bound key, or the capture prompt. */
+.keybind-chip {
+  min-width: 44px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  color: #fff;
+  background-color: #3d3d3d;
+  border: 1px solid #555;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.keybind-chip:hover {
+  border-color: var(--color-action-primary);
+}
+
+.keybind-chip--empty {
+  font-family: inherit;
+  font-weight: 500;
+  color: #aaa;
+  border-style: dashed;
+  border-bottom-width: 1px;
+}
+
+.keybind-chip--capturing {
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--color-action-primary);
+  border-color: var(--color-action-primary);
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.25);
+}
+
+.keybind-clear {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: #aaa;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.keybind-clear:hover {
+  color: #fff;
+  background-color: #3d3d3d;
+}
+
+.keybind-hint {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #d19a66;
 }

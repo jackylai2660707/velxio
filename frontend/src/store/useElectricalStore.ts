@@ -25,6 +25,10 @@ export interface ElectricalSnapshot {
   error: string | null;
   lastSolveMs: number;
   submittedNetlist: string;
+  /** Nets backed by a real source/element (rail, GPIO V-source, pull, or any
+   *  component card). connectDigitalInputsToMcu only drives MCU input pins
+   *  whose net is here, so floating event-part pins aren't forced LOW. */
+  sourcedNets: Set<string>;
 }
 
 interface ElectricalState extends ElectricalSnapshot {
@@ -51,6 +55,7 @@ const EMPTY: ElectricalSnapshot = {
   error: null,
   lastSolveMs: 0,
   submittedNetlist: '',
+  sourcedNets: new Set(),
 };
 
 export const useElectricalStore = create<ElectricalState>((set) => ({

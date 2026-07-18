@@ -373,6 +373,8 @@
     "ariaLabel": "Marcar Velxio con estrella en GitHub",
     "title": "¿Disfrutando de Velxio?",
     "body": "¡Una ⭐ en GitHub ayuda a que más desarrolladores descubran el proyecto — solo toma 2 segundos!",
+    "title2": "¿Un favor rápido?",
+    "body2": "Velxio es gratis y de código abierto. Una estrella en GitHub es la forma más simple de apoyarlo y ayudar a que más gente lo descubra.",
     "cta": "Marcar con estrella en GitHub",
     "dismiss": "Descartar"
   },

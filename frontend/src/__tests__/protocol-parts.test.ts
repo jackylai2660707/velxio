@@ -17,6 +17,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PartSimulationRegistry } from '../simulation/parts/PartSimulationRegistry';
 import { dispatchSensorUpdate } from '../simulation/SensorUpdateRegistry';
+import { useSimulatorStore } from '../store/useSimulatorStore';
 import '../simulation/parts/ProtocolParts';
 
 // ─── Globals ──────────────────────────────────────────────────────────────────
@@ -203,6 +204,60 @@ describe('ssd1306 — I2C device', () => {
       const c = logic.attachEvents!(makeElement(), sim as any, noPins);
       c();
     }).not.toThrow();
+  });
+});
+
+// ─── ssd1306 — protocol auto-detect (one component, wired like real life) ─────
+
+describe('ssd1306 — protocol auto-detect', () => {
+  it('runs I2C when neither CS nor DC is wired', () => {
+    const sim = makeI2CSim();
+    PartSimulationRegistry.get('ssd1306')!.attachEvents!(makeElement(), sim as any, noPins);
+    expect(sim.addI2CDevice).toHaveBeenCalledOnce();
+    expect(sim.spi).toBeNull();
+  });
+
+  it('runs SPI when CS is wired to a GPIO', () => {
+    const sim = makeSPISim();
+    PartSimulationRegistry.get('ssd1306')!.attachEvents!(
+      makeElement(),
+      sim as any,
+      pinMap({ CS: 5 }),
+    );
+    // SPI decoder hooks spi.onByte; the I2C path would call addI2CDevice instead.
+    expect(typeof sim.spi.onByte).toBe('function');
+    expect(sim.addI2CDevice).not.toHaveBeenCalled();
+  });
+
+  it('runs I2C when only DC is wired (DC is the I2C address-select, not SPI)', () => {
+    const sim = makeI2CSim();
+    PartSimulationRegistry.get('ssd1306')!.attachEvents!(
+      makeElement(),
+      sim as any,
+      pinMap({ DC: 4 }),
+    );
+    expect(sim.addI2CDevice).toHaveBeenCalledOnce();
+  });
+
+  it('honors an explicit protocol property (migrated legacy projects)', () => {
+    // A project migrated from the old ssd1306-spi entry carries protocol:'spi';
+    // it must run SPI even though nothing SPI-specific is wired (CS absent).
+    useSimulatorStore.setState({
+      components: [{ id: 'oled-legacy', metadataId: 'ssd1306', properties: { protocol: 'spi' } }],
+    } as any);
+    try {
+      const sim = makeSPISim();
+      PartSimulationRegistry.get('ssd1306')!.attachEvents!(
+        makeElement(),
+        sim as any,
+        noPins,
+        'oled-legacy',
+      );
+      expect(typeof sim.spi.onByte).toBe('function');
+      expect(sim.addI2CDevice).not.toHaveBeenCalled();
+    } finally {
+      useSimulatorStore.setState({ components: [] } as any);
+    }
   });
 });
 

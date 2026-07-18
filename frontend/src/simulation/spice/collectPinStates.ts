@@ -10,6 +10,8 @@
 import { getBoardPinManager } from '../../store/useSimulatorStore';
 import type { PinSourceState } from './types';
 import type { BoardKind } from '../../types/board';
+import { isStm32BoardKind } from '../../types/board';
+import { stm32PinNameToLinear } from '../Stm32Bridge';
 import { BOARD_PIN_GROUPS } from './boardPinGroups';
 
 /**
@@ -73,6 +75,25 @@ export function collectPinStates(
 
   const outputPins = pm.getOutputPins();
 
+  // STM32 names pins PA0/PC13 and keys its PinManager on the linear pin
+  // (port*16+pin). It runs in backend QEMU, where its OUTPUT pins are surfaced
+  // to the canvas via the part layer (not SPICE), so here we only contribute
+  // the INPUT internal pull (reported by the worker's gpio_pull) — enough for
+  // NetlistBuilder to stamp the weak resistor so an INPUT_PULLUP button-to-GND
+  // solves to idle-HIGH / pressed-LOW. connectDigitalInputsToMcu then drives
+  // the guest IDR from the solve. Leaving outputs out keeps STM32 LED rendering
+  // exactly as before.
+  const isStm32 = isStm32BoardKind(boardKind);
+  if (isStm32) {
+    for (const pinName of pinNames) {
+      const linear = stm32PinNameToLinear(pinName);
+      if (linear < 0 || outputPins.has(linear)) continue;
+      const pull = pm.getPinPull(linear);
+      if (pull !== 0) result[pinName] = { type: 'input', pull };
+    }
+    return result;
+  }
+
   for (const pinName of pinNames) {
     const arduinoPin = pinNameToArduinoPin(pinName, boardKind);
     if (arduinoPin < 0) continue;
@@ -92,11 +113,17 @@ export function collectPinStates(
         type: 'digital',
         v: pm.getPinState(arduinoPin) ? vcc : 0,
       };
+    } else {
+      // Not driven by the MCU. If the firmware enabled an internal pull
+      // (INPUT_PULLUP / INPUT_PULLDOWN), surface it so NetlistBuilder can
+      // stamp the weak resistor — without it a button-to-GND input floats
+      // to 0 V and reads LOW even at idle, so active-low buttons never work.
+      // For pull-less inputs leave the net free: external components (sensor
+      // divider, pull-up, button, etc.) drive the SPICE node, and an
+      // unconditional 0 V source would short out any analog sensor on the pin.
+      const pull = pm.getPinPull(arduinoPin);
+      if (pull !== 0) result[pinName] = { type: 'input', pull };
     }
-    // else: leave the net free — external components (sensor divider,
-    // pull-up, button, etc.) drive the SPICE node.  Without this guard,
-    // an unconditional V-source at 0 V would short-circuit any analog
-    // sensor on the pin and analogRead() would always return 0.
   }
   return result;
 }

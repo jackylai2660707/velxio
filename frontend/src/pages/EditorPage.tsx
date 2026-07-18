@@ -6,9 +6,9 @@ import React, { useRef, useState, useCallback, useEffect, lazy, Suspense } from 
 import { useTranslation } from 'react-i18next';
 import { startSimulation } from '../simulation/spice/start';
 import { useSEO } from '../utils/useSEO';
+import { restoreStashedWorkspace } from '../utils/workspaceDraft';
 import { CodeEditor } from '../components/editor/CodeEditor';
 import { EditorToolbar } from '../components/editor/EditorToolbar';
-import { FileTabs } from '../components/editor/FileTabs';
 import { FileExplorer } from '../components/editor/FileExplorer';
 
 // Lazy-load Pi workspace so xterm.js isn't in the main bundle
@@ -29,8 +29,10 @@ import { useEditorStore } from '../store/useEditorStore';
 import { useCompileLogsStore } from '../store/useCompileLogsStore';
 import { useOscilloscopeStore } from '../store/useOscilloscopeStore';
 import { useProjectStore } from '../store/useProjectStore';
+import { showConfirmDialog } from '../store/useMessageDialogStore';
 import { useAutoSaveProject } from '../hooks/useAutoSaveProject';
 import type { CompilationLog } from '../utils/compilationLogger';
+import { isPiBoardKind } from '../types/board';
 import '../App.css';
 
 const MOBILE_BREAKPOINT = 768;
@@ -77,7 +79,9 @@ export const EditorPage: React.FC = () => {
   const activeBoardKind = useSimulatorStore(
     (s) => s.boards.find((b) => b.id === s.activeBoardId)?.boardKind,
   );
-  const isRaspberryPi3 = activeBoardKind === 'raspberry-pi-3';
+  // Pi 3/4/5 and Zero/1/2 all run the QEMU Linux workspace (terminal + Python),
+  // not the Arduino/Monaco editor. Pico (RP2040) is browser-emulated, not a Pi here.
+  const isLinuxPi = isPiBoardKind(activeBoardKind ?? '');
   const oscilloscopeOpen = useOscilloscopeStore((s) => s.open);
   const [consoleOpen, setConsoleOpen] = useState(false);
   // compileLogs live in a Zustand store so the velxio-pro agent overlay
@@ -87,6 +91,7 @@ export const EditorPage: React.FC = () => {
   const setCompileLogs = useCompileLogsStore((s) => s.setLogs);
   const [bottomPanelHeight, setBottomPanelHeight] = useState(BOTTOM_PANEL_DEFAULT);
   const [showStarBanner, setShowStarBanner] = useState(false);
+  const [starRound, setStarRound] = useState<1 | 2>(1);
 
   // ── Electrical simulation (one-time mount) ────────────────────────────────
   // `startSimulation()` is the single entry point: it constructs the
@@ -97,14 +102,36 @@ export const EditorPage: React.FC = () => {
     return startSimulation();
   }, []);
 
-  // ── GitHub star prompt (show once: 2nd visit OR after 3 min) ──────────────
+  // Restore an in-progress workspace stashed before a login redirect, so a
+  // user who was building something and signed in lands back on their circuit
+  // (not the empty starter board). One-shot; see utils/workspaceDraft.
+  useEffect(() => {
+    restoreStashedWorkspace();
+  }, []);
+
+  // ── GitHub star prompt (show twice at most: 2nd visit OR after 3 min) ──────
+  // Three localStorage flags drive this:
+  //   velxio_star_prompted     → dismissed the first ask
+  //   velxio_star_prompted_v2  → dismissed the follow-up ask (stop forever)
+  //   velxio_star_clicked      → clicked through to the repo (stop forever)
+  // Anyone who dismissed the first ask WITHOUT clicking through gets one
+  // follow-up (round 2) with a stronger message; clicking the repo link at
+  // any time opts them out permanently.
   useEffect(() => {
     const STAR_KEY = 'velxio_star_prompted';
+    const STAR_KEY_V2 = 'velxio_star_prompted_v2';
+    const STAR_CLICKED_KEY = 'velxio_star_clicked';
     const VISITS_KEY = 'velxio_editor_visits';
     const FIRST_VISIT_KEY = 'velxio_editor_first_visit';
     const THREE_MIN = 3 * 60 * 1000;
 
-    if (localStorage.getItem(STAR_KEY)) return;
+    // Never bother people who already starred or already saw the follow-up.
+    if (localStorage.getItem(STAR_CLICKED_KEY)) return;
+    if (localStorage.getItem(STAR_KEY_V2)) return;
+
+    // Round 2 = they dismissed the first ask (without clicking through).
+    const round = localStorage.getItem(STAR_KEY) ? 2 : 1;
+    setStarRound(round);
 
     // Increment visit counter
     const visits = parseInt(localStorage.getItem(VISITS_KEY) ?? '0', 10) + 1;
@@ -126,13 +153,26 @@ export const EditorPage: React.FC = () => {
     const elapsed = Date.now() - firstVisit;
     const delay = Math.max(0, THREE_MIN - elapsed);
     const timer = setTimeout(() => {
-      if (!localStorage.getItem(STAR_KEY)) setShowStarBanner(true);
+      if (!localStorage.getItem(STAR_CLICKED_KEY) && !localStorage.getItem(STAR_KEY_V2)) {
+        setShowStarBanner(true);
+      }
     }, delay);
     return () => clearTimeout(timer);
   }, []);
 
   const handleDismissStarBanner = () => {
-    localStorage.setItem('velxio_star_prompted', '1');
+    // First dismiss → mark round 1; second dismiss → mark round 2 (stop forever).
+    if (localStorage.getItem('velxio_star_prompted')) {
+      localStorage.setItem('velxio_star_prompted_v2', '1');
+    } else {
+      localStorage.setItem('velxio_star_prompted', '1');
+    }
+    setShowStarBanner(false);
+  };
+
+  const handleStarClick = () => {
+    // They went to the repo — opt them out of any further prompts.
+    localStorage.setItem('velxio_star_clicked', '1');
     setShowStarBanner(false);
   };
   const [explorerOpen, setExplorerOpen] = useState(true);
@@ -156,14 +196,18 @@ export const EditorPage: React.FC = () => {
     triggerSaveAction();
   }, []);
 
-  const handleNewClick = useCallback(() => {
-    if (
-      !window.confirm(
-        'Start a new workspace? This clears every board, component, wire and file. This cannot be undone.',
-      )
-    ) {
-      return;
-    }
+  const handleNewClick = useCallback(async () => {
+    const confirmed = await showConfirmDialog(
+      t('editor.fileExplorer.confirmNew.message'),
+      {
+        kind: 'error',
+        title: t('editor.fileExplorer.confirmNew.title'),
+        confirmLabel: t('editor.fileExplorer.confirmNew.confirm'),
+        cancelLabel: t('editor.fileExplorer.confirmNew.cancel'),
+        danger: true,
+      },
+    );
+    if (!confirmed) return;
     const sim = useSimulatorStore.getState();
     sim.boards.forEach((b) => sim.stopBoard(b.id));
     const ids = sim.boards.map((b) => b.id);
@@ -175,7 +219,7 @@ export const EditorPage: React.FC = () => {
       .getState()
       .addBoard('arduino-uno', DEFAULT_BOARD_POSITION.x, DEFAULT_BOARD_POSITION.y);
     useSimulatorStore.getState().setActiveBoardId(newId);
-  }, []);
+  }, [t]);
 
   // Track mobile breakpoint
   useEffect(() => {
@@ -449,7 +493,7 @@ export const EditorPage: React.FC = () => {
                 >
                   <path d={m.path} />
                 </svg>
-                <span>{m.label}</span>
+                <span className="vm-label">{m.label}</span>
               </button>
             ))}
           </div>
@@ -459,7 +503,6 @@ export const EditorPage: React.FC = () => {
               setConsoleOpen={setConsoleOpen}
               compileLogs={compileLogs}
               setCompileLogs={setCompileLogs}
-              centerSlot={!isRaspberryPi3 ? <FileTabs /> : null}
             />
           </div>
           <div className="unified-toolbar-canvas" ref={setCanvasHeaderSlot} />
@@ -540,7 +583,6 @@ export const EditorPage: React.FC = () => {
                     setConsoleOpen={setConsoleOpen}
                     compileLogs={compileLogs}
                     setCompileLogs={setCompileLogs}
-                    centerSlot={!isRaspberryPi3 ? <FileTabs /> : null}
                   />
                 </div>
               </div>
@@ -548,7 +590,7 @@ export const EditorPage: React.FC = () => {
 
             {/* Editor area: Pi workspace or Monaco editor */}
             <div className="editor-wrapper" style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-              {isRaspberryPi3 && activeBoardId ? (
+              {isLinuxPi && activeBoardId ? (
                 <Suspense
                   fallback={
                     <div style={{ color: '#666', padding: 16, fontSize: 12 }}>
@@ -639,7 +681,13 @@ export const EditorPage: React.FC = () => {
         </div>
       </div>
 
-      {showStarBanner && <GitHubStarBanner onClose={handleDismissStarBanner} />}
+      {showStarBanner && (
+        <GitHubStarBanner
+          onClose={handleDismissStarBanner}
+          onStarClick={handleStarClick}
+          round={starRound}
+        />
+      )}
       {/* Slot reserved for the private pro overlay (e.g. agent chat panel).
           Self-hosted builds without an overlay see nothing here. */}
       <div data-velxio-slot="agent-chat" />

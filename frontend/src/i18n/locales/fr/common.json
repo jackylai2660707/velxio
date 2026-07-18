@@ -373,6 +373,8 @@
     "ariaLabel": "Mettre une étoile à Velxio sur GitHub",
     "title": "Vous appréciez Velxio ?",
     "body": "Une ⭐ sur GitHub aide plus de développeurs à découvrir le projet — cela ne prend que 2 secondes !",
+    "title2": "Un petit service ?",
+    "body2": "Velxio est gratuit et open source. Une étoile sur GitHub est le moyen le plus simple de le soutenir et d'aider davantage de personnes à le découvrir.",
     "cta": "Mettre une étoile sur GitHub",
     "dismiss": "Ignorer"
   },
@@ -403,6 +405,31 @@
         "usernameRules": "Le nom d'utilisateur doit faire 3 à 30 caractères (a-z, 0-9, _, -)",
         "passwordTooShort": "Le mot de passe doit comporter au moins 8 caractères.",
         "failed": "Échec de l'inscription."
+      }
+    }
+  },
+  "quotaModal": {
+    "titleFree": "Vous avez atteint la limite gratuite d'aujourd'hui",
+    "titlePaid": "Vous avez atteint votre limite quotidienne",
+    "bodyFree": "Les comptes gratuits reçoivent {{cap}} messages IA par jour. Pro (15$/mois) vous donne {{proCap}}/jour — {{multiplier}}× la limite. Ou attendez la réinitialisation de votre quota.",
+    "bodyPaid": "Votre forfait {{plan}} permet {{cap}} messages par jour. Passez à un niveau supérieur ou attendez la réinitialisation.",
+    "today": "Aujourd'hui",
+    "thisMonth": "Ce mois-ci",
+    "resets": "Réinitialisation",
+    "ctaUpgrade": "Passer à Pro — 15$/mois",
+    "ctaSeePlans": "Voir les forfaits",
+    "ctaWait": "Attendre la réinitialisation"
+  },
+  "editor": {
+    "share": {
+      "updateFailed": "Impossible de mettre à jour la visibilité — veuillez réessayer.",
+      "visibility": {
+        "publicLabel": "Public",
+        "publicHint": "Tout le monde peut trouver ce projet sur velxio.dev.",
+        "unlistedLabel": "Non listé",
+        "unlistedHint": "Caché de la recherche et de la galerie — accessible uniquement via le lien de partage.",
+        "privateLabel": "Privé",
+        "privateHint": "Seul vous pouvez voir ce projet."
       }
     }
   }

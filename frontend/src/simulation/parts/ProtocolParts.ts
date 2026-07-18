@@ -64,7 +64,12 @@ class SSD1306Core {
   private colEnd = 127;
   private pageStart = 0;
   private pageEnd = 7;
-  private memMode = 0; // 0=horizontal, 1=vertical, 2=page
+  // 0=horizontal, 1=vertical, 2=page. SSD1306 power-on default is PAGE
+  // addressing (datasheet 10b). Adafruit_SSD1306 overrides it to horizontal
+  // via 0x20,0x00; page-mode drivers (Tiny4kOLED, U8g2 page buffer) rely on
+  // this default and never send 0x20 — so the default MUST be 2 or their
+  // setCursor (0xB0-0xB7 + 0x00-0x1F) renders garbled.
+  private memMode = 2;
 
   // Multi-byte command accumulation
   private cmdBuf: number[] = [];
@@ -125,7 +130,19 @@ class SSD1306Core {
         this.page = this.pageStart;
         break;
       default:
-        if (cmd >= 0x40 && cmd <= 0x7f) {
+        // Page-addressing-mode cursor commands (single-byte). Used by
+        // Tiny4kOLED / U8g2 page buffer / classic SSD1306 drivers whose
+        // setCursor() does NOT use the 0x21/0x22 column/page-range commands.
+        if (cmd >= 0xb0 && cmd <= 0xb7) {
+          // set page start address (B0..B7 → page 0..7)
+          this.page = cmd & 0x07;
+        } else if (cmd <= 0x0f) {
+          // set lower column nibble (0x00..0x0F)
+          this.col = (this.col & 0xf0) | (cmd & 0x0f);
+        } else if (cmd >= 0x10 && cmd <= 0x1f) {
+          // set higher column nibble (0x10..0x1F)
+          this.col = (this.col & 0x0f) | ((cmd & 0x0f) << 4);
+        } else if (cmd >= 0x40 && cmd <= 0x7f) {
           /* display start line — visual, skip */
         }
         break;
@@ -312,28 +329,30 @@ function attachSSD1306SPI(
 
 /**
  * Internal: SSD1306 attach logic, parameterised over the wire protocol.
- * Used by the three picker entries (the generic `ssd1306` plus the two
- * dedicated `ssd1306-i2c` / `ssd1306-spi` shortcuts).
+ * Called by the single `ssd1306` entry once the protocol has been resolved
+ * (auto-detected from the wiring, or read from an explicit `protocol` property).
  */
 function attachSSD1306(
   element: HTMLElement,
   simulator: unknown,
   getPin: (n: string) => number | null,
   protocol: 'i2c' | 'spi',
+  i2cAddr = 0x3c,
 ): () => void {
   if (protocol === 'spi') {
     return attachSSD1306SPI(element, simulator, getPin);
   }
   const sim = simulator as any;
-  const i2cAddr = 0x3c;
   const device = new VirtualSSD1306(i2cAddr, element);
 
-  // Check ESP32 first — its shim exposes BOTH registerSensor (for the
-  // backend QEMU slave) AND addI2CDevice (for the frontend bus used by
-  // the Interconnect cross-board bridge).  AVR / RP2040 only expose
-  // addI2CDevice, so registerSensor is the unambiguous ESP32 marker.
+  // The ESP32/STM32 bridge shims expose registerSensor (backend QEMU slave) +
+  // addI2CTransactionListener (framebuffer bytes streamed back) AND addI2CDevice
+  // (frontend bus for the cross-board Interconnect). AVR / RP2040 also carry a
+  // registerSensor() stub that returns false, so they enter this branch too —
+  // harmlessly: registerSensor no-ops, the absent addI2CTransactionListener is
+  // skipped, and the real attach happens via the addI2CDevice mirror below.
   if (typeof sim.registerSensor === 'function') {
-    // ── ESP32 path ─────────────────────────────────────────────────────────
+    // ── ESP32 / STM32 (and AVR/RP2040 via the addI2CDevice mirror) ──────────
     const virtualPin = 200 + i2cAddr;
     sim.registerSensor('ssd1306', virtualPin, { addr: i2cAddr });
     sim.addI2CTransactionListener?.(i2cAddr, (data: number[]) => {
@@ -357,34 +376,55 @@ function attachSSD1306(
 }
 
 /**
- * Generic `ssd1306` entry — reads the user-selectable `protocol`
- * property (control: select, options: i2c | spi).  Keeps backward
- * compatibility for existing projects whose components carry this id.
+ * Which wire protocol did the user build?  A real SSD1306 breakout is ONE board
+ * that talks either I2C or SPI depending on how it is wired.  The definitive
+ * SPI-only signal is chip-select (CS): I2C never uses it.  (DC deliberately does
+ * NOT count — on the 8-pin module DC doubles as the I2C address-select/SA0 line,
+ * so many I2C circuits wire it too.)  So CS wired to a GPIO => SPI, otherwise
+ * I2C.  This mirrors the physical part — one component, no protocol switch to
+ * set, just wire it up.
+ *
+ * Pure wiring check: it deliberately does NOT read `simulator.spi`, whose getter
+ * on some boards (RP2040, and the ESP32/STM32 bridge shims) lazily re-routes the
+ * board SPI bus as a side effect and must not fire in I2C mode.
+ */
+function detectSSD1306Protocol(getPin: (n: string) => number | null): 'i2c' | 'spi' {
+  return getPin('CS') !== null ? 'spi' : 'i2c';
+}
+
+/**
+ * SSD1306 OLED — a single component that works on every board with an I2C or
+ * SPI bus (AVR, RP2040, ESP32, STM32).  New projects just wire it up and the
+ * protocol is auto-detected from the wiring like the physical module; a
+ * `protocol` property, when present, pins it explicitly (projects migrated from
+ * the old ssd1306-i2c / ssd1306-spi entries carry it so their behaviour is
+ * preserved exactly).  Consolidates the old three picker entries into one
+ * (issues #101 / #215).
  */
 PartSimulationRegistry.register('ssd1306', {
   attachEvents: (element, simulator, getPin, componentId) => {
     const { components } = useSimulatorStore.getState();
     const comp = components.find((c) => c.id === componentId);
-    const protocol = ((comp?.properties?.protocol as string) ?? 'i2c') as 'i2c' | 'spi';
-    return attachSSD1306(element, simulator, getPin, protocol);
+    const i2cAddr = parseI2cAddress(comp?.properties?.i2cAddress, 0x3c);
+    const explicit = comp?.properties?.protocol;
+    const protocol: 'i2c' | 'spi' =
+      explicit === 'i2c' || explicit === 'spi' ? explicit : detectSSD1306Protocol(getPin);
+    return attachSSD1306(element, simulator, getPin, protocol, i2cAddr);
   },
 });
 
 /**
- * Picker shortcut: "SSD1306 OLED (I2C)" — same web component, but the
- * metadata defaults protocol to 'i2c' and the part skips the property
- * lookup.  Lets users find the I2C variant by name without having to
- * discover the protocol property on the generic ssd1306 entry.
+ * SSD1306 OLED (I2C, 4-pin) — the cheap `velxio-ssd1306-i2c` module (GND/VCC/
+ * SCL/SDA). Same display core as the 8-pin part but I2C-only by construction,
+ * so there's no protocol to detect. Issue #215.
  */
-PartSimulationRegistry.register('ssd1306-i2c', {
-  attachEvents: (element, simulator, getPin) =>
-    attachSSD1306(element, simulator, getPin, 'i2c'),
-});
-
-/** Picker shortcut: "SSD1306 OLED (SPI)" — counterpart to ssd1306-i2c. */
-PartSimulationRegistry.register('ssd1306-spi', {
-  attachEvents: (element, simulator, getPin) =>
-    attachSSD1306(element, simulator, getPin, 'spi'),
+PartSimulationRegistry.register('ssd1306-i2c-4pin', {
+  attachEvents: (element, simulator, getPin, componentId) => {
+    const { components } = useSimulatorStore.getState();
+    const comp = components.find((c) => c.id === componentId);
+    const i2cAddr = parseI2cAddress(comp?.properties?.i2cAddress, 0x3c);
+    return attachSSD1306(element, simulator, getPin, 'i2c', i2cAddr);
+  },
 });
 
 // ─── DS1307 RTC ──────────────────────────────────────────────────────────────

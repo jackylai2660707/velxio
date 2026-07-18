@@ -97,7 +97,7 @@
 }
 
 .board-selector:hover:not(:disabled) {
-  border-color: #007acc;
+  border-color: var(--color-action-primary);
 }
 
 .board-selector:disabled {
@@ -127,14 +127,14 @@
 }
 
 .canvas-serial-btn:hover {
-  border-color: #007acc;
+  border-color: var(--color-action-primary);
   color: #ccc;
 }
 
 .canvas-serial-btn-active {
   background: #0e3a5a;
-  border-color: #007acc;
-  color: #4fc3f7;
+  border-color: var(--color-action-primary);
+  color: var(--color-action-primary);
 }
 
 /* ── Canvas icon-only buttons (undo/redo, …) ─────── */
@@ -158,7 +158,7 @@
 }
 
 .canvas-icon-btn:hover:not(:disabled) {
-  border-color: #007acc;
+  border-color: var(--color-action-primary);
   color: #ccc;
 }
 
@@ -183,7 +183,7 @@
   gap: 5px;
   padding: 0 10px;
   height: 32px;
-  background: #007acc;
+  background: var(--color-action-primary);
   color: #fff;
   border: none;
   border-radius: 5px;
@@ -195,7 +195,7 @@
 }
 
 .add-component-btn:hover:not(:disabled) {
-  background: #1a8bd4;
+  background: var(--color-action-primary-hover);
 }
 
 .add-component-btn:disabled {
@@ -245,6 +245,11 @@
   left: 0;
   right: 0;
   bottom: 0;
+  /* Hit-test transparent: this full-canvas div sits later in the DOM than
+     the boards, so with pointer events it would swallow clicks meant for
+     board pins / board drag overlays (their z-index is local to each
+     board's stacking context). Component groups re-enable their own. */
+  pointer-events: none;
 }
 
 /* ── Zoom controls ───────────────────────────────── */
@@ -314,7 +319,7 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 100;
-  background: rgba(0, 122, 204, 0.92);
+  background: rgba(0, 113, 227, 0.92);
   color: #fff;
   padding: 8px 16px;
   border-radius: 8px;
@@ -398,6 +403,53 @@
   }
 }
 
+/* ── Narrow shared toolbar (desktop, AI chat open) ────────────────────────
+   When the canvas header is portaled into the unified top toolbar, it shares
+   one row with the editor actions. As that *bar* narrows (mainly when the
+   right-docked AI chat opens), collapse the canvas controls the same way the
+   mobile block does — but keyed to the bar's own width via a container query,
+   not the viewport, so it triggers on a wide screen with the chat open too.
+   Priority: labels -> icons, then drop the non-interactive count, then the
+   zoom buttons (mouse-wheel zoom still works). Mirrors the thresholds the
+   editor toolbar and view-mode toggle collapse at, so the whole bar degrades
+   together and nothing overlaps. */
+@container unified-toolbar (max-width: 1010px) {
+  .canvas-serial-btn {
+    padding: 0 8px;
+    font-size: 0; /* hide "Serial" / "Scope" text, keep the icon */
+  }
+  .canvas-serial-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  .add-component-btn {
+    padding: 0 9px;
+    font-size: 0; /* hide "Add" text, keep the icon */
+  }
+  .add-component-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  .board-selector {
+    max-width: 120px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+}
+@container unified-toolbar (max-width: 905px) {
+  .component-count {
+    display: none;
+  }
+  .board-selector {
+    max-width: 96px;
+  }
+}
+@container unified-toolbar (max-width: 835px) {
+  .zoom-controls {
+    display: none; /* mouse-wheel / trackpad zoom still available */
+  }
+}
+
 /* ── WiFi / BLE status badges ─────────────────────────────────────────── */
 .canvas-wifi-badge,
 .canvas-ble-badge {
@@ -447,7 +499,7 @@
 
 /* BLE status colours */
 .canvas-ble-initialized {
-  color: #3b82f6;
+  color: var(--color-action-primary);
 }
 .canvas-ble-advertising {
   color: #6366f1;
@@ -462,7 +514,7 @@
   transform: scale(0.97);
 }
 .selection-action-bar button:focus-visible {
-  outline: 2px solid #007acc;
+  outline: 2px solid var(--color-action-primary);
   outline-offset: 1px;
 }
 
@@ -471,4 +523,17 @@
   .selection-action-bar .selection-action-bar__label {
     display: none;
   }
+}
+
+/* Runtime burnout (P4): a component destroyed mid-simulation renders charred,
+   with a red dashed outline + a smoke badge (the badge is a sibling of the
+   container, so it stays full-colour). Cleared on Reset. */
+.velxio-burnt .web-component-container {
+  filter: grayscale(0.85) brightness(0.4) sepia(0.5) contrast(1.15);
+  transition: filter 0.25s ease;
+}
+.velxio-burnt {
+  outline: 1px dashed rgba(220, 38, 38, 0.65);
+  outline-offset: 1px;
+  border-radius: 4px;
 }

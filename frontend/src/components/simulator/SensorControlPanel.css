@@ -127,7 +127,7 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #007acc;
+  background: var(--color-action-primary);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -140,7 +140,7 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #007acc;
+  background: var(--color-action-primary);
   cursor: pointer;
   border: none;
 }
@@ -177,6 +177,6 @@
 }
 
 .sensor-trigger-button:active {
-  background-color: #007acc;
-  border-color: #007acc;
+  background-color: var(--color-action-primary);
+  border-color: var(--color-action-primary);
 }

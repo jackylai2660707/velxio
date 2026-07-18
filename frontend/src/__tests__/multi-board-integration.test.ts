@@ -38,7 +38,7 @@ vi.mock('../simulation/RP2040Simulator', () => ({
     this.loadBinary = vi.fn();
     this.serialWrite = vi.fn();
     this.addI2CDevice = vi.fn();
-    this.attachCyw43 = vi.fn();
+    this.attachPioPeripheral = vi.fn();
     this.spi = { onByte: null, completeTransfer: vi.fn() };
   }),
 }));
@@ -196,6 +196,26 @@ describe('useEditorStore — file groups', () => {
     expect(updated['group-raspberry-pi-3'][0].name).toMatch(/\.py$/);
   });
 
+  // Regression: every Linux Pi (not just the 3) must default to a Python file
+  // and the Pi workspace, never the Arduino sketch. The Pico (RP2040) is a
+  // microcontroller and must stay on .ino.
+  it.each(['raspberry-pi-zero', 'raspberry-pi-1', 'raspberry-pi-2', 'raspberry-pi-4', 'raspberry-pi-5'])(
+    'createFileGroup creates a .py file for %s',
+    (kind) => {
+      const { createFileGroup } = useEditorStore.getState();
+      createFileGroup(`group-${kind}`);
+      const updated = useEditorStore.getState().fileGroups;
+      expect(updated[`group-${kind}`][0].name).toMatch(/\.py$/);
+    },
+  );
+
+  it('createFileGroup keeps the Raspberry Pi Pico on a .ino sketch (not Linux)', () => {
+    const { createFileGroup } = useEditorStore.getState();
+    createFileGroup('group-raspberry-pi-pico');
+    const updated = useEditorStore.getState().fileGroups;
+    expect(updated['group-raspberry-pi-pico'][0].name).toMatch(/\.ino$/);
+  });
+
   it('createFileGroup accepts custom initial files', () => {
     const { createFileGroup } = useEditorStore.getState();
     createFileGroup('group-custom', [
@@ -279,6 +299,30 @@ describe('useSimulatorStore — multi-board', () => {
     removeBoard(id);
     const { boards } = useSimulatorStore.getState();
     expect(boards.find((b) => b.id === id)).toBeUndefined();
+  });
+
+  it('delete-all then addBoard re-points the editor file group at the new board', () => {
+    // Regression: deleting the default Uno and adding a different board (e.g. a
+    // Pico) via the canvas picker left the editor editing the deleted board's
+    // file group while compile read the NEW board's (default) group — so code
+    // typed into the editor was silently dropped and the board ran its default
+    // sketch. addBoard/removeBoard must keep the editor's active group in sync
+    // with the active board.
+    const sim = useSimulatorStore.getState();
+    sim.boards.map((b) => b.id).forEach((bid) => sim.removeBoard(bid));
+    const picoId = useSimulatorStore.getState().addBoard('raspberry-pi-pico', 0, 0);
+
+    expect(useSimulatorStore.getState().activeBoardId).toBe(picoId);
+    const board = useSimulatorStore.getState().boards.find((b) => b.id === picoId)!;
+    expect(board.activeFileGroupId).toBe(`group-${picoId}`);
+    // The editor's active group must follow the active board.
+    expect(useEditorStore.getState().activeGroupId).toBe(board.activeFileGroupId);
+
+    // And editing the active file lands in the group that compile reads.
+    const editor = useEditorStore.getState();
+    editor.setFileContent(editor.activeFileId, '// PICO SKETCH MARKER');
+    const groupFiles = useEditorStore.getState().getGroupFiles(board.activeFileGroupId);
+    expect(groupFiles.some((f) => f.content.includes('PICO SKETCH MARKER'))).toBe(true);
   });
 
   it('setActiveBoardId switches legacy flat fields', () => {

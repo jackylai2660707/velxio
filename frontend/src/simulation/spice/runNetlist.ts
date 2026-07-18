@@ -112,18 +112,52 @@ export async function runNetlist(netlist: string): Promise<SpiceResult> {
   await adapter.init();
   await adapter.loadCircuit(netlist);
   const analysis = detectAnalysis(netlist);
+
+  // Every voltage source `V_<id>` exposes its branch current as the
+  // ngspice vector `v_<id>#branch` (legacy form `i(v_<id>)`).  These are
+  // the currents the circuit verifier relies on (short-circuit, LED
+  // overcurrent, …).  We request them EXPLICITLY by name rather than
+  // depending on `readAllCurrentVectors`/`ngSpice_AllVecs` enumeration:
+  // the production Web-Worker WASM build does NOT surface source `#branch`
+  // vectors through `AllVecs` for an `.op` plot, so an enumeration-only
+  // read leaves every branch current missing in prod (the live solver
+  // works around this the same way — see CircuitSimulationService /
+  // MixedModeScheduler.setExtraVectorsOfInterest).  Node test builds DO
+  // enumerate them, which is why this gap was invisible to the suite.
+  const branchVectorsOfInterest = Array.from(
+    new Set(
+      Array.from(netlist.matchAll(/^[ \t]*(V\S+)/gim)).map(
+        (m) => `i(${m[1]!.toLowerCase()})`,
+      ),
+    ),
+  );
+
   // Single solve — populate the plot, then enumerate + read every
   // vector via `readAllCurrentVectors` so the pointers stay valid.
   // (Re-running the analysis to read vectors would create a new
   // plot and invalidate everything.)
-  await adapter.solve(analysis, { vectorsOfInterest: [] });
+  const solved = await adapter.solve(analysis, {
+    vectorsOfInterest: branchVectorsOfInterest,
+  });
   const all = await (adapter as unknown as AdapterWithRead).readAllCurrentVectors();
+
+  // Merge: the enumeration is the base (node voltages, time axis, …) and
+  // the explicit branch reads are layered on top so source/LED currents
+  // are present even when `AllVecs` omits them.  `solved.vectors` keys are
+  // the requested legacy names (`i(v_x)`); normalise to the ngspice raw
+  // key (`v_x#branch`) so `legacyNameFor`/`getVec` resolve consistently.
+  const mergedVectors = new Map(all.vectors);
+  for (const [k, v] of solved.vectors) {
+    const ngKey = ngspiceNameFor(k);
+    if (!mergedVectors.has(ngKey)) mergedVectors.set(ngKey, v);
+  }
+
   const result = {
     analysis,
-    vectors: all.vectors,
+    vectors: mergedVectors,
     timeAxis:
       analysis.kind === 'tran'
-        ? all.vectors.get('time')?.real ?? new Float64Array(0)
+        ? mergedVectors.get('time')?.real ?? new Float64Array(0)
         : new Float64Array(0),
     solveMs: 0,
     warnings: [] as string[],

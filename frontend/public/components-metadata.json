@@ -1430,7 +1430,7 @@
     {
       "id": "ssd1306",
       "tagName": "wokwi-ssd1306",
-      "name": "SSD1306",
+      "name": "SSD1306 OLED",
       "category": "displays",
       "thumbnail": "<svg width=\"64\" height=\"64\" xmlns=\"http://www.w3.org/2000/svg\">\n      <rect width=\"64\" height=\"64\" fill=\"#e0e0e0\" rx=\"4\"/>\n      <text x=\"50%\" y=\"50%\" text-anchor=\"middle\" dy=\".3em\" font-size=\"10\" fill=\"#666\">\n        SSD1306\n      </text>\n    </svg>",
       "properties": [
@@ -1440,74 +1440,53 @@
           "control": "text"
         },
         {
-          "name": "protocol",
+          "name": "i2cAddress",
           "type": "string",
-          "defaultValue": "i2c",
-          "control": "select",
-          "description": "Communication protocol",
-          "options": [
-            "i2c",
-            "spi"
-          ]
+          "defaultValue": "0x3c",
+          "control": "text",
+          "description": "I2C address (I2C mode)"
         }
       ],
       "defaultValues": {
-        "protocol": "i2c"
+        "i2cAddress": "0x3c"
       },
       "pinCount": 0,
-      "tags": [
-        "ssd1306"
-      ]
-    },
-    {
-      "thumbnail": "<svg width=\"64\" height=\"64\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"64\" height=\"64\" fill=\"#0b1226\" rx=\"4\"/><rect x=\"8\" y=\"14\" width=\"48\" height=\"32\" rx=\"2\" fill=\"#000\"/><text x=\"32\" y=\"30\" text-anchor=\"middle\" font-size=\"7\" font-family=\"monospace\" fill=\"#9be1ff\" font-weight=\"bold\">SSD1306</text><text x=\"32\" y=\"40\" text-anchor=\"middle\" font-size=\"6\" font-family=\"monospace\" fill=\"#9be1ff\">I2C 0x3C</text><text x=\"32\" y=\"60\" text-anchor=\"middle\" font-size=\"7\" font-family=\"sans-serif\" fill=\"#e5e7eb\" font-weight=\"bold\">SDA SCL</text></svg>",
       "tags": [
         "ssd1306",
         "oled",
         "display",
         "i2c",
+        "spi",
         "0x3c"
-      ],
-      "properties": [
-        {
-          "name": "imageData",
-          "type": "string",
-          "control": "text"
-        }
-      ],
-      "defaultValues": {
-        "protocol": "i2c"
-      },
-      "pinCount": 4,
-      "$comment": "Picker shortcut for SSD1306 in I2C mode — same wokwi-ssd1306 element, but the user finds it by name without having to discover the protocol selector on the generic ssd1306 entry. Issue #101.",
-      "id": "ssd1306-i2c",
-      "tagName": "wokwi-ssd1306",
-      "name": "SSD1306 OLED (I2C)",
-      "category": "displays"
+      ]
     },
     {
-      "thumbnail": "<svg width=\"64\" height=\"64\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"64\" height=\"64\" fill=\"#0b1226\" rx=\"4\"/><rect x=\"8\" y=\"14\" width=\"48\" height=\"32\" rx=\"2\" fill=\"#000\"/><text x=\"32\" y=\"30\" text-anchor=\"middle\" font-size=\"7\" font-family=\"monospace\" fill=\"#9be1ff\" font-weight=\"bold\">SSD1306</text><text x=\"32\" y=\"40\" text-anchor=\"middle\" font-size=\"6\" font-family=\"monospace\" fill=\"#9be1ff\">SPI mode</text><text x=\"32\" y=\"60\" text-anchor=\"middle\" font-size=\"6\" font-family=\"sans-serif\" fill=\"#e5e7eb\" font-weight=\"bold\">MOSI/SCK/DC</text></svg>",
+      "thumbnail": "<svg width=\"64\" height=\"64\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"64\" height=\"64\" fill=\"#025caf\" rx=\"6\"/><rect x=\"9\" y=\"24\" width=\"46\" height=\"24\" fill=\"#141414\"/><text x=\"32\" y=\"14\" text-anchor=\"middle\" font-size=\"5\" font-family=\"monospace\" fill=\"#fff\">GND VCC SCL SDA</text><circle cx=\"18\" cy=\"19\" r=\"1.6\" fill=\"#b4aeab\"/><circle cx=\"27\" cy=\"19\" r=\"1.6\" fill=\"#c08540\"/><circle cx=\"37\" cy=\"19\" r=\"1.6\" fill=\"#009e9b\"/><circle cx=\"46\" cy=\"19\" r=\"1.6\" fill=\"#007adb\"/><text x=\"32\" y=\"39\" text-anchor=\"middle\" font-size=\"7\" font-family=\"monospace\" fill=\"#9be1ff\" font-weight=\"bold\">SSD1306</text><text x=\"32\" y=\"46\" text-anchor=\"middle\" font-size=\"4.5\" font-family=\"monospace\" fill=\"#9be1ff\">I2C 4-pin</text></svg>",
       "tags": [
         "ssd1306",
         "oled",
         "display",
-        "spi"
+        "i2c",
+        "4-pin",
+        "0x3c"
       ],
       "properties": [
         {
-          "name": "imageData",
+          "name": "i2cAddress",
           "type": "string",
-          "control": "text"
+          "defaultValue": "0x3c",
+          "control": "text",
+          "description": "I2C address"
         }
       ],
       "defaultValues": {
-        "protocol": "spi"
+        "i2cAddress": "0x3c"
       },
-      "pinCount": 7,
-      "$comment": "Picker shortcut for SSD1306 in SPI mode — counterpart to ssd1306-i2c.",
-      "id": "ssd1306-spi",
-      "tagName": "wokwi-ssd1306",
-      "name": "SSD1306 OLED (SPI)",
+      "pinCount": 4,
+      "$comment": "4-pin I2C-only SSD1306 module (GND/VCC/SCL/SDA) — the cheap 0.96\" OLED most beginners have; velxio-ssd1306-i2c native element. Counterpart to the 8-pin wokwi-ssd1306. Issue #215.",
+      "id": "ssd1306-i2c-4pin",
+      "tagName": "velxio-ssd1306-i2c-4pin",
+      "name": "SSD1306 OLED (I2C, 4-pin)",
       "category": "displays"
     },
     {
@@ -3376,6 +3355,46 @@
       ]
     },
     {
+      "thumbnail": "<svg width=\"64\" height=\"64\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"2\" y=\"14\" width=\"60\" height=\"36\" rx=\"3\" fill=\"#f4f1ec\" stroke=\"#c8c4bc\"/><line x1=\"5\" y1=\"19\" x2=\"59\" y2=\"19\" stroke=\"#e05050\" stroke-width=\"1.5\"/><line x1=\"5\" y1=\"45\" x2=\"59\" y2=\"45\" stroke=\"#5070e0\" stroke-width=\"1.5\"/><rect x=\"4\" y=\"30\" width=\"56\" height=\"4\" fill=\"#e6e2da\"/><rect x=\"7\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"7\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"7\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"7\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"12\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"12\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"12\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"12\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"17\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"17\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"17\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"17\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"22\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"22\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"22\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"22\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"27\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"27\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"27\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"27\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"32\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"32\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"32\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"32\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"37\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"37\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"37\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"37\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"42\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"42\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"42\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"42\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"47\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"47\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"47\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"47\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"52\" y=\"23\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"52\" y=\"26\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"52\" y=\"36\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/><rect x=\"52\" y=\"39\" width=\"2.4\" height=\"2.4\" fill=\"#333\"/></svg>",
+      "tags": [
+        "breadboard",
+        "protoboard",
+        "prototype",
+        "passive",
+        "wokwi-breadboard"
+      ],
+      "properties": [],
+      "defaultValues": {},
+      "pinCount": 830,
+      "$comment": "Velxio-native passive: full 830-point breadboard. id matches the wokwi part type (wokwi-breadboard strips to 'breadboard') so wokwi zip import/export works with no alias. Internal 5-hole strips + power rails are joined in NetlistBuilder/traceDetailed via utils/breadboardNets.ts.",
+      "id": "breadboard",
+      "tagName": "velxio-breadboard",
+      "name": "Breadboard (full)",
+      "category": "passive",
+      "description": "830-point solderless breadboard: 63 columns x two 5-hole banks (a-e / f-j) plus four full-length power rails. Holes in the same column strip or rail are electrically connected.",
+      "featured": true
+    },
+    {
+      "thumbnail": "<svg width=\"64\" height=\"64\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"8\" y=\"12\" width=\"48\" height=\"40\" rx=\"3\" fill=\"#ffffff\" stroke=\"#c8c4bc\"/><rect x=\"10\" y=\"29\" width=\"44\" height=\"5\" fill=\"#eceae4\"/><rect x=\"12\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"12\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"12\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"12\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"17\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"17\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"17\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"17\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"22\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"22\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"22\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"22\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"27\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"27\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"27\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"27\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"32\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"32\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"32\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"32\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"37\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"37\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"37\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"37\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"42\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"42\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"42\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"42\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"47\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"47\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"47\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"47\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"52\" y=\"17\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"52\" y=\"22\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"52\" y=\"38\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/><rect x=\"52\" y=\"43\" width=\"2.6\" height=\"2.6\" fill=\"#333\"/></svg>",
+      "tags": [
+        "breadboard",
+        "mini",
+        "protoboard",
+        "passive",
+        "wokwi-breadboard-mini"
+      ],
+      "properties": [],
+      "defaultValues": {},
+      "pinCount": 170,
+      "$comment": "Velxio-native passive: 170-point mini breadboard (17x2 banks, no rails). Same wokwi-compatible naming as the full breadboard.",
+      "id": "breadboard-mini",
+      "tagName": "velxio-breadboard-mini",
+      "name": "Breadboard Mini",
+      "category": "passive",
+      "description": "170-point mini solderless breadboard: 17 columns x two 5-hole banks (a-e / f-j), no power rails. Holes in the same column strip are electrically connected.",
+      "featured": true
+    },
+    {
       "thumbnail": "<svg width=\"64\" height=\"64\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"64\" height=\"64\" fill=\"#1a2332\" rx=\"4\"/>\n    <rect x=\"6\" y=\"29\" width=\"52\" height=\"3\" fill=\"#aaa\"/>\n    <ellipse cx=\"32\" cy=\"30\" rx=\"14\" ry=\"9\" fill=\"#165696\"/>\n    <ellipse cx=\"28\" cy=\"26\" rx=\"5\" ry=\"3\" fill=\"#3a7cc8\" opacity=\"0.5\"/>\n    <text x=\"32\" y=\"56\" text-anchor=\"middle\" font-size=\"10\" font-family=\"sans-serif\" fill=\"#e5e7eb\" font-weight=\"bold\">1 nF</text></svg>",
       "tags": [
         "capacitor",
@@ -3589,10 +3608,29 @@
           "type": "string",
           "defaultValue": "1u",
           "control": "text"
+        },
+        {
+          "name": "voltage",
+          "type": "string",
+          "control": "select",
+          "options": [
+            "6.3",
+            "10",
+            "16",
+            "25",
+            "35",
+            "50",
+            "63",
+            "100",
+            "200",
+            "400"
+          ],
+          "defaultValue": "25"
         }
       ],
       "defaultValues": {
-        "value": "1u"
+        "value": "1u",
+        "voltage": "25"
       },
       "pinCount": 0,
       "id": "cap-elec-1u",
@@ -3615,10 +3653,29 @@
           "type": "string",
           "defaultValue": "10u",
           "control": "text"
+        },
+        {
+          "name": "voltage",
+          "type": "string",
+          "control": "select",
+          "options": [
+            "6.3",
+            "10",
+            "16",
+            "25",
+            "35",
+            "50",
+            "63",
+            "100",
+            "200",
+            "400"
+          ],
+          "defaultValue": "25"
         }
       ],
       "defaultValues": {
-        "value": "10u"
+        "value": "10u",
+        "voltage": "25"
       },
       "pinCount": 0,
       "id": "cap-elec-10u",
@@ -3641,10 +3698,29 @@
           "type": "string",
           "defaultValue": "100u",
           "control": "text"
+        },
+        {
+          "name": "voltage",
+          "type": "string",
+          "control": "select",
+          "options": [
+            "6.3",
+            "10",
+            "16",
+            "25",
+            "35",
+            "50",
+            "63",
+            "100",
+            "200",
+            "400"
+          ],
+          "defaultValue": "25"
         }
       ],
       "defaultValues": {
-        "value": "100u"
+        "value": "100u",
+        "voltage": "25"
       },
       "pinCount": 0,
       "id": "cap-elec-100u",
@@ -3667,10 +3743,29 @@
           "type": "string",
           "defaultValue": "1000u",
           "control": "text"
+        },
+        {
+          "name": "voltage",
+          "type": "string",
+          "control": "select",
+          "options": [
+            "6.3",
+            "10",
+            "16",
+            "25",
+            "35",
+            "50",
+            "63",
+            "100",
+            "200",
+            "400"
+          ],
+          "defaultValue": "25"
         }
       ],
       "defaultValues": {
-        "value": "1000u"
+        "value": "1000u",
+        "voltage": "25"
       },
       "pinCount": 0,
       "id": "cap-elec-1000u",
@@ -3693,10 +3788,29 @@
           "type": "string",
           "defaultValue": "47u",
           "control": "text"
+        },
+        {
+          "name": "voltage",
+          "type": "string",
+          "control": "select",
+          "options": [
+            "6.3",
+            "10",
+            "16",
+            "25",
+            "35",
+            "50",
+            "63",
+            "100",
+            "200",
+            "400"
+          ],
+          "defaultValue": "25"
         }
       ],
       "defaultValues": {
-        "value": "47u"
+        "value": "47u",
+        "voltage": "25"
       },
       "pinCount": 0,
       "id": "cap-elec-47u",
@@ -3719,10 +3833,29 @@
           "type": "string",
           "defaultValue": "470u",
           "control": "text"
+        },
+        {
+          "name": "voltage",
+          "type": "string",
+          "control": "select",
+          "options": [
+            "6.3",
+            "10",
+            "16",
+            "25",
+            "35",
+            "50",
+            "63",
+            "100",
+            "200",
+            "400"
+          ],
+          "defaultValue": "25"
         }
       ],
       "defaultValues": {
-        "value": "470u"
+        "value": "470u",
+        "voltage": "25"
       },
       "pinCount": 0,
       "id": "cap-elec-470u",
@@ -3744,10 +3877,29 @@
           "type": "string",
           "defaultValue": "10u",
           "control": "text"
+        },
+        {
+          "name": "voltage",
+          "type": "string",
+          "control": "select",
+          "options": [
+            "6.3",
+            "10",
+            "16",
+            "25",
+            "35",
+            "50",
+            "63",
+            "100",
+            "200",
+            "400"
+          ],
+          "defaultValue": "25"
         }
       ],
       "defaultValues": {
-        "value": "10u"
+        "value": "10u",
+        "voltage": "25"
       },
       "pinCount": 0,
       "id": "capacitor-electrolytic",

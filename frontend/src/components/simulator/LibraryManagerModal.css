@@ -72,7 +72,7 @@
 .lib-icon {
   width: 18px;
   height: 18px;
-  color: #00b8d4;
+  color: var(--color-action-primary);
   flex-shrink: 0;
 }
 
@@ -120,8 +120,8 @@
 }
 
 .lib-tab.active {
-  color: #00b8d4;
-  border-bottom-color: #00b8d4;
+  color: var(--color-action-primary);
+  border-bottom-color: var(--color-action-primary);
 }
 
 /* Status bar */
@@ -176,7 +176,7 @@
   outline: none;
   color: #ddd;
   font-size: 14px;
-  caret-color: #00b8d4;
+  caret-color: var(--color-action-primary);
 }
 
 .lib-search-bar input::placeholder {
@@ -186,7 +186,7 @@
 .lib-spinner {
   width: 16px;
   height: 16px;
-  color: #00b8d4;
+  color: var(--color-action-primary);
   flex-shrink: 0;
   animation: spin 0.8s linear infinite;
 }
@@ -322,7 +322,7 @@
 
 /* Install button */
 .lib-install-btn {
-  background: #00b8d4;
+  background: var(--color-action-primary);
   color: #000;
   border: none;
   border-radius: 20px;
@@ -337,7 +337,7 @@
 
 .lib-install-btn:hover:not(:disabled) {
   background: #00d4f0;
-  box-shadow: 0 0 12px rgba(0, 184, 212, 0.4);
+  box-shadow: 0 0 12px rgba(0, 113, 227, 0.4);
   transform: translateY(-1px);
 }
 

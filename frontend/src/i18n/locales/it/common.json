@@ -373,6 +373,8 @@
     "ariaLabel": "Metti una stella a Velxio su GitHub",
     "title": "Ti piace Velxio?",
     "body": "Una ⭐ su GitHub aiuta più sviluppatori a scoprire il progetto — ci vogliono solo 2 secondi!",
+    "title2": "Un piccolo favore?",
+    "body2": "Velxio è gratuito e open source. Una stella su GitHub è il modo più semplice per sostenerlo e aiutare più persone a scoprire il progetto.",
     "cta": "Metti stella su GitHub",
     "dismiss": "Ignora"
   },
@@ -403,6 +405,31 @@
         "usernameRules": "Il nome utente deve essere di 3-30 caratteri (a-z, 0-9, _, -)",
         "passwordTooShort": "La password deve essere di almeno 8 caratteri.",
         "failed": "Registrazione fallita."
+      }
+    }
+  },
+  "quotaModal": {
+    "titleFree": "Hai raggiunto il limite gratuito di oggi",
+    "titlePaid": "Hai raggiunto il tuo limite giornaliero",
+    "bodyFree": "Gli account gratuiti ricevono {{cap}} messaggi AI al giorno. Pro ($15/mese) ti dà {{proCap}}/giorno — {{multiplier}}× il limite. Oppure attendi il ripristino della quota.",
+    "bodyPaid": "Il tuo piano {{plan}} consente {{cap}} messaggi al giorno. Passa a un livello superiore o attendi il ripristino.",
+    "today": "Oggi",
+    "thisMonth": "Questo mese",
+    "resets": "Ripristino",
+    "ctaUpgrade": "Passa a Pro — $15/mese",
+    "ctaSeePlans": "Vedi piani",
+    "ctaWait": "Aspetta il ripristino"
+  },
+  "editor": {
+    "share": {
+      "updateFailed": "Impossibile aggiornare la visibilità — riprova.",
+      "visibility": {
+        "publicLabel": "Pubblico",
+        "publicHint": "Chiunque può trovare questo progetto su velxio.dev.",
+        "unlistedLabel": "Non elencato",
+        "unlistedHint": "Nascosto dalla ricerca e dalla galleria — accessibile solo tramite link di condivisione.",
+        "privateLabel": "Privato",
+        "privateHint": "Solo tu puoi vedere questo progetto."
       }
     }
   }

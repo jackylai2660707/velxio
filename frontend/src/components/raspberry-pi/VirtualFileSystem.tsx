@@ -5,9 +5,26 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useVfsStore } from '../../store/useVfsStore';
 import type { VfsNode } from '../../store/useVfsStore';
-import { getBoardBridge } from '../../store/useSimulatorStore';
+import { getBoardBridge, useSimulatorStore } from '../../store/useSimulatorStore';
+import { showConfirmDialog } from '../../store/useMessageDialogStore';
+
+/** Resolve true once the board's guest Linux has booted to a shell
+ * (board.piBooted), or false after timeoutMs. Polls the store. */
+function waitForPiBooted(boardId: string, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((resolve) => {
+    const check = (): void => {
+      const b = useSimulatorStore.getState().boards.find((x) => x.id === boardId);
+      if (b?.piBooted) return resolve(true);
+      if (Date.now() > deadline) return resolve(false);
+      setTimeout(check, 250);
+    };
+    check();
+  });
+}
 
 // ── Icons ─────────────────────────────────────────
 
@@ -229,6 +246,7 @@ interface VirtualFileSystemProps {
 }
 
 export const VirtualFileSystem: React.FC<VirtualFileSystemProps> = ({ boardId, onFileSelect }) => {
+  const { t } = useTranslation();
   const {
     initBoardVfs,
     getRootId,
@@ -320,57 +338,76 @@ export const VirtualFileSystem: React.FC<VirtualFileSystemProps> = ({ boardId, o
     setNewNodeName('');
   }, [boardId, creatingIn, newNodeName, newNodeType, createNode]);
 
-  const handleDelete = (nodeId: string) => {
+  const handleDelete = async (nodeId: string) => {
     setCtxMenu(null);
     const node = getNode(boardId, nodeId);
     if (!node || node.parentId === null) return;
-    if (!window.confirm(`Delete "${node.name}"?`)) return;
+    const confirmed = await showConfirmDialog(
+      t('editor.pi.confirmDelete.message', { name: node.name }),
+      {
+        kind: 'error',
+        title: t('editor.pi.confirmDelete.title'),
+        confirmLabel: t('editor.pi.confirmDelete.confirm'),
+        cancelLabel: t('editor.pi.confirmDelete.cancel'),
+        danger: true,
+      },
+    );
+    if (!confirmed) return;
     if (selectedNodeId === nodeId) setSelectedNode(boardId, null);
     deleteNode(boardId, nodeId);
   };
 
   const handleUpload = async () => {
-    const bridge = getBoardBridge(boardId);
-    if (!bridge || !bridge.connected) {
-      alert('Pi is not connected. Start the simulation first.');
-      return;
-    }
-    const files = serializeForUpload(boardId);
-    if (files.length === 0) return;
+    const sim = useSimulatorStore.getState();
+    const board = sim.boards.find((b) => b.id === boardId);
 
     setUploadStatus('uploading');
 
-    const enc = new TextEncoder();
-    const send = (text: string) => bridge.sendSerialBytes(Array.from(enc.encode(text)));
+    // Auto-start the Pi if it isn't running, then wait for the guest shell —
+    // no more "Pi is not connected, start it first" dead-end. waitForPiBooted
+    // resolves false on timeout so we surface an error instead of hanging.
+    if (!board?.running) sim.startBoard(boardId);
+    const ready = await waitForPiBooted(boardId, 75_000);
+    const bridge = getBoardBridge(boardId);
+    if (!ready || !bridge || !bridge.connected) {
+      setUploadStatus('error');
+      setTimeout(() => setUploadStatus('idle'), 3000);
+      return;
+    }
 
-    // Ensure clean prompt and root filesystem is mounted read-write
-    // (init=/bin/sh boots with rootfs read-only; 'rw' in cmdline fixes it but
-    //  we also send the remount just in case)
-    send('\n');
-    await new Promise((r) => setTimeout(r, 200));
-    send('mount -o remount,rw / 2>/dev/null; true\n');
-    await new Promise((r) => setTimeout(r, 400));
+    const files = serializeForUpload(boardId);
+    if (files.length === 0) {
+      setUploadStatus('idle');
+      return;
+    }
+
+    // Flow-controlled sends: wait for the shell prompt to return after each
+    // command instead of guessing with fixed delays (long lines used to drop
+    // on the unflow-controlled console). Ensure a clean prompt + rw rootfs.
+    await bridge.sendAndWaitForPrompt('\n', 4000);
+    await bridge.sendAndWaitForPrompt('mount -o remount,rw / 2>/dev/null; true\n', 6000);
 
     for (const { path, content } of files) {
-      // Create parent directory if needed
+      // Create parent dir (before the heredoc, so the path exists).
       const dir = path.substring(0, path.lastIndexOf('/'));
-      if (dir) {
-        send(`mkdir -p ${dir}\n`);
-        await new Promise((r) => setTimeout(r, 150));
-      }
+      if (dir) await bridge.sendAndWaitForPrompt(`mkdir -p ${dir}\n`, 6000);
 
-      // Write file via shell heredoc.
-      // Use a unique random delimiter so it never collides with file content.
+      // Write the file via a heredoc with a unique delimiter. Open it, stream
+      // the body in small chunks so the console FIFO doesn't overflow on large
+      // files, then close it and wait for the prompt.
       const delim = `VELXIO_${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
       const normalized = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      // Send the entire heredoc as one string so the shell receives it atomically
-      send(`cat > ${path} << '${delim}'\n${normalized}\n${delim}\n`);
-      await new Promise((r) => setTimeout(r, 400));
+      bridge.sendSerialText(`cat > ${path} << '${delim}'\n`);
+      const body = `${normalized}\n`;
+      for (let i = 0; i < body.length; i += 256) {
+        bridge.sendSerialText(body.slice(i, i + 256));
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      await bridge.sendAndWaitForPrompt(`${delim}\n`, 8000);
 
-      // Make scripts executable
+      // Make scripts executable (after the file exists).
       if (path.endsWith('.py') || path.endsWith('.sh')) {
-        send(`chmod +x ${path}\n`);
-        await new Promise((r) => setTimeout(r, 100));
+        await bridge.sendAndWaitForPrompt(`chmod +x ${path}\n`, 5000);
       }
     }
 
@@ -407,9 +444,11 @@ export const VirtualFileSystem: React.FC<VirtualFileSystemProps> = ({ boardId, o
             <span style={{ marginLeft: 4, fontSize: 10 }}>
               {uploadStatus === 'done'
                 ? 'Done!'
-                : uploadStatus === 'uploading'
-                  ? 'Sending…'
-                  : 'Upload'}
+                : uploadStatus === 'error'
+                  ? 'Failed'
+                  : uploadStatus === 'uploading'
+                    ? 'Sending…'
+                    : 'Upload'}
             </span>
           </button>
         </div>

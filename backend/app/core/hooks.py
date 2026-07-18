@@ -22,7 +22,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Awaitable, Callable, Optional
 
-from fastapi import Request
+from fastapi import Request, Response
 
 logger = logging.getLogger(__name__)
 
@@ -300,4 +300,68 @@ async def iot_gateway_gate(request: Request) -> Optional[dict]:
     except Exception:
         # A failing gate must not take the gateway down — fail open.
         logger.exception("iot_gateway_gate hook failed (allowing request)")
+        return None
+
+
+# ── ws_sim_handler ────────────────────────────────────────────────────────────
+# Handles simulation-WebSocket messages the OSS route doesn't itself know about
+# (e.g. the Pico W picow_* messages, whose userspace network stack lives in the
+# overlay). OSS-default: no handler -> the message is ignored. The overlay
+# registers one that dispatches start_picow/stop_picow/picow_packet_out to its
+# picow_net manager (and gates start_picow behind a paid plan). Returns True if
+# it handled the message, False to let the OSS route fall through.
+
+WsSimHandlerHook = Callable[[Any, str, str, dict, Any], Awaitable[bool]]
+
+_ws_sim_handler_hook: Optional[WsSimHandlerHook] = None
+
+
+def register_ws_sim_handler(hook: WsSimHandlerHook) -> None:
+    """Install the simulation-WS message handler. Called in register_pro."""
+    global _ws_sim_handler_hook
+    _ws_sim_handler_hook = hook
+
+
+async def dispatch_ws_sim_message(
+    websocket: Any, client_id: str, msg_type: str, msg_data: dict, callback: Any,
+) -> bool:
+    """Let an overlay handle a simulation-WS message. Returns True if handled,
+    False (the OSS default) when no overlay is loaded."""
+    if _ws_sim_handler_hook is None:
+        return False
+    try:
+        return await _ws_sim_handler_hook(websocket, client_id, msg_type, msg_data, callback)
+    except Exception:
+        logger.exception("ws_sim_handler hook failed (ignoring message)")
+        return False
+
+
+# ── gateway_proxy ─────────────────────────────────────────────────────────────
+# Resolves a gateway request for a board the OSS route can't reach itself (the
+# Pico W's HTTP server lives in the browser-side lwIP; the overlay proxies into
+# it over the WS bridge). OSS-default: no resolver -> None (the route 404s). The
+# overlay returns a Response to use, or None to fall through.
+
+GatewayProxyHook = Callable[[str, str, Request], Awaitable[Optional[Response]]]
+
+_gateway_proxy_hook: Optional[GatewayProxyHook] = None
+
+
+def register_gateway_proxy(hook: GatewayProxyHook) -> None:
+    """Install the overlay gateway-proxy resolver. Called in register_pro."""
+    global _gateway_proxy_hook
+    _gateway_proxy_hook = hook
+
+
+async def dispatch_gateway_proxy(
+    client_id: str, path: str, request: Request,
+) -> Optional[Response]:
+    """Let an overlay proxy a gateway request (e.g. into the Pico W chip).
+    Returns a Response, or None (the OSS default) to fall through to 404."""
+    if _gateway_proxy_hook is None:
+        return None
+    try:
+        return await _gateway_proxy_hook(client_id, path, request)
+    except Exception:
+        logger.exception("gateway_proxy hook failed")
         return None

@@ -169,6 +169,23 @@ body {
   background: #252526;
   border-bottom: 1px solid #333;
   min-height: 38px;
+  /* Query container so every zone (view-mode toggle, editor toolbar, canvas
+     controls) can collapse based on the *shared bar's own width* — which is
+     what shrinks when the right-docked AI chat opens — instead of the viewport
+     width. Prevents the canvas controls (board selector, Serial, Scope) from
+     overlapping the editor Run/Compile buttons on a narrow bar. `layout`
+     containment (implied) does not clip: the overflow/run dropdowns still
+     render below the bar. */
+  container-type: inline-size;
+  container-name: unified-toolbar;
+}
+
+/* Collapse the Code/Both/Circuit labels to icon-only first (biggest fixed
+   block in the bar) as the shared bar narrows. */
+@container unified-toolbar (max-width: 1140px) {
+  .view-mode-toggle .vm-label {
+    display: none;
+  }
 }
 
 .unified-toolbar-explorer-toggle {
@@ -177,7 +194,11 @@ body {
 
 .unified-toolbar-editor {
   flex: 1 1 auto;
-  min-width: 0;
+  /* Floor the editor zone at its fully-collapsed content width so it can never
+     shrink *under* its own buttons and paint them over the adjacent canvas
+     controls. Below this floor the (lower-priority) canvas controls get pushed
+     toward the right edge instead of overlapping — never the other way. */
+  min-width: 280px;
   display: flex;
 }
 
@@ -251,7 +272,7 @@ body {
 
 .explorer-resize-handle:hover,
 .explorer-resize-handle:active {
-  background: #007acc;
+  background: var(--color-action-primary);
 }
 
 .editor-wrapper {
@@ -283,7 +304,7 @@ body {
 
 .resize-handle:hover,
 .resize-handle:active {
-  background: #007acc;
+  background: var(--color-action-primary);
 }
 
 .resize-handle-grip {
@@ -329,7 +350,7 @@ body {
     flex-shrink: 0;
     height: 44px;
     background: #1e1e1e;
-    border-bottom: 2px solid #007acc;
+    border-bottom: 2px solid var(--color-action-primary);
     z-index: 50;
     /* Sits between header and panels */
   }
@@ -357,9 +378,9 @@ body {
   }
 
   .mobile-tab-btn--active {
-    color: #007acc;
-    border-bottom-color: #007acc;
-    background: rgba(0, 122, 204, 0.1);
+    color: var(--color-action-primary);
+    border-bottom-color: var(--color-action-primary);
+    background: rgba(0, 113, 227, 0.1);
   }
 
   .mobile-tab-btn:active {

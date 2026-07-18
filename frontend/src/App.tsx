@@ -1,5 +1,5 @@
 import { useEffect, type ReactElement } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { LandingPage } from './pages/LandingPage';
 import { EditorPage } from './pages/EditorPage';
 import { ExamplesPage } from './pages/ExamplesPage';
@@ -27,12 +27,14 @@ import { RaspberryPiPicoSimulatorPage } from './pages/RaspberryPiPicoSimulatorPa
 import { RaspberryPiSimulatorPage } from './pages/RaspberryPiSimulatorPage';
 import { Velxio2Page } from './pages/Velxio2Page';
 import { Velxio25Page } from './pages/Velxio25Page';
+import { Velxio3Page } from './pages/Velxio3Page';
 import { AboutPage } from './pages/AboutPage';
 import { PricingPlaceholder } from './pages/PricingPlaceholder';
 import { LocaleSync } from './i18n/LocaleSync';
 import { NON_DEFAULT_LOCALES } from './i18n/config';
 import { useProRoutes } from './lib/proRoutes';
 import { triggerSessionCheck } from './lib/proSession';
+import { MessageDialogHost } from './components/ui/MessageDialogHost';
 import './App.css';
 
 /**
@@ -81,12 +83,27 @@ const ROUTES: { path: string; element: ReactElement; index?: boolean }[] = [
   { path: 'raspberry-pi-simulator', element: <RaspberryPiSimulatorPage /> },
   { path: 'v2', element: <Velxio2Page /> },
   { path: 'v2-5', element: <Velxio25Page /> },
+  { path: 'v3', element: <Velxio3Page /> },
   { path: 'about', element: <AboutPage /> },
   // Pricing — placeholder by default; private overlays portal-inject the real page
   { path: 'pricing', element: <PricingPlaceholder /> },
   // project/:id, :username/:projectName, :username — also moved to the
   // pro overlay (project persistence + public profiles are pro features).
 ];
+
+/**
+ * The default locale (English) is served at the root with NO `/en` prefix, so
+ * `/en/...` matches no route and renders blank. People reasonably guess `/en/`
+ * by analogy with `/es/`, `/zh-cn/`, … — redirect them to the prefix-free path
+ * (`/en/project/x` → `/project/x`, `/en` → `/`) instead of a blank page. This
+ * keeps the canonical no-prefix English URLs (good for SEO) while handling the
+ * guessed ones gracefully.
+ */
+function EnPrefixRedirect() {
+  const { pathname, search, hash } = useLocation();
+  const stripped = pathname.replace(/^\/en(?=\/|$)/, '');
+  return <Navigate to={(stripped || '/') + search + hash} replace />;
+}
 
 function App() {
   // Pro overlay registers extra routes (login, register, admin, profile,
@@ -142,8 +159,15 @@ function App() {
               )}
             </Route>
           ))}
+
+          {/* `/en/...` is the default locale spelled out — redirect to the
+              canonical prefix-free path instead of rendering a blank page. */}
+          <Route path="/en/*" element={<EnPrefixRedirect />} />
         </Routes>
       </LocaleSync>
+      {/* Global alert() replacement — opened from anywhere (React or plain
+          .ts) via showMessageDialog() in store/useMessageDialogStore. */}
+      <MessageDialogHost />
     </Router>
   );
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { BoardKind } from '../../types/board';
 import { BOARD_KIND_LABELS } from '../../types/board';
@@ -58,7 +59,9 @@ export const BoardPickerModal = ({ isOpen, onClose, onSelectBoard }: BoardPicker
   const { t } = useTranslation();
   if (!isOpen) return null;
 
-  return (
+  // Portal to <body>: escape the canvas subtree so no ancestor stacking
+  // context can pin the dialog below floating panels (e.g. the AI chat).
+  return createPortal(
     <div
       style={{
         position: 'fixed',
@@ -67,7 +70,8 @@ export const BoardPickerModal = ({ isOpen, onClose, onSelectBoard }: BoardPicker
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 2000,
+        // Above every floating panel, including the pro AI chat (8000/8001).
+        zIndex: 9000,
       }}
       onClick={onClose}
     >
@@ -147,6 +151,7 @@ export const BoardPickerModal = ({ isOpen, onClose, onSelectBoard }: BoardPicker
           Cancel
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -39,6 +39,19 @@ import {
 import './EditorToolbar.css';
 
 /**
+ * Output-console group for circuit pre-flight + runtime faults. Routing these
+ * into the compile console (instead of an inline toolbar toast that overlapped
+ * the Run/Stop buttons) gives one unified, red-coloured diagnostics log —
+ * Proteus-style. id is matched when clearing so the findings survive an
+ * auto-compile triggered by the same Run.
+ */
+const CIRCUIT_CHECK_TARGET: CompileTarget = {
+  id: 'circuit-check',
+  label: 'Circuit check',
+  kind: 'board',
+};
+
+/**
  * Clear the output drives of every custom chip on the canvas and re-solve, so
  * chip-driven LEDs go dark on Stop. A chip drives its nets via its own SPICE
  * voltage sources (registered in chipPinDrives); stopBoard / electrical-pause
@@ -85,9 +98,9 @@ interface EditorToolbarProps {
   setCompileLogs: (logs: CompilationLog[] | ((prev: CompilationLog[]) => CompilationLog[])) => void;
   /**
    * Optional element rendered between the left action group and the right
-   * action group. The editor passes <FileTabs /> here so the tabs share the
-   * same row as the toolbar — keeping every action icon pinned and visible
-   * regardless of how narrow the editor pane gets.
+   * action group. Normally empty (the slot just acts as a flexible spacer
+   * that keeps the right action icons pinned); private overlays may inject
+   * deployment-specific content here without forking the toolbar.
    */
   centerSlot?: React.ReactNode;
   /**
@@ -183,6 +196,10 @@ export const EditorToolbar = ({
   // Run-All / Stop buttons (the flat `running` flag only tracks the ACTIVE
   // board, so it misreports a multi-board or non-active-board run).
   const anyBoardRunning = boards.some((b) => b.running);
+  // Multi-board: the primary Run button runs ALL boards (the whole wired
+  // project is one system — running a subset is almost never intended), with a
+  // split-menu to still run just the active board. Single-board is unchanged.
+  const isMultiBoard = boards.length > 1;
 
   // A "run target" is a board OR a programmable custom-chip (a CPU that runs a
   // ROM). When there is more than one target — two boards, a board + a chip, or
@@ -222,6 +239,13 @@ export const EditorToolbar = ({
     [currentProject],
   );
   const [compiling, setCompiling] = useState(false);
+  // True while the pre-flight circuit verification SPICE solve is running.
+  // Drives the Run-button spinner so the user gets feedback during the
+  // (sometimes multi-second, cold-worker) solve instead of a dead button.
+  const [verifying, setVerifying] = useState(false);
+  // Synchronous re-entrancy guard: a click while a run/verify is already in
+  // flight is ignored, so rapid clicks can't stack multiple verifications.
+  const runInFlightRef = useRef(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [libManagerOpen, setLibManagerOpen] = useState(false);
   const [pendingLibraries, setPendingLibraries] = useState<string[]>([]);
@@ -232,6 +256,9 @@ export const EditorToolbar = ({
   const [missingLibHint, setMissingLibHint] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  // Split-button menu for the multi-board Run control ("Run all" / "Run active only").
+  const [runMenuOpen, setRunMenuOpen] = useState(false);
+  const runMenuRef = useRef<HTMLDivElement>(null);
 
   // Open the Library Manager when another component (e.g. the velxio.json entry
   // in the FileExplorer) asks for it via a window event. Avoids prop-drilling
@@ -241,6 +268,27 @@ export const EditorToolbar = ({
     window.addEventListener('velxio-open-library-manager', open);
     return () => window.removeEventListener('velxio-open-library-manager', open);
   }, []);
+
+  // Surface a runtime circuit fault (e.g. an LED that burnt out from
+  // overcurrent during the live SPICE solve) in the output console, in red,
+  // under the "Circuit check" group — same place as the pre-flight findings.
+  // (Previously an inline toolbar toast that overlapped the Run/Stop buttons.)
+  // We do NOT auto-open the console here: the continuous solver can fault on
+  // load, and popping the console open then would be intrusive. The pre-flight
+  // (on Run) opens it; this entry then lands in the already-open log.
+  useEffect(() => {
+    const onFault = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { message?: string } | undefined;
+      if (!detail?.message) return;
+      const text = detail.message;
+      setCompileLogs((prev) => [
+        ...prev,
+        { timestamp: new Date(), type: 'error', message: text, target: CIRCUIT_CHECK_TARGET },
+      ]);
+    };
+    window.addEventListener('velxio-circuit-fault', onFault);
+    return () => window.removeEventListener('velxio-circuit-fault', onFault);
+  }, [setCompileLogs]);
 
   useEffect(() => {
     if (!moreMenuOpen) return;
@@ -259,6 +307,25 @@ export const EditorToolbar = ({
       document.removeEventListener('keydown', onEsc);
     };
   }, [moreMenuOpen]);
+
+  // Close the Run split-menu on outside click / Escape (mirrors the more-menu).
+  useEffect(() => {
+    if (!runMenuOpen) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (runMenuRef.current && !runMenuRef.current.contains(e.target as Node)) {
+        setRunMenuOpen(false);
+      }
+    };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setRunMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [runMenuOpen]);
 
   // Compile All / Run All — runs sequentially, logs to console (no dialog)
   const [compileAllRunning, setCompileAllRunning] = useState(false);
@@ -391,7 +458,10 @@ export const EditorToolbar = ({
     // Wipe the previous build's output before we append anything new.
     // Issue #209: lingering logs from prior compiles made it impossible
     // to tell the latest errors / warnings apart from stale ones.
-    setCompileLogs([]);
+    // Keep the "Circuit check" findings, though: a Run auto-compiles right
+    // after the pre-flight verification logs them, and clearing here would
+    // wipe a circuit warning the user just triggered.
+    setCompileLogs((prev) => prev.filter((l) => l.target?.id === CIRCUIT_CHECK_TARGET.id));
     trackCompileCode();
 
     // ── Custom-chip preparation ─────────────────────────────────────────
@@ -628,7 +698,20 @@ export const EditorToolbar = ({
         }),
       };
       const input = buildInputFromStore(snap);
-      return await verifyCircuit(input);
+      const result = await verifyCircuit(input);
+      // Concise outcome log — verification failing silently in production is
+      // hard to spot otherwise (the rules read 0 A when currents are missing).
+      console.log(
+        '[verify]',
+        JSON.stringify({
+          errors: result.errors.map((e) => e.code),
+          warnings: result.warnings.map((w) => w.code),
+          solved: !!result.solve,
+          branches: result.solve ? Object.keys(result.solve.branchCurrents) : null,
+          nodes: result.solve ? Object.keys(result.solve.nodeVoltages) : null,
+        }),
+      );
+      return result;
     } catch (err) {
       console.warn('[verifyCircuit] failed', err);
       return null;
@@ -636,36 +719,52 @@ export const EditorToolbar = ({
   }, []);
 
   /**
-   * Returns true if the caller should proceed inline. If the verifier finds
-   * errors we stash a resume callback in `pendingRunRef` and pop the
-   * verification modal; the resume callback re-enters `handleRun` with
-   * `skipVerify = true` so we don't loop. Warnings-only results don't
-   * block — they surface inline via `setMessage` and the run continues.
+   * Returns true if the caller should proceed inline. All findings are written
+   * to the output console (red errors / orange warnings, "Circuit check"
+   * group). If the verifier finds errors we also stash a resume callback in
+   * `pendingRunRef` and pop the verification modal; the resume callback
+   * re-enters `handleRun` with `skipVerify = true` so we don't loop.
+   * Warnings-only results don't block — the console entry is enough.
    */
   const checkOrBlock = useCallback(
     async (resume: () => void): Promise<boolean> => {
       const result = await runVerification();
       if (!result) return true;
       if (result.errors.length === 0 && result.warnings.length === 0) return true;
-      if (result.errors.length === 0) {
-        // Warnings only — non-blocking. Surface inline and continue.
-        const summary = result.warnings
-          .slice(0, 3)
-          .map((w) => w.message)
-          .join(' • ');
-        const more = result.warnings.length > 3 ? ` (+${result.warnings.length - 3} more)` : '';
-        setMessage({
-          type: 'error',
-          text: `${result.warnings.length} circuit warning${result.warnings.length === 1 ? '' : 's'}: ${summary}${more}`,
-        });
-        return true;
-      }
-      // Errors → block until the user explicitly chooses Run Anyway.
+
+      // Write every finding to the output console under "Circuit check" — red
+      // for errors, orange for warnings — so there's one persistent, unified
+      // diagnostics log next to the compiler output (Proteus-style). Replace
+      // any prior circuit-check entries so repeated runs stay clean, and open
+      // the console so the findings are visible.
+      const now = new Date();
+      setCompileLogs((prev) => [
+        ...prev.filter((l) => l.target?.id !== CIRCUIT_CHECK_TARGET.id),
+        ...result.errors.map((e) => ({
+          timestamp: now,
+          type: 'error' as const,
+          message: e.message,
+          target: CIRCUIT_CHECK_TARGET,
+        })),
+        ...result.warnings.map((w) => ({
+          timestamp: now,
+          type: 'warning' as const,
+          message: w.message,
+          target: CIRCUIT_CHECK_TARGET,
+        })),
+      ]);
+      setConsoleOpen(true);
+
+      // Warnings only — non-blocking; the console entry is enough, run continues.
+      if (result.errors.length === 0) return true;
+
+      // Errors → also pop the modal so the user makes an explicit Run-anyway /
+      // Cancel decision; the console keeps the persistent red record.
       pendingRunRef.current = resume;
       setVerification(result);
       return false;
     },
-    [runVerification],
+    [runVerification, setCompileLogs, setConsoleOpen],
   );
 
   const handleRun = async (skipVerify = false) => {
@@ -675,7 +774,20 @@ export const EditorToolbar = ({
     // overpower. If anything trips we hand control to the modal, which
     // resumes by calling `handleRun(true)` for "Run anyway".
     if (!skipVerify) {
-      const ok = await checkOrBlock(() => handleRun(true));
+      // The verification solve can take a second or two (cold ngspice worker).
+      // Show the Run-button spinner and ignore re-clicks while it runs — the
+      // button otherwise looks idle and gets clicked repeatedly, stacking
+      // multiple verifications.
+      if (runInFlightRef.current) return;
+      runInFlightRef.current = true;
+      setVerifying(true);
+      let ok = false;
+      try {
+        ok = await checkOrBlock(() => handleRun(true));
+      } finally {
+        setVerifying(false);
+        runInFlightRef.current = false;
+      }
       if (!ok) return;
     }
 
@@ -691,7 +803,9 @@ export const EditorToolbar = ({
       if (customChips.length > 0) {
         setCompiling(true);
         setConsoleOpen(true);
-        setCompileLogs([]);
+        // Fresh chip output, but keep the circuit pre-flight findings just
+        // logged by checkOrBlock so they survive a "Run anyway".
+        setCompileLogs((prev) => prev.filter((l) => l.target?.id === CIRCUIT_CHECK_TARGET.id));
         try {
           await prepareCustomChips(customChips, files);
         } catch (e) {
@@ -1044,11 +1158,18 @@ export const EditorToolbar = ({
    * fresh WASM/ROM) + resuming the electrical solver when there's no board.
    * Mirrors single Run, generalised across all targets.
    */
-  const handleRunAll = async () => {
+  const handleRunAll = async (skipVerify = false) => {
     const sim = useSimulatorStore.getState();
     const boardsList = sim.boards;
     const chips = sim.components.filter((c) => c.metadataId === 'custom-chip');
     if (boardsList.length === 0 && chips.length === 0) return;
+
+    // Same pre-flight safety check as handleRun — block on shorts / overcurrent
+    // before starting every board, with a "Run anyway" escape.
+    if (!skipVerify) {
+      const ok = await checkOrBlock(() => handleRunAll(true));
+      if (!ok) return;
+    }
 
     // A chip needs compiling when it has no WASM yet, or it references a program
     // file but hasn't been assembled to ROM.
@@ -1366,31 +1487,109 @@ export const EditorToolbar = ({
 
             <div className="tb-divider" />
 
-            {/* Run */}
-            <button
-              onClick={handleRun}
-              disabled={
-                isBoardless
-                  ? digitalRunning
-                  : running || compiling || !activeBoard
-              }
-              className="tb-btn tb-btn-run"
-              title={
-                isBoardless
-                  ? digitalRunning
-                    ? 'Digital simulation running'
-                    : 'Resume digital simulation'
-                  : !activeBoard
-                    ? t('editor.toolbar.run.addBoard')
-                    : activeBoard?.languageMode === 'micropython'
-                      ? t('editor.toolbar.run.runMicropython')
-                      : t('editor.toolbar.run.run')
-              }
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                <polygon points="5,3 19,12 5,21" />
-              </svg>
-            </button>
+            {/* Run — in a multi-board project this runs ALL boards (the wired
+                boards are one system; running a subset is almost never
+                intended), with a split-menu to still run only the active board.
+                Single-board / board-less behaviour is unchanged. */}
+            <div className="tb-run-split" ref={runMenuRef}>
+              <button
+                onClick={() => (isMultiBoard ? handleRunAll() : handleRun())}
+                disabled={
+                  isBoardless
+                    ? digitalRunning || verifying
+                    : isMultiBoard
+                      ? compileAllRunning || anyBoardRunning || verifying
+                      : running || compiling || verifying || !activeBoard
+                }
+                className="tb-btn tb-btn-run"
+                title={
+                  verifying
+                    ? t('editor.toolbar.run.verifying', 'Checking circuit...')
+                    : isBoardless
+                      ? digitalRunning
+                        ? 'Digital simulation running'
+                        : 'Resume digital simulation'
+                      : isMultiBoard
+                        ? t('editor.toolbar.runAll')
+                        : !activeBoard
+                          ? t('editor.toolbar.run.addBoard')
+                          : activeBoard?.languageMode === 'micropython'
+                            ? t('editor.toolbar.run.runMicropython')
+                            : t('editor.toolbar.run.run')
+                }
+              >
+                {verifying || compiling ? (
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="spin"
+                  >
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                    <polygon points="5,3 19,12 5,21" />
+                  </svg>
+                )}
+              </button>
+              {isMultiBoard && (
+                <button
+                  className="tb-btn tb-btn-run-caret"
+                  onClick={() => setRunMenuOpen((o) => !o)}
+                  disabled={compileAllRunning || anyBoardRunning || verifying}
+                  title={t('editor.toolbar.run.options', 'Run options')}
+                  aria-haspopup="true"
+                  aria-expanded={runMenuOpen}
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+              )}
+              {isMultiBoard && runMenuOpen && (
+                <div className="tb-run-menu" role="menu">
+                  <button
+                    role="menuitem"
+                    className="tb-run-menu-item"
+                    onClick={() => {
+                      setRunMenuOpen(false);
+                      handleRunAll();
+                    }}
+                  >
+                    {t('editor.toolbar.runAll')}
+                  </button>
+                  <button
+                    role="menuitem"
+                    className="tb-run-menu-item"
+                    disabled={!activeBoard}
+                    onClick={() => {
+                      setRunMenuOpen(false);
+                      handleRun();
+                    }}
+                  >
+                    {t('editor.toolbar.run.runActiveOnly', {
+                      name: activeBoard ? boardDisplayName(activeBoard) : '',
+                      defaultValue: `Run only ${activeBoard ? boardDisplayName(activeBoard) : ''}`,
+                    })}
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Stop */}
             <button
@@ -1452,24 +1651,30 @@ export const EditorToolbar = ({
                   </svg>
                 </button>
 
-                {/* Run All */}
-                <button
-                  onClick={handleRunAll}
-                  disabled={compileAllRunning || anyBoardRunning || digitalRunning}
-                  className="tb-btn tb-btn-run-all"
-                  title={t('editor.toolbar.runAll')}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                    <polygon points="3,3 11,12 3,21" />
-                    <polygon points="13,3 21,12 13,21" />
-                  </svg>
-                </button>
+                {/* Run All — only when the primary Run isn't already the
+                    "run all boards" action (i.e. board + chip or chips-only
+                    projects). For 2+ boards the split Run button covers it. */}
+                {!isMultiBoard && (
+                  <button
+                    onClick={() => handleRunAll()}
+                    disabled={compileAllRunning || anyBoardRunning || digitalRunning}
+                    className="tb-btn tb-btn-run-all"
+                    title={t('editor.toolbar.runAll')}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                      <polygon points="3,3 11,12 3,21" />
+                      <polygon points="13,3 21,12 13,21" />
+                    </svg>
+                  </button>
+                )}
               </>
             )}
           </div>
 
-          {/* Center slot — file tabs share the row so action icons stay pinned. */}
-          {centerSlot && <div className="toolbar-center-slot">{centerSlot}</div>}
+          {/* Center slot — a flexible spacer that keeps the right action group
+              pinned to the far right. Rendered unconditionally so the layout
+              holds even when no overlay supplies content here. */}
+          <div className="toolbar-center-slot">{centerSlot}</div>
 
           <div className="toolbar-group toolbar-group-right">
             {/* Hidden file input for project import. Accepts both .vlx

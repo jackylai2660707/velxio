@@ -11,7 +11,9 @@
       "run": {
         "addBoard": "Add a board to run",
         "runMicropython": "Run MicroPython",
-        "run": "Run (auto-compiles if needed)"
+        "run": "Run (auto-compiles if needed)",
+        "runActiveOnly": "Run only {{name}}",
+        "options": "Run options"
       },
       "stop": "Stop",
       "reset": "Reset",
@@ -36,6 +38,17 @@
     "fileExplorer": {
       "workspace": "WORKSPACE",
       "newWorkspace": "New workspace (clears boards, components, wires and files)",
+      "confirmNew": {
+        "title": "Start a new workspace?",
+        "message": "This clears every board, component, wire and file. This cannot be undone.",
+        "confirm": "Start new",
+        "cancel": "Cancel"
+      },
+      "confirmLoad": {
+        "title": "Load project?",
+        "message": "Load this {{type}} project? Your current workspace will be replaced. This cannot be undone.",
+        "confirm": "Load"
+      },
       "saveProject": "Save project (Ctrl+S)",
       "clickToEdit": "click to edit",
       "collapse": "Collapse",
@@ -228,7 +241,12 @@
       "rotate90": "Rotate 90°",
       "rotate": "Rotate",
       "delete": "Delete",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "keyboardKey": "Keyboard key",
+      "assignKey": "Assign key",
+      "pressAKey": "Press a key…",
+      "clearKey": "Remove key binding",
+      "keyInUse": "Also assigned to another button — both will press together."
     },
     "selectionBar": {
       "label": "Selection actions",
@@ -267,9 +285,19 @@
       "rotate": "Rotate",
       "delete": "Delete"
     },
+    "boardOptions": {
+      "confirmOverwrite": {
+        "title": "Overwrite file?",
+        "message": "A file named \"{{name}}\" already exists. Overwrite?",
+        "confirm": "Overwrite",
+        "cancel": "Skip"
+      }
+    },
     "pi": {
       "connected": "Connected",
       "starting": "Starting…",
+      "bootingTitle": "Booting {{board}}…",
+      "bootingNote": "Starting Linux — this can take up to a minute the first time.",
       "offline": "Offline",
       "powerOnTitle": "Power on the Raspberry Pi",
       "startPi": "Start Pi",
@@ -279,11 +307,17 @@
       "disconnect": "Disconnect",
       "terminal": "Terminal",
       "close": "Close",
-      "offlineTitle": "Raspberry Pi 3B is powered off",
+      "offlineTitle": "{{board}} is powered off",
       "offlineSubtitle": "Start the Pi to open a terminal and interact with the Linux system.",
       "offlineNote1": "Note: The file explorer shows a staging area.",
-      "offlineNote2": "Use \"Upload to Pi\" after starting to transfer files to the running Pi.",
+      "offlineNote2": "\"Upload to Pi\" sends these files to the running system, starting the Pi automatically if needed.",
       "loadingTerminal": "Loading terminal…",
+      "confirmDelete": {
+        "title": "Delete",
+        "message": "Delete \"{{name}}\"?",
+        "confirm": "Delete",
+        "cancel": "Cancel"
+      },
       "selectFile": "Select a file from the explorer to edit it."
     },
     "sensorPanel": {
@@ -367,6 +401,8 @@
     "releases": {
       "heading": "Recent releases",
       "latest": "Latest",
+      "v3Tagline": "Retro CPUs, multi-board systems, full-circuit accuracy",
+      "v3Blurb": "Programmable Z80/8080/4004 retro CPUs with custom ROM, MicroSD and ePaper emulation, true multi-board UART/I2C/SPI interconnect, ESP32-CAM, full undo/redo, the complete ngspice WASM migration, an 88% smaller bundle, and 100+ new examples.",
       "v25Tagline": "Arduino meets SPICE in your browser",
       "v25Blurb": "Real-time analog circuit simulation via ngspice-WASM, wired to Arduino, ESP32 and Raspberry Pi Pico. 100+ SPICE-accurate components, live ammeters and voltmeters, 40 new analog/hybrid examples — co-simulated with your firmware.",
       "v2Tagline": "Multi-board canvas, ESP32, Raspberry Pi 3",

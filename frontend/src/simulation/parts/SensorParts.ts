@@ -62,25 +62,28 @@ PartSimulationRegistry.register('tilt-switch', {
  * NTC thermistor sensor — injects analog voltage representing temperature.
  * Default 25°C → 2.5V. SensorControlPanel slider adjusts temperature.
  *
- * Linear approximation: volts = clamp(2.5 - (temp - 25) * 0.02, 0, 5)
- * (25°C = 2.5V; lower temp = higher voltage, higher temp = lower voltage)
+ * The injected OUT voltage uses the SAME β-model voltage divider the circuit
+ * (and the example sketch) assume: a 10k pull-up from VCC to OUT and the NTC
+ * from OUT to GND, so V_OUT = 5 · R_ntc / (R_ntc + R_pull) with
+ * R_ntc(T) = R0 · exp(β · (1/T − 1/T0)).  This makes the injected ADC voltage
+ * decode straight back to the slider value (set 50°C → read 50°C).  When the
+ * electrical (SPICE) engine is active it drives A0 from the ngspice solve
+ * instead, using the matching topology in componentToSpice.ts — both agree.
  */
 PartSimulationRegistry.register('ntc-temperature-sensor', {
-  attachEvents: (element, simulator, getArduinoPinHelper, componentId) => {
+  attachEvents: (_element, simulator, getArduinoPinHelper, componentId) => {
     const pin = getArduinoPinHelper('OUT');
 
-    const tempToVolts = (temp: number) => Math.max(0, Math.min(5, 2.5 - (temp - 25) * 0.02));
+    const NTC_R0 = 10_000;
+    const NTC_BETA = 3950;
+    const R_PULL = 10_000;
+    const tempToVolts = (temp: number) => {
+      const rNtc = NTC_R0 * Math.exp(NTC_BETA * (1 / (temp + 273.15) - 1 / 298.15));
+      return Math.max(0, Math.min(5, 5 * (rNtc / (rNtc + R_PULL))));
+    };
 
     // Room temperature default
     if (pin !== null) setAdcVoltage(simulator, pin, tempToVolts(25));
-
-    const onInput = () => {
-      const val = (element as any).value;
-      if (val !== undefined && pin !== null) {
-        setAdcVoltage(simulator, pin, (val / 1023.0) * 5.0);
-      }
-    };
-    element.addEventListener('input', onInput);
 
     registerSensorUpdate(componentId, (values) => {
       if ('temperature' in values) {
@@ -94,7 +97,6 @@ PartSimulationRegistry.register('ntc-temperature-sensor', {
     });
 
     return () => {
-      element.removeEventListener('input', onInput);
       unregisterSensorUpdate(componentId);
     };
   },

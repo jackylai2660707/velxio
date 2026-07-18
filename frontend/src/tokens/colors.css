@@ -64,6 +64,10 @@
   --color-border-strong:  rgba(255, 255, 255, 0.16);
 
   /* Semantic — actions */
+  /* Solid UI doctrine: interactive surfaces use SOLID fills of these
+   * tokens (white text/icon, border:none) — never neon hues or
+   * translucent "outline" borders. Green/red are semantic only
+   * (success/error). See branding/README.md "Solid UI doctrine". */
   --color-action-primary:       var(--blue-600);
   --color-action-primary-hover: var(--blue-500);
   --color-action-primary-fg:    var(--gray-0);

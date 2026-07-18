@@ -373,6 +373,8 @@
     "ariaLabel": "Star Velxio on GitHub",
     "title": "Enjoying Velxio?",
     "body": "A ⭐ on GitHub helps more developers discover the project — it only takes 2 seconds!",
+    "title2": "One quick favor?",
+    "body2": "Velxio is free and open-source. A star on GitHub is the simplest way to support it and help more people find the project.",
     "cta": "Star on GitHub",
     "dismiss": "Dismiss"
   },

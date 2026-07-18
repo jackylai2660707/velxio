@@ -22,13 +22,13 @@
         {
           "name": "velxio-pi-rootfs-arm64.ext4",
           "asset_id": "velxio-pi-rootfs-arm64-zst",
-          "sha256": "d6d4a2747d18055493a621f28bf2552e94dc2a11b1586d64b0eeb3847c7e06be",
+          "sha256": "a6e2d5ea33f14803cbc66fcd7829a24f5b9b4910c26701328e301090fa4e241c",
           "size_bytes": 629145600,
-          "version": "2026.05+phase2-shims-final",
+          "version": "2026.06+gpiozero-core",
           "compressed": {
             "encoding": "zstd",
-            "sha256": "debd1c339dc8a6e0c72494a14f032d69f3579f4f55929ca45446f030415602ca",
-            "size_bytes": 24733697
+            "sha256": "b48f227c0a996228ae1b7da1b2d19921992d77cd056493995d11a52de0296670",
+            "size_bytes": 25046378
           }
         }
       ]

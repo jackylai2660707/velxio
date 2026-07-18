@@ -48,14 +48,14 @@
 }
 
 .osc-btn:hover {
-  border-color: #007acc;
+  border-color: var(--color-action-primary);
   color: #fff;
 }
 
 .osc-btn-active {
   background: #0e3a5a;
-  border-color: #007acc;
-  color: #4fc3f7;
+  border-color: var(--color-action-primary);
+  color: var(--color-action-primary);
 }
 
 .osc-btn-danger {
@@ -86,7 +86,7 @@
 }
 
 .osc-select:focus {
-  border-color: #007acc;
+  border-color: var(--color-action-primary);
 }
 
 /* ── Channel picker dropdown ── */
@@ -147,8 +147,8 @@
 
 .osc-picker-board-tab.active {
   background: #0e3a5a;
-  border-color: #007acc;
-  color: #4fc3f7;
+  border-color: var(--color-action-primary);
+  color: var(--color-action-primary);
 }
 
 .osc-picker-board-label {
@@ -182,7 +182,7 @@
 
 .osc-pin-btn:hover {
   background: #0e3a5a;
-  border-color: #007acc;
+  border-color: var(--color-action-primary);
   color: #fff;
 }
 

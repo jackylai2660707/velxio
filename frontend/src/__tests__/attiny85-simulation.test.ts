@@ -11,7 +11,7 @@
  *   - setPinState() drives PB0-PB5 correctly
  *   - No PORTC/PORTD (ATtiny85 only has PORTB)
  *   - No hardware USART
- *   - PWM OCR0B at address 0x5C triggers pin 1 update
+ *   - PWM OCR0B at address 0x48 triggers pin 1 update
  *   - boardPinMapping: PB0-PB5 → 0-5, GND/VCC → -1
  *
  * END-TO-END test (requires arduino-cli + ATTinyCore):
@@ -23,7 +23,7 @@
  *   ATtiny85 PINB  = 0x36  (ATmega328P PINB  = 0x23)
  *   ATtiny85 DDRB  = 0x37  (ATmega328P DDRB  = 0x24)
  *   ATtiny85 PORTB = 0x38  (ATmega328P PORTB = 0x25)
- *   ATtiny85 OCR0B = 0x5C  (ATmega328P OCR0B = 0x48)
+ *   ATtiny85 OCR0B = 0x48 (I/O 0x28)  [0x5C is EECR — do not use]
  *
  * ─── ATtiny85 blink HEX (hand-assembled) ─────────────────────────────────────
  *   LDI r16, 0xFF   ; 0F EF  — r16 = 0xFF (all outputs)
@@ -88,15 +88,15 @@ const TINY85_BLINK_HEX = ':0A0000000FEF07BB02E008BBFFCFC3\n' + ':00000001FF\n';
 const TINY85_PB0_HEX = ':0A0000000FEF07BB01E008BBFFCFC4\n' + ':00000001FF\n';
 
 /**
- * TINY85_PWM_HEX — writes 0x80 to OCR0B (I/O 0x3C → mem 0x5C) to test PWM.
- *   LDI r16, 0xFF → OUT DDRB (0x17) → LDI r16, 0x80 → OUT OCR0B (0x3C) → RJMP .-2
+ * TINY85_PWM_HEX — writes 0x80 to OCR0B (I/O 0x28 → mem 0x48) to test PWM.
+ *   LDI r16, 0xFF → OUT DDRB (0x17) → LDI r16, 0x80 → OUT OCR0B (0x28) → RJMP .-2
  *
- * OUT 0x3C, r16 encoding:
- *   A = 0x3C = 0b111100; A[5:4]=0b11, A[3:0]=0b1100; r=16
- *   word = 1011 1 11 10000 1100 = 0xBF0C → bytes 0x0C 0xBF
- * Checksum: 0xB5
+ * OUT 0x28, r16 encoding:
+ *   A = 0x28 = 0b101000; A[5:4]=0b10, A[3:0]=0b1000; r=16
+ *   word = 1011 1 10 1 0000 1000 = 0xBD08 → bytes 0x08 0xBD
+ * Checksum: 0xBB
  */
-const TINY85_PWM_HEX = ':0A0000000FEF07BB00E80CBFFFCFB5\n' + ':00000001FF\n';
+const TINY85_PWM_HEX = ':0A0000000FEF07BB00E808BDFFCFBB\n' + ':00000001FF\n';
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -268,7 +268,7 @@ describe('ATtiny85 — setPinState()', () => {
 // ─── PWM — OCR0B ─────────────────────────────────────────────────────────────
 
 describe('ATtiny85 — PWM monitoring', () => {
-  it('PinManager receives PWM update on pin 1 when OCR0B (0x5C) is written', () => {
+  it('PinManager receives PWM update on pin 1 when OCR0B (0x48) is written', () => {
     const pm = new PinManager();
     const sim = new AVRSimulator(pm, 'tiny85');
     sim.loadHex(EMPTY_HEX);
@@ -276,9 +276,10 @@ describe('ATtiny85 — PWM monitoring', () => {
     const pwmCb = vi.fn();
     pm.onPwmChange(1, pwmCb); // PB1 = OCR0B pin
 
-    // Directly write a PWM value to OCR0B in CPU data memory
+    // Directly write a PWM value to OCR0B in CPU data memory.
+    // ATtiny85 OCR0B = I/O 0x08 → data 0x48 (NOT 0x5C, which is EECR).
     const cpu = (sim as any).cpu;
-    cpu.data[0x5c] = 128; // 50% duty cycle
+    cpu.data[0x48] = 128; // 50% duty cycle
 
     sim.start();
     sim.stop();
@@ -286,7 +287,7 @@ describe('ATtiny85 — PWM monitoring', () => {
     expect(pwmCb).toHaveBeenCalledWith(1, 128 / 255);
   });
 
-  it('PinManager receives PWM update on pin 0 when OCR0A (0x56) is written', () => {
+  it('PinManager receives PWM update on pin 0 when OCR0A (0x49) is written', () => {
     const pm = new PinManager();
     const sim = new AVRSimulator(pm, 'tiny85');
     sim.loadHex(EMPTY_HEX);
@@ -294,8 +295,9 @@ describe('ATtiny85 — PWM monitoring', () => {
     const pwmCb = vi.fn();
     pm.onPwmChange(0, pwmCb); // PB0 = OCR0A pin
 
+    // ATtiny85 OCR0A = I/O 0x09 → data 0x49 (NOT 0x56, which is PINB).
     const cpu = (sim as any).cpu;
-    cpu.data[0x56] = 64;
+    cpu.data[0x49] = 64;
 
     sim.start();
     sim.stop();
@@ -305,8 +307,8 @@ describe('ATtiny85 — PWM monitoring', () => {
 
   it('ATtiny85 PWM covers 4 pins (OCR0A/OCR0B/OCR1A/OCR1B)', () => {
     const TINY85_PWM_MAP = [
-      { addr: 0x56, pin: 0 }, // OCR0A → PB0
-      { addr: 0x5c, pin: 1 }, // OCR0B → PB1
+      { addr: 0x49, pin: 0 }, // OCR0A → PB0
+      { addr: 0x48, pin: 1 }, // OCR0B → PB1
       { addr: 0x4e, pin: 1 }, // OCR1A → PB1
       { addr: 0x4b, pin: 4 }, // OCR1B → PB4
     ];

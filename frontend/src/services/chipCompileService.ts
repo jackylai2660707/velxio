@@ -34,7 +34,11 @@ export async function compileChip(source: string, chipJson?: string): Promise<Ch
       wasm_base64: null,
       stdout: '',
       stderr: '',
-      error: `HTTP ${res.status}: ${text}`,
+      // Hosted deployments gate this route behind login (401) — surface a
+      // human instruction instead of a raw status line.
+      error: res.status === 401
+        ? 'login_required: sign in to compile custom chips.'
+        : `HTTP ${res.status}: ${text}`,
       byte_size: 0,
     };
   }

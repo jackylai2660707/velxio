@@ -197,6 +197,12 @@ RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/inst
 # in the mounted /root/.arduino15 volume.
 # ESP32 compilation uses ESP-IDF instead of arduino-cli.
 
+# Vendored board-manager index seeds (issue #254): entrypoint.sh copies any
+# of these missing from /root/.arduino15 at boot, so a flaky index host
+# (drazzy.com) or a stale pre-existing volume cannot brick compilation.
+# See backend/board-indexes/README.md.
+COPY backend/board-indexes/package_*.json /opt/arduino15-seed/
+
 WORKDIR /app
 
 # Data directory for persistent SQLite database (mounted as a volume at runtime)

@@ -244,3 +244,78 @@ describe('NetlistBuilder — simple cases', () => {
     expect(netlist).toMatch(/\.end/);
   });
 });
+
+describe('NetlistBuilder — ESP32 internal pull-up (INPUT_PULLUP)', () => {
+  // GPIO4 set INPUT_PULLUP, with a pushbutton from GPIO4 (1.l) to GND (2.l).
+  // This is the canonical active-low button. Without the internal pull the
+  // input floats to 0 V and reads LOW even at idle; the stamped 45k pull-up
+  // to the 3.3 V rail makes idle read HIGH and a press read LOW.
+  const build = (pressed: boolean) =>
+    buildNetlist({
+      components: [{ id: 'btn', metadataId: 'pushbutton', properties: { pressed } }],
+      wires: [
+        {
+          id: 'w1',
+          start: { componentId: 'esp32', pinName: '4' },
+          end: { componentId: 'btn', pinName: '1.l' },
+        },
+        {
+          id: 'w2',
+          start: { componentId: 'btn', pinName: '2.l' },
+          end: { componentId: 'esp32', pinName: 'GND2' },
+        },
+      ],
+      boards: [
+        {
+          id: 'esp32',
+          vcc: 3.3,
+          pins: { '4': { type: 'input', pull: 1 } },
+          // NOTE: "GND2" is deliberately NOT listed in groundPinNames — it must
+          // canonicalize to node 0 via GROUND_PIN_RE (bare GNDn spelling). This
+          // is the exact pin the ESP32 DevKit element labels; before the regex
+          // fix it floated and the pulled-up input never read a clean level.
+        },
+      ],
+      analysis: { kind: 'op' as const },
+    });
+
+  it('stamps the pull resistor + rail source', () => {
+    const { netlist } = build(false);
+    expect(netlist).toMatch(/R_pull_esp32_4 \S+ vcc_rail 45000/);
+    // The rail source must exist even though no wire references VCC.
+    expect(netlist).toMatch(/V_VCC_RAIL vcc_rail 0 DC 3\.3/);
+  });
+
+  it('idles HIGH (~3.3 V) when the button is open', { timeout: 30_000 }, async () => {
+    const { netlist, pinNetMap } = build(false);
+    const net = pinNetMap.get('esp32:4')!;
+    const result = await runNetlist(netlist);
+    expect(result.dcValue(`v(${net})`)).toBeCloseTo(3.3, 1);
+  });
+
+  it('reads LOW (~0 V) when the button is pressed', { timeout: 30_000 }, async () => {
+    const { netlist, pinNetMap } = build(true);
+    const net = pinNetMap.get('esp32:4')!;
+    const result = await runNetlist(netlist);
+    expect(result.dcValue(`v(${net})`)).toBeCloseTo(0, 1);
+  });
+
+  it('pull-down (INPUT_PULLDOWN) ties the idle level to 0 V', { timeout: 30_000 }, async () => {
+    const { netlist, pinNetMap } = buildNetlist({
+      components: [{ id: 'r', metadataId: 'resistor', properties: { value: '1Meg' } }],
+      wires: [
+        {
+          id: 'w1',
+          start: { componentId: 'esp32', pinName: '5' },
+          end: { componentId: 'r', pinName: '1' },
+        },
+      ],
+      boards: [{ id: 'esp32', vcc: 3.3, pins: { '5': { type: 'input', pull: 2 } } }],
+      analysis: { kind: 'op' as const },
+    });
+    expect(netlist).toMatch(/R_pull_esp32_5 \S+ 0 45000/);
+    const net = pinNetMap.get('esp32:5')!;
+    const result = await runNetlist(netlist);
+    expect(result.dcValue(`v(${net})`)).toBeCloseTo(0, 1);
+  });
+});

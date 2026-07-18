@@ -29,10 +29,19 @@ ENV WASI_SDK=/opt/wasi-sdk
 #   the FQBN clock options we ship (clock=16pll, etc.). We never invoke
 #   micronucleus — it is only required for USB upload, not compilation —
 #   but arduino-cli will not install a core whose tool deps cannot fetch.
+# The drazzy.com index is vendored (board-indexes/README.md) and copied in
+# BEFORE update-index: drazzy.com's TLS breaks often enough (issue #254)
+# that a hard dependency on it fails image builds for weeks at a time.
+# update-index is best-effort — a failed refresh keeps the seeded copy,
+# and the strict `core install` lines below still catch a truly broken
+# index. ATTinyCore 1.4.1's platform archive and micronucleus tool both
+# download from github.com, so the install works from the seed alone.
+COPY board-indexes/package_drazzy.com_index.json /root/.arduino15/package_drazzy.com_index.json
 RUN arduino-cli config init \
     && arduino-cli config add board_manager.additional_urls \
         http://drazzy.com/package_drazzy.com_index.json \
-    && arduino-cli core update-index \
+    && (arduino-cli core update-index \
+        || echo "WARNING: some board indexes failed to refresh; using seeded copies") \
     && arduino-cli core install arduino:avr \
     && arduino-cli core install ATTinyCore:avr@1.4.1
 

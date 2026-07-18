@@ -13,6 +13,7 @@ import { VirtualFileSystem } from './VirtualFileSystem';
 import { useVfsStore } from '../../store/useVfsStore';
 import { getBoardBridge, useSimulatorStore } from '../../store/useSimulatorStore';
 import { attachSlavesFromCanvas } from '../../simulation/piSlaveScanner';
+import { boardDisplayName } from '../../types/board';
 
 // Lazy-load PiTerminal so @xterm/xterm is only bundled when needed
 const PiTerminal = lazy(() => import('./PiTerminal').then((m) => ({ default: m.PiTerminal })));
@@ -26,6 +27,40 @@ interface OpenFile {
   filename: string;
 }
 
+// Inline SVG icons (house style: no emoji). currentColor lets them inherit the
+// surrounding text colour.
+const PlayIcon: React.FC = () => (
+  <svg width="11" height="11" viewBox="0 0 10 10" aria-hidden="true" style={{ marginRight: 5, verticalAlign: -1 }}>
+    <path d="M2 1.2 L8.5 5 L2 8.8 Z" fill="currentColor" />
+  </svg>
+);
+
+const TerminalIcon: React.FC = () => (
+  <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true" style={{ marginRight: 4, verticalAlign: -1 }}>
+    <rect x="1" y="2.5" width="14" height="11" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+    <path d="M4 6 L6.5 8 L4 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="8" y1="10.3" x2="11.5" y2="10.3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+  </svg>
+);
+
+const MonitorIcon: React.FC = () => (
+  <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="2.5" y="3.5" width="19" height="13" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+    <line x1="9" y1="20.5" x2="15" y2="20.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="12" y1="16.5" x2="12" y2="20.5" stroke="currentColor" strokeWidth="1.5" />
+  </svg>
+);
+
+// Indeterminate spinner using SMIL (self-contained — no global CSS keyframes).
+const BootSpinner: React.FC = () => (
+  <svg width="34" height="34" viewBox="0 0 44 44" aria-hidden="true">
+    <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="4" />
+    <path d="M22 4 a18 18 0 0 1 18 18" fill="none" stroke="#4fc3f7" strokeWidth="4" strokeLinecap="round">
+      <animateTransform attributeName="transform" type="rotate" from="0 22 22" to="360 22 22" dur="0.9s" repeatCount="indefinite" />
+    </path>
+  </svg>
+);
+
 export const RaspberryPiWorkspace: React.FC<RaspberryPiWorkspaceProps> = ({ boardId }) => {
   const { t } = useTranslation();
   const [activePane, setActivePane] = useState<'terminal' | string>('terminal'); // string = nodeId
@@ -36,6 +71,16 @@ export const RaspberryPiWorkspace: React.FC<RaspberryPiWorkspaceProps> = ({ boar
   const startBoard = useSimulatorStore((s) => s.startBoard);
   const setContent = useVfsStore((s) => s.setContent);
   const getNode = useVfsStore((s) => s.getNode);
+
+  // Display the active board's real name (Pi 3B / 4B / 5 / Zero / …) instead of
+  // a hardcoded "Raspberry Pi 3B" — the workspace serves the whole Pi family.
+  const boardLabel = board ? boardDisplayName(board) : 'Raspberry Pi';
+
+  // Three display states: offline (!running) → booting (running, guest Linux
+  // still coming up) → ready (running + booted shell). `running` flips on click
+  // but the guest takes 30-60s; `piBooted` is the real "shell ready" signal.
+  const booting = !!board?.running && !board?.piBooted;
+  const booted = !!board?.running && !!board?.piBooted;
 
   // Auto-connect terminal when board starts running
   useEffect(() => {
@@ -127,19 +172,21 @@ export const RaspberryPiWorkspace: React.FC<RaspberryPiWorkspaceProps> = ({ boar
       <div style={styles.main}>
         {/* Pi-specific toolbar */}
         <div style={styles.toolbar}>
-          <span style={styles.toolbarTitle}>Raspberry Pi 3B</span>
+          <span style={styles.toolbarTitle}>{boardLabel}</span>
           <div style={styles.toolbarActions}>
             {/* Status indicator */}
             <span
               style={{
                 ...styles.statusDot,
-                background: board?.running ? (bridgeConnected ? '#4caf50' : '#f59e0b') : '#6b7280',
+                background: booted ? '#4caf50' : board?.running ? '#f59e0b' : '#6b7280',
               }}
             />
             <span style={styles.statusLabel}>
-              {board?.running
-                ? (bridgeConnected ? t('editor.pi.connected') : t('editor.pi.starting'))
-                : t('editor.pi.offline')}
+              {booted
+                ? t('editor.pi.connected')
+                : board?.running
+                  ? t('editor.pi.starting')
+                  : t('editor.pi.offline')}
             </span>
 
             {!board?.running ? (
@@ -148,7 +195,7 @@ export const RaspberryPiWorkspace: React.FC<RaspberryPiWorkspaceProps> = ({ boar
                 onClick={() => startBoard(boardId)}
                 title={t('editor.pi.powerOnTitle')}
               >
-                ▶ {t('editor.pi.startPi')}
+                <PlayIcon />{t('editor.pi.startPi')}
               </button>
             ) : (
               <>
@@ -183,7 +230,7 @@ export const RaspberryPiWorkspace: React.FC<RaspberryPiWorkspaceProps> = ({ boar
             }}
             onClick={() => setActivePane('terminal')}
           >
-            ⌨ {t('editor.pi.terminal')}
+            <TerminalIcon />{t('editor.pi.terminal')}
           </button>
 
           {/* File tabs */}
@@ -217,17 +264,30 @@ export const RaspberryPiWorkspace: React.FC<RaspberryPiWorkspaceProps> = ({ boar
           {!board?.running && (
             <div style={styles.offlineOverlay}>
               <div style={styles.offlineBox}>
-                <div style={styles.offlineIcon}>🖥️</div>
-                <div style={styles.offlineTitle}>{t('editor.pi.offlineTitle')}</div>
+                <div style={styles.offlineIcon}><MonitorIcon /></div>
+                <div style={styles.offlineTitle}>{t('editor.pi.offlineTitle', { board: boardLabel })}</div>
                 <div style={styles.offlineSubtitle}>{t('editor.pi.offlineSubtitle')}</div>
                 <button style={styles.startBtn} onClick={() => startBoard(boardId)}>
-                  ▶ {t('editor.pi.startPi')}
+                  <PlayIcon />{t('editor.pi.startPi')}
                 </button>
                 <div style={styles.offlineNote}>
                   {t('editor.pi.offlineNote1')}
                   <br />
                   {t('editor.pi.offlineNote2')}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Booting overlay — shown while the guest Linux comes up (~30-60s).
+              Without it the user clicks Start and sees nothing change for a
+              minute and assumes it is broken. */}
+          {booting && (
+            <div style={styles.offlineOverlay}>
+              <div style={styles.offlineBox}>
+                <div style={styles.bootingIcon}><BootSpinner /></div>
+                <div style={styles.offlineTitle}>{t('editor.pi.bootingTitle', { board: boardLabel })}</div>
+                <div style={styles.offlineSubtitle}>{t('editor.pi.bootingNote')}</div>
               </div>
             </div>
           )}
@@ -396,8 +456,13 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center' as const,
   },
   offlineIcon: {
-    fontSize: 40,
-    lineHeight: 1,
+    color: '#7a8290',
+    lineHeight: 0,
+    marginBottom: 2,
+  },
+  bootingIcon: {
+    lineHeight: 0,
+    marginBottom: 2,
   },
   offlineTitle: {
     color: '#ef9a9a',

@@ -112,6 +112,14 @@ const CYCLES_PER_FRAME = Math.round(CPU_HZ / 60);
 const CYCLES_PER_TICK = 160_000;
 
 export class Esp32C3Simulator {
+  // Opt into connectDigitalInputsToMcu: after every SPICE solve the connector
+  // thresholds each input pin's net voltage and pushes the logic level into the
+  // GPIO_IN register via setPinState(). So digitalRead() reflects the real
+  // wiring (a switch/button tied to 3V3 reads HIGH) instead of a hardcoded part
+  // seed. The connector skips MCU-driven output pins and floating (non-sourced)
+  // nets, so event-driven parts with no SPICE model keep driving their pins via
+  // the part layer. Mirrors AVRSimulator / RP2040Simulator.
+  readonly spiceDrivenInputs = true;
   private core: RiscVCore;
   private flash: Uint8Array;
   private dram: Uint8Array;

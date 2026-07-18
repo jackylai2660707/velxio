@@ -83,9 +83,13 @@ _SPI_EVENT = ctypes.CFUNCTYPE(ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint16)
 _UART_TX   = ctypes.CFUNCTYPE(None,           ctypes.c_uint8, ctypes.c_uint8)
 _RMT_EVENT = ctypes.CFUNCTYPE(None,           ctypes.c_uint8, ctypes.c_uint32, ctypes.c_uint32)
 _GPIO_MATRIX_CB = ctypes.CFUNCTYPE(None,       ctypes.c_int,   ctypes.c_int)
+_PULL_PIN  = ctypes.CFUNCTYPE(None,           ctypes.c_int,   ctypes.c_int)
 
 
 class _CallbacksT(ctypes.Structure):
+    # MUST match, field-for-field, the callbacks_t struct in
+    # hw/arm/stm32_picsimlab.c. picsimlab_pull_pin is appended last (matching
+    # the C append) so the ESP32-compatible prefix stays byte-identical.
     _fields_ = [
         ('picsimlab_write_pin',      _WRITE_PIN),
         ('picsimlab_dir_pin',        _DIR_PIN),
@@ -95,6 +99,7 @@ class _CallbacksT(ctypes.Structure):
         ('pinmap',                   ctypes.c_void_p),
         ('picsimlab_rmt_event',      _RMT_EVENT),
         ('picsimlab_gpio_matrix_cb', _GPIO_MATRIX_CB),
+        ('picsimlab_pull_pin',       _PULL_PIN),
     ]
 
 
@@ -222,6 +227,16 @@ def main() -> None:
             return
         _emit({'type': 'gpio_dir', 'pin': int(pin), 'dir': int(direction)})
 
+    def _on_pull_change(pin, pull):
+        # Internal pull of an INPUT pin changed: 0=none, 1=up, 2=down. The
+        # frontend stamps the matching weak resistor in its circuit netlist so
+        # digitalRead() of a button-to-GND on an INPUT_PULLUP pin reads idle
+        # HIGH / pressed LOW. QEMU already de-dupes (only fires on a real
+        # change), so forward verbatim. `pin` is the linear port*16+pin index.
+        if _stopped.is_set() or pin < 0:
+            return
+        _emit({'type': 'gpio_pull', 'pin': int(pin), 'pull': int(pull)})
+
     def _on_uart_tx(uart_id, byte_val):
         if _stopped.is_set():
             return
@@ -291,6 +306,7 @@ def main() -> None:
         pinmap                   = ctypes.cast(_PINMAP, ctypes.c_void_p).value,
         picsimlab_rmt_event      = _RMT_EVENT(_on_rmt_event),
         picsimlab_gpio_matrix_cb = _GPIO_MATRIX_CB(_on_gpio_matrix),
+        picsimlab_pull_pin       = _PULL_PIN(_on_pull_change),
     )
     lib.qemu_picsimlab_register_callbacks(ctypes.byref(_cbs_ref))
 

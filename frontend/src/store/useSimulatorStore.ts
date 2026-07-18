@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import { AVRSimulator } from '../simulation/AVRSimulator';
 import { RP2040Simulator } from '../simulation/RP2040Simulator';
-import { Cyw43Bridge } from '../simulation/cyw43';
 import { RiscVSimulator } from '../simulation/RiscVSimulator';
 import { Esp32C3Simulator } from '../simulation/Esp32C3Simulator';
 import { PinManager } from '../simulation/PinManager';
 import { SignalRouter } from '../simulation/SignalRouter';
+import { requestElectricalResolve } from '../simulation/spice/electricalResolveHook';
 import { ledcSignalForChannel } from '../simulation/esp32-signals';
 import {
   VirtualDS1307,
@@ -17,7 +17,7 @@ import {
 import type { I2CDevice } from '../simulation/I2CBusManager';
 import type { RP2040I2CDevice } from '../simulation/RP2040Simulator';
 import type { Wire, WireInProgress, WireEndpoint } from '../types/wire';
-import type { BoardKind, BoardInstance, LanguageMode } from '../types/board';
+import type { BoardKind, BoardInstance, LanguageMode, WifiStatus } from '../types/board';
 import { BOARD_SUPPORTS_MICROPYTHON, isPiBoardKind, isStm32BoardKind } from '../types/board';
 import { boardGateDecision, proBoardFeatureName, triggerProUpgradePrompt } from '../lib/proBoardGate';
 import { calculatePinPosition } from '../utils/pinPositionCalculator';
@@ -38,6 +38,8 @@ import {
   updateWires as icUpdateWires,
   setInterconnectRuntime,
 } from '../simulation/Interconnect';
+import { SENSOR_CONTROLS } from '../simulation/sensorControlConfig';
+import { dispatchSensorUpdate } from '../simulation/SensorUpdateRegistry';
 
 // ── Sensor pre-registration ──────────────────────────────────────────────────
 // Maps component metadataId → { sensorType, dataPinName, propertyKeys }
@@ -119,6 +121,11 @@ export const ARDUINO_POSITION = DEFAULT_BOARD_POSITION;
 // can call setPinState / pinManager just like they would on a local simulator. ──
 class Esp32BridgeShim {
   pinManager: PinManager;
+  // Digital input pins are driven from the SPICE solve
+  // (connectDigitalInputsToMcu), not the part-level seed — so a button reads
+  // the real circuit (pull-up, GND, shorts) like hardware. Parts check this
+  // flag and skip their direct setPinState seed for this board.
+  readonly spiceDrivenInputs = true;
   onSerialData: ((ch: string) => void) | null = null;
   onPinChangeWithTime: ((pin: number, state: boolean, timeMs: number) => void) | null = null;
   onBaudRateChange: ((baud: number) => void) | null = null;
@@ -570,6 +577,19 @@ function makeGpioRoutingClearHandler(boardId: string) {
   };
 }
 
+function makePinPullHandler(boardId: string) {
+  return (gpio: number, pull: 0 | 1 | 2) => {
+    // Record the internal pull so the netlist stamps a weak resistor
+    // (vcc_rail for pull-up, GND for pull-down) and request a re-solve. The
+    // digital read itself is driven from the solved circuit by
+    // connectDigitalInputsToMcu — we deliberately do NOT seed the pin directly
+    // here, because that would bypass the real wiring and re-introduce the
+    // "mis-wired button still works" bug.
+    pinManagerMap.get(boardId)?.setPinPull(gpio, pull);
+    requestElectricalResolve();
+  };
+}
+
 // ── Lightweight shim wrapping Stm32Bridge so PartSimulationRegistry parts
 // (I2C displays, sensors, SPI panels) attach to an STM32 board the same way
 // they attach to ESP32.  Like the STM32 firmware itself, every device model
@@ -579,6 +599,13 @@ function makeGpioRoutingClearHandler(boardId: string) {
 // channel through the `.spi` adapter — identical surface to Esp32BridgeShim,
 // minus the ESP32-only WiFi / proxy-resync machinery. ──────────────────────
 class Stm32BridgeShim {
+  // Drive digital INPUT pins from the solved circuit (connectDigitalInputsToMcu)
+  // instead of the legacy part-seed, so digitalRead() reflects the REAL wiring.
+  // The internal pull is reported by the backend QEMU worker via the bridge's
+  // `gpio_pull` message (wired to makePinPullHandler in the store). Mirrors AVR
+  // / RP2040 / ESP32; event-driven parts with no SPICE model are protected by
+  // the `sourcedNets` gate in the connector.
+  readonly spiceDrivenInputs = true;
   pinManager: PinManager;
   onSerialData: ((ch: string) => void) | null = null;
   onPinChangeWithTime: ((pin: number, state: boolean, timeMs: number) => void) | null = null;
@@ -693,15 +720,19 @@ const bridgeMap = new Map<string, RaspberryPi3Bridge>();
 const esp32BridgeMap = new Map<string, Esp32Bridge>();
 // STM32 bridge — created lazily, only when isStm32BoardKind(boardKind).
 const stm32BridgeMap = new Map<string, Stm32Bridge>();
-// Pico W WiFi (CYW43439) bridge — created lazily, only when boardKind === 'pi-pico-w'.
-const cyw43BridgeMap = new Map<string, Cyw43Bridge>();
 
 export const getBoardSimulator = (id: string) => simulatorMap.get(id);
 export const getBoardPinManager = (id: string) => pinManagerMap.get(id);
 export const getBoardBridge = (id: string) => bridgeMap.get(id);
 export const getEsp32Bridge = (id: string) => esp32BridgeMap.get(id);
 export const getStm32Bridge = (id: string) => stm32BridgeMap.get(id);
-export const getCyw43Bridge = (id: string) => cyw43BridgeMap.get(id);
+
+/** Set a board's WiFi status (used by the pro PIO peripheral to surface the
+ *  Pico W's WiFi state into the canvas badge). */
+export const setBoardWifiStatus = (id: string, ws: WifiStatus) =>
+  useSimulatorStore.setState((s) => ({
+    boards: s.boards.map((b) => (b.id === id ? { ...b, wifiStatus: ws } : b)),
+  }));
 
 // Xtensa-based ESP32 boards — use QEMU bridge (backend)
 const ESP32_KINDS = new Set<BoardKind>([
@@ -814,6 +845,16 @@ interface SimulatorState {
   running: boolean;
   compiledHex: string | null;
   hexEpoch: number;
+  /** Bumped on every Reset so the open SensorControlPanel remounts and
+   *  re-reads each interactive sensor's freshly-defaulted value. */
+  sensorResetNonce: number;
+  /** Ids of components destroyed at runtime (P4 burnout) — the canvas renders
+   *  them charred. Cleared on Reset / restart. */
+  burntComponents: Set<string>;
+  /** Mark a component destroyed (called by the runtime burnout monitor). */
+  markComponentBurnt: (componentId: string) => void;
+  /** Clear all runtime-destroyed components (on Reset / restart). */
+  clearBurntComponents: () => void;
   serialOutput: string;
   serialBaudRate: number;
   serialMonitorOpen: boolean;
@@ -1039,8 +1080,31 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           serialCallback(ch);
           // Cross-board routing now handled by Interconnect (see bind below).
         };
-        bridge.onPinChange = (_gpioPin, _state) => {
-          // Cross-board routing now handled by Interconnect (see bind below).
+        bridge.onPinChange = (gpioPin, state) => {
+          // Feed the guest's GPIO writes into this board's PinManager so they
+          // reach wired components and the SPICE solver (the LED brightness
+          // path) — same as the ESP32 branch. Without this the Pi could print
+          // "LED on" but the canvas LEDs stayed dark. Interconnect preserves
+          // and calls this before its own cross-board routing.
+          const boardPm = pinManagerMap.get(id);
+          if (boardPm) boardPm.triggerPinChange(gpioPin, state, 'mcu');
+        };
+        // Guest Linux finished booting (shell prompt reached). Flip piBooted so
+        // the workspace swaps the "Booting…" overlay for the live terminal and
+        // uploads know the shell is ready.
+        bridge.onBooted = () => {
+          set((s) => ({
+            boards: s.boards.map((b) => (b.id === id ? { ...b, piBooted: true } : b)),
+          }));
+        };
+        bridge.onDisconnected = () => {
+          set((s) => {
+            const boards = s.boards.map((b) =>
+              b.id === id ? { ...b, running: false, piBooted: false } : b,
+            );
+            const isActive = s.activeBoardId === id;
+            return { boards, ...(isActive ? { running: false } : {}) };
+          });
         };
         bridgeMap.set(id, bridge);
       } else if (isEsp32Kind(boardKind)) {
@@ -1068,6 +1132,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         bridge.onLedcDuty = makeLedcDutyHandler(id);
         bridge.onGpioRouting = makeGpioRoutingHandler(id);
         bridge.onGpioRoutingClear = makeGpioRoutingClearHandler(id);
+        bridge.onPinPull = makePinPullHandler(id);
         bridge.onWs2812Update = (channel, pixels) => {
           // Forward WS2812 pixel data to any DOM element with id=`ws2812-{id}-{channel}`
           // (set by NeoPixel components rendered in SimulatorCanvas).
@@ -1117,6 +1182,9 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           }
         };
         bridge.onPinChangeWithTime = getOscilloscopeCallback(id);
+        // Record the guest's internal pull so NetlistBuilder stamps the weak
+        // resistor; the connector then drives the pin from the solved circuit.
+        bridge.onPinPull = makePinPullHandler(id);
         bridge.onDisconnected = () => {
           set((s) => {
             const boards = s.boards.map((b) => (b.id === id ? { ...b, running: false } : b));
@@ -1147,18 +1215,13 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         // Cross-board routing now handled by Interconnect (see bind below).
         simulatorMap.set(id, sim);
 
-        // ── Pico W: attach the CYW43 chip-side emulator + WS bridge ──
-        // Mirrors the ESP32 path (esp32BridgeMap) so the board has the
-        // same capability surface the rest of the app already understands.
-        if (boardKind === 'pi-pico-w' && sim instanceof RP2040Simulator) {
-          const bridge = new Cyw43Bridge(id);
-          bridge.onWifiStatus = (ws) => {
-            set((s) => ({
-              boards: s.boards.map((b) => (b.id === id ? { ...b, wifiStatus: ws } : b)),
-            }));
-          };
-          cyw43BridgeMap.set(id, bridge);
-          sim.attachCyw43(bridge);
+        // ── Attach a PIO bus peripheral if a factory supports this board.
+        // The pro overlay registers a CYW43 WiFi peripheral for 'pi-pico-w'
+        // (paid feature); OSS has no factory, so this is a no-op and a Pico W
+        // simulates as a plain Pico. The peripheral owns its own WS bridge and
+        // surfaces WiFi status via setBoardWifiStatus().
+        if (sim instanceof RP2040Simulator) {
+          sim.attachPioPeripheral(boardKind, id);
         }
       }
 
@@ -1185,10 +1248,32 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         // through the picker; this just closes the API gap.
         const stillExists = s.boards.some((b) => b.id === s.activeBoardId);
         const nextActive = stillExists ? s.activeBoardId : id;
-        return { boards: [...s.boards, newBoard], activeBoardId: nextActive };
+        // Keep `simulator` in sync with `activeBoardId`. setActiveBoardId is the
+        // only other place that promotes a board, and it sets BOTH — if addBoard
+        // promotes a board (first board, or the active one was removed) without
+        // syncing the simulator, s.simulator stays pointed at the previous board.
+        // Parts that read s.simulator (SPI displays like ILI9341, which attach
+        // `spi.onByte` to the active simulator) then wire onto the wrong board's
+        // bus and never receive data — the "boards[] ESP32 TFT renders black"
+        // bug. When nextActive is unchanged this is a no-op (same reference).
+        return {
+          boards: [...s.boards, newBoard],
+          activeBoardId: nextActive,
+          simulator: simulatorMap.get(nextActive) ?? s.simulator,
+        };
       });
       // Create the editor file group for this board
       useEditorStore.getState().createFileGroup(`group-${id}`);
+      // If this board is now the active one (it's the first board, or the
+      // previously-active board was removed), point the editor at its file
+      // group too. The canvas board picker calls addBoard directly WITHOUT
+      // setActiveBoardId (which is the only other place that syncs the editor
+      // group), so without this the editor keeps editing the previous/deleted
+      // board's group while compile reads THIS board's group — the code you
+      // type is silently dropped and the board runs its default sketch.
+      if (get().activeBoardId === id) {
+        useEditorStore.getState().setActiveGroup(`group-${id}`);
+      }
       // Init VFS for Raspberry Pi 3 boards
       if (isPiBoardKind(boardKind)) {
         useVfsStore.getState().initBoardVfs(id);
@@ -1220,13 +1305,9 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         stm32Bridge.disconnect();
         stm32BridgeMap.delete(boardId);
       }
-      const cyw43Bridge = getCyw43Bridge(boardId);
-      if (cyw43Bridge) {
-        cyw43Bridge.disconnect();
-        cyw43BridgeMap.delete(boardId);
-      }
-      const cyw43Sim = getBoardSimulator(boardId);
-      if (cyw43Sim instanceof RP2040Simulator) cyw43Sim.detachCyw43();
+      // Detach the PIO peripheral (it disconnects its own bridge).
+      const rpSim = getBoardSimulator(boardId);
+      if (rpSim instanceof RP2040Simulator) rpSim.detachPioPeripheral();
       set((s) => {
         const boards = s.boards.filter((b) => b.id !== boardId);
         const activeBoardId =
@@ -1253,6 +1334,15 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
       // Clean up file group in editor store
       if (board) {
         useEditorStore.getState().deleteFileGroup(board.activeFileGroupId);
+      }
+      // The removed board may have been the active one; activeBoardId was just
+      // reassigned (above) to a remaining board, or null. Re-point the editor's
+      // active file group at whatever board is active now, so the editor never
+      // keeps showing/editing the deleted board's group.
+      const newActiveId = get().activeBoardId;
+      if (newActiveId) {
+        const nb = get().boards.find((b) => b.id === newActiveId);
+        if (nb) useEditorStore.getState().setActiveGroup(nb.activeFileGroupId);
       }
       // ── Interconnect: drop board and rebuild routes ──────────────────
       icUnbindBoard(boardId);
@@ -1296,8 +1386,23 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
       // (createFileGroup is a no-op for existing ids) — overwrite their files.
       useEditorStore.getState().replaceFileGroups(payload.fileGroups);
 
-      // Components and wires
-      setComponents(payload.components);
+      // Components and wires. Normalize the retired ssd1306-i2c / ssd1306-spi
+      // ids (merged into the single auto-detecting `ssd1306`, issues #101/#215)
+      // so old .vlx files and pre-migration snapshots still render and simulate;
+      // the old id's protocol is pinned so behaviour is preserved exactly.
+      const normalizedComponents = payload.components.map((c) =>
+        c.metadataId === 'ssd1306-i2c' || c.metadataId === 'ssd1306-spi'
+          ? {
+              ...c,
+              metadataId: 'ssd1306',
+              properties: {
+                protocol: c.metadataId === 'ssd1306-spi' ? 'spi' : 'i2c',
+                ...(c.properties ?? {}),
+              },
+            }
+          : c,
+      );
+      setComponents(normalizedComponents);
       setWires(payload.wires);
 
       // Active board: prefer the saved one, fall back to the first.
@@ -1553,6 +1658,15 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         // RP2040 path: load firmware + filesystem in browser
         const sim = getBoardSimulator(boardId);
         if (!(sim instanceof RP2040Simulator)) return;
+        // (Re)attach the PIO peripheral before loading firmware. An example
+        // deep-link adds the board during render, which can race the pro
+        // overlay's async mountPro that installs the CYW43 factory — so the
+        // board-add attach returned null and a paid user's Pico W would boot
+        // the plain firmware (no `network` -> ImportError). attachPioPeripheral
+        // is idempotent; by run time the factory is installed, so a paid user
+        // gets the W peripheral -> the RPI_PICO_W firmware variant. No-op in
+        // OSS (no factory) and for free users (factory returns null).
+        sim.attachPioPeripheral(board.boardKind, boardId);
         await sim.loadMicroPython(files);
       }
 
@@ -1804,26 +1918,17 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           stm32Bridge.connect();
         }
       } else {
-        getBoardSimulator(boardId)?.start();
-        // Pico W: open the network bridge here too, alongside the local
-        // RP2040 sim. Auto-detect WiFi from the board's source files.
-        if (board.boardKind === 'pi-pico-w') {
-          const cyw43 = getCyw43Bridge(boardId);
-          if (cyw43) {
-            const editorState = useEditorStore.getState();
-            const rawFiles = editorState.fileGroups[board.activeFileGroupId];
-            const boardFiles =
-              rawFiles && rawFiles.length > 0 ? rawFiles : editorState.files;
-            const hasWifi = boardFiles.some(
-              (f) =>
-                /import\s+network\b/.test(f.content) ||
-                /network\.WLAN/.test(f.content) ||
-                /#include\s*[<"]WiFi\.h[>"]/.test(f.content) ||
-                /WiFi\.begin\(/.test(f.content),
-            );
-            cyw43.wifiEnabled = hasWifi;
-            cyw43.connect();
-          }
+        const rpSim = getBoardSimulator(boardId);
+        rpSim?.start();
+        // Notify an attached PIO peripheral (the pro CYW43 WiFi co-processor)
+        // that the simulation started, with the board's source files so it can
+        // detect WiFi usage and open its network bridge. No-op in OSS.
+        if (rpSim instanceof RP2040Simulator) {
+          const editorState = useEditorStore.getState();
+          const rawFiles = editorState.fileGroups[board.activeFileGroupId];
+          const boardFiles =
+            rawFiles && rawFiles.length > 0 ? rawFiles : editorState.files;
+          rpSim.getPioPeripheral()?.onSimulationStart?.(boardFiles);
         }
       }
 
@@ -1915,11 +2020,43 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           b.id === boardId ? { ...b, running: false, serialOutput: '', serialBaudRate: 0 } : b,
         );
         const isActive = s.activeBoardId === boardId;
+        // Bump hexEpoch so every component part re-attaches with a fresh
+        // closure. Without this, latched per-part state (e.g. an LED's
+        // `burnt` flag after overcurrent) would survive a Reset and the
+        // part would stay dead even after the user fixes the circuit —
+        // only a recompile would clear it. Mirrors restartParts().
         return {
           boards,
+          hexEpoch: s.hexEpoch + 1,
+          // A Reset un-chars any runtime-destroyed parts so a fixed circuit
+          // comes back to life (mirrors the LED's burnt-latch clearing).
+          ...(s.burntComponents.size > 0 ? { burntComponents: new Set<string>() } : {}),
           ...(isActive ? { running: false, serialOutput: '', serialBaudRate: 0 } : {}),
         };
       });
+
+      // Reset interactive sensors (temperature / lux / gas sliders, etc.) back
+      // to their configured defaults so a restart starts from a clean state
+      // instead of freezing on the last slider position the user dragged to.
+      // dispatchSensorUpdate re-injects the default into the running sim (so the
+      // NTC's injected ADC voltage and the SPICE solve both return to 25°C /
+      // 2.5V) and refreshes the panel's cached value; bumping sensorResetNonce
+      // remounts the open SensorControlPanel so its slider snaps back too.
+      const sensorComps = get().components.filter(
+        (c) => c.metadataId && SENSOR_CONTROLS[c.metadataId],
+      );
+      if (sensorComps.length > 0) {
+        set((s) => ({
+          components: s.components.map((c) => {
+            const def = c.metadataId ? SENSOR_CONTROLS[c.metadataId] : undefined;
+            return def ? { ...c, properties: { ...c.properties, ...def.defaultValues } } : c;
+          }),
+          sensorResetNonce: s.sensorResetNonce + 1,
+        }));
+        for (const c of sensorComps) {
+          dispatchSensorUpdate(c.id, SENSOR_CONTROLS[c.metadataId].defaultValues);
+        }
+      }
     },
 
     // ── Legacy single-board API ───────────────────────────────────────────
@@ -1930,6 +2067,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
     running: false,
     compiledHex: null,
     hexEpoch: 0,
+    sensorResetNonce: 0,
+    burntComponents: new Set<string>(),
     serialOutput: '',
     serialBaudRate: 0,
     serialMonitorOpen: false,
@@ -1977,6 +2116,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         bridge.onLedcDuty = makeLedcDutyHandler(boardId);
         bridge.onGpioRouting = makeGpioRoutingHandler(boardId);
         bridge.onGpioRoutingClear = makeGpioRoutingClearHandler(boardId);
+        bridge.onPinPull = makePinPullHandler(boardId);
         bridge.onWs2812Update = (channel, pixels) => {
           const eventTarget = document.getElementById(`ws2812-${boardId}-${channel}`);
           if (eventTarget) {
@@ -2089,6 +2229,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         bridge.onLedcDuty = makeLedcDutyHandler(boardId);
         bridge.onGpioRouting = makeGpioRoutingHandler(boardId);
         bridge.onGpioRoutingClear = makeGpioRoutingClearHandler(boardId);
+        bridge.onPinPull = makePinPullHandler(boardId);
         bridge.onWs2812Update = (channel, pixels) => {
           const eventTarget = document.getElementById(`ws2812-${boardId}-${channel}`);
           if (eventTarget) {
@@ -2166,7 +2307,14 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
       get().startBoard(boardId);
     },
 
-    restartParts: () => set((s) => ({ hexEpoch: s.hexEpoch + 1 })),
+    restartParts: () => set((s) => ({ hexEpoch: s.hexEpoch + 1, burntComponents: new Set() })),
+    markComponentBurnt: (componentId: string) =>
+      set((s) =>
+        s.burntComponents.has(componentId)
+          ? {}
+          : { burntComponents: new Set(s.burntComponents).add(componentId) },
+      ),
+    clearBurntComponents: () => set((s) => (s.burntComponents.size === 0 ? {} : { burntComponents: new Set() })),
 
     stopSimulation: () => {
       const { activeBoardId } = get();
@@ -2600,11 +2748,20 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
               (w) => w.start.componentId !== id && w.end.componentId !== id,
             ),
           })),
-        undo: () =>
+        undo: () => {
           set((s) => ({
             components: [...s.components, removed],
             wires: [...s.wires, ...removedWires],
-          })),
+          }));
+          // Recalc this part's wire endpoints once it re-mounts. Without this
+          // a rotated component restored via Ctrl+Z keeps the unrotated wire
+          // coords captured at delete time, so its wires sit off the pins
+          // until the user rotates again (issue #232). rAF waits for the DOM
+          // node so calculatePinPosition can read the wrapper geometry.
+          const recalc = () => get().updateWirePositions(id);
+          if (typeof requestAnimationFrame === 'function') requestAnimationFrame(recalc);
+          else recalc();
+        },
       });
     },
 
@@ -2720,20 +2877,23 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
     },
 
     recordUpdateWire: (wireId, prev, next, description = 'Update wire') => {
-      get().pushCommand(
-        {
-          description,
-          execute: () =>
-            set((s) => ({
-              wires: s.wires.map((w) => (w.id === wireId ? { ...w, ...next } : w)),
-            })),
-          undo: () =>
-            set((s) => ({
-              wires: s.wires.map((w) => (w.id === wireId ? { ...w, ...prev } : w)),
-            })),
-        },
-        { applyNow: false },
-      );
+      // applyNow defaults to true: both callers (the wire color palette and the
+      // wire right-click menu) pass the new value and expect it applied — they
+      // do NOT pre-apply via the raw updateWire mutator. The old `applyNow:false`
+      // recorded the change for undo but never executed it, so changing a wire
+      // colour from the UI was a silent no-op (only the keyboard shortcut, which
+      // calls updateWire directly, actually worked).
+      get().pushCommand({
+        description,
+        execute: () =>
+          set((s) => ({
+            wires: s.wires.map((w) => (w.id === wireId ? { ...w, ...next } : w)),
+          })),
+        undo: () =>
+          set((s) => ({
+            wires: s.wires.map((w) => (w.id === wireId ? { ...w, ...prev } : w)),
+          })),
+      });
     },
 
     toggleSerialMonitor: () => set((s) => ({ serialMonitorOpen: !s.serialMonitorOpen })),
