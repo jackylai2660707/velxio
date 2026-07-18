@@ -746,11 +746,20 @@ export function createComponentFromMetadata(
   // dark LED). Also strip '-' from metadata.id (e.g. 'led-bar-graph') so
   // the prefix doesn't reintroduce a hyphen.
   const safePrefix = metadata.id.replace(/-/g, '_');
+  const properties: Record<string, any> = { ...metadata.defaultValues };
+  // Resistors default to vertical: they read better, take less horizontal
+  // space, and drop straight into breadboard columns (their pin span
+  // bridges the center trench). Covers 'resistor' and every preconfigured
+  // 'resistor-<value>' variant; anything with an explicit rotation in its
+  // metadata defaults keeps it.
+  if (metadata.id.startsWith('resistor') && properties.rotation === undefined) {
+    properties.rotation = 90;
+  }
   return {
     id: `${safePrefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     metadataId: metadata.id,
     x,
     y,
-    properties: { ...metadata.defaultValues },
+    properties,
   };
 }

@@ -30,7 +30,7 @@ import { calculatePinPosition } from '../../utils/pinPositionCalculator';
 import { isBoardComponent, boardPinToNumber } from '../../utils/boardPinMapping';
 import { autoWireColor, WIRE_KEY_COLORS, expandOrthogonalPoints } from '../../utils/wireUtils';
 import {
-  AUTO_VERTICAL_PARTS,
+  isAutoVerticalPart,
   isOverBreadboard,
   snapPositionToBreadboard,
 } from '../../utils/breadboardSnap';
@@ -832,7 +832,7 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
           );
           if (dragged) {
             if (
-              AUTO_VERTICAL_PARTS.has(dragged.metadataId) &&
+              isAutoVerticalPart(dragged.metadataId) &&
               (Number(dragged.properties?.rotation) || 0) === 0 &&
               isOverBreadboard(dragged, nx, ny, simState.components)
             ) {
@@ -1424,7 +1424,7 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
           // Axial parts entering a breadboard flip to vertical so they
           // bridge the trench columns like on a real board.
           if (
-            AUTO_VERTICAL_PARTS.has(dragged.metadataId) &&
+            isAutoVerticalPart(dragged.metadataId) &&
             (Number(dragged.properties?.rotation) || 0) === 0 &&
             isOverBreadboard(dragged, nx, ny, simState.components)
           ) {

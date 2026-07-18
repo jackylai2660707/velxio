@@ -218,5 +218,8 @@ export function isOverBreadboard(
   return false;
 }
 
-/** Axial 2-pin parts that read better vertical on a breadboard. */
-export const AUTO_VERTICAL_PARTS = new Set(['resistor', 'wokwi-resistor']);
+/** Axial 2-pin parts that read better vertical on a breadboard: 'resistor'
+ * plus every preconfigured 'resistor-<value>' variant. */
+export function isAutoVerticalPart(metadataId: string): boolean {
+  return metadataId.startsWith('resistor') || metadataId.startsWith('wokwi-resistor');
+}
