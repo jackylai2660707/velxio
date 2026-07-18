@@ -293,19 +293,56 @@ export const DynamicComponent: React.FC<DynamicComponentProps> = ({
   const isInteractive = logic?.attachEvents !== undefined;
 
   /**
-   * Sync React properties to Web Component
+   * Sync React properties to Web Component.
+   *
+   * Values arriving as strings (agent set_component_property, the text
+   * inputs in the property dialog) are coerced to the type of the
+   * metadata DEFAULT for that key. Without this, `el.digits = '4'`
+   * (string) silently breaks wokwi elements that strict-match
+   * (`switch (this.digits) { case 4: ... }` -> falls back to the 1-digit
+   * pinout), and `'false'` stays truthy for boolean props like colon.
    */
   useEffect(() => {
     if (!elementRef.current) return;
 
     Object.entries(properties).forEach(([key, value]) => {
       try {
-        (elementRef.current as any)[key] = value;
+        let coerced: any = value;
+        if (typeof value === 'string') {
+          const def = metadata.defaultValues?.[key];
+          if (typeof def === 'number' && value.trim() !== '' && !Number.isNaN(Number(value))) {
+            coerced = Number(value);
+          } else if (typeof def === 'boolean') {
+            coerced = value === 'true' || value === '1';
+          }
+        }
+        (elementRef.current as any)[key] = coerced;
       } catch (error) {
         console.warn(`Failed to set property ${key} on ${metadata.tagName}:`, error);
       }
     });
   }, [properties, metadata.tagName]);
+
+  /**
+   * Property changes that swap the element's pin SET (7segment digits,
+   * LED flip, display pins edge) re-render asynchronously and announce
+   * themselves with a 'pininfo-change' event. Re-derive the breadboard
+   * seating then — reseating synchronously on the property write would
+   * read the STALE pinout and seat ghost pins.
+   */
+  useEffect(() => {
+    const el = elementRef.current;
+    if (!el) return;
+    const onPinInfoChange = () => {
+      try {
+        useSimulatorStore.getState().reseatComponentOnBreadboard(id);
+      } catch {
+        // headless / tests
+      }
+    };
+    el.addEventListener('pininfo-change', onPinInfoChange);
+    return () => el.removeEventListener('pininfo-change', onPinInfoChange);
+  }, [id, metadata.tagName]);
 
   /**
    * Extract pinInfo from web component after it initializes

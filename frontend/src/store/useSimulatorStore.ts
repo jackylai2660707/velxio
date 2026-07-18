@@ -2479,6 +2479,13 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         updates.properties && 'rotation' in updates.properties;
       if (updates.x !== undefined || updates.y !== undefined || rotationChanged) {
         get().updateWirePositions(id);
+        // Reseat ONLY on geometry changes (move/rotate) — the DOM pinInfo is
+        // still valid for those. Property changes that swap the pin SET
+        // (7segment digits, LED flip) re-render asynchronously; reseating
+        // now would read the STALE pinout and seat ghost pins (seen live:
+        // a digits=4 display seated with the 1-digit COM pinout). Those go
+        // through the element's 'pininfo-change' event instead
+        // (DynamicComponent listener).
         get().reseatComponentOnBreadboard(id);
       }
 
