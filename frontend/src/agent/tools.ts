@@ -652,9 +652,12 @@ async function execTool(name: string, input: ToolInput): Promise<string> {
     case 'compile': {
       const actions = getToolbarActions();
       if (!actions) throw new ToolError('Editor toolbar not mounted — cannot compile right now.');
-      const logsBefore = useCompileLogsStore.getState().logs.length;
+      // Capture this compile's log entries BY TIMESTAMP, not by array index:
+      // handleCompile clears previous logs first, so an index-based slice can
+      // come up empty and silently swallow errors.
+      const startedAt = new Date(Date.now() - 1);
       await actions.compile();
-      const logs = useCompileLogsStore.getState().logs.slice(logsBefore);
+      const logs = useCompileLogsStore.getState().logs.filter((l) => l.timestamp >= startedAt);
       const errors = logs.filter((l) => l.type === 'error').map((l) => l.message);
       const warnings = logs.filter((l) => l.type === 'warning').map((l) => l.message);
       if (errors.length > 0) {
@@ -674,9 +677,10 @@ async function execTool(name: string, input: ToolInput): Promise<string> {
     case 'run_simulation': {
       const actions = getToolbarActions();
       if (!actions) throw new ToolError('Editor toolbar not mounted — cannot run right now.');
-      const logsBefore = useCompileLogsStore.getState().logs.length;
+      // Timestamp capture — see the `compile` case for why index slicing is wrong.
+      const startedAt = new Date(Date.now() - 1);
       await actions.run();
-      const logs = useCompileLogsStore.getState().logs.slice(logsBefore);
+      const logs = useCompileLogsStore.getState().logs.filter((l) => l.timestamp >= startedAt);
       const errors = logs.filter((l) => l.type === 'error').map((l) => l.message);
       const board = sim().boards.find((b) => b.id === sim().activeBoardId);
       if (errors.length > 0) {

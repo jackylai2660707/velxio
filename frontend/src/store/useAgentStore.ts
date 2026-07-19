@@ -313,14 +313,20 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         set({ failedText: text });
       }
     } finally {
-      set((s) => ({
-        busy: false,
-        abortController: null,
-        // Drop a completely empty assistant bubble (e.g. aborted before output)
-        messages: s.messages.filter(
-          (m) => m.id !== assistantUi.id || m.segments.length > 0 || m.error,
-        ),
-      }));
+      set((s) => {
+        // Only clear busy/abort state if it still belongs to THIS run. After
+        // clearChat + an immediate new send, s.abortController is the new
+        // run's controller — clobbering it would flip busy to false mid-run
+        // and break its stop button.
+        const ownsRunState = s.abortController === abortController;
+        return {
+          ...(ownsRunState ? { busy: false, abortController: null } : {}),
+          // Drop a completely empty assistant bubble (e.g. aborted before output)
+          messages: s.messages.filter(
+            (m) => m.id !== assistantUi.id || m.segments.length > 0 || m.error,
+          ),
+        };
+      });
     }
   },
 }));
