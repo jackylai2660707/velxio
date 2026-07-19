@@ -177,9 +177,22 @@ export function AgentChatPanel() {
             </div>
           ),
         )}
-        {busy && messages[messages.length - 1]?.segments.length === 0 && (
-          <div className="agent-panel__empty">思考中…</div>
-        )}
+        {(() => {
+          // Liveness hint while the model is thinking (before the first text,
+          // and again between tool calls). Hidden while text is streaming.
+          if (!busy) return null;
+          const last = messages[messages.length - 1];
+          if (!last || last.role !== 'assistant') return null;
+          const lastSeg = last.segments[last.segments.length - 1];
+          if (lastSeg && lastSeg.kind === 'text') return null;
+          return (
+            <div className="agent-panel__empty">
+              {(last.thinkingChars ?? 0) > 0
+                ? `深度思考中… 已推理 ${last.thinkingChars} 字`
+                : '思考中…'}
+            </div>
+          );
+        })()}
       </div>
 
       <div className="agent-panel__composer">

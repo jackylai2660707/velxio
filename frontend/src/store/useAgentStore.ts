@@ -149,6 +149,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               } satisfies UiToolSegment,
             ],
           })),
+        onThinking: (chars) =>
+          patchAssistant((m) => ({ ...m, thinkingChars: (m.thinkingChars ?? 0) + chars })),
         onToolEnd: (_id, result, isError) =>
           patchAssistant((m) => {
             const segments = [...m.segments];

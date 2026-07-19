@@ -78,4 +78,7 @@ export interface UiMessage {
   segments: UiSegment[];
   /** Set on the last assistant message when the turn ended abnormally */
   error?: string;
+  /** Characters of hidden model reasoning streamed so far (reasoning models
+   *  via the openai provider) — drives the "deep thinking…" liveness hint. */
+  thinkingChars?: number;
 }

@@ -211,8 +211,12 @@ async def _openai_events(req: AgentStreamRequest, api_key: str) -> AsyncIterator
     finish_reason: str | None = None
 
     async with httpx.AsyncClient(
-        timeout=httpx.Timeout(300.0, connect=30.0),
-        transport=httpx.AsyncHTTPTransport(retries=2),
+        timeout=httpx.Timeout(300.0, connect=10.0),
+        # local_address forces an AF_INET (IPv4) socket. Without it, connects
+        # to some relays hang until timeout under WSL2's NAT (observed: curl
+        # fine, httpx ConnectTimeout on every attempt), leaving the panel
+        # stuck on "thinking". Retries cover transient connect failures.
+        transport=httpx.AsyncHTTPTransport(retries=2, local_address="0.0.0.0"),
     ) as client:
         async with client.stream(
             "POST",
@@ -239,6 +243,14 @@ async def _openai_events(req: AgentStreamRequest, api_key: str) -> AsyncIterator
                     continue
                 choice = choices[0]
                 delta = choice.get("delta") or {}
+
+                # Reasoning-model progress (OpenAI-compatible relays stream it
+                # as delta.reasoning_content). Forwarded as a lightweight
+                # frontend-only event so the UI can show "still thinking";
+                # never enters the conversation history.
+                reasoning = delta.get("reasoning_content")
+                if reasoning:
+                    yield emit({"type": "velxio_thinking", "chars": len(reasoning)})
 
                 text = delta.get("content")
                 if text:

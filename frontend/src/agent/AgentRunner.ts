@@ -28,6 +28,10 @@ export interface RunnerCallbacks {
   onToolStart: (id: string, name: string, input: Record<string, unknown>) => void;
   /** Tool call finished */
   onToolEnd: (id: string, result: string, isError: boolean) => void;
+  /** Reasoning-model progress: `chars` more characters of hidden reasoning
+   *  were generated (openai provider only; keeps the UI alive during long
+   *  thinking phases). */
+  onThinking?: (chars: number) => void;
 }
 
 interface StreamedMessage {
@@ -133,6 +137,9 @@ async function streamOneMessage(
         if (delta?.stop_reason) stopReason = delta.stop_reason as string;
         break;
       }
+      case 'velxio_thinking':
+        cb.onThinking?.(Number(ev.chars) || 0);
+        break;
       case 'velxio_error':
         throw new Error(String(ev.message ?? 'stream error'));
       default:
