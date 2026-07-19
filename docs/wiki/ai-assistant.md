@@ -11,12 +11,27 @@ toolbar (mobile: the AI tab in the top tab bar). The panel docks to the right
 edge — the canvas shrinks to make room, so it never overlaps the minimap,
 zoom controls, or other floating UI — and its width is drag-resizable.
 
-**OpenAI-compatible endpoints are the primary provider.** The panel's
-settings view (gear icon) lets each user set base URL, API key, model, and
-reasoning effort — stored in localStorage and sent per request; anything left
-blank falls back to the server's environment defaults. A "测试连接" button
-runs a one-shot completion via `POST /api/agent/test`. The official
-Anthropic API is available as the alternate provider.
+**OpenAI-compatible endpoints only.** The panel's settings view (gear icon)
+lets each user set base URL, API key, model (with a model list fetched from
+the upstream `/models`), and reasoning effort — stored in localStorage and
+sent per request; anything left blank falls back to the server's environment
+defaults. A connection-test button runs a one-shot completion via
+`POST /api/agent/test`.
+
+Safety & transparency features:
+
+- **Per-turn checkpoints** — every user message captures the full project
+  (boards, components, wires, files); a ⟲ button on the message rolls the
+  whole project back.
+- **Diff cards** — `write_file`/`edit_file` render a colored line diff of
+  exactly what changed.
+- **Example-grounded prompting** — the request is matched against the
+  built-in example gallery (bilingual keywords) and the best-matching
+  circuit's wiring rides along as a reference.
+- **Rolling context compaction** — old turns are replaced by a structural
+  summary (requests + tool counts) instead of being silently dropped.
+- **Chat persistence** — conversation survives a page refresh
+  (localStorage); token usage per turn is displayed.
 
 ## Architecture
 
@@ -78,13 +93,10 @@ Server-side environment defaults (all optional — users can also configure
 everything from the panel settings):
 
 ```bash
-VELXIO_AGENT_PROVIDER=openai            # openai (default) | anthropic
 VELXIO_OPENAI_BASE_URL=https://api.example.com/v1
 VELXIO_OPENAI_API_KEY=sk-...
 VELXIO_AGENT_MODEL=gpt-4o
 VELXIO_AGENT_EFFORT=high                # reasoning_effort for reasoning models
-ANTHROPIC_API_KEY=sk-ant-...            # anthropic provider only (pip install anthropic)
-VELXIO_AGENT_MAX_TOKENS=16000           # anthropic provider only
 VELXIO_SKIP_ARDUINO_INDEX=1             # skip arduino-cli's startup index fetch
 ```
 
@@ -103,11 +115,10 @@ browser's localStorage.
 ## Known limitations
 
 - Agent mutations use the raw store mutators, which do not push entries onto
-  the canvas undo stack (same as example loading) — undo won't revert an
-  AI-built circuit step-by-step.
-- History is trimmed at ~36 API messages (cut only at user-turn boundaries);
-  use “清空” to start a fresh context.
-- Panel strings are currently zh/en hardcoded, not routed through i18n.
+  the canvas undo stack — use the per-turn ⟲ checkpoint button to roll back
+  a whole turn instead.
+- Panel strings are localized for en + zh-CN; other locales fall back to
+  English.
 - The velxio.dev pro overlay injects its own copilot into
   `data-velxio-slot="agent-chat"`; if you build with the overlay you may want
   to hide one of the two panels.

@@ -215,6 +215,7 @@
 }
 
 .agent-msg--user {
+  position: relative;
   align-self: flex-end;
   background: #0e639c;
   color: #fff;
@@ -223,6 +224,43 @@
   max-width: 88%;
   white-space: pre-wrap;
   font-size: 13px;
+}
+
+/* Per-turn project rollback — appears on hover of the user bubble */
+.agent-msg__restore {
+  position: absolute;
+  left: -26px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border: 1px solid #3c3c3c;
+  border-radius: 50%;
+  background: #252526;
+  color: #9d9d9d;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.agent-msg--user:hover .agent-msg__restore {
+  opacity: 1;
+}
+.agent-msg__restore:hover {
+  color: #4fc1ff;
+  border-color: #007acc;
+}
+
+/* Token usage footnote under an assistant turn */
+.agent-msg__usage {
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: #5f5f5f;
 }
 
 .agent-msg--assistant {
@@ -333,6 +371,35 @@
 .agent-tool-chip--error {
   border-left-color: #d1443c;
   color: #f48771;
+}
+
+/* Code-change diff card inside a tool chip */
+.agent-diff {
+  margin: 6px 0 1px;
+  font-size: 11px;
+  line-height: 1.5;
+  font-family: 'SF Mono', Consolas, 'Courier New', monospace;
+  background: #141414;
+  border: 1px solid #333;
+  border-radius: 5px;
+  padding: 6px 0;
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre;
+}
+.agent-diff > div {
+  padding: 0 9px;
+}
+.agent-diff__add {
+  background: rgba(46, 160, 67, 0.16);
+  color: #9fe4a4;
+}
+.agent-diff__del {
+  background: rgba(209, 68, 60, 0.14);
+  color: #f1a8a0;
+}
+.agent-diff__ctx {
+  color: #8a8a8a;
 }
 
 .agent-tool-chip__detail {

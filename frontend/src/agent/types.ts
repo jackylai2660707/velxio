@@ -68,6 +68,8 @@ export interface UiToolSegment {
   status: 'running' | 'ok' | 'error';
   /** Result / error detail shown when expanded */
   detail?: string;
+  /** Line diff for code-writing tools, rendered as a colored diff card */
+  diff?: string;
 }
 
 export type UiSegment = UiTextSegment | UiToolSegment;
@@ -81,4 +83,6 @@ export interface UiMessage {
   /** Characters of hidden model reasoning streamed so far (reasoning models
    *  via the openai provider) — drives the "deep thinking…" liveness hint. */
   thinkingChars?: number;
+  /** Token usage accumulated across this turn's model calls */
+  usage?: { input: number; output: number };
 }

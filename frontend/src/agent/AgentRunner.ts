@@ -19,9 +19,9 @@ import type { ApiContentBlock, ApiMessage, ApiToolUseBlock } from './types';
 
 const MAX_ITERATIONS = 40;
 
-/** Provider settings from the panel (all optional — server env fills gaps). */
+/** Endpoint settings from the panel (all optional — server env fills gaps).
+ *  OpenAI-compatible endpoints only. */
 export interface AgentSettings {
-  provider?: 'openai' | 'anthropic';
   baseUrl?: string;
   model?: string;
   effort?: string;
@@ -35,12 +35,13 @@ export interface RunnerCallbacks {
   onTextBlockStart: () => void;
   /** Tool call is about to execute */
   onToolStart: (id: string, name: string, input: Record<string, unknown>) => void;
-  /** Tool call finished */
-  onToolEnd: (id: string, result: string, isError: boolean) => void;
+  /** Tool call finished; `diff` present for code-writing tools */
+  onToolEnd: (id: string, result: string, isError: boolean, diff?: string) => void;
   /** Reasoning-model progress: `chars` more characters of hidden reasoning
-   *  were generated (openai provider only; keeps the UI alive during long
-   *  thinking phases). */
+   *  were generated — keeps the UI alive during long thinking phases. */
   onThinking?: (chars: number) => void;
+  /** Token usage reported by the upstream for one model call */
+  onUsage?: (promptTokens: number, completionTokens: number) => void;
 }
 
 interface StreamedMessage {
@@ -67,7 +68,6 @@ async function streamOneMessage(
       system: SYSTEM_PROMPT,
       messages,
       tools: TOOL_DEFINITIONS,
-      provider: settings.provider || undefined,
       base_url: settings.baseUrl || undefined,
       model: settings.model || undefined,
       effort: settings.effort || undefined,
@@ -153,6 +153,9 @@ async function streamOneMessage(
       case 'velxio_thinking':
         cb.onThinking?.(Number(ev.chars) || 0);
         break;
+      case 'velxio_usage':
+        cb.onUsage?.(Number(ev.prompt_tokens) || 0, Number(ev.completion_tokens) || 0);
+        break;
       case 'velxio_error':
         throw new Error(String(ev.message ?? 'stream error'));
       default:
@@ -233,8 +236,8 @@ export async function runTurn(
     for (const tu of toolUses) {
       if (signal.aborted) return { appended, aborted: true };
       cb.onToolStart(tu.id, tu.name, tu.input);
-      const { result, isError } = await executeTool(tu.name, tu.input);
-      cb.onToolEnd(tu.id, result, isError);
+      const { result, isError, diff } = await executeTool(tu.name, tu.input);
+      cb.onToolEnd(tu.id, result, isError, diff);
       results.push({
         type: 'tool_result',
         tool_use_id: tu.id,
@@ -253,9 +256,11 @@ export async function runTurn(
 }
 
 /**
- * Trim old turns so the request stays a sane size. Keeps whole user-turn
- * boundaries (never splits a tool_use / tool_result pair) by only cutting at
- * messages that are real user turns (role=user whose first block is text).
+ * Trim old turns so the request stays a sane size, REPLACING the dropped
+ * turns with a structural summary (user requests + tool count) instead of
+ * silently forgetting them. Keeps whole user-turn boundaries (never splits a
+ * tool_use / tool_result pair) by only cutting at messages that are real
+ * user turns (role=user whose first block is text).
  */
 export function trimHistory(history: ApiMessage[], maxMessages = 36): ApiMessage[] {
   if (history.length <= maxMessages) return history;
@@ -264,8 +269,45 @@ export function trimHistory(history: ApiMessage[], maxMessages = 36): ApiMessage
   for (let i = overflow; i < history.length; i++) {
     const m = history[i];
     if (m.role === 'user' && m.content[0]?.type === 'text') {
-      return history.slice(i);
+      const dropped = history.slice(0, i);
+      const summary = summarizeDropped(dropped);
+      const kept = history.slice(i);
+      return summary ? [summary, ...kept] : kept;
     }
   }
   return history; // no safe boundary found — keep everything
+}
+
+/** Structural (no-LLM) compaction of dropped turns: what the user asked for
+ *  and how much tool work happened. Project facts live in the fresh
+ *  <project_state> of the latest turn, so this only preserves intent. */
+function summarizeDropped(dropped: ApiMessage[]): ApiMessage | null {
+  const requests: string[] = [];
+  let toolCalls = 0;
+  for (const m of dropped) {
+    if (m.role === 'user') {
+      const first = m.content[0];
+      if (first?.type === 'text') {
+        // strip the injected <project_state>/<reference_example> blocks
+        const text = first.text
+          .replace(/<project_state>[\s\S]*?<\/project_state>\s*/g, '')
+          .replace(/<reference_example>[\s\S]*?<\/reference_example>\s*/g, '')
+          // a previous rolling summary is not itself a request — drop it
+          .replace(/<context_summary>[\s\S]*?<\/context_summary>\s*/g, '')
+          .trim();
+        if (text) requests.push(text.slice(0, 80));
+      }
+    } else {
+      toolCalls += m.content.filter((b) => b.type === 'tool_use').length;
+    }
+  }
+  if (requests.length === 0 && toolCalls === 0) return null;
+  const summary =
+    `<context_summary>\n` +
+    `Earlier turns were compacted. The user's previous requests, in order:\n` +
+    requests.map((r, i) => `${i + 1}. ${r}`).join('\n') +
+    `\n(${toolCalls} tool calls were executed for these.) ` +
+    `The CURRENT project state is in the latest <project_state> block — trust it, not memory.\n` +
+    `</context_summary>`;
+  return { role: 'user', content: [{ type: 'text', text: summary }] };
 }

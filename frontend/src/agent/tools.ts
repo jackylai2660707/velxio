@@ -16,6 +16,7 @@ import { useSimulatorStore } from '../store/useSimulatorStore';
 import { BOARD_KIND_LABELS, type BoardKind } from '../types/board';
 import type { Wire } from '../types/wire';
 import { buildProjectSnapshot } from './projectSnapshot';
+import { lineDiff } from './diff';
 import type { ToolDefinition } from './types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -88,6 +89,27 @@ function pinExists(pins: PinDescriptor[], pinName: string): boolean {
 function safeRecalcWires(): void {
   if (typeof document === 'undefined') return;
   useSimulatorStore.getState().recalculateAllWirePositions();
+}
+
+/** Briefly glow a canvas element so the student sees WHERE the AI just
+ *  placed something. Best-effort visual sugar. */
+function flashCanvasElement(id: string): void {
+  if (typeof document === 'undefined') return;
+  try {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const prev = el.style.boxShadow;
+    el.style.transition = 'box-shadow 0.3s ease';
+    el.style.boxShadow = '0 0 0 4px rgba(79, 193, 255, 0.75)';
+    setTimeout(() => {
+      el.style.boxShadow = prev;
+      setTimeout(() => {
+        el.style.transition = '';
+      }, 400);
+    }, 1400);
+  } catch {
+    /* purely cosmetic */
+  }
 }
 
 function resolveBoard(boardId?: string) {
@@ -491,6 +513,7 @@ async function execTool(name: string, input: ToolInput): Promise<string> {
       };
       sim().addComponent({ id, metadataId: type, x, y, properties });
       await settleDom();
+      flashCanvasElement(id);
       return `Added ${type} as "${id}" at (${x}, ${y}).`;
     }
 
@@ -586,9 +609,11 @@ async function execTool(name: string, input: ToolInput): Promise<string> {
       if (!fname) throw new ToolError('name is required');
       const existing = findGroupFile(board.activeFileGroupId, fname);
       if (existing) {
+        lastDiff = lineDiff(existing.content, content);
         editor().updateGroupFile(board.activeFileGroupId, existing.id, content);
         return `Overwrote ${fname} (${content.length} chars) on board "${board.id}".`;
       }
+      lastDiff = lineDiff('', content);
       editor().addFileToGroup(board.activeFileGroupId, fname, content);
       return `Created ${fname} (${content.length} chars) on board "${board.id}".`;
     }
@@ -619,11 +644,9 @@ async function execTool(name: string, input: ToolInput): Promise<string> {
           `old_str appears ${count} times in ${fname}; include more surrounding context so it is unique.`,
         );
       }
-      editor().updateGroupFile(
-        board.activeFileGroupId,
-        file.id,
-        file.content.replace(oldStr, newStr),
-      );
+      const newContent = file.content.replace(oldStr, newStr);
+      lastDiff = lineDiff(file.content, newContent);
+      editor().updateGroupFile(board.activeFileGroupId, file.id, newContent);
       return `Edited ${fname} on board "${board.id}".`;
     }
 
@@ -713,63 +736,97 @@ async function execTool(name: string, input: ToolInput): Promise<string> {
 export interface ToolExecution {
   result: string;
   isError: boolean;
+  /** Line diff produced by write_file / edit_file — for the UI diff card */
+  diff?: string;
 }
+
+/** Set by the file-writing cases during execTool; collected by executeTool. */
+let lastDiff: string | undefined;
 
 /** Execute a tool call; never throws — errors become is_error tool results. */
 export async function executeTool(name: string, input: ToolInput): Promise<ToolExecution> {
+  lastDiff = undefined;
   try {
     const result = await execTool(name, input);
-    return { result, isError: false };
+    return { result, isError: false, diff: lastDiff || undefined };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { result: `ERROR: ${message}`, isError: true };
   }
 }
 
-/** Short human-readable label for the tool-call chip in the chat UI. */
-export function toolLabel(name: string, input: ToolInput): string {
+/** zh / en verb per tool — the chat chip prefixes this to the argument. */
+const TOOL_VERBS: Record<string, { zh: string; en: string }> = {
+  get_project: { zh: '读取项目状态', en: 'Read project state' },
+  list_component_types: { zh: '搜索元件', en: 'Search parts' },
+  get_pins: { zh: '查看引脚', en: 'Inspect pins' },
+  add_board: { zh: '添加开发板', en: 'Add board' },
+  remove_board: { zh: '移除开发板', en: 'Remove board' },
+  set_active_board: { zh: '切换开发板', en: 'Switch board' },
+  set_board_language: { zh: '切换语言', en: 'Switch language' },
+  add_component: { zh: '添加元件', en: 'Add part' },
+  update_component: { zh: '更新元件', en: 'Update part' },
+  remove_component: { zh: '移除元件', en: 'Remove part' },
+  add_wire: { zh: '接线', en: 'Wire' },
+  remove_wire: { zh: '移除导线', en: 'Remove wire' },
+  write_file: { zh: '写入文件', en: 'Write file' },
+  edit_file: { zh: '编辑文件', en: 'Edit file' },
+  delete_file: { zh: '删除文件', en: 'Delete file' },
+  install_library: { zh: '安装库', en: 'Install library' },
+  compile: { zh: '编译', en: 'Compile' },
+  run_simulation: { zh: '运行仿真', en: 'Run simulation' },
+  stop_simulation: { zh: '停止仿真', en: 'Stop simulation' },
+  read_serial: { zh: '读取串口输出', en: 'Read serial output' },
+};
+
+/** Argument summary appended to the verb (language-neutral values). */
+function toolArg(name: string, input: ToolInput): string {
   switch (name) {
     case 'list_component_types':
-      return `搜索元件: ${input.query ?? ''}`;
+      return String(input.query ?? '');
     case 'get_pins':
-      return `查看引脚: ${input.target}`;
+      return String(input.target ?? '');
     case 'add_board':
-      return `添加开发板: ${input.board_kind}`;
+      return String(input.board_kind ?? '');
     case 'remove_board':
-      return `移除开发板: ${input.board_id}`;
     case 'set_active_board':
-      return `切换开发板: ${input.board_id}`;
+      return String(input.board_id ?? '');
     case 'set_board_language':
-      return `切换语言: ${input.mode}`;
+      return String(input.mode ?? '');
     case 'add_component':
-      return `添加元件: ${input.type}`;
+      return String(input.type ?? '');
     case 'update_component':
-      return `更新元件: ${input.id}`;
     case 'remove_component':
-      return `移除元件: ${input.id}`;
-    case 'add_wire':
-      return `接线: ${input.start_component}:${input.start_pin} → ${input.end_component}:${input.end_pin}`;
     case 'remove_wire':
-      return `移除导线: ${input.id}`;
+      return String(input.id ?? '');
+    case 'add_wire':
+      return `${input.start_component}:${input.start_pin} → ${input.end_component}:${input.end_pin}`;
     case 'write_file':
-      return `写入文件: ${input.name}`;
     case 'edit_file':
-      return `编辑文件: ${input.name}`;
     case 'delete_file':
-      return `删除文件: ${input.name}`;
     case 'install_library':
-      return `安装库: ${input.name}`;
-    case 'compile':
-      return '编译';
-    case 'run_simulation':
-      return '运行仿真';
-    case 'stop_simulation':
-      return '停止仿真';
-    case 'read_serial':
-      return '读取串口输出';
-    case 'get_project':
-      return '读取项目状态';
+      return String(input.name ?? '');
     default:
-      return name;
+      return '';
   }
+}
+
+/** Follows the app's active locale (zh-* → Chinese, otherwise English). */
+function uiLang(): 'zh' | 'en' {
+  if (typeof document !== 'undefined') {
+    const lang = document.documentElement.lang || '';
+    if (lang.toLowerCase().startsWith('zh')) return 'zh';
+    if (lang) return 'en';
+  }
+  if (typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('zh')) {
+    return 'zh';
+  }
+  return 'en';
+}
+
+/** Short human-readable label for the tool-call chip in the chat UI. */
+export function toolLabel(name: string, input: ToolInput): string {
+  const verb = TOOL_VERBS[name]?.[uiLang()] ?? name;
+  const arg = toolArg(name, input);
+  return arg ? `${verb}: ${arg}` : verb;
 }

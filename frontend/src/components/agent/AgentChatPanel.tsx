@@ -4,23 +4,30 @@
  * fullscreen sheet on mobile. Opened from the toolbar / mobile tab bar via
  * useAgentStore.togglePanel().
  *
- * The OSS counterpart of the velxio.dev pro "AI Co-pilot": chat with an agent
- * that reads the live project state and builds/edits code, components, and
- * wiring through tools. Primary provider is any OpenAI-compatible endpoint,
- * configurable in the panel's settings view. See docs/wiki/ai-assistant.md.
+ * OpenAI-compatible endpoints only; base URL / key / model / effort are
+ * configured in the settings view (gear). Strings are i18n'd (en + zh-cn;
+ * other locales fall back to English). See docs/wiki/ai-assistant.md.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { Trans, useTranslation } from 'react-i18next';
 import { useAgentStore, needsApiKey, effectiveModel } from '../../store/useAgentStore';
-import type { UiSegment } from '../../agent/types';
+import { showConfirmDialog } from '../../store/useMessageDialogStore';
+import type { UiMessage, UiSegment } from '../../agent/types';
 import './AgentChatPanel.css';
 
-const SUGGESTIONS: Array<{ icon: string; text: string }> = [
+const SUGGESTIONS_ZH: Array<{ icon: string; text: string }> = [
   { icon: '🚦', text: '搭一个红绿灯:红黄绿三个 LED 轮流亮' },
   { icon: '📏', text: '用 HC-SR04 超声波传感器测距,把距离打印到串口' },
   { icon: '🔘', text: '加一个按钮,按下时点亮 LED' },
   { icon: '🎚️', text: '用电位器控制 LED 亮度(PWM 呼吸灯)' },
+];
+const SUGGESTIONS_EN: Array<{ icon: string; text: string }> = [
+  { icon: '🚦', text: 'Build a traffic light with red, yellow and green LEDs' },
+  { icon: '📏', text: 'Measure distance with an HC-SR04 and print it to serial' },
+  { icon: '🔘', text: 'Add a button that lights an LED while pressed' },
+  { icon: '🎚️', text: 'Dim an LED with a potentiometer (PWM breathing light)' },
 ];
 
 const TOOL_ICONS: Record<string, string> = {
@@ -46,7 +53,29 @@ const TOOL_ICONS: Record<string, string> = {
   read_serial: '📟',
 };
 
+function DiffView({ diff }: { diff: string }) {
+  return (
+    <pre className="agent-diff">
+      {diff.split('\n').map((line, i) => (
+        <div
+          key={i}
+          className={
+            line.startsWith('+')
+              ? 'agent-diff__add'
+              : line.startsWith('-')
+                ? 'agent-diff__del'
+                : 'agent-diff__ctx'
+          }
+        >
+          {line || ' '}
+        </div>
+      ))}
+    </pre>
+  );
+}
+
 function ToolChip({ seg }: { seg: Extract<UiSegment, { kind: 'tool' }> }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const icon =
     seg.status === 'running' ? '◌' : seg.status === 'error' ? '✗' : (TOOL_ICONS[seg.name] ?? '✓');
@@ -54,21 +83,33 @@ function ToolChip({ seg }: { seg: Extract<UiSegment, { kind: 'tool' }> }) {
     <div
       className={`agent-tool-chip agent-tool-chip--${seg.status}`}
       onClick={() => setExpanded((e) => !e)}
-      title={expanded ? undefined : '点击展开详情'}
+      title={expanded ? undefined : t('agent.expand')}
     >
       <span className="agent-tool-chip__icon">{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         {seg.label}
-        {expanded && seg.detail && <pre className="agent-tool-chip__detail">{seg.detail}</pre>}
+        {expanded && seg.diff && <DiffView diff={seg.diff} />}
+        {expanded && seg.detail && !seg.diff && (
+          <pre className="agent-tool-chip__detail">{seg.detail}</pre>
+        )}
       </div>
     </div>
   );
 }
 
 function SettingsView() {
-  const { settings, updateSettings, serverConfig, testConnection, setSettingsOpen } =
-    useAgentStore();
+  const { t } = useTranslation();
+  const {
+    settings,
+    updateSettings,
+    serverConfig,
+    testConnection,
+    setSettingsOpen,
+    modelList,
+    fetchModels,
+  } = useAgentStore();
   const [testing, setTesting] = useState(false);
+  const [loadingModels, setLoadingModels] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string; latency_ms?: number } | null>(
     null,
   );
@@ -80,88 +121,93 @@ function SettingsView() {
     setTesting(false);
   };
 
-  const ph = (userValue: string | undefined, envValue: string | undefined, fallback: string) =>
-    userValue !== undefined ? undefined : envValue ? `${envValue}(服务器默认)` : fallback;
+  const handleFetchModels = async () => {
+    setLoadingModels(true);
+    const r = await fetchModels();
+    if (!r.ok) setResult({ ok: false, message: r.message ?? 'failed' });
+    setLoadingModels(false);
+  };
 
   return (
     <div className="agent-settings">
-      <h3>接口设置</h3>
-      <p className="agent-settings__hint">
-        留空的项使用服务器端环境变量的默认值。所有设置只保存在你自己的浏览器中。
-      </p>
+      <h3>{t('agent.settings')}</h3>
+      <p className="agent-settings__hint">{t('agent.settingsHint')}</p>
 
       <label>
-        Provider
-        <select
-          value={settings.provider ?? ''}
-          onChange={(e) =>
-            updateSettings({
-              provider: (e.target.value || undefined) as 'openai' | 'anthropic' | undefined,
-            })
-          }
-        >
-          <option value="">默认({serverConfig?.provider || 'openai'})</option>
-          <option value="openai">OpenAI 兼容接口</option>
-          <option value="anthropic">Anthropic 官方</option>
-        </select>
-      </label>
-
-      <label>
-        Base URL(OpenAI 兼容,含 /v1)
+        {t('agent.baseUrl')}
         <input
           type="text"
           value={settings.baseUrl ?? ''}
-          placeholder={ph(settings.baseUrl, serverConfig?.base_url, 'https://api.example.com/v1')}
+          placeholder={serverConfig?.base_url || 'https://api.example.com/v1'}
           onChange={(e) => updateSettings({ baseUrl: e.target.value })}
           spellCheck={false}
         />
       </label>
 
       <label>
-        API Key
+        {t('agent.apiKey')}
         <input
           type="password"
           value={settings.apiKey ?? ''}
-          placeholder={
-            serverConfig?.server_has_key ? '(服务器已配置,可留空)' : 'sk-... / 你的中转站 Key'
-          }
+          placeholder={serverConfig?.server_has_key ? t('agent.apiKeyServerSet') : 'sk-...'}
           onChange={(e) => updateSettings({ apiKey: e.target.value })}
           spellCheck={false}
         />
       </label>
 
+      <label>
+        {t('agent.model')}
+        <input
+          type="text"
+          list="agent-model-list"
+          value={settings.model ?? ''}
+          placeholder={serverConfig?.model || 'gpt-4o'}
+          onChange={(e) => updateSettings({ model: e.target.value })}
+          spellCheck={false}
+        />
+        <datalist id="agent-model-list">
+          {modelList.map((m) => (
+            <option key={m} value={m} />
+          ))}
+        </datalist>
+      </label>
+
       <div className="agent-settings__row">
         <label>
-          模型
-          <input
-            type="text"
-            value={settings.model ?? ''}
-            placeholder={ph(settings.model, serverConfig?.model, 'gpt-4o')}
-            onChange={(e) => updateSettings({ model: e.target.value })}
-            spellCheck={false}
-          />
-        </label>
-        <label>
-          推理力度
+          {t('agent.effort')}
           <select
             value={settings.effort ?? ''}
             onChange={(e) => updateSettings({ effort: e.target.value || undefined })}
           >
-            <option value="">默认({serverConfig?.effort || '关'})</option>
-            <option value="none">关闭</option>
-            <option value="low">low(最快)</option>
+            <option value="">
+              {t('agent.effortDefault', {
+                value: serverConfig?.effort || t('agent.effortOff'),
+              })}
+            </option>
+            <option value="none">{t('agent.effortNone')}</option>
+            <option value="low">{t('agent.effortLow')}</option>
             <option value="medium">medium</option>
-            <option value="high">high(最强)</option>
+            <option value="high">{t('agent.effortHigh')}</option>
           </select>
+        </label>
+        <label>
+          &nbsp;
+          <button
+            className="agent-settings__test"
+            onClick={handleFetchModels}
+            disabled={loadingModels}
+          >
+            {loadingModels ? t('agent.modelListLoading') : t('agent.modelListFetch')}
+          </button>
         </label>
       </div>
 
       <div className="agent-settings__actions">
         <button className="agent-settings__test" onClick={handleTest} disabled={testing}>
-          {testing ? '测试中…' : '测试连接'}
+          {testing ? t('agent.testing') : t('agent.test')}
         </button>
         <button className="agent-settings__test" onClick={() => setSettingsOpen(false)}>
-          返回对话
+          {t('agent.back')}
         </button>
       </div>
 
@@ -170,15 +216,40 @@ function SettingsView() {
           className={`agent-settings__result agent-settings__result--${result.ok ? 'ok' : 'fail'}`}
         >
           {result.ok
-            ? `✓ 连接成功 · ${result.message} · ${result.latency_ms ?? '?'}ms`
-            : `✗ 连接失败:${result.message}`}
+            ? t('agent.testOk', { message: result.message, ms: result.latency_ms ?? '?' })
+            : t('agent.testFail', { message: result.message })}
         </div>
       )}
     </div>
   );
 }
 
+function UserBubble({ m }: { m: UiMessage }) {
+  const { t } = useTranslation();
+  const hasCheckpoint = useAgentStore((s) => s.checkpoints.some((c) => c.msgId === m.id));
+  const busy = useAgentStore((s) => s.busy);
+  const restoreToTurn = useAgentStore((s) => s.restoreToTurn);
+
+  const handleRestore = async () => {
+    if (busy) return;
+    const ok = await showConfirmDialog(t('agent.restoreConfirm'));
+    if (ok) await restoreToTurn(m.id);
+  };
+
+  return (
+    <div className="agent-msg agent-msg--user">
+      {m.segments.map((seg) => (seg.kind === 'text' ? seg.text : null))[0] ?? ''}
+      {hasCheckpoint && !busy && (
+        <button className="agent-msg__restore" title={t('agent.restore')} onClick={handleRestore}>
+          ⟲
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function AgentChatPanel() {
+  const { t, i18n } = useTranslation();
   const store = useAgentStore();
   const {
     panelOpen,
@@ -252,6 +323,9 @@ export function AgentChatPanel() {
   const keyMissing = needsApiKey(store);
   const model = effectiveModel(store);
   const canSend = !busy && draft.trim().length > 0 && !keyMissing;
+  const suggestions = i18n.language.toLowerCase().startsWith('zh')
+    ? SUGGESTIONS_ZH
+    : SUGGESTIONS_EN;
 
   const handleSend = () => {
     if (!canSend) return;
@@ -266,18 +340,17 @@ export function AgentChatPanel() {
       <div
         className={`agent-panel__resize${resizing ? ' agent-panel__resize--active' : ''}`}
         onMouseDown={handleResizeDown}
-        title="拖动调整宽度"
       />
 
       <div className="agent-panel__header">
         <span className="agent-panel__title">
           <span>✨</span>
-          <span>AI 助手</span>
+          <span>{t('agent.title')}</span>
           {model && (
             <span
               className="agent-panel__model-chip"
               onClick={() => setSettingsOpen(true)}
-              title={`当前模型:${model}(点击修改)`}
+              title={t('agent.modelChip', { model })}
             >
               {model}
             </span>
@@ -286,20 +359,30 @@ export function AgentChatPanel() {
         <button
           className={`agent-panel__iconbtn${settingsOpen ? ' agent-panel__iconbtn--active' : ''}`}
           onClick={() => setSettingsOpen(!settingsOpen)}
-          title="接口设置"
-          aria-label="接口设置"
+          title={t('agent.settings')}
+          aria-label={t('agent.settings')}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
         </button>
-        <button className="agent-panel__iconbtn" onClick={clearChat} title="清空对话" aria-label="清空对话">
+        <button
+          className="agent-panel__iconbtn"
+          onClick={clearChat}
+          title={t('agent.clear')}
+          aria-label={t('agent.clear')}
+        >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
           </svg>
         </button>
-        <button className="agent-panel__iconbtn" onClick={store.togglePanel} title="关闭" aria-label="关闭">
+        <button
+          className="agent-panel__iconbtn"
+          onClick={store.togglePanel}
+          title={t('agent.close')}
+          aria-label={t('agent.close')}
+        >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
@@ -312,9 +395,10 @@ export function AgentChatPanel() {
         <>
           {keyMissing && (
             <div className="agent-panel__keybox">
-              还没有可用的 API Key —{' '}
-              <a onClick={() => setSettingsOpen(true)}>打开接口设置</a>{' '}
-              填入你的 OpenAI 兼容接口地址和 Key(只保存在本机浏览器)。
+              <Trans
+                i18nKey="agent.needKey"
+                components={{ 1: <a onClick={() => setSettingsOpen(true)} /> }}
+              />
             </div>
           )}
 
@@ -322,12 +406,10 @@ export function AgentChatPanel() {
             {messages.length === 0 && !keyMissing && (
               <div className="agent-panel__empty">
                 <div className="agent-panel__empty-icon">✨</div>
-                <div>用自然语言描述项目,AI 自动搭电路、接线、写代码、编译运行。</div>
-                <div className="agent-panel__empty-sub">
-                  生成之后你可以随意手动修改,AI 每轮都会读取最新状态。
-                </div>
+                <div>{t('agent.emptyTitle')}</div>
+                <div className="agent-panel__empty-sub">{t('agent.emptySub')}</div>
                 <div className="agent-panel__suggestions">
-                  {SUGGESTIONS.map((s) => (
+                  {suggestions.map((s) => (
                     <button key={s.text} onClick={() => void send(s.text)}>
                       <span>{s.icon}</span>
                       <span>{s.text}</span>
@@ -339,9 +421,7 @@ export function AgentChatPanel() {
 
             {messages.map((m) =>
               m.role === 'user' ? (
-                <div key={m.id} className="agent-msg agent-msg--user">
-                  {m.segments.map((seg) => (seg.kind === 'text' ? seg.text : null))[0] ?? ''}
-                </div>
+                <UserBubble key={m.id} m={m} />
               ) : (
                 <div key={m.id} className="agent-msg agent-msg--assistant">
                   <div className="agent-msg__avatar">✨</div>
@@ -357,9 +437,14 @@ export function AgentChatPanel() {
                     )}
                     {m.error && (
                       <div className="agent-msg__error">
-                        出错了:{m.error}
+                        {t('agent.error', { message: m.error })}
                         <br />
-                        <button onClick={retry}>重试</button>
+                        <button onClick={retry}>{t('agent.retry')}</button>
+                      </div>
+                    )}
+                    {m.usage && (
+                      <div className="agent-msg__usage">
+                        {t('agent.usage', { input: m.usage.input, output: m.usage.output })}
                       </div>
                     )}
                   </div>
@@ -383,8 +468,8 @@ export function AgentChatPanel() {
                     <i />
                   </span>
                   {(last.thinkingChars ?? 0) > 0
-                    ? `深度思考中 · 已推理 ${last.thinkingChars} 字`
-                    : '思考中'}
+                    ? t('agent.deepThinking', { chars: last.thinkingChars })
+                    : t('agent.thinking')}
                 </div>
               );
             })()}
@@ -395,7 +480,7 @@ export function AgentChatPanel() {
               <textarea
                 ref={textareaRef}
                 rows={1}
-                placeholder="描述你想做的项目,例如:做一个呼吸灯"
+                placeholder={t('agent.placeholder')}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
@@ -406,7 +491,12 @@ export function AgentChatPanel() {
                 }}
               />
               {busy ? (
-                <button className="agent-panel__stop" onClick={stop} title="停止生成" aria-label="停止生成">
+                <button
+                  className="agent-panel__stop"
+                  onClick={stop}
+                  title={t('agent.stop')}
+                  aria-label={t('agent.stop')}
+                >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                     <rect x="5" y="5" width="14" height="14" rx="2" />
                   </svg>
@@ -416,8 +506,8 @@ export function AgentChatPanel() {
                   className="agent-panel__send"
                   disabled={!canSend}
                   onClick={handleSend}
-                  title="发送"
-                  aria-label="发送"
+                  title={t('agent.send')}
+                  aria-label={t('agent.send')}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
@@ -425,7 +515,7 @@ export function AgentChatPanel() {
                 </button>
               )}
             </div>
-            <div className="agent-panel__hint">Enter 发送 · Shift+Enter 换行</div>
+            <div className="agent-panel__hint">{t('agent.hint')}</div>
           </div>
         </>
       )}

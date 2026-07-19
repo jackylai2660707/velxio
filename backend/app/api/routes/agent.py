@@ -1,33 +1,23 @@
 """
-AI Assistant streaming proxy.
+AI Assistant streaming proxy — OpenAI-compatible endpoints only.
 
 The browser drives the whole agent loop (tools execute against the Zustand
-stores client-side); this route only relays one model call per turn and
-streams events back. Keeping the loop client-side matches the OSS
-architecture: zero server-side state, the server never sees or stores the
-project.
+stores client-side); this route relays one `POST {base_url}/chat/completions`
+call per turn and streams the chunks back, re-encoded as the block-oriented
+SSE events the frontend accumulator speaks (a stable internal wire format,
+independent of the upstream provider). Works with any relay / gateway /
+self-hosted server that speaks the OpenAI chat-completions protocol.
 
-Providers — OpenAI-compatible endpoints are the primary path (works with any
-relay/self-hosted gateway speaking `POST {base_url}/chat/completions`); the
-official Anthropic API is also supported:
-
-  - "openai"    — requests/streams are translated to/from the Anthropic wire
-    shapes the frontend accumulator speaks, so the frontend stays
-    provider-agnostic.
-  - "anthropic" — official Anthropic SDK; events forwarded raw.
-
-Configuration resolution, per request field: request body override (set from
-the panel's settings UI, stored in the user's browser) → environment default.
+Configuration resolution, per field: request body override (set from the
+panel's settings UI, stored in the user's browser) → environment default.
 
 Environment defaults:
 
-  VELXIO_AGENT_PROVIDER   openai | anthropic            (default: openai)
-  VELXIO_AGENT_MODEL      model id
-  VELXIO_AGENT_MAX_TOKENS Anthropic max_tokens          (default: 16000)
-  VELXIO_AGENT_EFFORT     reasoning effort              (none|low|medium|high)
   VELXIO_OPENAI_BASE_URL  e.g. https://api.example.com/v1
-  VELXIO_OPENAI_API_KEY   key for the openai provider
-  ANTHROPIC_API_KEY       key for the anthropic provider
+  VELXIO_OPENAI_API_KEY   upstream API key
+  VELXIO_AGENT_MODEL      model id
+  VELXIO_AGENT_EFFORT     reasoning effort (none|low|medium|high)
+  VELXIO_SKIP_ARDUINO_INDEX=1  (unrelated to this route — see arduino_cli.py)
 
 The API key travels in the `x-agent-key` request header (legacy alias
 `x-anthropic-key` still accepted); it is never placed in the body so request
@@ -55,19 +45,20 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-ENV_PROVIDER = os.environ.get("VELXIO_AGENT_PROVIDER", "openai").strip().lower()
 ENV_MODEL = os.environ.get("VELXIO_AGENT_MODEL", "").strip()
-MAX_TOKENS = int(os.environ.get("VELXIO_AGENT_MAX_TOKENS", "16000"))
 ENV_EFFORT = os.environ.get("VELXIO_AGENT_EFFORT", "").strip() or None
-ENV_OPENAI_BASE_URL = os.environ.get("VELXIO_OPENAI_BASE_URL", "").strip().rstrip("/")
-ENV_OPENAI_API_KEY = os.environ.get("VELXIO_OPENAI_API_KEY", "")
+ENV_BASE_URL = os.environ.get("VELXIO_OPENAI_BASE_URL", "").strip().rstrip("/")
+ENV_API_KEY = os.environ.get("VELXIO_OPENAI_API_KEY", "")
 
-VALID_PROVIDERS = ("openai", "anthropic")
 VALID_EFFORTS = ("none", "low", "medium", "high")
 
 
 class ProviderConfig(BaseModel):
-    """Per-request overrides for the upstream provider (panel settings)."""
+    """Per-request overrides for the upstream endpoint (panel settings).
+
+    `provider` is accepted for backward compatibility with stored client
+    settings but ignored — the only supported protocol is OpenAI-compatible.
+    """
 
     provider: str | None = None
     base_url: str | None = None
@@ -82,7 +73,6 @@ class AgentStreamRequest(ProviderConfig):
 
 
 class Resolved(BaseModel):
-    provider: str
     base_url: str
     model: str
     effort: str | None
@@ -90,24 +80,17 @@ class Resolved(BaseModel):
 
 
 def _resolve(cfg: ProviderConfig, header_key: str | None) -> Resolved:
-    provider = (cfg.provider or ENV_PROVIDER or "openai").strip().lower()
-    if provider not in VALID_PROVIDERS:
-        raise HTTPException(status_code=422, detail=f"provider must be one of {VALID_PROVIDERS}")
+    base_url = (cfg.base_url or ENV_BASE_URL).strip().rstrip("/")
+    if not base_url:
+        raise HTTPException(
+            status_code=422,
+            detail="No OpenAI-compatible base URL. Set it in the AI panel settings "
+            "or via VELXIO_OPENAI_BASE_URL on the server.",
+        )
+    if not base_url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=422, detail="base_url must start with http(s)://")
 
-    base_url = (cfg.base_url or ENV_OPENAI_BASE_URL).strip().rstrip("/")
-    if provider == "openai":
-        if not base_url:
-            raise HTTPException(
-                status_code=422,
-                detail="No OpenAI-compatible base URL. Set it in the AI panel settings "
-                "or via VELXIO_OPENAI_BASE_URL on the server.",
-            )
-        if not base_url.startswith(("http://", "https://")):
-            raise HTTPException(status_code=422, detail="base_url must start with http(s)://")
-
-    model = (cfg.model or ENV_MODEL).strip()
-    if not model:
-        model = "claude-opus-4-8" if provider == "anthropic" else "gpt-4o"
+    model = (cfg.model or ENV_MODEL).strip() or "gpt-4o"
 
     effort = (cfg.effort or ENV_EFFORT or "").strip().lower() or None
     if effort == "none":
@@ -115,38 +98,14 @@ def _resolve(cfg: ProviderConfig, header_key: str | None) -> Resolved:
     if effort is not None and effort not in VALID_EFFORTS:
         raise HTTPException(status_code=422, detail=f"effort must be one of {VALID_EFFORTS}")
 
-    api_key = header_key or (
-        ENV_OPENAI_API_KEY if provider == "openai" else os.environ.get("ANTHROPIC_API_KEY", "")
-    )
+    api_key = header_key or ENV_API_KEY
     if not api_key:
         raise HTTPException(
             status_code=401,
             detail="No API key configured. Enter one in the AI panel settings, or set "
-            "VELXIO_OPENAI_API_KEY / ANTHROPIC_API_KEY on the server.",
+            "VELXIO_OPENAI_API_KEY on the server.",
         )
-    if provider == "anthropic":
-        try:
-            import anthropic  # noqa: F401
-        except ImportError:
-            raise HTTPException(
-                status_code=501,
-                detail="The 'anthropic' package is not installed on this server. "
-                "Run: pip install anthropic",
-            )
-    return Resolved(provider=provider, base_url=base_url, model=model, effort=effort, api_key=api_key)
-
-
-@router.get("/config")
-async def agent_config() -> dict[str, Any]:
-    """Environment defaults, used by the panel to prefill its settings UI."""
-    return {
-        "enabled": True,
-        "provider": ENV_PROVIDER,
-        "base_url": ENV_OPENAI_BASE_URL,
-        "model": ENV_MODEL,
-        "effort": ENV_EFFORT or "",
-        "server_has_key": bool(ENV_OPENAI_API_KEY if ENV_PROVIDER == "openai" else os.environ.get("ANTHROPIC_API_KEY")),
-    }
+    return Resolved(base_url=base_url, model=model, effort=effort, api_key=api_key)
 
 
 def _http_transport():
@@ -158,6 +117,50 @@ def _http_transport():
     return httpx.AsyncHTTPTransport(retries=2, local_address="0.0.0.0")
 
 
+@router.get("/config")
+async def agent_config() -> dict[str, Any]:
+    """Environment defaults, used by the panel to prefill its settings UI."""
+    return {
+        "enabled": True,
+        "provider": "openai",
+        "base_url": ENV_BASE_URL,
+        "model": ENV_MODEL,
+        "effort": ENV_EFFORT or "",
+        "server_has_key": bool(ENV_API_KEY),
+    }
+
+
+@router.post("/models")
+async def agent_models(
+    cfg: ProviderConfig,
+    x_agent_key: str | None = Header(default=None),
+    x_anthropic_key: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Proxy the upstream `GET {base_url}/models` list for the settings UI."""
+    import httpx
+
+    r = _resolve(cfg, x_agent_key or x_anthropic_key)
+    try:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(30.0, connect=10.0), transport=_http_transport()
+        ) as client:
+            resp = await client.get(
+                f"{r.base_url}/models",
+                headers={"Authorization": f"Bearer {r.api_key}"},
+            )
+            if resp.status_code != 200:
+                return {"ok": False, "message": f"HTTP {resp.status_code}", "models": []}
+            data = resp.json()
+            ids = sorted(
+                str(m.get("id", ""))
+                for m in (data.get("data") or [])
+                if m.get("id")
+            )
+            return {"ok": True, "models": ids}
+    except Exception as exc:
+        return {"ok": False, "message": str(exc)[:200], "models": []}
+
+
 @router.post("/test")
 async def agent_test(
     cfg: ProviderConfig,
@@ -165,88 +168,41 @@ async def agent_test(
     x_anthropic_key: str | None = Header(default=None),
 ) -> dict[str, Any]:
     """Cheap connectivity check for the settings UI: one tiny completion."""
+    import httpx
+
     r = _resolve(cfg, x_agent_key or x_anthropic_key)
     t0 = time.monotonic()
     try:
-        if r.provider == "openai":
-            import httpx
-
-            async with httpx.AsyncClient(
-                timeout=httpx.Timeout(60.0, connect=10.0), transport=_http_transport()
-            ) as client:
-                resp = await client.post(
-                    f"{r.base_url}/chat/completions",
-                    headers={"Authorization": f"Bearer {r.api_key}"},
-                    json={
-                        "model": r.model,
-                        "messages": [{"role": "user", "content": "Reply with exactly: OK"}],
-                        "stream": False,
-                    },
-                )
-                if resp.status_code != 200:
-                    return {
-                        "ok": False,
-                        "message": f"HTTP {resp.status_code}: {resp.text[:300]}",
-                    }
-                data = resp.json()
-                _ = data["choices"][0]["message"]
-        else:
-            from anthropic import AsyncAnthropic
-
-            client = AsyncAnthropic(api_key=r.api_key)
-            try:
-                await client.messages.create(
-                    model=r.model,
-                    max_tokens=8,
-                    messages=[{"role": "user", "content": "Reply with exactly: OK"}],
-                )
-            finally:
-                await client.close()
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(60.0, connect=10.0), transport=_http_transport()
+        ) as client:
+            resp = await client.post(
+                f"{r.base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {r.api_key}"},
+                json={
+                    "model": r.model,
+                    "messages": [{"role": "user", "content": "Reply with exactly: OK"}],
+                    "stream": False,
+                },
+            )
+            if resp.status_code != 200:
+                return {"ok": False, "message": f"HTTP {resp.status_code}: {resp.text[:300]}"}
+            data = resp.json()
+            _ = data["choices"][0]["message"]
     except Exception as exc:
         return {"ok": False, "message": str(exc)[:300]}
     return {
         "ok": True,
-        "message": f"{r.provider} · {r.model}",
+        "message": r.model,
         "latency_ms": int((time.monotonic() - t0) * 1000),
     }
 
 
-# ── Anthropic provider ─────────────────────────────────────────────────────
-
-
-async def _anthropic_events(req: AgentStreamRequest, r: Resolved) -> AsyncIterator[str]:
-    from anthropic import AsyncAnthropic
-
-    client = AsyncAnthropic(api_key=r.api_key)
-    try:
-        stream = await client.messages.create(
-            model=r.model,
-            max_tokens=MAX_TOKENS,
-            system=[
-                {
-                    "type": "text",
-                    "text": req.system,
-                    # System prompt + tools are identical every loop turn — cache.
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
-            messages=req.messages,
-            tools=req.tools,
-            thinking={"type": "adaptive"},
-            stream=True,
-        )
-        async for event in stream:
-            yield f"data: {event.model_dump_json()}\n\n"
-        yield 'data: {"type": "velxio_done"}\n\n'
-    finally:
-        await client.close()
-
-
-# ── OpenAI-compatible provider ─────────────────────────────────────────────
+# ── Request translation ────────────────────────────────────────────────────
 
 
 def _to_openai_messages(system: str, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Anthropic-shaped history → OpenAI chat messages.
+    """Frontend block-shaped history → OpenAI chat messages.
 
     tool_result blocks become role:"tool" messages (they must directly follow
     the assistant message carrying the matching tool_calls, which the
@@ -309,42 +265,61 @@ def _to_openai_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+# ── Streaming ──────────────────────────────────────────────────────────────
+
 _FINISH_MAP = {"tool_calls": "tool_use", "stop": "end_turn", "length": "max_tokens"}
 
 
-async def _openai_events(req: AgentStreamRequest, r: Resolved) -> AsyncIterator[str]:
-    """Stream an OpenAI-compatible chat completion, re-emitting the chunks as
-    the Anthropic-shaped events the frontend accumulator understands."""
+async def _stream_events(req: AgentStreamRequest, r: Resolved) -> AsyncIterator[str]:
+    """Stream the upstream chat completion, re-emitting chunks as the
+    block-oriented events the frontend accumulator understands."""
     import httpx
 
-    payload: dict[str, Any] = {
+    base_payload: dict[str, Any] = {
         "model": r.model,
         "messages": _to_openai_messages(req.system, req.messages),
         "stream": True,
+        # Ask for a final usage chunk (token accounting in the UI). Some
+        # strict servers reject stream_options — we retry without it below.
+        "stream_options": {"include_usage": True},
     }
     if req.tools:
-        payload["tools"] = _to_openai_tools(req.tools)
+        base_payload["tools"] = _to_openai_tools(req.tools)
     if r.effort:
-        payload["reasoning_effort"] = r.effort
+        base_payload["reasoning_effort"] = r.effort
 
     emit = lambda obj: f"data: {json.dumps(obj, ensure_ascii=False)}\n\n"  # noqa: E731
 
-    # Block-index bookkeeping: text lives at Anthropic index 0; the OpenAI
-    # tool_call with index i maps to Anthropic block index 1+i.
+    # Block-index bookkeeping: text lives at block index 0; the OpenAI
+    # tool_call with index i maps to block index 1+i.
     text_open = False
     open_tool_indexes: set[int] = set()
     finish_reason: str | None = None
+    usage: dict[str, Any] | None = None
 
     async with httpx.AsyncClient(
         timeout=httpx.Timeout(300.0, connect=10.0),
         transport=_http_transport(),
     ) as client:
-        async with client.stream(
-            "POST",
-            f"{r.base_url}/chat/completions",
-            headers={"Authorization": f"Bearer {r.api_key}", "Content-Type": "application/json"},
-            json=payload,
-        ) as resp:
+        # First attempt includes stream_options; a strict upstream that 400s
+        # on it gets one retry without.
+        attempts = [base_payload, {k: v for k, v in base_payload.items() if k != "stream_options"}]
+        resp_ctx = None
+        for i, payload in enumerate(attempts):
+            resp_ctx = client.stream(
+                "POST",
+                f"{r.base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {r.api_key}", "Content-Type": "application/json"},
+                json=payload,
+            )
+            resp = await resp_ctx.__aenter__()
+            if resp.status_code == 400 and i == 0 and "stream_options" in payload:
+                await resp_ctx.__aexit__(None, None, None)
+                continue
+            break
+
+        assert resp_ctx is not None
+        try:
             if resp.status_code != 200:
                 body = (await resp.aread()).decode("utf-8", "replace")[:500]
                 raise RuntimeError(f"Upstream HTTP {resp.status_code}: {body}")
@@ -359,6 +334,10 @@ async def _openai_events(req: AgentStreamRequest, r: Resolved) -> AsyncIterator[
                     chunk = json.loads(data)
                 except json.JSONDecodeError:
                     continue
+
+                if chunk.get("usage"):
+                    usage = chunk["usage"]
+
                 choices = chunk.get("choices") or []
                 if not choices:
                     continue
@@ -422,11 +401,21 @@ async def _openai_events(req: AgentStreamRequest, r: Resolved) -> AsyncIterator[
                 fr = choice.get("finish_reason")
                 if fr:
                     finish_reason = fr
+        finally:
+            await resp_ctx.__aexit__(None, None, None)
 
     if text_open:
         yield emit({"type": "content_block_stop", "index": 0})
     for tc_index in sorted(open_tool_indexes):
         yield emit({"type": "content_block_stop", "index": 1 + tc_index})
+    if usage:
+        yield emit(
+            {
+                "type": "velxio_usage",
+                "prompt_tokens": usage.get("prompt_tokens", 0),
+                "completion_tokens": usage.get("completion_tokens", 0),
+            }
+        )
     yield emit(
         {
             "type": "message_delta",
@@ -437,9 +426,6 @@ async def _openai_events(req: AgentStreamRequest, r: Resolved) -> AsyncIterator[
     yield emit({"type": "velxio_done"})
 
 
-# ── Route ──────────────────────────────────────────────────────────────────
-
-
 @router.post("/stream")
 async def agent_stream(
     req: AgentStreamRequest,
@@ -447,7 +433,7 @@ async def agent_stream(
     x_anthropic_key: str | None = Header(default=None),
 ) -> StreamingResponse:
     r = _resolve(req, x_agent_key or x_anthropic_key)
-    inner = _openai_events(req, r) if r.provider == "openai" else _anthropic_events(req, r)
+    inner = _stream_events(req, r)
 
     async def event_stream():
         try:
