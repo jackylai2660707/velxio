@@ -6,7 +6,17 @@ writes the firmware, installs libraries, compiles, runs the simulation, and
 debugs — live in your editor and canvas. The student can edit anything by
 hand between turns; the assistant re-reads the current state on every message.
 
-Open the panel with the **✨ AI 助手** button (bottom-right of the editor).
+Open the panel with the **AI** button at the far right of the editor
+toolbar (mobile: the AI tab in the top tab bar). The panel docks to the right
+edge — the canvas shrinks to make room, so it never overlaps the minimap,
+zoom controls, or other floating UI — and its width is drag-resizable.
+
+**OpenAI-compatible endpoints are the primary provider.** The panel's
+settings view (gear icon) lets each user set base URL, API key, model, and
+reasoning effort — stored in localStorage and sent per request; anything left
+blank falls back to the server's environment defaults. A "测试连接" button
+runs a one-shot completion via `POST /api/agent/test`. The official
+Anthropic API is available as the alternate provider.
 
 ## Architecture
 
@@ -64,15 +74,22 @@ client-tool pattern):
 
 ## Setup
 
-1. Install the backend dependency (already in `requirements.txt`):
-   `pip install anthropic`
-2. Provide an Anthropic API key, either
-   - on the server: `export ANTHROPIC_API_KEY=sk-ant-...` (recommended for a
-     class/shared instance), or
-   - per user: the panel asks for a key and stores it in `localStorage`,
-     sending it as an `x-anthropic-key` header.
-3. Optional env vars: `VELXIO_AGENT_MODEL` (default `claude-opus-4-8`),
-   `VELXIO_AGENT_MAX_TOKENS` (default 16000).
+Server-side environment defaults (all optional — users can also configure
+everything from the panel settings):
+
+```bash
+VELXIO_AGENT_PROVIDER=openai            # openai (default) | anthropic
+VELXIO_OPENAI_BASE_URL=https://api.example.com/v1
+VELXIO_OPENAI_API_KEY=sk-...
+VELXIO_AGENT_MODEL=gpt-4o
+VELXIO_AGENT_EFFORT=high                # reasoning_effort for reasoning models
+ANTHROPIC_API_KEY=sk-ant-...            # anthropic provider only (pip install anthropic)
+VELXIO_AGENT_MAX_TOKENS=16000           # anthropic provider only
+VELXIO_SKIP_ARDUINO_INDEX=1             # skip arduino-cli's startup index fetch
+```
+
+Per-user keys travel in the `x-agent-key` header and are stored only in the
+browser's localStorage.
 
 ## Key files
 

@@ -24,6 +24,7 @@ import { SerialMonitor } from '../components/simulator/SerialMonitor';
 import { Oscilloscope } from '../components/simulator/Oscilloscope';
 import { AppHeader } from '../components/layout/AppHeader';
 import { AgentChatPanel } from '../components/agent/AgentChatPanel';
+import { useAgentStore } from '../store/useAgentStore';
 import { triggerSaveAction } from '../lib/proSaveAction';
 import { GitHubStarBanner } from '../components/layout/GitHubStarBanner';
 import { useSimulatorStore, DEFAULT_BOARD_POSITION } from '../store/useSimulatorStore';
@@ -70,6 +71,12 @@ export const EditorPage: React.FC = () => {
   const autoSave = useAutoSaveProject();
 
   const [editorWidthPct, setEditorWidthPct] = useState(45);
+  // AI assistant dock state — the panel is a flex sibling of the editor and
+  // simulator panes, so opening it shrinks the canvas instead of overlapping
+  // the minimap / zoom controls / GitHub banner.
+  const agentPanelOpen = useAgentStore((s) => s.panelOpen);
+  const agentPanelWidth = useAgentStore((s) => s.panelWidth);
+  const toggleAgentPanel = useAgentStore((s) => s.togglePanel);
   // Desktop-only 3-way layout switch (code-only / circuit-only / both).
   // Lets users hide a pane to give the right-docked chat more room.
   const viewMode = useEditorStore((s) => s.viewMode);
@@ -189,6 +196,9 @@ export const EditorPage: React.FC = () => {
   const [canvasHeaderSlot, setCanvasHeaderSlot] = useState<HTMLDivElement | null>(null);
   // Default to 'code' on mobile — show the editor so users can write/view code
   const [mobileView, setMobileView] = useState<'code' | 'circuit'>('code');
+  // Horizontal px the docked AI panel takes from the editor/canvas split
+  // (0 on mobile — there the panel is a fullscreen sheet, not a dock).
+  const agentDockPx = !isMobile && agentPanelOpen ? agentPanelWidth : 0;
 
   // Save is dispatched to the pro overlay, which inspects auth state and
   // shows the right modal (Save vs Login prompt). In OSS without the
@@ -421,6 +431,21 @@ export const EditorPage: React.FC = () => {
             </svg>
             <span>{t('editor.shell.circuit')}</span>
           </button>
+          <button
+            className={`mobile-tab-btn${agentPanelOpen ? ' mobile-tab-btn--active' : ''}`}
+            onClick={toggleAgentPanel}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M12 2l1.9 5.7L19.6 9.6l-5.7 1.9L12 17.2l-1.9-5.7L4.4 9.6l5.7-1.9L12 2z" />
+            </svg>
+            <span>AI</span>
+          </button>
         </nav>
       )}
 
@@ -518,21 +543,45 @@ export const EditorPage: React.FC = () => {
             />
           </div>
           <div className="unified-toolbar-canvas" ref={setCanvasHeaderSlot} />
+          {/* AI assistant toggle — far right of the bar, docks the chat panel */}
+          <button
+            className={`agent-toolbar-btn${agentPanelOpen ? ' agent-toolbar-btn--active' : ''}`}
+            onClick={toggleAgentPanel}
+            aria-pressed={agentPanelOpen}
+            title="AI 助手 (AI Assistant)"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M12 2l1.9 5.7L19.6 9.6l-5.7 1.9L12 17.2l-1.9-5.7L4.4 9.6l5.7-1.9L12 2z" />
+              <path d="M19 14l.95 2.85L22.8 17.8l-2.85.95L19 21.6l-.95-2.85-2.85-.95 2.85-.95L19 14z" />
+            </svg>
+            <span className="vm-label">AI</span>
+          </button>
         </div>
       )}
 
       <div className="app-container" ref={containerRef}>
-        {/* ── Editor side ── */}
+        {/* ── Editor side ──
+            Widths are computed against the space LEFT OF the docked AI panel
+            (agentDockPx) so opening the panel never overflows the row: the
+            editor keeps its share of the remaining space and the simulator
+            pane (flex: 1) absorbs the rest. */}
         <div
           className="editor-panel"
           style={{
             width: isMobile
               ? '100%'
               : viewMode === 'code'
-              ? '100%'
+              ? `calc(100% - ${agentDockPx}px)`
               : viewMode === 'circuit'
               ? '0%'
-              : `${editorWidthPct}%`,
+              : `calc((100% - ${agentDockPx}px) * ${editorWidthPct / 100})`,
+            maxWidth: !isMobile && viewMode === 'code' ? 'none' : undefined,
             display:
               (isMobile && mobileView !== 'code') || (!isMobile && viewMode === 'circuit')
                 ? 'none'
@@ -691,9 +740,17 @@ export const EditorPage: React.FC = () => {
             </>
           )}
         </div>
+
+        {/* ── OSS AI assistant — right-docked pane (fullscreen sheet on
+            mobile). Rendering it as a flex sibling means the canvas shrinks
+            when it opens; nothing overlaps. docs/wiki/ai-assistant.md */}
+        <AgentChatPanel />
       </div>
 
-      {showStarBanner && (
+      {/* Growth banner shares the bottom-right corner with nothing now, but
+          it would still cover the docked chat's composer — hide it while the
+          assistant is open. */}
+      {showStarBanner && !agentPanelOpen && (
         <GitHubStarBanner
           onClose={handleDismissStarBanner}
           onStarClick={handleStarClick}
@@ -703,9 +760,6 @@ export const EditorPage: React.FC = () => {
       {/* Slot reserved for the private pro overlay (e.g. agent chat panel).
           Self-hosted builds without an overlay see nothing here. */}
       <div data-velxio-slot="agent-chat" />
-      {/* OSS AI assistant — chat-driven project generation (code + wiring).
-          Renders a floating opener when closed; see docs/wiki/ai-assistant.md. */}
-      <AgentChatPanel />
     </div>
   );
 };

@@ -219,6 +219,35 @@ body {
   border-left: 1px solid #333;
 }
 
+/* AI assistant toggle at the far right of the unified toolbar */
+.agent-toolbar-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  align-self: center;
+  margin: 0 8px 0 6px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #143a56, #2b2050);
+  color: #cfe3ff;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.agent-toolbar-btn:hover {
+  border-color: #007acc;
+  color: #fff;
+}
+.agent-toolbar-btn--active {
+  background: #0e639c;
+  border-color: #1177bb;
+  color: #fff;
+}
+
 /* ── Main panels container ──────────────────────── */
 .app-container {
   flex: 1;

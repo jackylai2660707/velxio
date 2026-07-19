@@ -19,6 +19,15 @@ import type { ApiContentBlock, ApiMessage, ApiToolUseBlock } from './types';
 
 const MAX_ITERATIONS = 40;
 
+/** Provider settings from the panel (all optional — server env fills gaps). */
+export interface AgentSettings {
+  provider?: 'openai' | 'anthropic';
+  baseUrl?: string;
+  model?: string;
+  effort?: string;
+  apiKey?: string;
+}
+
 export interface RunnerCallbacks {
   /** Streamed assistant text delta */
   onTextDelta: (delta: string) => void;
@@ -42,12 +51,12 @@ interface StreamedMessage {
 /** Parse one backend SSE stream into a complete assistant message. */
 async function streamOneMessage(
   messages: ApiMessage[],
-  apiKey: string | null,
+  settings: AgentSettings,
   signal: AbortSignal,
   cb: RunnerCallbacks,
 ): Promise<StreamedMessage> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (apiKey) headers['x-anthropic-key'] = apiKey;
+  if (settings.apiKey) headers['x-agent-key'] = settings.apiKey;
 
   const resp = await fetch(`${getApiBase()}/agent/stream`, {
     method: 'POST',
@@ -58,6 +67,10 @@ async function streamOneMessage(
       system: SYSTEM_PROMPT,
       messages,
       tools: TOOL_DEFINITIONS,
+      provider: settings.provider || undefined,
+      base_url: settings.baseUrl || undefined,
+      model: settings.model || undefined,
+      effort: settings.effort || undefined,
     }),
   });
 
@@ -191,7 +204,7 @@ export interface RunTurnResult {
  */
 export async function runTurn(
   history: ApiMessage[],
-  apiKey: string | null,
+  settings: AgentSettings,
   signal: AbortSignal,
   cb: RunnerCallbacks,
 ): Promise<RunTurnResult> {
@@ -201,7 +214,7 @@ export async function runTurn(
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     let msg: StreamedMessage;
     try {
-      msg = await streamOneMessage(working, apiKey, signal, cb);
+      msg = await streamOneMessage(working, settings, signal, cb);
     } catch (err) {
       if (signal.aborted) return { appended, aborted: true };
       throw err;

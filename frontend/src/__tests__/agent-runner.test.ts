@@ -69,7 +69,7 @@ describe('runTurn', () => {
 
     const textDeltas: string[] = [];
     const toolsRun: string[] = [];
-    const { appended, aborted } = await runTurn(history, null, new AbortController().signal, {
+    const { appended, aborted } = await runTurn(history, {}, new AbortController().signal, {
       onTextBlockStart: () => {},
       onTextDelta: (d) => textDeltas.push(d),
       onToolStart: (_id, name) => toolsRun.push(name),
@@ -110,7 +110,7 @@ describe('runTurn', () => {
     await expect(
       runTurn(
         [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
-        null,
+        {},
         new AbortController().signal,
         {
           onTextBlockStart: () => {},
