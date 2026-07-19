@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import { BREADBOARD_PINS } from '../velxio-elements/breadboard-element';
-import { computeSeating, seatOnDrop } from '../utils/breadboardSnap';
+import { computeSeating, resolveSeatPosition, seatOnDrop } from '../utils/breadboardSnap';
 
 const RES_PIN_INFO = [
   { name: '1', x: 0, y: 5.65, signals: [] },
@@ -170,5 +170,91 @@ describe('seatOnDrop', () => {
     const placed = seatOnDrop(comp as never, 42, 31, [bb, comp] as never);
     expect(placed).not.toBeNull();
     expect(placed!.holes).toHaveLength(2);
+  });
+});
+
+/**
+ * Agent-path seating correction: resolveSeatPosition lands a named pin exactly
+ * on a named hole by pure translation. jsdom has no layout (offsetWidth = 0),
+ * so this covers the translation + wiring at rotation 0; the rotation-pivot
+ * case — the reason the resolver exists — is verified in the browser via
+ * Playwright, where the real wrapper (with its text label) exists.
+ */
+describe('resolveSeatPosition', () => {
+  const bbAt = (x: number, y: number) => ({ id: 'bb1', metadataId: 'breadboard', x, y, properties: {} });
+  // Anchor target in breadboard-element space (what the solver sends). Here we
+  // use a hole centre directly, since a 0-rotation resistor is on-lattice.
+  const holeElem = (name: string) => {
+    const h = BREADBOARD_PINS.find((p) => p.name === name)!;
+    return { x: h.x, y: h.y };
+  };
+
+  beforeEach(() => mountFakeElement('res1', RES_PIN_INFO));
+
+  it('lands the anchor pin on its solver target from a wrong position', () => {
+    // Simulate the backend delivering an approximate x/y: drop the resistor
+    // 27 px off from where pin 1 should sit on hole 10t.b.
+    const bb = bbAt(0, 0);
+    const a = holeElem('10t.b');
+    const targetWorld = { x: bb.x + INSET + a.x, y: bb.y + INSET + a.y };
+    const comp = { id: 'res1', metadataId: 'resistor', x: targetWorld.x - 27, y: targetWorld.y + 13, properties: {} };
+
+    const pos = resolveSeatPosition(comp as never, 'bb1', '1', a.x, a.y, [bb, comp] as never)!;
+    expect(pos).not.toBeNull();
+    // Pin 1 (offset 0,5.65 at rotation 0) now sits on the anchor target.
+    expect(pos.x + INSET + RES_PIN_INFO[0].x).toBeCloseTo(targetWorld.x, 6);
+    expect(pos.y + INSET + RES_PIN_INFO[0].y).toBeCloseTo(targetWorld.y, 6);
+  });
+
+  it('honours a sub-pitch anchor offset instead of snapping to a hole centre', () => {
+    // The solver shifts off-lattice parts; the anchor target is deliberately
+    // 2.4 px off a hole. The resolver must reproduce that, not re-centre it.
+    const bb = bbAt(0, 0);
+    const a = holeElem('10t.b');
+    const shifted = { x: a.x + 2.4, y: a.y };
+    const comp = { id: 'res1', metadataId: 'resistor', x: 500, y: 500, properties: {} };
+    const pos = resolveSeatPosition(comp as never, 'bb1', '1', shifted.x, shifted.y, [bb, comp] as never)!;
+    expect(pos.x + INSET + RES_PIN_INFO[0].x).toBeCloseTo(bb.x + INSET + shifted.x, 6);
+  });
+
+  it('is a no-op when the part is already at its solver position', () => {
+    const bb = bbAt(50, 60);
+    const a = holeElem('20t.c');
+    const comp = {
+      id: 'res1', metadataId: 'resistor',
+      x: bb.x + a.x - RES_PIN_INFO[0].x,
+      y: bb.y + a.y - RES_PIN_INFO[0].y,
+      properties: {},
+    };
+    const pos = resolveSeatPosition(comp as never, 'bb1', '1', a.x, a.y, [bb, comp] as never)!;
+    expect(pos.x).toBeCloseTo(comp.x, 6);
+    expect(pos.y).toBeCloseTo(comp.y, 6);
+  });
+
+  it('returns null for a non-breadboard target', () => {
+    const bb = bbAt(0, 0);
+    const comp = { id: 'res1', metadataId: 'resistor', x: 0, y: 0, properties: {} };
+    expect(resolveSeatPosition(comp as never, 'res1', '1', 0, 0, [bb, comp] as never)).toBeNull();
+  });
+
+  it('correction then updateComponent produces the invisible bb wires', () => {
+    // End-to-end of the agent path (minus the real rotation pivot): place off,
+    // correct, apply — the store should then seat both pins.
+    const s = useSimulatorStore.getState();
+    s.setComponents([
+      { id: 'bb1', metadataId: 'breadboard', x: 0, y: 0, properties: {} },
+      { id: 'res1', metadataId: 'resistor', x: 900, y: 900, properties: {} },
+    ] as never);
+    s.setWires([]);
+    const a = holeElem('5t.a');
+    const pos = resolveSeatPosition(
+      useSimulatorStore.getState().components.find((c) => c.id === 'res1')! as never,
+      'bb1', '1', a.x, a.y,
+      useSimulatorStore.getState().components as never,
+    )!;
+    useSimulatorStore.getState().updateComponent('res1', pos);
+    const bbWires = useSimulatorStore.getState().wires.filter((w) => w.bb);
+    expect(bbWires).toHaveLength(2);
+    expect(bbWires.map((w) => w.end.pinName).sort()).toEqual(['11t.a', '5t.a']);
   });
 });

@@ -521,3 +521,55 @@ export function seatOnDrop(
   }
   return best;
 }
+
+/**
+ * Correct an agent-placed component's position so its anchor pin lands where
+ * the server's solver decided it should. This is the seating the agent already
+ * solved server-side; the browser only re-does the final positioning.
+ *
+ * Why the browser has to redo it: the backend computes the exact anchor target
+ * in BREADBOARD-ELEMENT space (pivot-free, so rotation-safe) but only an
+ * APPROXIMATE canvas x/y, because the true rotation pivot is the DOM wrapper
+ * centre — and the wrapper includes a text label whose width the server cannot
+ * measure. Under rotation that leaves the part off by enough that
+ * `computeSeating` finds no holes and the part sits visibly disconnected.
+ *
+ * `anchorX/anchorY` are the anchor pin's position in the breadboard's element
+ * space, straight from the solver — and they already carry the sub-pitch
+ * "fine translation" the solver applies to off-lattice footprints (a diode
+ * spans 7.5 pitches, so its anchor is deliberately ~2.4 px off a hole centre
+ * to split the error). Targeting the hole CENTRE instead would leave the far
+ * pin 4.8 px out and half-seat the part — verified against real DOM geometry.
+ *
+ * The fix is a pure TRANSLATION, never a re-solve: read where the anchor pin
+ * actually is from the live DOM (real pivot), read where the solver put it,
+ * and shift the whole part by the difference. Every other pin follows, because
+ * pin-to-pin offsets do not depend on the pivot. It cannot slide the part to
+ * different holes, so the netlist the agent validated is preserved.
+ *
+ * Returns the corrected {x, y}, or null when the geometry cannot be measured
+ * yet (element not mounted) — callers keep the backend's hint and retry.
+ */
+export function resolveSeatPosition(
+  comp: ComponentLike,
+  bbId: string,
+  anchorPin: string,
+  anchorX: number,
+  anchorY: number,
+  components: ComponentLike[],
+): Pt | null {
+  const bb = components.find((c) => c.id === bbId);
+  if (!bb || !isBreadboard(bb.metadataId)) return null;
+  const rotation = Number(comp.properties?.rotation) || 0;
+  const anchor = calculatePinPosition(
+    comp.id,
+    anchorPin,
+    comp.x + WRAPPER_INSET,
+    comp.y + WRAPPER_INSET,
+    rotation,
+  );
+  if (!anchor) return null; // DOM not ready — caller retries on the next frame
+  const targetX = bb.x + WRAPPER_INSET + anchorX;
+  const targetY = bb.y + WRAPPER_INSET + anchorY;
+  return { x: comp.x + (targetX - anchor.x), y: comp.y + (targetY - anchor.y) };
+}
