@@ -34,6 +34,9 @@ import { LocaleSync } from './i18n/LocaleSync';
 import { NON_DEFAULT_LOCALES } from './i18n/config';
 import { useProRoutes } from './lib/proRoutes';
 import { triggerSessionCheck } from './lib/proSession';
+// Fork feature: self-contained cloud accounts + storage. Importing the module
+// registers the session-check and save-action hooks before App mounts.
+import './cloud/install';
 import { MessageDialogHost } from './components/ui/MessageDialogHost';
 import './App.css';
 

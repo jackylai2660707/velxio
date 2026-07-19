@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Trans, useTranslation } from 'react-i18next';
 import { useAgentStore, needsApiKey, effectiveModel } from '../../store/useAgentStore';
+import { useCloudStore } from '../../cloud/useCloudStore';
 import { showConfirmDialog } from '../../store/useMessageDialogStore';
 import type { UiMessage, UiSegment } from '../../agent/types';
 import './AgentChatPanel.css';
@@ -224,6 +225,107 @@ function SettingsView() {
   );
 }
 
+/** Cloud chat-session history view (fork feature). */
+function HistoryView({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
+  const user = useCloudStore((s) => s.user);
+  const chats = useCloudStore((s) => s.chats);
+  const currentChatId = useCloudStore((s) => s.currentChatId);
+  const refreshChats = useCloudStore((s) => s.refreshChats);
+  const loadChat = useCloudStore((s) => s.loadChat);
+  const deleteChat = useCloudStore((s) => s.deleteChat);
+  const startNewChat = useCloudStore((s) => s.startNewChat);
+  const setAuthModalOpen = useCloudStore((s) => s.setAuthModalOpen);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user) void refreshChats();
+  }, [user, refreshChats]);
+
+  if (!user) {
+    return (
+      <div className="agent-settings">
+        <h3>{t('cloud.chatHistory')}</h3>
+        <p className="agent-settings__hint">{t('cloud.signInForHistory')}</p>
+        <button className="agent-settings__test" onClick={() => setAuthModalOpen(true)}>
+          {t('cloud.signIn')}
+        </button>
+        <button className="agent-settings__test" onClick={onClose}>
+          {t('agent.back')}
+        </button>
+      </div>
+    );
+  }
+
+  const fmtDate = (ts: number) => new Date(ts * 1000).toLocaleString();
+
+  return (
+    <div className="agent-settings">
+      <h3>{t('cloud.chatHistory')}</h3>
+      <div className="agent-settings__actions">
+        <button
+          className="agent-settings__test"
+          onClick={() => {
+            startNewChat();
+            onClose();
+          }}
+        >
+          {t('cloud.newChat')}
+        </button>
+        <button className="agent-settings__test" onClick={onClose}>
+          {t('agent.back')}
+        </button>
+      </div>
+      {error && <div className="cloud-error">{error}</div>}
+      <div className="cloud-list">
+        {chats.length === 0 && <div className="cloud-empty">{t('cloud.noChats')}</div>}
+        {chats.map((c) => (
+          <div
+            key={c.id}
+            className={`cloud-list__row${c.id === currentChatId ? ' cloud-list__row--current' : ''}`}
+          >
+            <div
+              className="cloud-list__main"
+              onClick={async () => {
+                if (c.id === currentChatId) return onClose();
+                const ok = await showConfirmDialog(t('cloud.loadChatConfirm'));
+                if (!ok) return;
+                try {
+                  await loadChat(c.id);
+                  onClose();
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : String(err));
+                }
+              }}
+            >
+              <div className="cloud-list__name">
+                {c.title}
+                {c.id === currentChatId ? ` · ${t('cloud.currentChat')}` : ''}
+              </div>
+              <div className="cloud-list__meta">{fmtDate(c.updated_at)}</div>
+            </div>
+            <button
+              className="cloud-list__action"
+              title={t('cloud.delete')}
+              onClick={async () => {
+                const ok = await showConfirmDialog(t('cloud.deleteChatConfirm'));
+                if (!ok) return;
+                try {
+                  await deleteChat(c.id);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : String(err));
+                }
+              }}
+            >
+              🗑
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function UserBubble({ m }: { m: UiMessage }) {
   const { t } = useTranslation();
   const hasCheckpoint = useAgentStore((s) => s.checkpoints.some((c) => c.msgId === m.id));
@@ -268,6 +370,9 @@ export function AgentChatPanel() {
   } = store;
 
   const [draft, setDraft] = useState('');
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const cloudUser = useCloudStore((s) => s.user);
+  const chatSyncState = useCloudStore((s) => s.chatSyncState);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const stickToBottomRef = useRef(true);
@@ -355,7 +460,35 @@ export function AgentChatPanel() {
               {model}
             </span>
           )}
+          {cloudUser && (
+            <span
+              className="agent-panel__sync"
+              title={
+                chatSyncState === 'error'
+                  ? t('cloud.syncError')
+                  : chatSyncState === 'saving'
+                    ? t('cloud.syncSaving')
+                    : t('cloud.syncSaved')
+              }
+            >
+              {chatSyncState === 'error' ? '☁⚠' : chatSyncState === 'saving' ? '☁…' : '☁✓'}
+            </span>
+          )}
         </span>
+        <button
+          className={`agent-panel__iconbtn${historyOpen ? ' agent-panel__iconbtn--active' : ''}`}
+          onClick={() => {
+            setHistoryOpen(!historyOpen);
+            if (!historyOpen) setSettingsOpen(false);
+          }}
+          title={t('cloud.chatHistory')}
+          aria-label={t('cloud.chatHistory')}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+        </button>
         <button
           className={`agent-panel__iconbtn${settingsOpen ? ' agent-panel__iconbtn--active' : ''}`}
           onClick={() => setSettingsOpen(!settingsOpen)}
@@ -391,6 +524,8 @@ export function AgentChatPanel() {
 
       {settingsOpen ? (
         <SettingsView />
+      ) : historyOpen ? (
+        <HistoryView onClose={() => setHistoryOpen(false)} />
       ) : (
         <>
           {keyMissing && (

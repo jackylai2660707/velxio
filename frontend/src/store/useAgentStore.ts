@@ -163,6 +163,8 @@ interface AgentState {
   /** Roll the project back to the state captured before the given user turn */
   restoreToTurn: (msgId: string) => Promise<void>;
   hasCheckpoint: (msgId: string) => boolean;
+  /** Replace the whole conversation (cloud session load). Aborts any run. */
+  hydrateSession: (messages: UiMessage[], apiMessages: ApiMessage[]) => void;
 }
 
 /** True when a request would be rejected for lack of any API key. */
@@ -316,6 +318,26 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   hasCheckpoint: (msgId: string) => get().checkpoints.some((c) => c.msgId === msgId),
+
+  hydrateSession: (messages: UiMessage[], apiMessages: ApiMessage[]) => {
+    get().abortController?.abort();
+    // Advance the ui-id counter past any loaded ids so new messages never
+    // collide with restored ones.
+    for (const m of messages) {
+      const n = Number(/^agent-msg-(\d+)$/.exec(m.id)?.[1]);
+      if (Number.isFinite(n) && n > uiIdCounter) uiIdCounter = n;
+    }
+    set((s) => ({
+      messages,
+      apiMessages,
+      checkpoints: [], // they referenced the previous conversation's turns
+      busy: false,
+      abortController: null,
+      failedText: null,
+      generation: s.generation + 1,
+    }));
+    schedulePersistChat(get);
+  },
 
   // Confirmation lives in the panel (it owns the localized dialog); this
   // action just performs the rollback.

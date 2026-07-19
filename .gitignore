@@ -192,3 +192,5 @@ MANIFEST.sha256
 backend/.venv/*
 backend/.env.agent
 
+data/
+backend/data/

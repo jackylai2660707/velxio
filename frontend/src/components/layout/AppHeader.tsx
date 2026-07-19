@@ -8,6 +8,7 @@ import { useLocalizedHref, useCurrentLocale } from '../../i18n/useLocalizedNavig
 import { blogUrlFor } from '../../i18n/path';
 import { trackVisitGitHub, trackVisitDiscord } from '../../utils/analytics';
 import type { AutoSaveState } from '../../hooks/useAutoSaveProject';
+import { CloudHeaderAuth } from '../../cloud/CloudHeaderAuth';
 import './LanguageSwitcher.css';
 
 const GITHUB_URL = 'https://github.com/davidmonterocrespo24/velxio';
@@ -250,7 +251,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ autoSave }) => {
               via mountIntoSlot('header-auth'). In OSS without the
               overlay this slot stays empty, which is correct because the
               OSS image has no auth backend either. */}
-          <div data-velxio-slot="header-auth" style={{ display: 'contents' }} />
+          <div data-velxio-slot="header-auth" style={{ display: 'contents' }}>
+            {/* Fork feature: self-contained cloud accounts (sign-in chip +
+                auth/projects modals). The pro overlay, when present, portals
+                its own widget into this slot alongside. */}
+            <CloudHeaderAuth />
+          </div>
 
           {/* Mobile hamburger — useless in desktop where the nav it
               would expand is itself hidden. */}

@@ -71,6 +71,13 @@
   color: #d4d4d4;
 }
 
+.agent-panel__sync {
+  font-size: 10.5px;
+  color: #7d9b7d;
+  flex-shrink: 0;
+  cursor: default;
+}
+
 .agent-panel__iconbtn {
   background: none;
   border: none;
