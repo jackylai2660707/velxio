@@ -189,4 +189,4 @@ MANIFEST.sha256
 *.tar.gz
 *.sqlite-backup
 
-backend/.venv/*
+backend/.venv/*backend/.env.agent
