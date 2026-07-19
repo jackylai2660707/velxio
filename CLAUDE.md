@@ -243,6 +243,14 @@ deploying velxio.dev.
 - [frontend/src/utils/hexParser.ts](frontend/src/utils/hexParser.ts) - Intel HEX format parser
 - [frontend/src/components/simulator/SimulatorCanvas.tsx](frontend/src/components/simulator/SimulatorCanvas.tsx) - Canvas + Serial button next to board selector
 
+### Frontend - AI Assistant (OSS agent)
+- [frontend/src/agent/](frontend/src/agent/) - Agent loop (AgentRunner.ts), tool layer (tools.ts), state snapshot, system prompt
+- [frontend/src/store/useAgentStore.ts](frontend/src/store/useAgentStore.ts) - Chat state (UI messages + raw Anthropic history)
+- [frontend/src/lib/agentBridge.ts](frontend/src/lib/agentBridge.ts) - EditorToolbar registers compile/run/stop for agent tools
+- [frontend/src/components/agent/AgentChatPanel.tsx](frontend/src/components/agent/AgentChatPanel.tsx) - Right-docked chat panel
+- [backend/app/api/routes/agent.py](backend/app/api/routes/agent.py) - SSE streaming proxy to the Anthropic API (loop + tools run in the browser)
+- Docs: [docs/wiki/ai-assistant.md](docs/wiki/ai-assistant.md)
+
 ### Frontend - Pages
 - [frontend/src/pages/EditorPage.tsx](frontend/src/pages/EditorPage.tsx) - Main editor layout (resizable file explorer + panels)
 - [frontend/src/pages/LoginPage.tsx](frontend/src/pages/LoginPage.tsx)

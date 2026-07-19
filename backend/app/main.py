@@ -115,6 +115,11 @@ app.include_router(simulation.router, prefix="/api/simulation", tags=["simulatio
 from app.api.routes import iot_gateway
 app.include_router(iot_gateway.router, prefix="/api/gateway", tags=["iot-gateway"])
 
+# AI Assistant — streaming proxy to the Anthropic API. The agent loop and all
+# tool execution live in the browser; this only relays one model call per turn.
+from app.api.routes import agent
+app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
+
 # Optional pro extension. The `app.pro` package only exists in private builds
 # (overlaid at Docker build time by an external repo) — its absence in the
 # open-source image is expected and silently ignored. Anyone with private

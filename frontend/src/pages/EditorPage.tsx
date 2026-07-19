@@ -23,6 +23,7 @@ import { SimulatorCanvas } from '../components/simulator/SimulatorCanvas';
 import { SerialMonitor } from '../components/simulator/SerialMonitor';
 import { Oscilloscope } from '../components/simulator/Oscilloscope';
 import { AppHeader } from '../components/layout/AppHeader';
+import { AgentChatPanel } from '../components/agent/AgentChatPanel';
 import { triggerSaveAction } from '../lib/proSaveAction';
 import { GitHubStarBanner } from '../components/layout/GitHubStarBanner';
 import { useSimulatorStore, DEFAULT_BOARD_POSITION } from '../store/useSimulatorStore';
@@ -702,6 +703,9 @@ export const EditorPage: React.FC = () => {
       {/* Slot reserved for the private pro overlay (e.g. agent chat panel).
           Self-hosted builds without an overlay see nothing here. */}
       <div data-velxio-slot="agent-chat" />
+      {/* OSS AI assistant — chat-driven project generation (code + wiring).
+          Renders a floating opener when closed; see docs/wiki/ai-assistant.md. */}
+      <AgentChatPanel />
     </div>
   );
 };
