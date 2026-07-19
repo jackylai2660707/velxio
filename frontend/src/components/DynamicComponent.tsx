@@ -236,6 +236,7 @@ interface DynamicComponentProps {
   x?: number;
   y?: number;
   isSelected?: boolean;
+  isHovered?: boolean;
   onMouseDown?: (e: React.MouseEvent) => void;
   onDoubleClick?: (e: React.MouseEvent) => void;
   onMouseEnter?: () => void;
@@ -250,6 +251,7 @@ export const DynamicComponent: React.FC<DynamicComponentProps> = ({
   x = 0,
   y = 0,
   isSelected = false,
+  isHovered = false,
   onMouseDown,
   onDoubleClick,
   onMouseEnter,
@@ -706,7 +708,13 @@ export const DynamicComponent: React.FC<DynamicComponentProps> = ({
         </div>
       )}
 
-      {/* Component label */}
+      {/* Component label — revealed on hover/selection only.
+          A dense board (e.g. 8 vertical resistors at 19 px pitch) turned into
+          a wall of overlapping "Resistor 220 Ω" text that hid the breadboard
+          holes and the parts themselves. Hidden with OPACITY, never
+          `display`/`position`: pinPositionCalculator derives the rotation
+          pivot from `wrapper.offsetHeight`, so taking the label out of flow
+          would move every rotated component's pins. */}
       <div
         className="component-label"
         style={{
@@ -719,6 +727,8 @@ export const DynamicComponent: React.FC<DynamicComponentProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
           gap: '4px',
+          opacity: isHovered || isSelected ? 1 : 0,
+          transition: 'opacity 120ms ease-out',
         }}
       >
         {properties.pin !== undefined ? `Pin ${properties.pin}` : metadata.name}

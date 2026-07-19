@@ -32,6 +32,7 @@ import { autoWireColor, WIRE_KEY_COLORS, expandOrthogonalPoints } from '../../ut
 import {
   isAutoVerticalPart,
   isOverBreadboard,
+  seatOnDrop,
   snapPositionToBreadboard,
 } from '../../utils/breadboardSnap';
 import {
@@ -316,6 +317,10 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
       setSelectedComponentId(null);
     }
   }, [interactionRunning, setSelectedWire]);
+
+  // Lets the touch handlers (defined in an earlier effect closure) reach the
+  // drop-time breadboard seating declared further down.
+  const seatDroppedComponentRef = useRef<(componentId: string) => void>(() => {});
 
   const componentsRef = useRef(components);
   componentsRef.current = components;
@@ -972,6 +977,10 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
               }
             }
           }
+        } else if (touchId !== '__board__' && !touchId.startsWith('__board__:')) {
+          // Real touch drag (not a tap) — seat it properly on release,
+          // same as the mouse path.
+          seatDroppedComponentRef.current(touchId);
         }
 
         recalculateAllWirePositions();
@@ -1542,6 +1551,24 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
     }
   };
 
+  /**
+   * Drop-time breadboard seating. The drag-time magnet only aligns the
+   * anchor pin, which is how parts ended up HALF-seated (some pins in
+   * holes, the rest dead in the air). On release we re-solve properly:
+   * nearest position where every pin is in a free hole, sliding past
+   * occupied columns if needed. Leaves the part untouched when it is not
+   * over a board or genuinely does not fit.
+   */
+  const seatDroppedComponent = (componentId: string) => {
+    const state = useSimulatorStore.getState();
+    const comp = state.components.find((c) => c.id === componentId);
+    if (!comp) return;
+    const placement = seatOnDrop(comp, comp.x, comp.y, state.components);
+    if (!placement || placement.moved < 0.01) return;
+    updateComponent(componentId, { x: placement.x, y: placement.y } as any);
+  };
+  seatDroppedComponentRef.current = seatDroppedComponent;
+
   const handleCanvasMouseUp = (e: React.MouseEvent) => {
     // Finish panning — commit ref value to state so React knows the final pan
     if (isPanningRef.current) {
@@ -1671,7 +1698,14 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
         draggedComponentId &&
         !draggedComponentId.startsWith('__board__')
       ) {
-        const moved = components.find((c) => c.id === draggedComponentId);
+        // Seat BEFORE recording the move, so undo restores the pre-drag
+        // position in one step instead of leaving the part mid-seat.
+        seatDroppedComponent(draggedComponentId);
+        // Re-read from the store: `components` is the render-time closure
+        // and does not include the seating correction just applied.
+        const moved = useSimulatorStore
+          .getState()
+          .components.find((c) => c.id === draggedComponentId);
         if (moved && (moved.x !== start.x || moved.y !== start.y)) {
           recordMove(draggedComponentId, start, { x: moved.x, y: moved.y });
         }
@@ -2128,6 +2162,7 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
             x={component.x}
             y={component.y}
             isSelected={isSelected}
+            isHovered={isHovered}
             onMouseDown={(e) => {
               handleComponentMouseDown(component.id, e);
             }}
@@ -2704,8 +2739,13 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
               {registryLoaded && components.map(renderComponent)}
             </div>
 
-            {/* Electrical simulation overlay (voltages / warnings) */}
-            <ElectricalOverlay />
+            {/* Electrical simulation overlay (voltages / warnings).
+                Voltage pills are hover-gated — see ElectricalOverlay. */}
+            <ElectricalOverlay
+              hoveredWireId={hoveredWireId}
+              hoveredComponentId={hoveredComponentId}
+              hoveredBoardId={hoveredBoardId}
+            />
           </div>
 
           {/* Wire creation mode banner — visible on both desktop and mobile */}
