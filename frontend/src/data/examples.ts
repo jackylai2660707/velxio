@@ -159,7 +159,7 @@ void loop() {
     title: 'ESP32: SSD1306 OLED (4-pin I2C)',
     description:
       'Drive the cheap 4-pin SSD1306 OLED module (GND/VCC/SCL/SDA) over I2C from an ESP32 (SDA=21, SCL=22).',
-    libraries: ['Adafruit SSD1306', 'Adafruit GFX Library'],
+    libraries: ['Adafruit SSD1306', 'Adafruit GFX Library', 'Adafruit BusIO'],
     category: 'displays',
     difficulty: 'intermediate',
     boardFilter: 'esp32',
