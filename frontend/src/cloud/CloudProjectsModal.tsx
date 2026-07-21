@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useCloudStore } from './useCloudStore';
 import { showConfirmDialog } from '../store/useMessageDialogStore';
@@ -73,7 +74,9 @@ export function CloudProjectsModal() {
 
   const fmtDate = (ts: number) => new Date(ts * 1000).toLocaleString();
 
-  return (
+  // Portal to <body> — see AuthModal: the header's backdrop-filter would
+  // otherwise trap this fixed-position dialog inside the 44px header strip.
+  return createPortal(
     <div
       className="cloud-modal-backdrop"
       onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}
@@ -145,6 +148,7 @@ export function CloudProjectsModal() {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

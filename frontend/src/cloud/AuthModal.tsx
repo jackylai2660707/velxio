@@ -3,6 +3,7 @@
  */
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useCloudStore } from './useCloudStore';
 import './cloud.css';
@@ -35,7 +36,11 @@ export function AuthModal() {
 
   const canSubmit = !authBusy && email.trim().length > 3 && password.length >= 6;
 
-  return (
+  // Portal to <body>: the modal renders inside the app header, whose
+  // backdrop-filter turns it into the containing block for fixed-position
+  // descendants — without the portal the dialog is squeezed into the 44px
+  // header strip and clipped.
+  return createPortal(
     <div className="cloud-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}>
       <div className="cloud-modal">
         <div className="cloud-modal__header">
@@ -107,6 +112,7 @@ export function AuthModal() {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
