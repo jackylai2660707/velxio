@@ -194,3 +194,4 @@ backend/.env.agent
 
 data/
 backend/data/
+.devlogs/
