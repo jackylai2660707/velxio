@@ -52,6 +52,40 @@ if (!CHROME) {
  * for the value to show up on serial. `matrix` waits for the pixel bitmap.
  */
 const CASES = [
+  // ESP32 cases run only with QA_ESP32=1 — they need libqemu-xtensa.so on the
+  // backend (VELXIO_QEMU_PATH) plus the esp32:esp32@2.0.17 core (the IDF-4.4
+  // era the lcgamboa QEMU machine supports; core 3.x firmware crashes with
+  // "Cache disabled but cached memory region accessed" at boot), and the
+  // first compile takes minutes.
+  ...(process.env.QA_ESP32
+    ? [
+        {
+          example: 'esp32-dht11',
+          componentId: 'e32-dht11a',
+          tag: 'velxio-dht11',
+          wires: 3,
+          compileTimeoutMs: 420000,
+          serial: { contains: ['Temp: 24', 'Humidity: 66'], timeoutMs: 60000 },
+          sensor: {
+            values: { temperature: 33, humidity: 44 },
+            expect: ['Temp: 33', 'Humidity: 44'],
+            timeoutMs: 30000,
+          },
+        },
+        {
+          example: 'esp32-max7219-heart',
+          componentId: 'e32-matrix1',
+          tag: 'velxio-max7219',
+          wires: 5,
+          compileTimeoutMs: 420000,
+          matrix: {
+            frame: [0x00, 0x66, 0xff, 0xff, 0xff, 0x7e, 0x3c, 0x18],
+            blinks: true,
+            timeoutMs: 60000,
+          },
+        },
+      ]
+    : []),
   {
     example: 'uno-dht11-serial',
     componentId: 'uno-dht11a',
@@ -92,6 +126,8 @@ const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: 'new',
   args: ['--no-sandbox', '--disable-dev-shm-usage', '--window-size=1600,1000'],
+  // ESP32 compiles run inside a single page.evaluate and can take minutes.
+  protocolTimeout: 600000,
 });
 const page = await browser.newPage();
 await page.setViewport({ width: 1600, height: 1000 });

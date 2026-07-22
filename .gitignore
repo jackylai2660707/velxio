@@ -195,3 +195,4 @@ backend/.env.agent
 /data/
 backend/data/
 .devlogs/
+backend/qemu-lib/

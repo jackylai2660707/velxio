@@ -18,8 +18,18 @@ const PIN_INFO = [
 class Ds18b20Element extends HTMLElement {
   readonly pinInfo = PIN_INFO;
 
-  /** Live temperature — read by the 1-Wire part simulation (°C) */
-  temperature = 25;
+  // Live temperature (°C) — read by the 1-Wire part simulation. Coercing
+  // setter mirrors lit's `@property({type: Number})`: example properties and
+  // the property dialog deliver strings.
+  private _temperature = 25;
+
+  get temperature(): number {
+    return this._temperature;
+  }
+  set temperature(v: number | string) {
+    const n = Number(v);
+    if (!Number.isNaN(n)) this._temperature = n;
+  }
 
   constructor() {
     super();

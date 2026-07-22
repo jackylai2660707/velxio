@@ -23,9 +23,29 @@ const PIN_INFO = [
 class Dht11Element extends HTMLElement {
   readonly pinInfo = PIN_INFO;
 
-  /** Live sensor values — read by the part simulation when building frames */
-  temperature = 25;
-  humidity = 50;
+  // Live sensor values — read by the part simulation when building frames.
+  // Coercing setters mirror lit's `@property({type: Number})` on wokwi
+  // elements: example properties and the property dialog deliver strings,
+  // and a string forwarded to the ESP32 backend crashes the worker's
+  // payload builder.
+  private _temperature = 25;
+  private _humidity = 50;
+
+  get temperature(): number {
+    return this._temperature;
+  }
+  set temperature(v: number | string) {
+    const n = Number(v);
+    if (!Number.isNaN(n)) this._temperature = n;
+  }
+
+  get humidity(): number {
+    return this._humidity;
+  }
+  set humidity(v: number | string) {
+    const n = Number(v);
+    if (!Number.isNaN(n)) this._humidity = n;
+  }
 
   constructor() {
     super();

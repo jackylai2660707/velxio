@@ -648,8 +648,10 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
 
     def _dht22_build_payload(temperature: float, humidity: float) -> list[int]:
         """Build 5-byte DHT22 data payload: [hum_H, hum_L, temp_H, temp_L, checksum]."""
-        hum = round(humidity * 10)
-        tmp = round(temperature * 10)
+        # Frontends may deliver property values as strings — a TypeError here
+        # kills the whole worker, so coerce defensively.
+        hum = round(float(humidity) * 10)
+        tmp = round(float(temperature) * 10)
         h_H = (hum >> 8) & 0xFF
         h_L = hum & 0xFF
         raw_t = ((-tmp) & 0x7FFF) | 0x8000 if tmp < 0 else tmp & 0x7FFF
@@ -660,8 +662,8 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
 
     def _dht11_build_payload(temperature: float, humidity: float) -> list[int]:
         """Build 5-byte DHT11 data payload: integer °C/% in the high bytes."""
-        hum = round(min(90, max(20, humidity)))
-        tmp = round(min(50, max(0, temperature)))
+        hum = round(min(90, max(20, float(humidity))))
+        tmp = round(min(50, max(0, float(temperature))))
         chk = (hum + tmp) & 0xFF
         return [hum, 0, tmp, 0, chk]
 
