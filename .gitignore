@@ -101,7 +101,7 @@ third-party/*/.cache/
 .claude/settings.local.json
 .history/*
 .daveagent/*
-data/*
+/data/*
 .publicar/*
 .publicar_discord/*
 img/*
@@ -192,6 +192,6 @@ MANIFEST.sha256
 backend/.venv/*
 backend/.env.agent
 
-data/
+/data/
 backend/data/
 .devlogs/
