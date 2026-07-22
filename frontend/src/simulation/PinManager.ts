@@ -77,6 +77,12 @@ export class PinManager {
    *                  (DDR=0, PORT=1) falsely marks the pin as MCU output
    *                  and emits an ideal V-source on the SPICE side, fighting
    *                  the real external circuit (button, sensor, pull-down).
+   * @param pullValue Optional raw PORT-register view for internal pull-up
+   *                  detection. Callers that pass an *effective line* value
+   *                  as newValue (which folds externally driven input levels
+   *                  in — see AVRSimulator.setupPinHooks) supply the raw
+   *                  value here so an external HIGH is not mistaken for the
+   *                  MCU's internal pull-up. Defaults to newValue.
    */
   updatePort(
     portName: string,
@@ -84,6 +90,7 @@ export class PinManager {
     oldValue: number = 0,
     pinMap?: number[],
     ddrMask?: number,
+    pullValue?: number,
   ) {
     const legacyOffsets: Record<string, number> = { PORTB: 8, PORTC: 14, PORTD: 0 };
 
@@ -94,12 +101,13 @@ export class PinManager {
     // canonical button-to-GND would float LOW. AVR has no internal pull-down.
     // Runs over all 8 bits (not just changed ones) so DDR/PORT edits both apply.
     if (ddrMask !== undefined) {
+      const pullSource = pullValue ?? newValue;
       for (let bit = 0; bit < 8; bit++) {
         const mask = 1 << bit;
         const arduinoPin = pinMap ? pinMap[bit] : (legacyOffsets[portName] ?? 0) + bit;
         if (arduinoPin < 0) continue;
         const isInput = (ddrMask & mask) === 0;
-        this.setPinPull(arduinoPin, isInput && (newValue & mask) !== 0 ? 1 : 0);
+        this.setPinPull(arduinoPin, isInput && (pullSource & mask) !== 0 ? 1 : 0);
       }
     }
 
