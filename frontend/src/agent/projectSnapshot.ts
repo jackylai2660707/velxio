@@ -57,7 +57,10 @@ export function buildProjectSnapshot(): string {
         c.properties && Object.keys(c.properties).length > 0
           ? ` props=${JSON.stringify(c.properties)}`
           : '';
-      lines.push(`- id="${c.id}" type=${c.metadataId} at (${c.x}, ${c.y})${props}`);
+      const burnt = sim.burntComponents.has(c.id)
+        ? ' [BURNT — destroyed by overcurrent; fix the circuit]'
+        : '';
+      lines.push(`- id="${c.id}" type=${c.metadataId} at (${c.x}, ${c.y})${props}${burnt}`);
     }
   }
 

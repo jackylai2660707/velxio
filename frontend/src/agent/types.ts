@@ -72,7 +72,13 @@ export interface UiToolSegment {
   diff?: string;
 }
 
-export type UiSegment = UiTextSegment | UiToolSegment;
+export interface UiNoticeSegment {
+  kind: 'notice';
+  /** Localized at render time by the panel */
+  notice: 'compaction';
+}
+
+export type UiSegment = UiTextSegment | UiToolSegment | UiNoticeSegment;
 
 export interface UiMessage {
   id: string;

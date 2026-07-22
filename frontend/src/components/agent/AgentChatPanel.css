@@ -620,6 +620,70 @@
   text-align: right;
 }
 
+/* Queued steering messages awaiting injection into the active run */
+.agent-panel__queued {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 7px;
+}
+.agent-panel__queued-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  background: #252d38;
+  border: 1px solid #2e4a66;
+  border-radius: 12px;
+  padding: 3px 6px 3px 10px;
+  font-size: 11.5px;
+  color: #9fc7e8;
+}
+.agent-panel__queued-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+.agent-panel__queued-chip button {
+  border: none;
+  background: none;
+  color: #6f8aa5;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+}
+.agent-panel__queued-chip button:hover {
+  color: #d4d4d4;
+}
+
+/* Iteration-cap notice with the continue action */
+.agent-panel__capped {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #3a3226;
+  border: 1px solid #5d4d2e;
+  border-radius: 8px;
+  padding: 7px 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #d8c39a;
+}
+.agent-panel__capped button {
+  border: none;
+  border-radius: 6px;
+  background: #7a5d2b;
+  color: #fff;
+  padding: 4px 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.agent-panel__capped button:hover {
+  background: #92702f;
+}
+
 /* Key-required notice above composer */
 .agent-panel__keybox {
   background: #252526;
@@ -650,4 +714,15 @@
   .agent-panel__resize {
     display: none;
   }
+}
+
+/* Compaction divider inside an assistant message */
+.agent-msg__notice {
+  font-size: 11px;
+  color: #8a8a8a;
+  border-top: 1px dashed #3c3c3c;
+  border-bottom: 1px dashed #3c3c3c;
+  padding: 4px 0;
+  margin: 6px 0;
+  text-align: center;
 }

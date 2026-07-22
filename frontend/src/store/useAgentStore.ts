@@ -19,6 +19,14 @@
 import { create } from 'zustand';
 import { getApiBase } from '../lib/apiBase';
 import { runTurn, trimHistory, type AgentSettings } from '../agent/AgentRunner';
+import { SteeringQueue } from '../agent/AgentSession';
+import {
+  compactHistory,
+  defaultTransformContext,
+  shouldCompact,
+} from '../agent/compaction';
+import { repairHistory } from '../agent/historyRepair';
+import { useVersionStore } from '../versioning/useVersionStore';
 import { buildProjectSnapshot } from '../agent/projectSnapshot';
 import { buildExampleHint } from '../agent/exampleHints';
 import {
@@ -26,8 +34,9 @@ import {
   restoreCheckpoint,
   type ProjectCheckpoint,
 } from '../agent/checkpoint';
-import { toolLabel } from '../agent/tools';
-import type { ApiMessage, UiMessage, UiToolSegment } from '../agent/types';
+import { applyAgentEvent } from '../agent/uiReducer';
+import type { AgentEvent } from '../agent/events';
+import type { ApiMessage, UiMessage } from '../agent/types';
 
 const SETTINGS_STORAGE = 'velxio-agent-settings';
 const LEGACY_KEY_STORAGE = 'velxio-agent-api-key';
@@ -35,6 +44,10 @@ const PANEL_WIDTH_STORAGE = 'velxio-agent-panel-width';
 const CHAT_STORAGE = 'velxio-agent-chat';
 const MAX_CHECKPOINTS = 10;
 const MAX_PERSISTED_UI_MESSAGES = 80;
+/** Stored API history cap. Wire-size is controlled per LLM call by
+ *  defaultTransformContext (snapshot stripping + structural trim), so the
+ *  store can afford to keep much more raw history than fits one request. */
+const MAX_STORED_API_MESSAGES = 200;
 
 let uiIdCounter = 0;
 const nextUiId = () => `agent-msg-${++uiIdCounter}`;
@@ -87,7 +100,9 @@ function loadChat(): PersistedChat {
       }
       return {
         messages: parsed.messages ?? [],
-        apiMessages: parsed.apiMessages ?? [],
+        // A reload mid-run persists dangling tool_use blocks — repair them
+        // or every request after the reload gets a 400 from the upstream.
+        apiMessages: repairHistory(parsed.apiMessages ?? []),
         uiIdCounter: parsed.uiIdCounter ?? 0,
       };
     }
@@ -105,7 +120,7 @@ function schedulePersistChat(get: () => AgentState): void {
       const { messages, apiMessages } = get();
       const payload: PersistedChat = {
         messages: messages.slice(-MAX_PERSISTED_UI_MESSAGES),
-        apiMessages: trimHistory(apiMessages),
+        apiMessages: trimHistory(apiMessages, MAX_STORED_API_MESSAGES),
         uiIdCounter,
       };
       localStorage.setItem(CHAT_STORAGE, JSON.stringify(payload));
@@ -128,6 +143,38 @@ interface TurnCheckpoint {
   state: ProjectCheckpoint;
 }
 
+/** Best-effort project checkpoint for a user turn — never blocks a send.
+ *  The same snapshot also lands in the durable version history (fire and
+ *  forget), so every AI turn is a restorable version even after a reload. */
+function tryCaptureCheckpoint(msgId: string, label: string): TurnCheckpoint | null {
+  try {
+    const state = captureCheckpoint();
+    void useVersionStore.getState().saveVersionFromCheckpoint(state, label.slice(0, 40), 'ai');
+    return { msgId, label: label.slice(0, 40), state };
+  } catch {
+    return null;
+  }
+}
+
+/** Assemble a full API user turn: fresh <project_state> snapshot + optional
+ *  example hint + the user's text. Used for the initial send AND for
+ *  steering messages promoted to follow-up turns. */
+function buildUserTurnMessage(text: string): ApiMessage {
+  const exampleHint = buildExampleHint(text);
+  return {
+    role: 'user',
+    content: [
+      {
+        type: 'text',
+        text:
+          `<project_state>\n${buildProjectSnapshot()}\n</project_state>\n\n` +
+          (exampleHint ? `${exampleHint}\n\n` : '') +
+          text,
+      },
+    ],
+  };
+}
+
 interface AgentState {
   panelOpen: boolean;
   panelWidth: number;
@@ -146,8 +193,16 @@ interface AgentState {
   generation: number;
   /** Text of the last send that failed — enables one-click retry */
   failedText: string | null;
+  /** Last run stopped at the iteration cap — the panel offers "continue" */
+  cappedRun: boolean;
+  /** Steering queue of the active run (null when idle) */
+  steeringQueue: SteeringQueue | null;
+  /** Mirror of queued (not yet injected) steering texts, for the pending chips */
+  pendingSteering: string[];
   /** Session token totals (sum of upstream-reported usage) */
   totalTokens: { input: number; output: number };
+  /** Prompt size of the most recent model call — drives compaction */
+  lastPromptTokens: number;
 
   togglePanel: () => void;
   setPanelWidth: (w: number) => void;
@@ -160,6 +215,12 @@ interface AgentState {
   stop: () => void;
   send: (text: string) => Promise<void>;
   retry: () => void;
+  /** Resume a run that stopped at the iteration cap */
+  continueRun: () => void;
+  /** Queue a message into the ACTIVE run (falls back to send when idle) */
+  steer: (text: string) => void;
+  /** Remove a not-yet-injected steering message by index */
+  unqueueSteering: (index: number) => void;
   /** Roll the project back to the state captured before the given user turn */
   restoreToTurn: (msgId: string) => Promise<void>;
   hasCheckpoint: (msgId: string) => boolean;
@@ -202,7 +263,11 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   abortController: null,
   generation: 0,
   failedText: null,
+  cappedRun: false,
+  steeringQueue: null,
+  pendingSteering: [],
   totalTokens: { input: 0, output: 0 },
+  lastPromptTokens: 0,
 
   togglePanel: () => {
     const open = !get().panelOpen;
@@ -299,6 +364,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       busy: false,
       abortController: null,
       failedText: null,
+      cappedRun: false,
+      steeringQueue: null,
+      pendingSteering: [],
       totalTokens: { input: 0, output: 0 },
       generation: s.generation + 1,
     }));
@@ -317,6 +385,30 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     }
   },
 
+  continueRun: () => {
+    if (get().busy || !get().cappedRun) return;
+    set({ cappedRun: false });
+    void get().send('继续 / continue — pick up exactly where you stopped and finish the remaining steps.');
+  },
+
+  steer: (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const { busy, steeringQueue } = get();
+    if (!busy || !steeringQueue) {
+      void get().send(trimmed);
+      return;
+    }
+    steeringQueue.push(trimmed);
+    set((s) => ({ pendingSteering: [...s.pendingSteering, trimmed] }));
+  },
+
+  unqueueSteering: (index: number) => {
+    const { steeringQueue } = get();
+    steeringQueue?.removeAt(index);
+    set((s) => ({ pendingSteering: s.pendingSteering.filter((_, i) => i !== index) }));
+  },
+
   hasCheckpoint: (msgId: string) => get().checkpoints.some((c) => c.msgId === msgId),
 
   hydrateSession: (messages: UiMessage[], apiMessages: ApiMessage[]) => {
@@ -329,11 +421,14 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     }
     set((s) => ({
       messages,
-      apiMessages,
+      apiMessages: repairHistory(apiMessages),
       checkpoints: [], // they referenced the previous conversation's turns
       busy: false,
       abortController: null,
       failedText: null,
+      cappedRun: false,
+      steeringQueue: null,
+      pendingSteering: [],
       generation: s.generation + 1,
     }));
     schedulePersistChat(get);
@@ -353,24 +448,33 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     const state = get();
     if (state.busy || !text.trim()) return;
 
+    // Defensive: an earlier abort/crash may have left the history with
+    // unpaired tool blocks. Repair before building the request.
+    const repairedBase = repairHistory(state.apiMessages);
+    if (repairedBase !== state.apiMessages) set({ apiMessages: repairedBase });
+
     const abortController = new AbortController();
     const generation = state.generation;
+    const steering = new SteeringQueue();
+    if (state.cappedRun) set({ cappedRun: false });
 
     // Capture the whole project BEFORE the AI touches anything, so this turn
     // can be rolled back from the message bubble.
-    let checkpoint: TurnCheckpoint | null = null;
     const userUi: UiMessage = { id: nextUiId(), role: 'user', segments: [{ kind: 'text', text }] };
-    try {
-      checkpoint = { msgId: userUi.id, label: text.slice(0, 40), state: captureCheckpoint() };
-    } catch {
-      /* checkpoint is best-effort — never block a send on it */
-    }
+    const checkpoint = tryCaptureCheckpoint(userUi.id, text);
 
     const assistantUi: UiMessage = { id: nextUiId(), role: 'assistant', segments: [] };
+    // Steering promotes new user+assistant bubble pairs mid-run; events always
+    // target the newest assistant bubble of THIS run.
+    const assistantRef = { id: assistantUi.id };
+    const runAssistantIds = new Set([assistantUi.id]);
+
     set((s) => ({
       busy: true,
       abortController,
       failedText: null,
+      steeringQueue: steering,
+      pendingSteering: [],
       messages: [...s.messages, userUi, assistantUi],
       checkpoints: checkpoint
         ? [...s.checkpoints.slice(-(MAX_CHECKPOINTS - 1)), checkpoint]
@@ -379,102 +483,94 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
     // API history: fresh project snapshot travels with every user turn so the
     // model always sees manual edits made since the previous turn; a matching
-    // gallery example (if any) rides along as a wiring reference.
-    const exampleHint = buildExampleHint(text);
-    const userMsg: ApiMessage = {
-      role: 'user',
-      content: [
-        {
-          type: 'text',
-          text:
-            `<project_state>\n${buildProjectSnapshot()}\n</project_state>\n\n` +
-            (exampleHint ? `${exampleHint}\n\n` : '') +
-            text,
-        },
-      ],
-    };
-    const history = trimHistory([...state.apiMessages, userMsg]);
+    // gallery example (if any) rides along as a wiring reference. Wire-side
+    // trimming happens per LLM call via defaultTransformContext.
+    const userMsg = buildUserTurnMessage(text);
 
     const patchAssistant = (fn: (msg: UiMessage) => UiMessage) =>
       set((s) => ({
-        messages: s.messages.map((m) => (m.id === assistantUi.id ? fn(m) : m)),
+        messages: s.messages.map((m) => (m.id === assistantRef.id ? fn(m) : m)),
       }));
 
-    const appendText = (delta: string) =>
-      patchAssistant((m) => {
-        const segments = [...m.segments];
-        const last = segments[segments.length - 1];
-        if (last?.kind === 'text') {
-          segments[segments.length - 1] = { ...last, text: last.text + delta };
-        } else {
-          segments.push({ kind: 'text', text: delta });
-        }
-        return { ...m, segments };
-      });
+    const onEvent = (ev: AgentEvent) => {
+      if (get().generation !== generation) return; // chat was cleared mid-run
+
+      // A queued message entered the conversation: close the current
+      // assistant bubble, add the user bubble (with its own checkpoint), and
+      // open a fresh assistant bubble for what follows.
+      if (ev.type === 'steering_injected' || ev.type === 'follow_up_turn') {
+        const newUser: UiMessage = {
+          id: nextUiId(),
+          role: 'user',
+          segments: [{ kind: 'text', text: ev.text }],
+        };
+        const cp = tryCaptureCheckpoint(newUser.id, ev.text);
+        const newAssistant: UiMessage = { id: nextUiId(), role: 'assistant', segments: [] };
+        assistantRef.id = newAssistant.id;
+        runAssistantIds.add(newAssistant.id);
+        set((s) => ({
+          messages: [...s.messages, newUser, newAssistant],
+          pendingSteering: steering.snapshot(),
+          checkpoints: cp ? [...s.checkpoints.slice(-(MAX_CHECKPOINTS - 1)), cp] : s.checkpoints,
+        }));
+        return;
+      }
+
+      // Session-level token totals live outside the message reducer.
+      if (ev.type === 'usage') {
+        set((s) => ({
+          totalTokens: {
+            input: s.totalTokens.input + ev.promptTokens,
+            output: s.totalTokens.output + ev.completionTokens,
+          },
+          lastPromptTokens: ev.promptTokens,
+        }));
+      }
+      patchAssistant((m) => applyAgentEvent(m, ev));
+    };
 
     try {
-      const { appended } = await runTurn(history, state.settings, abortController.signal, {
-        onTextBlockStart: () =>
-          patchAssistant((m) => ({
-            ...m,
-            segments: [...m.segments, { kind: 'text', text: '' }],
-          })),
-        onTextDelta: appendText,
-        onThinking: (chars) =>
-          patchAssistant((m) => ({ ...m, thinkingChars: (m.thinkingChars ?? 0) + chars })),
-        onUsage: (input, output) => {
-          patchAssistant((m) => ({
-            ...m,
-            usage: {
-              input: (m.usage?.input ?? 0) + input,
-              output: (m.usage?.output ?? 0) + output,
-            },
-          }));
-          set((s) => ({
-            totalTokens: {
-              input: s.totalTokens.input + input,
-              output: s.totalTokens.output + output,
-            },
-          }));
+      // Approaching the context limit: summarize older turns with the model
+      // and replace them in the stored history. Fails silently — the wire
+      // transform's structural trim remains the floor.
+      let base = repairedBase;
+      if (shouldCompact(base, state.lastPromptTokens, state.settings.contextLimitTokens)) {
+        onEvent({ type: 'compaction_start' });
+        const compacted = await compactHistory(base, state.settings);
+        const ok = compacted !== base;
+        if (ok && get().generation === generation) {
+          base = compacted;
+          set({ apiMessages: compacted, lastPromptTokens: 0 });
+        }
+        onEvent({ type: 'compaction_end', ok });
+      }
+
+      const { appended, error, capped } = await runTurn(
+        [...base, userMsg],
+        state.settings,
+        abortController.signal,
+        onEvent,
+        {
+          steering,
+          buildFollowUpTurn: buildUserTurnMessage,
+          transformContext: defaultTransformContext,
         },
-        onToolStart: (_id, name, input) =>
-          patchAssistant((m) => ({
-            ...m,
-            segments: [
-              ...m.segments,
-              {
-                kind: 'tool',
-                name,
-                label: toolLabel(name, input),
-                status: 'running',
-              } satisfies UiToolSegment,
-            ],
-          })),
-        onToolEnd: (_id, result, isError, diff) =>
-          patchAssistant((m) => {
-            const segments = [...m.segments];
-            for (let i = segments.length - 1; i >= 0; i--) {
-              const seg = segments[i];
-              if (seg.kind === 'tool' && seg.status === 'running') {
-                segments[i] = {
-                  ...seg,
-                  status: isError ? 'error' : 'ok',
-                  detail: result.slice(0, 2000),
-                  diff,
-                };
-                break;
-              }
-            }
-            return { ...m, segments };
-          }),
-      });
+      );
+      void error; // surfaced on the bubble by the reducer (run_end event)
 
       // If the chat was cleared while this run was in flight, discard the
       // result instead of resurrecting a history the user just threw away.
       if (get().generation === generation) {
         set((s) => ({
-          apiMessages: trimHistory([...s.apiMessages, userMsg, ...appended]),
+          apiMessages: trimHistory(
+            [...s.apiMessages, userMsg, ...appended],
+            MAX_STORED_API_MESSAGES,
+          ),
         }));
+        // Note: when `error` is set, the work above is still committed and
+        // retry stays disarmed (a retry would re-run mutations on the
+        // already-changed project).
+        if (capped) set({ cappedRun: true });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -492,10 +588,12 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         // and break its stop button.
         const ownsRunState = s.abortController === abortController;
         return {
-          ...(ownsRunState ? { busy: false, abortController: null } : {}),
-          // Drop a completely empty assistant bubble (e.g. aborted before output)
+          ...(ownsRunState
+            ? { busy: false, abortController: null, steeringQueue: null, pendingSteering: [] }
+            : {}),
+          // Drop completely empty assistant bubbles (e.g. aborted before output)
           messages: s.messages.filter(
-            (m) => m.id !== assistantUi.id || m.segments.length > 0 || m.error,
+            (m) => !runAssistantIds.has(m.id) || m.segments.length > 0 || m.error,
           ),
         };
       });

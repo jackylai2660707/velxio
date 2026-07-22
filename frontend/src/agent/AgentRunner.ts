@@ -15,7 +15,13 @@
 import { getApiBase } from '../lib/apiBase';
 import { executeTool, TOOL_DEFINITIONS } from './tools';
 import { SYSTEM_PROMPT } from './systemPrompt';
-import type { ApiContentBlock, ApiMessage, ApiToolUseBlock } from './types';
+import type { AgentEventHandler } from './events';
+import type {
+  ApiContentBlock,
+  ApiMessage,
+  ApiToolUseBlock,
+  ToolDefinition,
+} from './types';
 
 const MAX_ITERATIONS = 40;
 
@@ -26,22 +32,8 @@ export interface AgentSettings {
   model?: string;
   effort?: string;
   apiKey?: string;
-}
-
-export interface RunnerCallbacks {
-  /** Streamed assistant text delta */
-  onTextDelta: (delta: string) => void;
-  /** A new text block started (UI should open a new text segment) */
-  onTextBlockStart: () => void;
-  /** Tool call is about to execute */
-  onToolStart: (id: string, name: string, input: Record<string, unknown>) => void;
-  /** Tool call finished; `diff` present for code-writing tools */
-  onToolEnd: (id: string, result: string, isError: boolean, diff?: string) => void;
-  /** Reasoning-model progress: `chars` more characters of hidden reasoning
-   *  were generated — keeps the UI alive during long thinking phases. */
-  onThinking?: (chars: number) => void;
-  /** Token usage reported by the upstream for one model call */
-  onUsage?: (promptTokens: number, completionTokens: number) => void;
+  /** Model context budget used to trigger LLM compaction (default 100k). */
+  contextLimitTokens?: number;
 }
 
 interface StreamedMessage {
@@ -54,7 +46,9 @@ async function streamOneMessage(
   messages: ApiMessage[],
   settings: AgentSettings,
   signal: AbortSignal,
-  cb: RunnerCallbacks,
+  onEvent: AgentEventHandler,
+  system: string = SYSTEM_PROMPT,
+  tools: ToolDefinition[] = TOOL_DEFINITIONS,
 ): Promise<StreamedMessage> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (settings.apiKey) headers['x-agent-key'] = settings.apiKey;
@@ -65,9 +59,9 @@ async function streamOneMessage(
     credentials: 'include',
     signal,
     body: JSON.stringify({
-      system: SYSTEM_PROMPT,
+      system,
       messages,
-      tools: TOOL_DEFINITIONS,
+      tools,
       base_url: settings.baseUrl || undefined,
       model: settings.model || undefined,
       effort: settings.effort || undefined,
@@ -101,7 +95,7 @@ async function streamOneMessage(
         const block = ev.content_block as Record<string, unknown>;
         if (block.type === 'text') {
           content[idx] = { type: 'text', text: '' };
-          cb.onTextBlockStart();
+          onEvent({ type: 'text_block_start' });
         } else if (block.type === 'thinking') {
           content[idx] = { type: 'thinking', thinking: '' };
         } else if (block.type === 'tool_use') {
@@ -122,7 +116,7 @@ async function streamOneMessage(
         if (!block) break;
         if (delta.type === 'text_delta' && block.type === 'text') {
           block.text += delta.text as string;
-          cb.onTextDelta(delta.text as string);
+          onEvent({ type: 'text_delta', delta: delta.text as string });
         } else if (delta.type === 'thinking_delta' && block.type === 'thinking') {
           block.thinking += (delta.thinking as string) ?? '';
         } else if (delta.type === 'signature_delta' && block.type === 'thinking') {
@@ -151,10 +145,14 @@ async function streamOneMessage(
         break;
       }
       case 'velxio_thinking':
-        cb.onThinking?.(Number(ev.chars) || 0);
+        onEvent({ type: 'thinking_progress', chars: Number(ev.chars) || 0 });
         break;
       case 'velxio_usage':
-        cb.onUsage?.(Number(ev.prompt_tokens) || 0, Number(ev.completion_tokens) || 0);
+        onEvent({
+          type: 'usage',
+          promptTokens: Number(ev.prompt_tokens) || 0,
+          completionTokens: Number(ev.completion_tokens) || 0,
+        });
         break;
       case 'velxio_error':
         throw new Error(String(ev.message ?? 'stream error'));
@@ -195,10 +193,56 @@ async function streamOneMessage(
   return { content: cleaned, stopReason };
 }
 
+/**
+ * One tool-less completion over an arbitrary system prompt — used by context
+ * compaction to summarize dropped turns through the same proxy endpoint.
+ * Returns the concatenated assistant text.
+ */
+export async function streamText(
+  messages: ApiMessage[],
+  settings: AgentSettings,
+  signal: AbortSignal,
+  system: string,
+): Promise<string> {
+  const msg = await streamOneMessage(messages, settings, signal, () => {}, system, []);
+  return msg.content
+    .filter((b): b is Extract<ApiContentBlock, { type: 'text' }> => b.type === 'text')
+    .map((b) => b.text)
+    .join('\n')
+    .trim();
+}
+
 export interface RunTurnResult {
   /** Full API-shaped messages appended during this turn (assistant + tool results) */
   appended: ApiMessage[];
   aborted: boolean;
+  /** Stream failure that happened AFTER partial work was appended. The caller
+   *  must still commit `appended` (tools already mutated the project) and show
+   *  the error — but must NOT arm retry, which would re-run the request. */
+  error?: string;
+  /** True when the turn stopped because it hit the iteration cap — the UI
+   *  offers a "continue" action instead of pretending the model finished. */
+  capped?: boolean;
+}
+
+/** How many LLM calls before the cap to warn the model to wrap up. */
+const CAP_WARNING_MARGIN = 4;
+/** Hard ceiling on LLM calls per run, across steering-promoted turns. */
+const MAX_TOTAL_CALLS = 120;
+
+const CAP_WARNING_NOTE =
+  '[system note] You are approaching the per-turn step limit. Wrap up: finish the most ' +
+  'important remaining action, then summarize what is done and what remains.';
+
+export interface RunTurnOptions {
+  /** Steering queue — drained after each tool batch and at turn end. */
+  steering?: { drain(): string[] };
+  /** Build a full user turn (fresh snapshot + example hint) when queued
+   *  steering is promoted to a follow-up turn at what would be the end. */
+  buildFollowUpTurn?: (text: string) => ApiMessage;
+  /** Wire-side context transform applied before EVERY LLM call (stale-snapshot
+   *  stripping, structural trim). Must not mutate its input. */
+  transformContext?: (messages: ApiMessage[]) => ApiMessage[];
 }
 
 /**
@@ -209,17 +253,47 @@ export async function runTurn(
   history: ApiMessage[],
   settings: AgentSettings,
   signal: AbortSignal,
-  cb: RunnerCallbacks,
+  onEvent: AgentEventHandler,
+  options: RunTurnOptions = {},
 ): Promise<RunTurnResult> {
   const appended: ApiMessage[] = [];
   const working = [...history];
+  onEvent({ type: 'run_start' });
 
-  for (let i = 0; i < MAX_ITERATIONS; i++) {
+  const end = (result: RunTurnResult): RunTurnResult => {
+    onEvent({
+      type: 'run_end',
+      reason: result.capped ? 'iteration_cap' : result.aborted ? 'aborted' : result.error ? 'error' : 'done',
+      error: result.error,
+    });
+    return result;
+  };
+
+  let iteration = 0; // resets when steering promotes a follow-up turn
+  let totalCalls = 0;
+
+  for (;;) {
+    if (iteration >= MAX_ITERATIONS || totalCalls >= MAX_TOTAL_CALLS) {
+      // Cap reached — return what we have; the store surfaces a notice.
+      return end({ appended, aborted: false, capped: true });
+    }
+    onEvent({ type: 'llm_call_start', iteration });
+    iteration++;
+    totalCalls++;
+
     let msg: StreamedMessage;
     try {
-      msg = await streamOneMessage(working, settings, signal, cb);
+      const wire = options.transformContext ? options.transformContext(working) : working;
+      msg = await streamOneMessage(wire, settings, signal, onEvent);
     } catch (err) {
-      if (signal.aborted) return { appended, aborted: true };
+      if (signal.aborted) return end({ appended, aborted: true });
+      const message = err instanceof Error ? err.message : String(err);
+      // Tools may already have run in earlier iterations — surface the error
+      // but hand the completed work back instead of discarding it.
+      if (appended.length > 0) {
+        return end({ appended, aborted: false, error: message });
+      }
+      onEvent({ type: 'run_end', reason: 'error', error: message });
       throw err;
     }
 
@@ -229,15 +303,42 @@ export async function runTurn(
 
     const toolUses = msg.content.filter((b): b is ApiToolUseBlock => b.type === 'tool_use');
     if (msg.stopReason !== 'tool_use' || toolUses.length === 0) {
-      return { appended, aborted: false };
+      // The turn would end here. If the user queued messages while we worked,
+      // promote them to a follow-up user turn and keep going.
+      const queued = options.steering?.drain() ?? [];
+      if (queued.length > 0 && options.buildFollowUpTurn && !signal.aborted) {
+        const text = queued.join('\n\n');
+        onEvent({ type: 'follow_up_turn', text });
+        const followUp = options.buildFollowUpTurn(text);
+        appended.push(followUp);
+        working.push(followUp);
+        iteration = 0;
+        continue;
+      }
+      return end({ appended, aborted: false });
     }
 
     const results: ApiContentBlock[] = [];
     for (const tu of toolUses) {
-      if (signal.aborted) return { appended, aborted: true };
-      cb.onToolStart(tu.id, tu.name, tu.input);
-      const { result, isError, diff } = await executeTool(tu.name, tu.input);
-      cb.onToolEnd(tu.id, result, isError, diff);
+      if (signal.aborted) {
+        // Every tool_use needs a paired tool_result or the upstream rejects
+        // the whole history on the next request — synthesize error results
+        // for the tools the abort skipped.
+        results.push({
+          type: 'tool_result',
+          tool_use_id: tu.id,
+          content: 'Aborted by user before this tool executed.',
+          is_error: true,
+        });
+        continue;
+      }
+      onEvent({ type: 'tool_start', id: tu.id, name: tu.name, input: tu.input });
+      const { result, isError, diff } = await executeTool(tu.name, tu.input, {
+        toolCallId: tu.id,
+        signal,
+        onUpdate: (detail) => onEvent({ type: 'tool_update', id: tu.id, detail }),
+      });
+      onEvent({ type: 'tool_end', id: tu.id, result, isError, diff });
       results.push({
         type: 'tool_result',
         tool_use_id: tu.id,
@@ -246,13 +347,29 @@ export async function runTurn(
       });
     }
 
+    // Mid-turn steering: ride along on the tool-result user message as plain
+    // text (no snapshot — the model has live tool results; a 48KB snapshot
+    // here would wreck the prompt cache). The backend emits tool_result
+    // blocks before text blocks of the same message, so this is wire-correct.
+    if (!signal.aborted) {
+      for (const text of options.steering?.drain() ?? []) {
+        onEvent({ type: 'steering_injected', text });
+        results.push({ type: 'text', text: `[user, interjecting mid-task] ${text}` });
+      }
+    }
+
+    // Nearing the cap: tell the model (as part of the tool-result turn) so it
+    // wraps up instead of getting cut off mid-plan.
+    if (iteration === MAX_ITERATIONS - CAP_WARNING_MARGIN) {
+      onEvent({ type: 'turn_limit_warning', remaining: CAP_WARNING_MARGIN });
+      results.push({ type: 'text', text: CAP_WARNING_NOTE });
+    }
+
     const resultMsg: ApiMessage = { role: 'user', content: results };
     appended.push(resultMsg);
     working.push(resultMsg);
+    if (signal.aborted) return end({ appended, aborted: true });
   }
-
-  // Iteration cap reached — return what we have; the store surfaces a notice.
-  return { appended, aborted: false };
 }
 
 /**

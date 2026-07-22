@@ -471,7 +471,14 @@
     "stop": "停止",
     "expand": "点击展开详情",
     "usage": "tokens:输入 {{input}} · 输出 {{output}}",
-    "restoreConfirm": "将整个项目(电路 + 代码)恢复到这条消息之前的状态?当前未保存的改动会丢失。"
+    "restoreConfirm": "将整个项目(电路 + 代码)恢复到这条消息之前的状态?当前未保存的改动会丢失。",
+    "steer": "排队消息(AI 正在工作)",
+    "steerPlaceholder": "AI 工作中也可以输入,消息会插入当前任务…",
+    "unqueue": "移除排队消息",
+    "capped": "AI 已达到单轮步数上限而暂停,任务可能未完成。",
+    "continue": "继续",
+    "compacted": "较早的上下文已压缩为摘要",
+    "contextLimit": "上下文上限(tokens,用于自动压缩)"
   },
   "cloud": {
     "signIn": "登录",
@@ -506,5 +513,28 @@
     "syncError": "同步失败——下次变动时重试",
     "signInForHistory": "登录后对话会自动保存到云端,换设备也能继续。",
     "currentChat": "当前"
+  },
+  "versions": {
+    "title": "版本历史",
+    "defaultLabel": "手动保存",
+    "savePlaceholder": "给这个版本起个名字(如\"红绿灯完成\")",
+    "saveNow": "保存版本",
+    "saved": "已保存「{{label}}」",
+    "unchanged": "与最新版本相同,无需保存",
+    "empty": "还没有版本。AI 每轮开始前会自动保存;你也可以在这里手动保存。",
+    "restore": "恢复",
+    "restoreConfirm": "把项目恢复到「{{label}}」?当前状态会先自动备份。",
+    "restored": "已恢复「{{label}}」,之前的状态已自动备份。",
+    "restoreFailed": "恢复失败 — 无法加载该版本。",
+    "delete": "删除版本",
+    "deleteConfirm": "删除版本「{{label}}」?此操作不可撤销。",
+    "renameHint": "双击重命名",
+    "stats": "{{boards}} 块板 · {{components}} 个元件 · {{files}} 个文件",
+    "hint": "🖐 手动 · ✨ AI 轮自动保存 · ⟳ 自动备份。最多保留 50 个版本;手动保存的版本不会被自动清理。",
+    "source": {
+      "manual": "手动保存",
+      "ai": "AI 轮开始前保存",
+      "auto": "自动备份"
+    }
   }
 }

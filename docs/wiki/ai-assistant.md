@@ -23,23 +23,56 @@ Safety & transparency features:
 - **Per-turn checkpoints** — every user message captures the full project
   (boards, components, wires, files); a ⟲ button on the message rolls the
   whole project back.
+- **Verified results** — the assistant is instructed (and equipped) to
+  OBSERVE the simulation before claiming success: `observe_simulation`
+  reports LED blink rates, servo angles, decoded LCD/7-segment/OLED content,
+  pin levels, and the serial output produced during the window; `interact`
+  presses buttons and drives sensor values (e.g. push a DHT22 past an alarm
+  threshold) and reports a before → after diff of all outputs.
+- **Steering** — the composer stays live while the agent works: Enter queues
+  a message that is injected into the current run after the ongoing tool
+  batch (or promoted to a follow-up turn when the run would end).
 - **Diff cards** — `write_file`/`edit_file` render a colored line diff of
   exactly what changed.
 - **Example-grounded prompting** — the request is matched against the
   built-in example gallery (bilingual keywords) and the best-matching
-  circuit's wiring rides along as a reference.
-- **Rolling context compaction** — old turns are replaced by a structural
-  summary (requests + tool counts) instead of being silently dropped.
+  circuit's wiring rides along as a reference; `search_examples` /
+  `get_example` retrieve further references on demand.
+- **Context compaction** — stale `<project_state>` snapshots are stripped
+  from older turns on the wire, and when the context approaches the model's
+  limit (settings → context limit) older turns are summarized BY the model
+  into a `<context_summary>` block; structural trimming remains the fallback.
+- **History integrity** — aborts, stream errors, and mid-run page reloads
+  leave the tool-call history pair-complete (`historyRepair.ts`), so a
+  conversation can always continue.
 - **Chat persistence** — conversation survives a page refresh
   (localStorage); token usage per turn is displayed.
+- **Project version history** — git-style linear snapshots in IndexedDB
+  (`frontend/src/versioning/`): saved automatically before every AI turn,
+  manually from the 🕘 button in the file explorer, and as a safety backup
+  before any restore. Up to 50 versions; manual saves are never pruned. The
+  AI can drive it too (`save_version` / `list_versions` / `restore_version`
+  — restore requires the student's explicit confirmation first).
+- **Teaching mode** — the system prompt distinguishes questions from build
+  requests: questions get beginner-friendly answers grounded in the
+  student's own circuit/code (no project mutation), with an offer to
+  demonstrate live in the simulation.
+- **Wiring & layout standards** (behavior-tested, defaults-not-force):
+  `add_wire` classifies every wire's signal type (pinInfo `signals` +
+  pin-name fallback, `agent/wireStandards.ts`) and applies the standard
+  `WIRE_COLORS` palette when the model omits `color` (explicit colors are
+  respected; `signalType` is stored either way). `add_component` snaps
+  coordinates to the 20px grid, reports each element's REAL rendered size,
+  and auto-nudges downward out of accidental overlaps — the one thing the
+  model cannot know is element footprints.
 
 ## Architecture
 
 ```
-Browser                                        Backend            Anthropic
+Browser                                        Backend            OpenAI-compatible
 ┌───────────────────────────────────┐   ┌─────────────────┐   ┌───────────┐
-│ AgentChatPanel (chat UI)          │   │ /api/agent      │   │ Messages  │
-│  └ useAgentStore (history)        │   │  /stream (SSE   │──▶│ API       │
+│ AgentChatPanel (chat UI)          │   │ /api/agent      │   │ chat/     │
+│  └ useAgentStore (history)        │   │  /stream (SSE   │──▶│ completions│
 │     └ AgentRunner (agent loop) ───┼──▶│   proxy only)   │◀──│ streaming │
 │        └ tools.ts  ──────────────┐│   └─────────────────┘   └───────────┘
 │           executes against:      ││
@@ -49,6 +82,12 @@ Browser                                        Backend            Anthropic
 │  toolbar bridge (agentBridge.ts) │
 └───────────────────────────────────┘
 ```
+
+The loop is event-driven (Pi-style): `AgentRunner.runTurn()` emits a typed
+`AgentEvent` stream (`agent/events.ts`) consumed by a pure UI reducer
+(`agent/uiReducer.ts`); tools receive a per-call context
+(`{ toolCallId, signal, onUpdate }`) so long compiles stream their log tail
+into the running chip and aborts propagate cleanly.
 
 Design decisions (informed by pi, Codex CLI, Cline, and the Vercel AI SDK
 client-tool pattern):
@@ -84,8 +123,14 @@ client-tool pattern):
 | `add_wire` / `remove_wire` | Wiring (pin-validated) |
 | `write_file` / `edit_file` / `delete_file` | Firmware files (per-board group) |
 | `install_library` | arduino-cli library install + board manifest |
-| `compile` / `run_simulation` / `stop_simulation` | Build & run (toolbar bridge) |
+| `compile` / `run_simulation` / `stop_simulation` | Build & run (toolbar bridge; compile failures carry recovery hints) |
 | `read_serial` | Tail the board's serial output for verification |
+| `observe_simulation` | Sample live component state over a window: LED toggles/Hz, servo sweep, buzzer duty, LCD/7-seg/OLED/MAX7219-matrix decode, pin levels, burnt parts, serial delta |
+| `interact` | Press/click buttons, set pot/switch values, drive sensor readings (`SENSOR_CONTROLS`-validated) — with a before → after output diff |
+| `check_circuit` | SPICE pre-flight verification (missing GND, LED without resistor, shorts, …) before running |
+| `search_libraries` | Arduino library registry search (exact installable names) |
+| `search_examples` / `get_example` | On-demand retrieval from the ~500-project example gallery (full wiring + code) |
+| `save_version` / `list_versions` / `restore_version` | Project version history (IndexedDB; restore needs explicit user confirmation) |
 
 ## Setup
 
@@ -106,11 +151,15 @@ browser's localStorage.
 ## Key files
 
 - `backend/app/api/routes/agent.py` — SSE streaming proxy (`/api/agent/stream`, `/api/agent/config`)
-- `frontend/src/agent/` — `systemPrompt.ts`, `projectSnapshot.ts`, `tools.ts`, `AgentRunner.ts`, `types.ts`
+- `frontend/src/agent/` — `systemPrompt.ts`, `projectSnapshot.ts`, `tools.ts`,
+  `AgentRunner.ts`, `events.ts`, `uiReducer.ts`, `AgentSession.ts` (steering),
+  `observation.ts`, `interaction.ts`, `compaction.ts`, `historyRepair.ts`,
+  `exampleSearch.ts`, `errorHints.ts`, `types.ts`
 - `frontend/src/store/useAgentStore.ts` — chat state (UI + raw API history)
 - `frontend/src/lib/agentBridge.ts` — toolbar compile/run/stop registry
 - `frontend/src/components/agent/AgentChatPanel.tsx` — the panel UI
-- Tests: `frontend/src/__tests__/agent-tools.test.ts`, `agent-runner.test.ts`
+- Tests: `frontend/src/__tests__/agent-*.test.ts` (tools, runner, reducer,
+  verification, compaction, history repair)
 
 ## Known limitations
 

@@ -23,12 +23,16 @@ const SUGGESTIONS_ZH: Array<{ icon: string; text: string }> = [
   { icon: '📏', text: '用 HC-SR04 超声波传感器测距,把距离打印到串口' },
   { icon: '🔘', text: '加一个按钮,按下时点亮 LED' },
   { icon: '🎚️', text: '用电位器控制 LED 亮度(PWM 呼吸灯)' },
+  { icon: '❓', text: '为什么 LED 必须串联一个电阻?' },
+  { icon: '📚', text: '什么是 PWM?在我的电路里演示一下' },
 ];
 const SUGGESTIONS_EN: Array<{ icon: string; text: string }> = [
   { icon: '🚦', text: 'Build a traffic light with red, yellow and green LEDs' },
   { icon: '📏', text: 'Measure distance with an HC-SR04 and print it to serial' },
   { icon: '🔘', text: 'Add a button that lights an LED while pressed' },
   { icon: '🎚️', text: 'Dim an LED with a potentiometer (PWM breathing light)' },
+  { icon: '❓', text: 'Why does an LED need a series resistor?' },
+  { icon: '📚', text: 'What is PWM? Demonstrate it in my circuit' },
 ];
 
 const TOOL_ICONS: Record<string, string> = {
@@ -52,6 +56,15 @@ const TOOL_ICONS: Record<string, string> = {
   run_simulation: '▶️',
   stop_simulation: '⏹️',
   read_serial: '📟',
+  observe_simulation: '👁️',
+  interact: '🖱️',
+  check_circuit: '🩺',
+  search_libraries: '📚',
+  search_examples: '🗂️',
+  get_example: '📖',
+  save_version: '🕘',
+  list_versions: '🕘',
+  restore_version: '⏮️',
 };
 
 function DiffView({ diff }: { diff: string }) {
@@ -171,6 +184,20 @@ function SettingsView() {
             <option key={m} value={m} />
           ))}
         </datalist>
+      </label>
+
+      <label>
+        {t('agent.contextLimit')}
+        <input
+          type="number"
+          min={1000}
+          step={1000}
+          value={settings.contextLimitTokens ?? ''}
+          placeholder="100000"
+          onChange={(e) =>
+            updateSettings({ contextLimitTokens: Number(e.target.value) || undefined })
+          }
+        />
       </label>
 
       <div className="agent-settings__row">
@@ -427,7 +454,9 @@ export function AgentChatPanel() {
 
   const keyMissing = needsApiKey(store);
   const model = effectiveModel(store);
-  const canSend = !busy && draft.trim().length > 0 && !keyMissing;
+  // Steering: the composer stays usable while the agent works — Enter queues
+  // the message into the active run instead of being blocked.
+  const canSend = draft.trim().length > 0 && !keyMissing;
   const suggestions = i18n.language.toLowerCase().startsWith('zh')
     ? SUGGESTIONS_ZH
     : SUGGESTIONS_EN;
@@ -437,7 +466,8 @@ export function AgentChatPanel() {
     const text = draft.trim();
     setDraft('');
     stickToBottomRef.current = true;
-    void send(text);
+    if (busy) store.steer(text);
+    else void send(text);
   };
 
   return (
@@ -566,6 +596,10 @@ export function AgentChatPanel() {
                         <div key={i} className="agent-md">
                           <ReactMarkdown>{seg.text}</ReactMarkdown>
                         </div>
+                      ) : seg.kind === 'notice' ? (
+                        <div key={i} className="agent-msg__notice">
+                          🗜️ {t('agent.compacted')}
+                        </div>
                       ) : (
                         <ToolChip key={i} seg={seg} />
                       ),
@@ -611,11 +645,33 @@ export function AgentChatPanel() {
           </div>
 
           <div className="agent-panel__composer">
+            {store.cappedRun && !busy && (
+              <div className="agent-panel__capped">
+                {t('agent.capped')}
+                <button onClick={store.continueRun}>{t('agent.continue')}</button>
+              </div>
+            )}
+            {store.pendingSteering.length > 0 && (
+              <div className="agent-panel__queued">
+                {store.pendingSteering.map((text, i) => (
+                  <span key={`${i}-${text.slice(0, 12)}`} className="agent-panel__queued-chip">
+                    <span className="agent-panel__queued-text">{text}</span>
+                    <button
+                      onClick={() => store.unqueueSteering(i)}
+                      title={t('agent.unqueue')}
+                      aria-label={t('agent.unqueue')}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="agent-panel__inputwrap">
               <textarea
                 ref={textareaRef}
                 rows={1}
-                placeholder={t('agent.placeholder')}
+                placeholder={busy ? t('agent.steerPlaceholder') : t('agent.placeholder')}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
@@ -625,7 +681,7 @@ export function AgentChatPanel() {
                   }
                 }}
               />
-              {busy ? (
+              {busy && (
                 <button
                   className="agent-panel__stop"
                   onClick={stop}
@@ -636,19 +692,18 @@ export function AgentChatPanel() {
                     <rect x="5" y="5" width="14" height="14" rx="2" />
                   </svg>
                 </button>
-              ) : (
-                <button
-                  className="agent-panel__send"
-                  disabled={!canSend}
-                  onClick={handleSend}
-                  title={t('agent.send')}
-                  aria-label={t('agent.send')}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-                  </svg>
-                </button>
               )}
+              <button
+                className="agent-panel__send"
+                disabled={!canSend}
+                onClick={handleSend}
+                title={busy ? t('agent.steer') : t('agent.send')}
+                aria-label={busy ? t('agent.steer') : t('agent.send')}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                </svg>
+              </button>
             </div>
             <div className="agent-panel__hint">{t('agent.hint')}</div>
           </div>

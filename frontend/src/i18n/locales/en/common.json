@@ -471,7 +471,14 @@
     "stop": "Stop",
     "expand": "Click to expand details",
     "usage": "tokens: {{input}} in · {{output}} out",
-    "restoreConfirm": "Restore the whole project (circuit + code) to the state before this message? Unsaved changes will be lost."
+    "restoreConfirm": "Restore the whole project (circuit + code) to the state before this message? Unsaved changes will be lost.",
+    "steer": "Queue message (agent is working)",
+    "steerPlaceholder": "Type to steer the agent while it works…",
+    "unqueue": "Remove queued message",
+    "capped": "The agent paused at the step limit — the task may be unfinished.",
+    "continue": "Continue",
+    "compacted": "Earlier context was compacted into a summary",
+    "contextLimit": "Context limit (tokens, for auto-compaction)"
   },
   "cloud": {
     "signIn": "Sign in",
@@ -506,5 +513,28 @@
     "syncError": "Sync failed — will retry on next change",
     "signInForHistory": "Sign in to keep your conversations in the cloud and access them from any device.",
     "currentChat": "current"
+  },
+  "versions": {
+    "title": "Version history",
+    "defaultLabel": "manual save",
+    "savePlaceholder": "Name this version (e.g. \"traffic light works\")",
+    "saveNow": "Save version",
+    "saved": "Saved \"{{label}}\"",
+    "unchanged": "Nothing new to save — identical to the newest version",
+    "empty": "No versions yet. The AI saves one before every turn; you can also save one here.",
+    "restore": "Restore",
+    "restoreConfirm": "Restore the project to \"{{label}}\"? Current state is backed up automatically first.",
+    "restored": "Restored \"{{label}}\". A backup of the previous state was saved.",
+    "restoreFailed": "Restore failed — the version could not be loaded.",
+    "delete": "Delete version",
+    "deleteConfirm": "Delete version \"{{label}}\"? This cannot be undone.",
+    "renameHint": "Double-click to rename",
+    "stats": "{{boards}} boards · {{components}} parts · {{files}} files",
+    "hint": "🖐 manual · ✨ saved by AI turn · ⟳ automatic backup. Up to 50 versions kept; manual saves are never pruned.",
+    "source": {
+      "manual": "Saved manually",
+      "ai": "Saved before an AI turn",
+      "auto": "Automatic backup"
+    }
   }
 }
