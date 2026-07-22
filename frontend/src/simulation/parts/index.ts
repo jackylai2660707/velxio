@@ -13,5 +13,7 @@ import './LogicGateParts';
 import './ProtocolParts';
 import './CustomChipPart';
 import './EPaperPart';
+import './Max7219Part';
+import './OneWireParts';
 // Side-effect: installs the runtime burnout monitor (P4) on the live solver.
 import './runtimeBurnout';

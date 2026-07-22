@@ -160,6 +160,36 @@ export const SENSOR_CONTROLS: Record<string, SensorControlDef> = {
     defaultValues: { temperature: 25, humidity: 50 },
   },
 
+  // ── DHT11 Temperature / Humidity ──────────────────────────────────────────
+  dht11: {
+    title: 'DHT11 Temperature & Humidity',
+    controls: [
+      {
+        type: 'slider',
+        key: 'temperature',
+        label: 'Temperature',
+        min: 0,
+        max: 50,
+        step: 1,
+        unit: '°C',
+        defaultValue: 25,
+        formatValue: oneDecimal,
+      },
+      {
+        type: 'slider',
+        key: 'humidity',
+        label: 'Humidity',
+        min: 20,
+        max: 90,
+        step: 1,
+        unit: '%',
+        defaultValue: 50,
+        formatValue: oneDecimal,
+      },
+    ],
+    defaultValues: { temperature: 25, humidity: 50 },
+  },
+
   // ── BMP280 Barometric Pressure + Temperature ───────────────────────────────
   bmp280: {
     title: 'BMP280 Barometric Pressure Sensor',
@@ -249,6 +279,25 @@ export const SENSOR_CONTROLS: Record<string, SensorControlDef> = {
     title: 'PIR Motion Sensor',
     controls: [{ type: 'button', key: 'trigger', label: 'Simulate motion' }],
     defaultValues: {},
+  },
+
+  // ── DS18B20 1-Wire Temperature Sensor ─────────────────────────────────────
+  ds18b20: {
+    title: 'DS18B20 Temperature Sensor',
+    controls: [
+      {
+        type: 'slider',
+        key: 'temperature',
+        label: 'Temperature',
+        min: -55,
+        max: 125,
+        step: 0.5,
+        unit: '°C',
+        defaultValue: 25,
+        formatValue: oneDecimal,
+      },
+    ],
+    defaultValues: { temperature: 25 },
   },
 
   // ── NTC Temperature Sensor ────────────────────────────────────────────────

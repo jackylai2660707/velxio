@@ -2524,6 +2524,65 @@
       "defaultValues": {},
       "description": "170-point mini solderless breadboard: 17 columns x two 5-hole banks (a-e / f-j), no power rails. Holes in the same column strip are electrically connected.",
       "featured": true
+    },
+    {
+      "id": "dht11",
+      "tagName": "velxio-dht11",
+      "name": "DHT11",
+      "category": "sensors",
+      "description": "DHT11 temperature & humidity sensor (blue module; 0-50°C, 20-90%RH). Same wiring as DHT22: VCC, SDA (data), NC, GND. Use the \"DHT sensor library\" with DHT11 type.",
+      "thumbnail": "<svg width=\"64\" height=\"64\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"64\" height=\"64\" rx=\"4\" fill=\"#eef2f7\"/><rect x=\"14\" y=\"6\" width=\"36\" height=\"42\" rx=\"3\" fill=\"#2a6bd6\" stroke=\"#1c4c9c\"/><circle cx=\"23\" cy=\"14\" r=\"2.4\" fill=\"#0f2e63\"/><circle cx=\"31\" cy=\"14\" r=\"2.4\" fill=\"#0f2e63\"/><circle cx=\"39\" cy=\"14\" r=\"2.4\" fill=\"#0f2e63\"/><circle cx=\"23\" cy=\"22\" r=\"2.4\" fill=\"#0f2e63\"/><circle cx=\"31\" cy=\"22\" r=\"2.4\" fill=\"#0f2e63\"/><circle cx=\"39\" cy=\"22\" r=\"2.4\" fill=\"#0f2e63\"/><circle cx=\"23\" cy=\"30\" r=\"2.4\" fill=\"#0f2e63\"/><circle cx=\"31\" cy=\"30\" r=\"2.4\" fill=\"#0f2e63\"/><circle cx=\"39\" cy=\"30\" r=\"2.4\" fill=\"#0f2e63\"/><text x=\"32\" y=\"45\" text-anchor=\"middle\" font-size=\"6\" fill=\"#dce8ff\" font-family=\"monospace\">DHT11</text><rect x=\"20\" y=\"48\" width=\"2\" height=\"12\" fill=\"#9aa2ab\"/><rect x=\"27\" y=\"48\" width=\"2\" height=\"12\" fill=\"#9aa2ab\"/><rect x=\"34\" y=\"48\" width=\"2\" height=\"12\" fill=\"#9aa2ab\"/><rect x=\"41\" y=\"48\" width=\"2\" height=\"12\" fill=\"#9aa2ab\"/></svg>",
+      "properties": [],
+      "defaultValues": {},
+      "pinCount": 4,
+      "tags": [
+        "sensor",
+        "temperature",
+        "humidity",
+        "dht11",
+        "dht",
+        "weather"
+      ]
+    },
+    {
+      "id": "ds18b20",
+      "tagName": "velxio-ds18b20",
+      "name": "DS18B20",
+      "category": "sensors",
+      "description": "DS18B20 1-Wire digital temperature sensor (TO-92; -55 to +125°C). Pins: GND, DQ (data — needs a 4.7kΩ pull-up to VCC), VDD. Use OneWire + DallasTemperature libraries. Simulated on AVR and Pico boards (on ESP32 use DHT11/DHT22 instead).",
+      "thumbnail": "<svg width=\"64\" height=\"64\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"64\" height=\"64\" rx=\"4\" fill=\"#eef2f7\"/><path d=\"M 16 40 L 16 24 A 16 16 0 0 1 48 24 L 48 40 Z\" fill=\"#1d1d1f\" stroke=\"#3a3a3e\"/><text x=\"32\" y=\"31\" text-anchor=\"middle\" font-size=\"5\" fill=\"#c9c9cf\" font-family=\"monospace\">DS18B20</text><rect x=\"21\" y=\"40\" width=\"2.4\" height=\"16\" fill=\"#9aa2ab\"/><rect x=\"31\" y=\"40\" width=\"2.4\" height=\"16\" fill=\"#9aa2ab\"/><rect x=\"41\" y=\"40\" width=\"2.4\" height=\"16\" fill=\"#9aa2ab\"/></svg>",
+      "properties": [],
+      "defaultValues": {},
+      "pinCount": 3,
+      "tags": [
+        "sensor",
+        "temperature",
+        "ds18b20",
+        "onewire",
+        "1-wire",
+        "dallas",
+        "probe"
+      ]
+    },
+    {
+      "id": "max7219",
+      "tagName": "velxio-max7219",
+      "name": "MAX7219 LED Matrix",
+      "category": "displays",
+      "description": "MAX7219 8x8 red LED dot-matrix module. Pins: VCC, GND, DIN, CS, CLK. Works with the LedControl library (any 3 GPIO pins) or hardware SPI.",
+      "thumbnail": "<svg width=\"64\" height=\"64\" xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"64\" height=\"64\" rx=\"4\" fill=\"#123d1a\"/><rect x=\"8\" y=\"8\" width=\"48\" height=\"48\" rx=\"2\" fill=\"#151515\"/><circle cx=\"18\" cy=\"18\" r=\"3\" fill=\"#ff3b30\"/><circle cx=\"32\" cy=\"18\" r=\"3\" fill=\"#3a1010\"/><circle cx=\"46\" cy=\"18\" r=\"3\" fill=\"#ff3b30\"/><circle cx=\"18\" cy=\"32\" r=\"3\" fill=\"#3a1010\"/><circle cx=\"32\" cy=\"32\" r=\"3\" fill=\"#ff3b30\"/><circle cx=\"46\" cy=\"32\" r=\"3\" fill=\"#3a1010\"/><circle cx=\"18\" cy=\"46\" r=\"3\" fill=\"#ff3b30\"/><circle cx=\"32\" cy=\"46\" r=\"3\" fill=\"#3a1010\"/><circle cx=\"46\" cy=\"46\" r=\"3\" fill=\"#ff3b30\"/></svg>",
+      "properties": [],
+      "defaultValues": {},
+      "pinCount": 5,
+      "tags": [
+        "display",
+        "matrix",
+        "led",
+        "max7219",
+        "dot-matrix",
+        "8x8",
+        "spi"
+      ]
     }
   ],
   "led": {

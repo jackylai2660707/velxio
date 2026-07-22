@@ -658,6 +658,13 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
         chk = (h_H + h_L + t_H + t_L) & 0xFF
         return [h_H, h_L, t_H, t_L, chk]
 
+    def _dht11_build_payload(temperature: float, humidity: float) -> list[int]:
+        """Build 5-byte DHT11 data payload: integer °C/% in the high bytes."""
+        hum = round(min(90, max(20, humidity)))
+        tmp = round(min(50, max(0, temperature)))
+        chk = (hum + tmp) & 0xFF
+        return [hum, 0, tmp, 0, chk]
+
     def _dht22_build_sync_phases(payload: list[int]) -> list[tuple[int, int]]:
         """Build list of (sync_count, pin_value) phase transitions for DHT22.
 
@@ -874,7 +881,7 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
 
         stype = sensor.get('type', '')
 
-        if stype == 'dht22':
+        if stype in ('dht22', 'dht11'):
             # Record that the firmware drove the pin LOW (start signal).
             # The actual response is triggered from _on_dir_change when the
             # firmware switches the pin to INPUT mode.
@@ -949,7 +956,7 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
             gpio = int(_PINMAP[slot]) if slot <= _GPIO_COUNT else slot
             with _sensors_lock:
                 sensor = _sensors.get(gpio)
-            if sensor is not None and sensor.get('type') == 'dht22':
+            if sensor is not None and sensor.get('type') in ('dht22', 'dht11'):
                 if direction == 1:
                     # OUTPUT mode — record timestamp for diagnostics
                     sensor['dir_out_ns'] = time.perf_counter_ns()
@@ -962,7 +969,9 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                         # Build the response waveform phases
                         temp = sensor.get('temperature', 25.0)
                         hum = sensor.get('humidity', 50.0)
-                        payload = _dht22_build_payload(temp, hum)
+                        build = (_dht11_build_payload if sensor.get('type') == 'dht11'
+                                 else _dht22_build_payload)
+                        payload = build(temp, hum)
                         phases = _dht22_build_sync_phases(payload)
 
                         # Drive pin LOW synchronously — firmware sees LOW
