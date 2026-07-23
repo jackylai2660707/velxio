@@ -4,7 +4,7 @@
       "hero": {
         "title": "构建您自己的自定义芯片",
         "accent": "使用 C、Rust 或 AssemblyScript",
-        "subtitle": "通过 Wokwi 兼容的自定义芯片 API 定义您自己的集成电路。用 C、Rust 或 AssemblyScript 编写芯片；Velxio 将其编译为 WebAssembly，并在画布上像其他组件一样运行——由 Arduino、ESP32 或 RP2040 固件驱动。",
+        "subtitle": "通过 Wokwi 兼容的自定义芯片 API 定义您自己的集成电路。用 C、Rust 或 AssemblyScript 编写芯片；AI物联网实验室 将其编译为 WebAssembly，并在画布上像其他组件一样运行——由 Arduino、ESP32 或 RP2040 固件驱动。",
         "ctaPrimary": "打开编辑器",
         "ctaSecondary": "阅读文档",
         "trust": "Wokwi 兼容 API · 免费且开源 · 基于 WASM，在浏览器中运行"
@@ -27,7 +27,7 @@
       },
       "api": {
         "heading": "API 提供的内容",
-        "lead": "Velxio 自定义芯片运行时完全兼容 Wokwi，并针对 SPICE 和多板环境提供了额外功能。",
+        "lead": "AI物联网实验室 自定义芯片运行时完全兼容 Wokwi，并针对 SPICE 和多板环境提供了额外功能。",
         "pinTitle": "引脚 I/O",
         "pinBody": "读取引脚状态、写入数字高/低、配置上拉、通过引脚监视回调响应边沿。",
         "attrTitle": "属性",
@@ -43,14 +43,14 @@
       },
       "faq": {
         "heading": "常见问题",
-        "q1": "什么是 Velxio 中的自定义芯片？",
-        "a1": "自定义芯片是用户定义的集成电路。您用 C、Rust 或 AssemblyScript 编写芯片逻辑——Velxio 将其编译为 WebAssembly，像其他组件一样在画布上实例化，并由模拟器驱动其引脚。",
-        "q2": "Velxio 使用哪个 API？",
-        "a2": "Velxio 实现了 Wokwi 自定义芯片 API——与 Wokwi 使用的 API 相同——因此您为 Velxio 编写的芯片可移植到 Wokwi，反之亦然。Velxio 添加了一个 WASI 垫片，以便您可以在芯片代码中使用标准库函数。",
+        "q1": "什么是 AI物联网实验室 中的自定义芯片？",
+        "a1": "自定义芯片是用户定义的集成电路。您用 C、Rust 或 AssemblyScript 编写芯片逻辑——AI物联网实验室 将其编译为 WebAssembly，像其他组件一样在画布上实例化，并由模拟器驱动其引脚。",
+        "q2": "AI物联网实验室 使用哪个 API？",
+        "a2": "AI物联网实验室 实现了 Wokwi 自定义芯片 API——与 Wokwi 使用的 API 相同——因此您为 AI物联网实验室 编写的芯片可移植到 Wokwi，反之亦然。AI物联网实验室 添加了一个 WASI 垫片，以便您可以在芯片代码中使用标准库函数。",
         "q3": "我可以构建什么？",
         "a3": "真实 IC 的行为模型（传感器、解码器、电平转换器、协议桥接器）、自定义数字逻辑、尚未拥有的硬件的传感器替代品，以及用于测试固件的协议级模拟。芯片可以驱动引脚、读取属性、注册定时器，并桥接到 I²C/SPI 总线。",
         "q4": "如何共享或重用芯片？",
-        "a4": "将芯片保存到您的 Velxio 账户，并在项目之间重用。芯片定义包括其引脚布局、属性和编译后的 WASM——像内置组件一样将其拖放到任何项目画布上。",
+        "a4": "将芯片保存到您的 AI物联网实验室 账户，并在项目之间重用。芯片定义包括其引脚布局、属性和编译后的 WASM——像内置组件一样将其拖放到任何项目画布上。",
         "q5": "运行芯片需要后端吗？",
         "a5": "不需要。编译后的芯片 WASM 在同一个浏览器标签页中运行，与模拟的其他部分一起。引脚更新、属性读取和定时器滴答都是本地的。",
         "q6": "我的自定义芯片可以与 Arduino 通信吗？",
@@ -89,7 +89,7 @@
       },
       "audience": {
         "heading": "面向教师、学生和爱好者",
-        "lead": "Velxio 在 AGPLv3 下免费——无许可费用、无按席位定价、无云账户。通过一个 Docker 命令即可自托管，适用于大学实验室。",
+        "lead": "AI物联网实验室 在 AGPLv3 下免费——无许可费用、无按席位定价、无云账户。通过一个 Docker 命令即可自托管，适用于大学实验室。",
         "coursesTitle": "用于课程",
         "coursesBody": "从第一周（欧姆定律、分压器）到 Arduino 项目和运算放大器信号链，使用同一个工具。一个 UI 覆盖整个教学大纲。",
         "labsTitle": "用于实验室",
@@ -99,16 +99,16 @@
       },
       "faq": {
         "heading": "常见问题",
-        "q1": "Velxio 是一个完整的电子电路模拟器吗？",
-        "a1": "是的。Velxio 结合了 SPICE 精确的模拟求解器、19 种模拟微控制器（Arduino、ESP32、RP2040、ATtiny85、Raspberry Pi 3）、100 多个组件、示波器、电压表、电流表和信号发生器——端到端设计和验证电子项目所需的一切。",
+        "q1": "AI物联网实验室 是一个完整的电子电路模拟器吗？",
+        "a1": "是的。AI物联网实验室 结合了 SPICE 精确的模拟求解器、19 种模拟微控制器（Arduino、ESP32、RP2040、ATtiny85、Raspberry Pi 3）、100 多个组件、示波器、电压表、电流表和信号发生器——端到端设计和验证电子项目所需的一切。",
         "q2": "我可以像使用虚拟面包板一样使用它吗？",
         "a2": "可以。将组件拖放到画布上，在引脚之间拖拽导线，模拟器会自动构建 SPICE 网表。导线对齐到网格；组件以 90° 增量旋转；信号类型颜色标记 VCC、GND、数字和模拟路径。",
         "q3": "我需要安装任何东西吗？",
         "a3": "不需要。在任何现代浏览器中打开 velxio.dev 即可开始。SPICE 求解器和 AVR/RP2040 仿真器在浏览器中本地运行；Xtensa 和 RISC-V 板（ESP32、ESP32-C3、CH32V003）以及 Raspberry Pi 3 Linux 通过 QEMU lcgamboa 运行，捆绑在 Docker 镜像中。Arduino 草图的编译使用云端的 arduino-cli 后端。",
         "q4": "它适合用于电子教学吗？",
         "a4": "是的——这是设计目标之一。免费、无需安装、无需账户、无许可费用。100 多个预接线示例电路涵盖分压器、RC 滤波器、运算放大器放大器、晶体管开关、整流器和完整的 Arduino 项目。非常适合大学实验室和自学者。",
-        "q5": "Velxio 是 Tinkercad / Falstad 的替代品吗？",
-        "a5": "是的——而且更精确。Velxio 运行真实的 ngspice（专业 EDA 工具使用的引擎），与那些工具不同，它还运行驱动电路的微控制器上的固件。在 AGPLv3 下开源。"
+        "q5": "AI物联网实验室 是 Tinkercad / Falstad 的替代品吗？",
+        "a5": "是的——而且更精确。AI物联网实验室 运行真实的 ngspice（专业 EDA 工具使用的引擎），与那些工具不同，它还运行驱动电路的微控制器上的固件。在 AGPLv3 下开源。"
       },
       "bottom": {
         "title": "打开您的虚拟面包板",
@@ -127,7 +127,7 @@
       },
       "what": {
         "heading": "您可以模拟什么？",
-        "lead": "Velxio 以完整的 AVR8 CPU 精度模拟 Arduino 程序——包括 GPIO 端口、硬件定时器、USART、ADC、PWM、SPI 和 I2C。无近似、无捷径。",
+        "lead": "AI物联网实验室 以完整的 AVR8 CPU 精度模拟 Arduino 程序——包括 GPIO 端口、硬件定时器、USART、ADC、PWM、SPI 和 I2C。无近似、无捷径。",
         "unoTitle": "Arduino Uno 和 Nano",
         "unoBody": "完整的 ATmega328P 仿真，16 MHz。PORTB、PORTC、PORTD 寄存器仿真。所有 14 个数字和 6 个模拟引脚。",
         "megaTitle": "Arduino Mega 2560",
@@ -145,7 +145,7 @@
       },
       "how": {
         "heading": "模拟器的工作原理",
-        "leadPrefix": "Velxio 使用 ",
+        "leadPrefix": "AI物联网实验室 使用 ",
         "leadHighlight": "avr8js",
         "leadSuffix": "——经过实战检验的开源 AVR8 仿真库——逐字节执行您编译的固件，就像在物理硬件上运行一样。",
         "writeTitle": "1. 编写",
@@ -158,15 +158,15 @@
       "faq": {
         "heading": "常见问题",
         "q1": "这个 Arduino 模拟器免费吗？",
-        "a1": "是的。Velxio 完全免费且开源（GNU AGPLv3）。无需账户、无需付费、无需云订阅——在浏览器中运行或通过一个 Docker 命令自托管。",
+        "a1": "是的。AI物联网实验室 完全免费且开源（GNU AGPLv3）。无需账户、无需付费、无需云订阅——在浏览器中运行或通过一个 Docker 命令自托管。",
         "q2": "Arduino 模拟器无需安装任何东西就能工作吗？",
         "a2": "仿真引擎完全在浏览器中运行。编译代码需要 arduino-cli 后端，您可以在本地或通过 Docker 运行。无需安装 IDE。",
         "q3": "我可以模拟哪些 Arduino 板？",
-        "a3": "Velxio 支持 19 种板：Arduino Uno (ATmega328P)、Arduino Nano、Arduino Mega 2560、ATtiny85、Arduino Leonardo、Arduino Pro Mini (AVR8)——以及 Raspberry Pi Pico (RP2040)、ESP32-C3 / XIAO ESP32-C3 / CH32V003 (RISC-V)、ESP32 / ESP32-S3 / ESP32-CAM (通过 QEMU 的 Xtensa) 和 Raspberry Pi 3B (通过 QEMU 的 Linux)。",
+        "a3": "AI物联网实验室 支持 19 种板：Arduino Uno (ATmega328P)、Arduino Nano、Arduino Mega 2560、ATtiny85、Arduino Leonardo、Arduino Pro Mini (AVR8)——以及 Raspberry Pi Pico (RP2040)、ESP32-C3 / XIAO ESP32-C3 / CH32V003 (RISC-V)、ESP32 / ESP32-S3 / ESP32-CAM (通过 QEMU 的 Xtensa) 和 Raspberry Pi 3B (通过 QEMU 的 Linux)。",
         "q4": "我可以模拟 LED、传感器和显示器吗？",
-        "a4": "可以。Velxio 包含 48 多种交互式 wokwi-elements：LED、电阻、按钮、舵机、超声波传感器、ILI9341 TFT 显示器、LCD、NeoPixel 灯带、蜂鸣器、DHT22 等。",
-        "q5": "Velxio 是 Wokwi 的替代品吗？",
-        "a5": "是的。Velxio 是 Wokwi 的免费自托管替代品。它使用相同的 avr8js 仿真库和 wokwi-elements 可视化组件，但完全在您自己的机器上运行，无云依赖。"
+        "a4": "可以。AI物联网实验室 包含 48 多种交互式 wokwi-elements：LED、电阻、按钮、舵机、超声波传感器、ILI9341 TFT 显示器、LCD、NeoPixel 灯带、蜂鸣器、DHT22 等。",
+        "q5": "AI物联网实验室 是 Wokwi 的替代品吗？",
+        "a5": "是的。AI物联网实验室 是 Wokwi 的免费自托管替代品。它使用相同的 avr8js 仿真库和 wokwi-elements 可视化组件，但完全在您自己的机器上运行，无云依赖。"
       },
       "bottom": {
         "title": "准备好模拟您的 Arduino 了吗？",
@@ -190,7 +190,7 @@
       "pico": "Pico 模拟器",
       "rpiPico": "RP2040 模拟器",
       "rpi": "Raspberry Pi 3 模拟器",
-      "v25": "Velxio 2.5 发布",
+      "v25": "AI物联网实验室 2.5 发布",
       "examples": "示例项目",
       "examplesAnalog": "模拟示例",
       "examplesAll": "所有示例",

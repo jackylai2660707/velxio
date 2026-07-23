@@ -617,7 +617,7 @@ PartSimulationRegistry.register('mpu6050', {
  * Default values: 50.0% humidity, 25.0°C temperature.
  * These can be changed by setting element properties: `el.temperature`, `el.humidity`.
  */
-function buildDHT22Payload(element: HTMLElement): Uint8Array {
+export function buildDHT22Payload(element: HTMLElement): Uint8Array {
   const el = element as any;
   const humidity = Math.round((el.humidity ?? 50.0) * 10); // tenths of %
   const temperature = Math.round((el.temperature ?? 25.0) * 10); // tenths of °C
@@ -632,6 +632,20 @@ function buildDHT22Payload(element: HTMLElement): Uint8Array {
 }
 
 /**
+ * DHT11 uses the same wire protocol as the DHT22 but packs integer bytes:
+ * [humidity_int, humidity_dec, temp_int, temp_dec, checksum] with the
+ * decimal bytes 0 on the classic part. No negative temperatures
+ * (range 0–50 °C / 20–90 %RH — values are clamped to the real part's range).
+ */
+export function buildDHT11Payload(element: HTMLElement): Uint8Array {
+  const el = element as any;
+  const humidity = Math.round(Math.min(90, Math.max(20, el.humidity ?? 50)));
+  const temperature = Math.round(Math.min(50, Math.max(0, el.temperature ?? 25)));
+  const chk = (humidity + temperature) & 0xff;
+  return new Uint8Array([humidity, 0, temperature, 0, chk]);
+}
+
+/**
  * Schedule the full DHT22 waveform on DATA using cycle-accurate pin changes.
  *
  * DHT22 protocol (after MCU releases DATA HIGH):
@@ -642,10 +656,15 @@ function buildDHT22Payload(element: HTMLElement): Uint8Array {
  * At 16 MHz: 1 µs = 16 cycles
  *  - 80 µs = 1280 cycles, 50 µs = 800 cycles, 26 µs = 416 cycles, 70 µs = 1120 cycles
  */
-function scheduleDHT22Response(simulator: any, pin: number, element: HTMLElement): void {
+function scheduleDHT22Response(
+  simulator: any,
+  pin: number,
+  element: HTMLElement,
+  buildPayload: (element: HTMLElement) => Uint8Array = buildDHT22Payload,
+): void {
   if (typeof simulator.schedulePinChange !== 'function') {
     // Fallback: synchronous drive (legacy / non-AVR simulators)
-    const payload = buildDHT22Payload(element);
+    const payload = buildPayload(element);
     simulator.setPinState(pin, false);
     simulator.setPinState(pin, true);
     for (const byte of payload) {
@@ -659,7 +678,7 @@ function scheduleDHT22Response(simulator: any, pin: number, element: HTMLElement
     return;
   }
 
-  const payload = buildDHT22Payload(element);
+  const payload = buildPayload(element);
   const now = simulator.getCurrentCycles() as number;
 
   // Scale timing by CPU clock — AVR runs at 16 MHz, RP2040 at 125 MHz.
@@ -700,9 +719,19 @@ function scheduleDHT22Response(simulator: any, pin: number, element: HTMLElement
   simulator.schedulePinChange(pin, true, t);
 }
 
-PartSimulationRegistry.register('dht22', {
-  attachEvents: (element, simulator, getPin, componentId) => {
-    // wokwi-dht22 element uses 'SDA' as the data pin name (not 'DATA')
+/** Shared DHT-family attachEvents — DHT22 and DHT11 differ only in the byte
+ *  packing (and the sensor kind forwarded to the ESP32 backend). */
+function makeDhtAttachEvents(
+  kind: 'dht22' | 'dht11',
+  buildPayload: (element: HTMLElement) => Uint8Array,
+) {
+  return (
+    element: HTMLElement,
+    simulator: any,
+    getPin: (name: string) => number | null,
+    componentId: string,
+  ) => {
+    // dht elements use 'SDA' as the data pin name (not 'DATA')
     const pin = getPin('SDA') ?? getPin('DATA');
     if (pin === null) return () => {};
 
@@ -714,7 +743,7 @@ PartSimulationRegistry.register('dht22', {
 
     const handledNatively =
       typeof (simulator as any).registerSensor === 'function' &&
-      (simulator as any).registerSensor('dht22', pin, { temperature, humidity });
+      (simulator as any).registerSensor(kind, pin, { temperature, humidity });
 
     if (handledNatively) {
       registerSensorUpdate(componentId, (values) => {
@@ -765,12 +794,12 @@ PartSimulationRegistry.register('dht22', {
         return;
       }
       if (wasLow) {
-        // MCU released DATA HIGH — begin DHT22 response
+        // MCU released DATA HIGH — begin the sensor response
         wasLow = false;
         const cur = getCycles();
         responseEndCycle = cur >= 0 ? cur + RESPONSE_GATE_CYCLES : 0;
         responseEndTimeMs = Date.now() + 20; // 20ms gate for non-cycle simulators
-        scheduleDHT22Response(simulator, pin, element);
+        scheduleDHT22Response(simulator, pin, element, buildPayload);
       }
     });
 
@@ -789,7 +818,15 @@ PartSimulationRegistry.register('dht22', {
       simulator.setPinState(pin, true);
       unregisterSensorUpdate(componentId);
     };
-  },
+  };
+}
+
+PartSimulationRegistry.register('dht22', {
+  attachEvents: makeDhtAttachEvents('dht22', buildDHT22Payload),
+});
+
+PartSimulationRegistry.register('dht11', {
+  attachEvents: makeDhtAttachEvents('dht11', buildDHT11Payload),
 });
 
 // ─── HX711 Load Cell Amplifier ────────────────────────────────────────────────

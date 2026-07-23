@@ -356,6 +356,10 @@ export class AVRSimulator {
   private lastPortBValue = 0;
   private lastPortCValue = 0;
   private lastPortDValue = 0;
+  private lastDdrBValue = 0;
+  private lastDdrCValue = 0;
+  private lastDdrDValue = 0;
+  private megaDdrValues: Map<string, number> = new Map();
   private lastOcrValues: number[] = [];
   /**
    * Last known TXEN bit value, used to detect 0→1 transitions and seed the
@@ -554,6 +558,10 @@ export class AVRSimulator {
     this.lastPortBValue = 0;
     this.lastPortCValue = 0;
     this.lastPortDValue = 0;
+    this.lastDdrBValue = 0;
+    this.lastDdrCValue = 0;
+    this.lastDdrDValue = 0;
+    this.megaDdrValues.clear();
     this.lastOcrValues = new Array(this.pwmPins.length).fill(0);
 
     this.setupPinHooks();
@@ -731,18 +739,58 @@ export class AVRSimulator {
     const cpu = this.cpu;
     const readDdr = (addr: number) => cpu.data[addr] ?? 0;
 
+    // avr8js port listeners fire on PORT *and* DDR writes, but the raw value
+    // they deliver is the output/pull-up register view: an input bit (DDR=0)
+    // reads as its PORT (pull-up) flag, never as the level an external part
+    // drove via setPin. Open-drain buses (1-Wire) toggle only DDR with
+    // PORT=0, so driven-low vs released-high is invisible in the raw value.
+    // We diff the *effective line level* instead: output bits follow the raw
+    // value, input bits read pull-up OR external pinValue. Both sides of the
+    // diff use the CURRENT pinValue so a part driving the line between two
+    // MCU register writes can't mask or fabricate an MCU edge.
+    const lineValue = (port: AVRIOPort, rawValue: number, ddr: number): number => {
+      const pinValue = (port as unknown as { pinValue: number }).pinValue ?? 0;
+      return (rawValue | (pinValue & ~ddr)) & 0xff;
+    };
+    const makePortListener = (
+      portName: string,
+      port: AVRIOPort,
+      ddrAddr: number | undefined,
+      pinMap: number[] | null,
+      offset: number,
+      getLast: () => { value: number; ddr: number },
+      setLast: (value: number, ddr: number) => void,
+    ) => {
+      port.addListener((value) => {
+        const ddr = ddrAddr !== undefined ? readDdr(ddrAddr) : 0xff;
+        const last = getLast();
+        const oldLine = lineValue(port, last.value, last.ddr);
+        const newLine = lineValue(port, value, ddr);
+        if (newLine !== oldLine) {
+          this.pinManager.updatePort(
+            portName,
+            newLine,
+            oldLine,
+            pinMap ?? undefined,
+            ddrAddr !== undefined ? ddr : undefined,
+            value,
+          );
+          this.firePinChangeWithTime(newLine, oldLine, pinMap, offset);
+        }
+        setLast(value, ddr);
+      });
+    };
+
     if (this.boardVariant === 'tiny85') {
       // ATtiny85: PORTB only, PB0-PB5 → pins 0-5
       // Must pass an explicit pinMap so updatePort uses offset 0 instead of the
       // legacy PORTB offset (8) which would map PB1 → pin 9, etc.
       const TINY85_PIN_MAP = [0, 1, 2, 3, 4, 5, -1, -1];
-      this.portB!.addListener((value) => {
-        if (value !== this.lastPortBValue) {
-          this.pinManager.updatePort('PORTB', value, this.lastPortBValue, TINY85_PIN_MAP, readDdr(0x37));
-          this.firePinChangeWithTime(value, this.lastPortBValue, null, 0);
-          this.lastPortBValue = value;
-        }
-      });
+      makePortListener(
+        'PORTB', this.portB!, 0x37, TINY85_PIN_MAP, 0,
+        () => ({ value: this.lastPortBValue, ddr: this.lastDdrBValue }),
+        (v, d) => { this.lastPortBValue = v; this.lastDdrBValue = d; },
+      );
     } else if (this.boardVariant === 'mega') {
       // Mega: use explicit per-bit pin maps for all 11 ports
       const MEGA_DDR_ADDRS: Record<string, number> = {
@@ -754,38 +802,33 @@ export class AVRSimulator {
         const pinMap = MEGA_PORT_BIT_MAP[portName];
         const ddrAddr = MEGA_DDR_ADDRS[portName];
         this.megaPortValues.set(portName, 0);
-        port.addListener((value) => {
-          const old = this.megaPortValues.get(portName) ?? 0;
-          if (value !== old) {
-            this.pinManager.updatePort(portName, value, old, pinMap, ddrAddr ? readDdr(ddrAddr) : undefined);
-            this.firePinChangeWithTime(value, old, pinMap);
-            this.megaPortValues.set(portName, value);
-          }
-        });
+        this.megaDdrValues.set(portName, 0);
+        makePortListener(
+          portName, port, ddrAddr, pinMap, 0,
+          () => ({
+            value: this.megaPortValues.get(portName) ?? 0,
+            ddr: this.megaDdrValues.get(portName) ?? 0,
+          }),
+          (v, d) => { this.megaPortValues.set(portName, v); this.megaDdrValues.set(portName, d); },
+        );
       }
     } else {
       // Uno / Nano: simple 3-port setup
-      this.portB!.addListener((value) => {
-        if (value !== this.lastPortBValue) {
-          this.pinManager.updatePort('PORTB', value, this.lastPortBValue, undefined, readDdr(0x24));
-          this.firePinChangeWithTime(value, this.lastPortBValue, null, 8);
-          this.lastPortBValue = value;
-        }
-      });
-      this.portC!.addListener((value) => {
-        if (value !== this.lastPortCValue) {
-          this.pinManager.updatePort('PORTC', value, this.lastPortCValue, undefined, readDdr(0x27));
-          this.firePinChangeWithTime(value, this.lastPortCValue, null, 14);
-          this.lastPortCValue = value;
-        }
-      });
-      this.portD!.addListener((value) => {
-        if (value !== this.lastPortDValue) {
-          this.pinManager.updatePort('PORTD', value, this.lastPortDValue, undefined, readDdr(0x2A));
-          this.firePinChangeWithTime(value, this.lastPortDValue, null, 0);
-          this.lastPortDValue = value;
-        }
-      });
+      makePortListener(
+        'PORTB', this.portB!, 0x24, null, 8,
+        () => ({ value: this.lastPortBValue, ddr: this.lastDdrBValue }),
+        (v, d) => { this.lastPortBValue = v; this.lastDdrBValue = d; },
+      );
+      makePortListener(
+        'PORTC', this.portC!, 0x27, null, 14,
+        () => ({ value: this.lastPortCValue, ddr: this.lastDdrCValue }),
+        (v, d) => { this.lastPortCValue = v; this.lastDdrCValue = d; },
+      );
+      makePortListener(
+        'PORTD', this.portD!, 0x2A, null, 0,
+        () => ({ value: this.lastPortDValue, ddr: this.lastDdrDValue }),
+        (v, d) => { this.lastPortDValue = v; this.lastDdrDValue = d; },
+      );
     }
 
     console.log('Pin hooks configured successfully');
@@ -1015,6 +1058,9 @@ export class AVRSimulator {
     if (!this.cpu) return;
     avrInstruction(this.cpu);
     this.cpu.tick();
+    // Same per-instruction flush the main execute() loop does — without it,
+    // single-stepped tests never deliver µs-scheduled waveforms (DHT, 1-Wire).
+    if (this.scheduledPinChanges.length > 0) this.flushScheduledPinChanges();
   }
 
   /**

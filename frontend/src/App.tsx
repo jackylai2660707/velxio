@@ -1,39 +1,27 @@
 import { useEffect, type ReactElement } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { LandingPage } from './pages/LandingPage';
+import { BrandLandingPage } from './pages/BrandLandingPage';
 import { EditorPage } from './pages/EditorPage';
 import { ExamplesPage } from './pages/ExamplesPage';
-import { DocsPage } from './pages/DocsPage';
 // Login, Register, ForgotPassword, ResetPassword, Admin, UserProfile,
 // Project, ProjectById — moved to the pro overlay in Phase 3 of the
 // OSS split. They register themselves via registerProRoutes() inside
 // mountPro() and appear under /login, /admin, /:username etc. only when
 // the overlay is loaded.
+import { LearnPage } from './pages/LearnPage';
+import { LessonPage } from './pages/LessonPage';
+import { TeacherPage } from './pages/TeacherPage';
+import { AdminPage } from './pages/AdminPage';
+import { GuidePage } from './pages/GuidePage';
 import { ExampleDetailPage } from './pages/ExampleDetailPage';
 import { ExampleEditorPage } from './pages/ExampleEditorPage';
-import { ArduinoSimulatorPage } from './pages/ArduinoSimulatorPage';
-import { ArduinoEmulatorPage } from './pages/ArduinoEmulatorPage';
-import { AtmegaSimulatorPage } from './pages/AtmegaSimulatorPage';
-import { ArduinoMegaSimulatorPage } from './pages/ArduinoMegaSimulatorPage';
-import { Attiny85SimulatorPage } from './pages/Attiny85SimulatorPage';
-import { CircuitSimulatorPage } from './pages/CircuitSimulatorPage';
-import { SpiceSimulatorPage } from './pages/SpiceSimulatorPage';
-import { ElectronicsSimulatorPage } from './pages/ElectronicsSimulatorPage';
-import { CustomChipSimulatorPage } from './pages/CustomChipSimulatorPage';
-import { Esp32SimulatorPage } from './pages/Esp32SimulatorPage';
-import { Esp32S3SimulatorPage } from './pages/Esp32S3SimulatorPage';
-import { Esp32C3SimulatorPage } from './pages/Esp32C3SimulatorPage';
-import { RaspberryPiPicoSimulatorPage } from './pages/RaspberryPiPicoSimulatorPage';
-import { RaspberryPiSimulatorPage } from './pages/RaspberryPiSimulatorPage';
-import { Velxio2Page } from './pages/Velxio2Page';
-import { Velxio25Page } from './pages/Velxio25Page';
-import { Velxio3Page } from './pages/Velxio3Page';
-import { AboutPage } from './pages/AboutPage';
-import { PricingPlaceholder } from './pages/PricingPlaceholder';
 import { LocaleSync } from './i18n/LocaleSync';
 import { NON_DEFAULT_LOCALES } from './i18n/config';
 import { useProRoutes } from './lib/proRoutes';
 import { triggerSessionCheck } from './lib/proSession';
+// Fork feature: self-contained cloud accounts + storage. Importing the module
+// registers the session-check and save-action hooks before App mounts.
+import './cloud/install';
 import { MessageDialogHost } from './components/ui/MessageDialogHost';
 import './App.css';
 
@@ -51,12 +39,18 @@ import './App.css';
 const ROOT_ELEMENT: ReactElement = import.meta.env.VITE_DESKTOP ? (
   <Navigate to="/editor" replace />
 ) : (
-  <LandingPage />
+  <BrandLandingPage />
 );
 
 const ROUTES: { path: string; element: ReactElement; index?: boolean }[] = [
   { path: '/', element: ROOT_ELEMENT, index: true },
   { path: 'editor', element: <EditorPage /> },
+  // 「AI物聯網實驗室」learning module: course list, lesson player, and the
+  // teacher class-management dashboard.
+  { path: 'learn', element: <LearnPage /> },
+  { path: 'learn/:courseId/:lessonId', element: <LessonPage /> },
+  { path: 'teacher', element: <TeacherPage /> },
+  { path: 'admin', element: <AdminPage /> },
   { path: 'examples', element: <ExamplesPage /> },
   // /examples/<id> = SEO landing (preview, badges, "Open in Simulator" CTA).
   // /example/<id>  = live editor with the example pre-loaded; the URL
@@ -64,44 +58,27 @@ const ROUTES: { path: string; element: ReactElement; index?: boolean }[] = [
   // Singular vs plural is intentional — Google indexes the plural landings.
   { path: 'examples/:exampleId', element: <ExampleDetailPage /> },
   { path: 'example/:exampleId', element: <ExampleEditorPage /> },
-  { path: 'docs', element: <DocsPage /> },
-  { path: 'docs/:section', element: <DocsPage /> },
-  // SEO landing pages — keyword-targeted
-  { path: 'circuit-simulator', element: <CircuitSimulatorPage /> },
-  { path: 'spice-simulator', element: <SpiceSimulatorPage /> },
-  { path: 'electronics-simulator', element: <ElectronicsSimulatorPage /> },
-  { path: 'custom-chip-simulator', element: <CustomChipSimulatorPage /> },
-  { path: 'attiny85-simulator', element: <Attiny85SimulatorPage /> },
-  { path: 'arduino-simulator', element: <ArduinoSimulatorPage /> },
-  { path: 'arduino-emulator', element: <ArduinoEmulatorPage /> },
-  { path: 'atmega328p-simulator', element: <AtmegaSimulatorPage /> },
-  { path: 'arduino-mega-simulator', element: <ArduinoMegaSimulatorPage /> },
-  { path: 'esp32-simulator', element: <Esp32SimulatorPage /> },
-  { path: 'esp32-s3-simulator', element: <Esp32S3SimulatorPage /> },
-  { path: 'esp32-c3-simulator', element: <Esp32C3SimulatorPage /> },
-  { path: 'raspberry-pi-pico-simulator', element: <RaspberryPiPicoSimulatorPage /> },
-  { path: 'raspberry-pi-simulator', element: <RaspberryPiSimulatorPage /> },
-  { path: 'v2', element: <Velxio2Page /> },
-  { path: 'v2-5', element: <Velxio25Page /> },
-  { path: 'v3', element: <Velxio3Page /> },
-  { path: 'about', element: <AboutPage /> },
-  // Pricing — placeholder by default; private overlays portal-inject the real page
-  { path: 'pricing', element: <PricingPlaceholder /> },
-  // project/:id, :username/:projectName, :username — also moved to the
-  // pro overlay (project persistence + public profiles are pro features).
+  // The product's only documentation: a non-technical user guide for
+  // students and teachers. The upstream developer DocsPage and the SEO
+  // marketing landing pages (circuit-simulator, v2, pricing, …) are
+  // intentionally not routed — this deployment is a classroom product,
+  // not the velxio.dev marketing site.
+  { path: 'guide', element: <GuidePage /> },
+  { path: 'docs', element: <GuidePage /> },
+  { path: 'docs/:section', element: <GuidePage /> },
 ];
 
 /**
- * The default locale (English) is served at the root with NO `/en` prefix, so
- * `/en/...` matches no route and renders blank. People reasonably guess `/en/`
- * by analogy with `/es/`, `/zh-cn/`, … — redirect them to the prefix-free path
- * (`/en/project/x` → `/project/x`, `/en` → `/`) instead of a blank page. This
- * keeps the canonical no-prefix English URLs (good for SEO) while handling the
- * guessed ones gracefully.
+ * The default locale (Traditional Chinese) is served at the root with NO
+ * `/zh-tw` prefix, so `/zh-tw/...` matches no route and renders blank. People
+ * reasonably guess `/zh-tw/` by analogy with `/en/`, `/zh-cn/`, … — redirect
+ * them to the prefix-free path (`/zh-tw/editor` → `/editor`, `/zh-tw` → `/`)
+ * instead of a blank page. This keeps the canonical no-prefix URLs while
+ * handling the guessed ones gracefully.
  */
-function EnPrefixRedirect() {
+function DefaultPrefixRedirect() {
   const { pathname, search, hash } = useLocation();
-  const stripped = pathname.replace(/^\/en(?=\/|$)/, '');
+  const stripped = pathname.replace(/^\/zh-tw(?=\/|$)/, '');
   return <Navigate to={(stripped || '/') + search + hash} replace />;
 }
 
@@ -129,7 +106,7 @@ function App() {
     <Router>
       <LocaleSync>
         <Routes>
-          {/* Default locale (English) — no URL prefix. */}
+          {/* Default locale (Traditional Chinese) — no URL prefix. */}
           {allRoutes.map((r) =>
             r.index ? (
               <Route key="root" path="/" element={r.element} />
@@ -160,9 +137,9 @@ function App() {
             </Route>
           ))}
 
-          {/* `/en/...` is the default locale spelled out — redirect to the
+          {/* `/zh-tw/...` is the default locale spelled out — redirect to the
               canonical prefix-free path instead of rendering a blank page. */}
-          <Route path="/en/*" element={<EnPrefixRedirect />} />
+          <Route path="/zh-tw/*" element={<DefaultPrefixRedirect />} />
         </Routes>
       </LocaleSync>
       {/* Global alert() replacement — opened from anywhere (React or plain

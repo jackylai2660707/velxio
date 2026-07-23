@@ -67,7 +67,7 @@ export const CommunityProjectsGrid = () => {
       <div style={styles.header}>
         <h2 style={styles.title}>Featured community projects</h2>
         <p style={styles.sub}>
-          The most-run public circuits on Velxio. Open one to see how it's wired,
+          The most-run public circuits. Open one to see how it's wired,
           remix the code, and run it live.
         </p>
       </div>

@@ -243,6 +243,14 @@ deploying velxio.dev.
 - [frontend/src/utils/hexParser.ts](frontend/src/utils/hexParser.ts) - Intel HEX format parser
 - [frontend/src/components/simulator/SimulatorCanvas.tsx](frontend/src/components/simulator/SimulatorCanvas.tsx) - Canvas + Serial button next to board selector
 
+### Frontend - AI Assistant (OSS agent)
+- [frontend/src/agent/](frontend/src/agent/) - Agent loop (AgentRunner.ts), tool layer (tools.ts), state snapshot, system prompt
+- [frontend/src/store/useAgentStore.ts](frontend/src/store/useAgentStore.ts) - Chat state (UI messages + raw Anthropic history)
+- [frontend/src/lib/agentBridge.ts](frontend/src/lib/agentBridge.ts) - EditorToolbar registers compile/run/stop for agent tools
+- [frontend/src/components/agent/AgentChatPanel.tsx](frontend/src/components/agent/AgentChatPanel.tsx) - Right-docked chat panel
+- [backend/app/api/routes/agent.py](backend/app/api/routes/agent.py) - SSE streaming proxy to the Anthropic API (loop + tools run in the browser)
+- Docs: [docs/wiki/ai-assistant.md](docs/wiki/ai-assistant.md)
+
 ### Frontend - Pages
 - [frontend/src/pages/EditorPage.tsx](frontend/src/pages/EditorPage.tsx) - Main editor layout (resizable file explorer + panels)
 - [frontend/src/pages/LoginPage.tsx](frontend/src/pages/LoginPage.tsx)
@@ -427,6 +435,22 @@ metadata staleness check), not the other two.
   arduino-cli config add board_manager.additional_urls \
     https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
   ```
+
+- **ESP32 core version MUST be 2.0.17, not 3.x** ⚠️ — when compiling ESP32
+  sketches through arduino-cli (dev setups without the ESP-IDF toolchain the
+  Docker image ships), install `esp32:esp32@2.0.17`. Core 3.x firmware (IDF
+  5.x boot sequence) crashes at boot inside the lcgamboa QEMU machine with
+  `Guru Meditation Error: ... Cache disabled but cached memory region
+  accessed` before reaching setup(). 2.0.17 matches the `/opt/arduino-esp32`
+  component pinned in the Docker image.
+
+- **ESP32 emulation on a dev host** needs `libqemu-xtensa.so` /
+  `libqemu-riscv32.so` + the `esp32*-rom.bin` blobs. Easiest source: extract
+  `/app/lib/*` from the published Docker image into a local dir and point
+  `VELXIO_QEMU_PATH` at it (e.g. in `backend/.env.agent`). System deps:
+  `apt-get install libfdt1 libslirp0` (xtensa needs libfdt, riscv32 both).
+  `LedControl` (MAX7219) is AVR-only — ESP32 sketches drive the chip with
+  plain `shiftOut` (see the `esp32-max7219-heart` example).
 
 ## Testing
 

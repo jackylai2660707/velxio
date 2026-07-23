@@ -6,7 +6,7 @@
         "accent": "本物のngspice、ブラウザで",
         "subtitle": "Velxioは、オープンソースのngspiceエンジンをWebAssemblyにコンパイルして実行します。実際のデバイスモデル、完全な修正節点解析、リアルタイム過渡シミュレーション—そして、実際のArduino / ESP32 / RP2040ファームウェアに配線できます。無料、インストール不要、アカウント不要。",
         "ctaPrimary": "SPICEシミュレーターを開く",
-        "ctaSecondary": "Velxio 2.5リリースを見る",
+        "ctaSecondary": "AI IoT Lab 2.5リリースを見る",
         "trust": "本物のngspice · 無料＆オープンソース · ブラウザで100%動作"
       },
       "why": {

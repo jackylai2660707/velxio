@@ -61,6 +61,15 @@ class ArduinoCLIService:
 
     def __init__(self, cli_path: str = "arduino-cli"):
         self.cli_path = cli_path
+        # VELXIO_SKIP_ARDUINO_INDEX=1 skips the startup network calls
+        # (board-manager URL registration + `core update-index`). On networks
+        # that can't reach GitHub these otherwise block server startup for
+        # minutes; cores already installed keep working, new core installs
+        # simply require the index to be refreshed manually.
+        import os
+        if os.environ.get("VELXIO_SKIP_ARDUINO_INDEX") == "1":
+            print("[arduino-cli] VELXIO_SKIP_ARDUINO_INDEX=1 — skipping index refresh")
+            return
         self._ensure_board_urls()
         self._ensure_core_installed()
 

@@ -1,0 +1,205 @@
+{
+  "seo": {
+    "customChip": {
+      "hero": {
+        "title": "構建您自己的自定義晶片",
+        "accent": "使用 C、Rust 或 AssemblyScript",
+        "subtitle": "透過 Wokwi 相容的自定義晶片 API 定義您自己的積體電路。用 C、Rust 或 AssemblyScript 編寫晶片；AI物聯網實驗室 將其編譯為 WebAssembly，並在畫布上像其他元件一樣執行——由 Arduino、ESP32 或 RP2040 韌體驅動。",
+        "ctaPrimary": "開啟編輯器",
+        "ctaSecondary": "閱讀文件",
+        "trust": "Wokwi 相容 API · 免費且開源 · 基於 WASM，在瀏覽器中執行"
+      },
+      "build": {
+        "heading": "您可以構建什麼？",
+        "lead": "自定義晶片填補了內建元件之間的空白。如果某個真實 IC 不在庫中，構建一個行為模型，您的韌體將永遠不會察覺差異。",
+        "sensorTitle": "感測器替代品",
+        "sensorBody": "模擬一個透過 I²C 響應的溫度、壓力或 IMU 感測器——當您還沒有實物但想開發韌體時非常有用。",
+        "bridgeTitle": "協議橋接器",
+        "bridgeBody": "構建 UART 到 I²C 橋接器、SPI 移位暫存器、數模轉換包裝器或自定義準位轉換器。",
+        "logicTitle": "自定義邏輯",
+        "logicBody": "膠合邏輯、狀態機、地址解碼器、去抖器——任何您原本會用分立閘電路搭建的東西。",
+        "icTitle": "行為 IC",
+        "icBody": "重新建立真實 IC（如 7 段驅動器、步進電機控制器）的外部可見行為，而無需模擬其內部類比電路。",
+        "fixturesTitle": "測試夾具",
+        "fixturesBody": "按計劃注入訊號、捕獲接腳轉換、根據預期的接腳級行為驗證韌體。",
+        "reuseTitle": "可重用庫",
+        "reuseBody": "將晶片儲存到您的帳戶，匯入到其他專案，與社群共享。"
+      },
+      "api": {
+        "heading": "API 提供的內容",
+        "lead": "AI物聯網實驗室 自定義晶片執行時完全相容 Wokwi，並針對 SPICE 和多板環境提供了額外功能。",
+        "pinTitle": "接腳 I/O",
+        "pinBody": "讀取接腳狀態、寫入數字高/低、配置上拉、透過接腳監視回撥響應邊沿。",
+        "attrTitle": "屬性",
+        "attrBody": "從屬性面板讀取使用者可配置的晶片屬性——值、字串、數字——並在更改時重新讀取。",
+        "timersTitle": "定時器",
+        "timersBody": "以微秒解析度排程回撥。執行時將它們與模擬器時鐘對齊觸發。",
+        "i2cTitle": "I²C 匯流排",
+        "i2cBody": "連線到 I²C 總線上的任何導線，響應啟動/停止條件，確認地址，傳送/接收位元組。",
+        "spiTitle": "SPI 匯流排",
+        "spiBody": "帶片選處理的雙向 SPI。透過一個位元組流回調實現移位暫存器、SPI 儲存器或感測器。",
+        "wasiTitle": "WASI 墊片",
+        "wasiBody": "一個小型 WASI 墊片讓您的 C/Rust 晶片無需重型執行時即可使用標準庫呼叫（printf、字串操作、數學）。"
+      },
+      "faq": {
+        "heading": "常見問題",
+        "q1": "什麼是 AI物聯網實驗室 中的自定義晶片？",
+        "a1": "自定義晶片是使用者定義的積體電路。您用 C、Rust 或 AssemblyScript 編寫晶片邏輯——AI物聯網實驗室 將其編譯為 WebAssembly，像其他元件一樣在畫布上例項化，並由模擬器驅動其接腳。",
+        "q2": "AI物聯網實驗室 使用哪個 API？",
+        "a2": "AI物聯網實驗室 實現了 Wokwi 自定義晶片 API——與 Wokwi 使用的 API 相同——因此您為 AI物聯網實驗室 編寫的晶片可移植到 Wokwi，反之亦然。AI物聯網實驗室 添加了一個 WASI 墊片，以便您可以在晶片程式碼中使用標準庫函式。",
+        "q3": "我可以構建什麼？",
+        "a3": "真實 IC 的行為模型（感測器、解碼器、準位轉換器、協議橋接器）、自定義數字邏輯、尚未擁有的硬體的感測器替代品，以及用於測試韌體的協議級模擬。晶片可以驅動接腳、讀取屬性、註冊定時器，並橋接到 I²C/SPI 匯流排。",
+        "q4": "如何共享或重用晶片？",
+        "a4": "將晶片儲存到您的 AI物聯網實驗室 帳戶，並在專案之間重用。晶片定義包括其接腳佈局、屬性和編譯後的 WASM——像內建元件一樣將其拖放到任何專案畫布上。",
+        "q5": "執行晶片需要後端嗎？",
+        "a5": "不需要。編譯後的晶片 WASM 在同一個瀏覽器標籤頁中執行，與模擬的其他部分一起。接腳更新、屬性讀取和定時器滴答都是本地的。",
+        "q6": "我的自定義晶片可以與 Arduino 通訊嗎？",
+        "a6": "可以——這是典型用例。將其接腳連線到 Arduino 的 GPIO、SPI 或 I²C 線，Arduino 上的韌體與您的晶片互動就像與真實 IC 一樣。"
+      },
+      "bottom": {
+        "title": "構建您的第一個自定義晶片",
+        "body": "開啟編輯器，幾秒鐘內建立一個晶片——選擇 C、Rust 或 AssemblyScript。",
+        "cta": "啟動編輯器"
+      }
+    },
+    "electronics": {
+      "hero": {
+        "title": "免費線上電子電路模擬器",
+        "accent": "在瀏覽器中構建、接線和測試",
+        "subtitle": "一個完整的電子工作臺：SPICE 精確的模擬器件、19 種模擬微控制器（Arduino、ESP32、RP2040、ATtiny85、Raspberry Pi 3）、100 多個元件和即時儀器——全部在一個畫布上。免費，無需安裝，無需帳戶。",
+        "ctaPrimary": "開啟電子電路模擬器",
+        "ctaSecondary": "瀏覽 100+ 範例",
+        "trust": "免費且開源 · 無需註冊 · 真實 SPICE + 真實 CPU 模擬"
+      },
+      "inside": {
+        "heading": "內部包含什麼",
+        "lead": "一個工具，涵蓋電子專案的每一層——從麵包板上的電阻器到微控制器上的韌體。",
+        "spiceTitle": "SPICE 模擬求解器",
+        "spiceBody": "透過 WebAssembly 執行真實的 ngspice。100 多種器件模型：無源器件、BJT、MOSFET、運算放大器、穩壓器、二極體、光耦、繼電器。",
+        "mcuTitle": "19 種微控制器",
+        "mcuBody": "Arduino Uno / Nano / Mega / ATtiny85 / Leonardo / Pro Mini、Raspberry Pi Pico (W)、ESP32 / ESP32-S3 / ESP32-CAM / Nano ESP32、ESP32-C3 系列、CH32V003、Raspberry Pi 3B Linux。",
+        "chipsTitle": "自定義晶片",
+        "chipsBody": "透過 Wokwi 自定義晶片 API 用 C、Rust 或 AssemblyScript 定義您自己的 IC——從程式碼中驅動接腳、屬性、定時器、I²C 和 SPI。",
+        "instrumentsTitle": "即時儀器",
+        "instrumentsBody": "多通道示波器、電壓表、電流表、訊號發生器（正弦/方波/直流）——拖放到任何節點上即時觀察波形。",
+        "componentsTitle": "48 多種視覺化元件",
+        "componentsBody": "LED、RGB LED、7 段顯示器、16×2 LCD、ILI9341 TFT、NeoPixel 燈帶、伺服馬達、蜂鳴器、超音波感測器、DHT22、MPU6050、鍵盤。",
+        "ideTitle": "內建 Arduino IDE",
+        "ideBody": "Monaco 程式碼編輯器、多檔案工作區、庫管理器（完整 Arduino 庫索引）、arduino-cli 編譯器、序列埠監視器。"
+      },
+      "audience": {
+        "heading": "面向教師、學生和愛好者",
+        "lead": "AI物聯網實驗室 在 AGPLv3 下免費——無授權費用、無按席位定價、無雲帳戶。透過一個 Docker 命令即可自託管，適用於大學實驗室。",
+        "coursesTitle": "用於課程",
+        "coursesBody": "從第一週（歐姆定律、分壓器）到 Arduino 專案和運算放大器訊號鏈，使用同一個工具。一個 UI 覆蓋整個教學大綱。",
+        "labsTitle": "用於實驗室",
+        "labsBody": "在校園伺服器上自託管。無需網際網路依賴，無需帳戶障礙——學生只需開啟 URL。",
+        "makersTitle": "用於創客",
+        "makersBody": "在訂購零件之前驗證您的電路和韌體。示波器和萬用表已經在工作臺上。"
+      },
+      "faq": {
+        "heading": "常見問題",
+        "q1": "AI物聯網實驗室 是一個完整的電子電路模擬器嗎？",
+        "a1": "是的。AI物聯網實驗室 結合了 SPICE 精確的模擬求解器、19 種模擬微控制器（Arduino、ESP32、RP2040、ATtiny85、Raspberry Pi 3）、100 多個元件、示波器、電壓表、電流表和訊號發生器——端到端設計和驗證電子專案所需的一切。",
+        "q2": "我可以像使用虛擬麵包板一樣使用它嗎？",
+        "a2": "可以。將元件拖放到畫布上，在接腳之間拖拽導線，模擬器會自動構建 SPICE 網表。導線對齊到網格；元件以 90° 增量旋轉；訊號型別顏色標記 VCC、GND、數字和模擬路徑。",
+        "q3": "我需要安裝任何東西嗎？",
+        "a3": "不需要。在任何現代瀏覽器中開啟 velxio.dev 即可開始。SPICE 求解器和 AVR/RP2040 模擬器在瀏覽器中本地執行；Xtensa 和 RISC-V 板（ESP32、ESP32-C3、CH32V003）以及 Raspberry Pi 3 Linux 透過 QEMU lcgamboa 執行，捆綁在 Docker 映象中。Arduino 草圖的編譯使用雲端的 arduino-cli 後端。",
+        "q4": "它適合用於電子教學嗎？",
+        "a4": "是的——這是設計目標之一。免費、無需安裝、無需帳戶、無授權費用。100 多個預接線範例電路涵蓋分壓器、RC 濾波器、運算放大器放大器、電晶體開關、整流器和完整的 Arduino 專案。非常適合大學實驗室和自學者。",
+        "q5": "AI物聯網實驗室 是 Tinkercad / Falstad 的替代品嗎？",
+        "a5": "是的——而且更精確。AI物聯網實驗室 執行真實的 ngspice（專業 EDA 工具使用的引擎），與那些工具不同，它還執行驅動電路的微控制器上的韌體。在 AGPLv3 下開源。"
+      },
+      "bottom": {
+        "title": "開啟您的虛擬麵包板",
+        "body": "幾秒鐘內連線您的第一個電路——無需設定、無需安裝、無需帳戶。",
+        "cta": "啟動電子電路模擬器"
+      }
+    },
+    "arduino": {
+      "hero": {
+        "title": "免費線上 Arduino 模擬器",
+        "accent": "在瀏覽器中執行草圖",
+        "subtitle": "編寫 Arduino 程式碼並立即模擬——以 16 MHz 的真實 AVR8 模擬，搭配 48 多種互動式電子元件。無需安裝、無需雲、無需帳戶。",
+        "ctaPrimary": "開啟 Arduino 模擬器",
+        "ctaSecondary": "瀏覽範例",
+        "trust": "免費且開源 · 無需註冊 · 100% 在瀏覽器中執行"
+      },
+      "what": {
+        "heading": "您可以模擬什麼？",
+        "lead": "AI物聯網實驗室 以完整的 AVR8 CPU 精度模擬 Arduino 程式——包括 GPIO 埠、硬體定時器、USART、ADC、PWM、SPI 和 I2C。無近似、無捷徑。",
+        "unoTitle": "Arduino Uno 和 Nano",
+        "unoBody": "完整的 ATmega328P 模擬，16 MHz。PORTB、PORTC、PORTD 暫存器模擬。所有 14 個數字和 6 個模擬接腳。",
+        "megaTitle": "Arduino Mega 2560",
+        "megaBody": "ATmega2560，256 KB 快閃記憶體，54 個數字接腳，16 個模擬輸入，4 個硬體 USART 通道。",
+        "componentsTitle": "48 多種電子元件",
+        "componentsBody": "LED、電阻、按鈕、蜂鳴器、伺服馬達、超音波感測器、ILI9341 TFT、16×2 LCD、NeoPixel、DHT22 等。",
+        "serialTitle": "序列埠監視器",
+        "serialBodyPrefix": "即時 TX/RX，自動波特率檢測。傳送命令並檢視 ",
+        "serialBodyCode": "Serial.print()",
+        "serialBodySuffix": " 輸出。",
+        "multiTitle": "多檔案草圖",
+        "multiBody": "在 VS Code 風格的 Monaco 編輯器中編寫 .ino、.h 和 .cpp 檔案——完整的多檔案 Arduino 專案支援。",
+        "libTitle": "庫管理器",
+        "libBody": "直接在模擬器中搜索並安裝完整 Arduino 庫索引中的任何庫。"
+      },
+      "how": {
+        "heading": "模擬器的工作原理",
+        "leadPrefix": "AI物聯網實驗室 使用 ",
+        "leadHighlight": "avr8js",
+        "leadSuffix": "——經過實戰檢驗的開源 AVR8 模擬庫——逐位元組執行您編譯的韌體，就像在物理硬體上執行一樣。",
+        "writeTitle": "1. 編寫",
+        "writeBody": "在 Monaco 編輯器中編寫您的 Arduino 草圖，支援 C++ 語法高亮和自動補全。",
+        "compileTitle": "2. 編譯",
+        "compileBody": "點選編譯。arduino-cli 生成真實的 .hex 檔案——與 Arduino IDE 輸出相同。",
+        "simulateTitle": "3. 模擬",
+        "simulateBody": ".hex 檔案載入到 AVR8 模擬器中。您的程式以 16 MHz 執行並驅動視覺化元件。"
+      },
+      "faq": {
+        "heading": "常見問題",
+        "q1": "這個 Arduino 模擬器免費嗎？",
+        "a1": "是的。AI物聯網實驗室 完全免費且開源（GNU AGPLv3）。無需帳戶、無需付費、無需雲訂閱——在瀏覽器中執行或透過一個 Docker 命令自託管。",
+        "q2": "Arduino 模擬器無需安裝任何東西就能工作嗎？",
+        "a2": "模擬引擎完全在瀏覽器中執行。編譯程式碼需要 arduino-cli 後端，您可以在本地或透過 Docker 執行。無需安裝 IDE。",
+        "q3": "我可以模擬哪些 Arduino 板？",
+        "a3": "AI物聯網實驗室 支援 19 種板：Arduino Uno (ATmega328P)、Arduino Nano、Arduino Mega 2560、ATtiny85、Arduino Leonardo、Arduino Pro Mini (AVR8)——以及 Raspberry Pi Pico (RP2040)、ESP32-C3 / XIAO ESP32-C3 / CH32V003 (RISC-V)、ESP32 / ESP32-S3 / ESP32-CAM (透過 QEMU 的 Xtensa) 和 Raspberry Pi 3B (透過 QEMU 的 Linux)。",
+        "q4": "我可以模擬 LED、感測器和顯示器嗎？",
+        "a4": "可以。AI物聯網實驗室 包含 48 多種互動式 wokwi-elements：LED、電阻、按鈕、伺服馬達、超音波感測器、ILI9341 TFT 顯示器、LCD、NeoPixel 燈帶、蜂鳴器、DHT22 等。",
+        "q5": "AI物聯網實驗室 是 Wokwi 的替代品嗎？",
+        "a5": "是的。AI物聯網實驗室 是 Wokwi 的免費自託管替代品。它使用相同的 avr8js 模擬庫和 wokwi-elements 視覺化元件，但完全在您自己的機器上執行，無雲依賴。"
+      },
+      "bottom": {
+        "title": "準備好模擬您的 Arduino 了嗎？",
+        "body": "開啟編輯器，幾秒鐘內開始編碼——無需設定、無需安裝、無需帳戶。",
+        "cta": "啟動 Arduino 模擬器"
+      }
+    },
+    "links": {
+      "circuit": "電路模擬器",
+      "spice": "SPICE 模擬器",
+      "electronics": "電子電路模擬器",
+      "customChip": "自定義晶片模擬器",
+      "arduino": "Arduino 模擬器",
+      "arduinoEmu": "Arduino 模擬器",
+      "atmega": "ATmega328P 模擬器",
+      "mega": "Mega 2560 模擬器",
+      "attiny85": "ATtiny85 模擬器",
+      "esp32": "ESP32 模擬器",
+      "esp32s3": "ESP32-S3 模擬器",
+      "esp32c3": "ESP32-C3 模擬器",
+      "pico": "Pico 模擬器",
+      "rpiPico": "RP2040 模擬器",
+      "rpi": "Raspberry Pi 3 模擬器",
+      "v25": "AI物聯網實驗室 2.5 釋出",
+      "examples": "範例專案",
+      "examplesAnalog": "模擬範例",
+      "examplesAll": "所有範例",
+      "examplesPlain": "範例",
+      "exampleSketches": "範例草圖",
+      "esp32Docs": "ESP32 文件",
+      "rp2040Docs": "RP2040 文件",
+      "riscvDocs": "RISC-V 文件",
+      "pi3Docs": "Pi 3 文件"
+    }
+  }
+}

@@ -26,7 +26,7 @@
     "search": "Rechercher"
   },
   "footer": {
-    "about": "Velxio est un simulateur de circuits et microcontrôleurs gratuit et open-source qui fonctionne entièrement dans votre navigateur. Arduino, ESP32, RP2040 et ATtiny85, avec co-simulation analogique précise SPICE. Conçu pour les makers, étudiants et ingénieurs embarqués qui apprennent en pratiquant. AGPLv3."
+    "about": "AI IoT Lab est un simulateur de circuits et microcontrôleurs gratuit et open-source qui fonctionne entièrement dans votre navigateur. Arduino, ESP32, RP2040 et ATtiny85, avec co-simulation analogique précise SPICE. Conçu pour les makers, étudiants et ingénieurs embarqués qui apprennent en pratiquant. AGPLv3."
   },
   "landing": {
     "hero": {
@@ -36,7 +36,7 @@
       "ctaPrimary": "Essayer le simulateur en ligne gratuitement →",
       "ctaGithub": "Voir sur GitHub",
       "trustLine": "Aucune inscription requise · Fonctionne à 100% dans votre navigateur · Gratuit et open-source",
-      "imageAlt": "Éditeur Velxio avec circuit de feux de circulation Arduino Uno"
+      "imageAlt": "Éditeur AI IoT Lab avec circuit de feux de circulation Arduino Uno"
     },
     "boards": {
       "label": "Matériel supporté",
@@ -75,14 +75,14 @@
     },
     "support": {
       "title": "Soutenir le projet",
-      "subtitle": "Velxio est gratuit et open-source. S'il vous fait gagner du temps, envisagez de soutenir son développement.",
+      "subtitle": "AI IoT Lab est gratuit et open-source. S'il vous fait gagner du temps, envisagez de soutenir son développement.",
       "ctaSponsors": "GitHub Sponsors",
       "ctaPaypal": "Faire un don via PayPal"
     },
     "licensing": {
       "label": "Licences",
       "title": "Gratuit, avec option commerciale.",
-      "subtitle": "AGPLv3 pour la version open-source. Licence commerciale pour les équipes qui doivent intégrer Velxio dans des produits propriétaires.",
+      "subtitle": "AGPLv3 pour la version open-source. Licence commerciale pour les équipes qui doivent intégrer AI IoT Lab dans des produits propriétaires.",
       "opensource": {
         "title": "Open source — AGPLv3",
         "desc": "Gratuit pour toujours pour un usage personnel, éducatif, de recherche et en self-hosting. Modifiez, forkez et redistribuez — vos modifications restent sous AGPLv3.",
@@ -132,7 +132,7 @@
           "name": "Maker",
           "tagline": "Pour les makers qui livrent de vrais circuits avec l'aide de l'IA.",
           "f1": "500 crédits IA par jour (jusqu'à 15 000/mois)",
-          "f2": "Projets non listés + Velxio Desktop (hors-ligne)",
+          "f2": "Projets non listés + AI IoT Lab Desktop (hors-ligne)",
           "f3": "Temps de simulation illimité pour ESP32, STM32 et Raspberry Pi",
           "cta": "Commencer Maker"
         },
@@ -145,7 +145,7 @@
           "cta": "S'abonner à Pro"
         }
       },
-      "classroomBanner": "Vous apportez Velxio dans un cours ? Velxio for Classroom donne à chaque étudiant un accès Pro dès $40/an.",
+      "classroomBanner": "Vous apportez AI IoT Lab dans un cours ? AI IoT Lab for Classroom donne à chaque étudiant un accès Pro dès $40/an.",
       "classroomCta": "Voir les plans classe →"
     }
   },
@@ -159,7 +159,7 @@
   },
   "pricing": {
     "title": "Tarifs",
-    "selfHosted": "Cette instance Velxio est auto-hébergée à partir de l'image open-source — toutes les fonctionnalités sont gratuites pour tous ceux qui l'utilisent.",
+    "selfHosted": "Cette instance AI IoT Lab est auto-hébergée à partir de l'image open-source — toutes les fonctionnalités sont gratuites pour tous ceux qui l'utilisent.",
     "hostedVersion": "La version hébergée sur <link>velxio.dev</link> propose un niveau Pro optionnel qui aide à financer le développement.",
     "sourceCode": "Le code source est <link>sous licence MIT sur GitHub</link>."
   },
@@ -369,19 +369,10 @@
     "notFound": "Exemple \"{{id}}\" introuvable.",
     "browseAll": "Parcourir tous les exemples"
   },
-  "starBanner": {
-    "ariaLabel": "Mettre une étoile à Velxio sur GitHub",
-    "title": "Vous appréciez Velxio ?",
-    "body": "Une ⭐ sur GitHub aide plus de développeurs à découvrir le projet — cela ne prend que 2 secondes !",
-    "title2": "Un petit service ?",
-    "body2": "Velxio est gratuit et open source. Une étoile sur GitHub est le moyen le plus simple de le soutenir et d'aider davantage de personnes à le découvrir.",
-    "cta": "Mettre une étoile sur GitHub",
-    "dismiss": "Ignorer"
-  },
   "auth": {
     "login": {
       "title": "Connexion",
-      "subtitle": "pour continuer sur Velxio",
+      "subtitle": "pour continuer sur AI IoT Lab",
       "email": "Email",
       "password": "Mot de passe",
       "signIn": "Se connecter",

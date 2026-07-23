@@ -329,7 +329,7 @@
     "intro": {
       "label": "// 概要",
       "heading": "はじめに",
-      "lead": "<strong>Velxio</strong>は、完全にローカルで動作するオープンソースのArduinoエミュレータで、ブラウザ内で全て実行されます。Arduino C++コードを書き、実際の<code>arduino-cli</code>バックエンドでコンパイルし、真のAVR8 / RP2040 CPUエミュレーションを使用してシミュレートします。48以上のインタラクティブな電子コンポーネントを備え、マシンにソフトウェアをインストールする必要はありません。",
+      "lead": "<strong>AI IoT Lab</strong>は、完全にローカルで動作するオープンソースのArduinoエミュレータで、ブラウザ内で全て実行されます。Arduino C++コードを書き、実際の<code>arduino-cli</code>バックエンドでコンパイルし、真のAVR8 / RP2040 CPUエミュレーションを使用してシミュレートします。48以上のインタラクティブな電子コンポーネントを備え、マシンにソフトウェアをインストールする必要はありません。",
       "whyHeading": "なぜVelxioなのか？",
       "whyNoInstall": "<strong>インストール不要</strong>: すべてブラウザで動作します。",
       "whyRealEmulation": "<strong>実際のエミュレーション</strong>: 簡略化されたモデルではなく、正確なAVR8 / RP2040 CPUエミュレーション。",

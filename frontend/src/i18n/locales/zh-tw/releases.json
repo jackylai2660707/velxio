@@ -1,0 +1,165 @@
+{
+  "v2": {
+    "versionBadge": "版本 2.0",
+    "heroAccent": "多平臺嵌入式模擬器",
+    "heroSubtitle": "在瀏覽器中模擬 Arduino、ESP32、Raspberry Pi Pico 和 Raspberry Pi 3。19 塊開發板、68 多個即用範例、逼真的感測器模擬。免費、開源、無需安裝。",
+    "tryV2": "嘗試 AI物聯網實驗室 2.0",
+    "joinDiscord": "加入 Discord",
+    "boardsHeading": "19 塊開發板。5 種架構。一個工具。",
+    "boardsLead": "從 8 位 AVR 到四核 ARM Linux — AI物聯網實驗室 2.0 在單個瀏覽器標籤頁中模擬每個主流嵌入式平臺。",
+    "multipleBoards": "一個電路中的多塊開發板",
+    "mixArchitectures": "混合架構",
+    "mixArchitecturesBody": "將 ESP32 連線到 Raspberry Pi 3，將三個 Arduino 連線在一起，或將 Pico 與 ESP32-C3 組合。任何組合都可行。",
+    "realInterBoard": "真實的板間通訊",
+    "realInterBoardBody": "開發板透過有線連線進行通訊 — UART、I2C、SPI 或簡單的 GPIO 訊號，就像真實硬體一樣。",
+    "uniqueFeature": "沒有其他模擬器能做到這一點",
+    "uniqueFeatureBody": "傳統模擬器單獨模擬一塊開發板。AI物聯網實驗室 模擬整個系統，多塊開發板同時執行。",
+    "whatsNew": "2.0 的新功能",
+    "whatsNewLead": "完全轉型為多平臺嵌入式系統模擬器 — 更多開發板、更精確的模擬、更好的開發者體驗。",
+    "examplesHeading": "68 多個即用範例",
+    "examplesLead": "從基本的 LED 閃爍到多板通訊 — 適用於每個平臺和技能水平的範例。",
+    "examples": {
+      "arduino": {
+        "title": "Arduino（17 個範例）",
+        "body": "閃爍、交通燈、按鈕、漸變、RGB LED、Simon Says 遊戲、TFT 顯示屏、LCD、I2C 掃描器、SPI 迴環等。"
+      },
+      "pico": {
+        "title": "Raspberry Pi Pico（18 個範例）",
+        "body": "閃爍、序列、I2C（掃描器、RTC、EEPROM）、SPI、ADC 讀取、DHT22、HC-SR04、伺服馬達、搖桿、NTC 感測器。"
+      },
+      "esp32": {
+        "title": "ESP32（9 個範例）",
+        "body": "閃爍、序列回顯、7 段七段顯示器、DHT22、HC-SR04、MPU6050 IMU、PIR 運動檢測、伺服馬達、搖桿。"
+      },
+      "esp32c3": {
+        "title": "ESP32-C3 RISC-V（9 個範例）",
+        "body": "閃爍、序列、RGB LED、按鈕 + LED、序列回顯、DHT22、HC-SR04、PIR、伺服馬達。"
+      },
+      "mega": {
+        "title": "Arduino Mega（5 個範例）",
+        "body": "閃爍、LED 追逐、序列回顯、序列控制、7 段七段顯示器顯示。"
+      },
+      "nano": {
+        "title": "Arduino Nano（4 個範例）",
+        "body": "閃爍、按鈕 LED、漸變、序列回顯。以及多板 Pi 到 Arduino 控制。"
+      }
+    },
+    "outcomeHeading": "成果",
+    "outcomeLead": "AI物聯網實驗室 2.0 將專案轉變為一個完整、可擴充套件的多平臺嵌入式系統模擬器。",
+    "outcome": {
+      "realistic": "更逼真的模擬",
+      "realisticBody": "基於 QEMU 的 Xtensa、RISC-V 和 ARM 模擬。透過 avr8js 實現週期精確的 AVR8。真實的韌體執行，而非近似。",
+      "broader": "更廣泛的硬體支援",
+      "broaderBody": "涵蓋 5 種 CPU 架構的 19 塊開發板。從 8 位 ATtiny85 到執行完整 Linux 的四核 Raspberry Pi 3B。",
+      "devEx": "更好的開發者體驗",
+      "devExBody": "Monaco 編輯器、多檔案工作區、庫管理器、示波器、感測器控制面板、響應式移動設計。"
+    },
+    "builtOnOss": "基於開源構建",
+    "builtOnOssLead": "AI物聯網實驗室 由以下開源專案驅動。沒有它們，這一切都不可能實現。",
+    "bottom": {
+      "title": "立即嘗試 AI物聯網實驗室 2.0",
+      "body": "開啟編輯器並開始模擬 — 19 塊開發板、68 多個範例、零設定。",
+      "cta": "啟動模擬器"
+    }
+  },
+  "v25": {
+    "versionBadge": "版本 2.5",
+    "heroAccent": "Arduino 在瀏覽器中與 SPICE 相遇",
+    "heroSubtitle": "透過 ngspice-WASM 進行即時類比電路模擬，連線到 Arduino、ESP32 和 Raspberry Pi Pico。電阻、電容、運算放大器、電晶體、即時電流表和電壓表 — 與您的韌體協同模擬。免費、開源、無需安裝。",
+    "tryV25": "嘗試 AI物聯網實驗室 2.5",
+    "fullEmulation": "從純數字到完整電路模擬",
+    "fullEmulationLead": "AI物聯網實驗室 2.0 完美模擬了您的韌體。AI物聯網實驗室 2.5 模擬了其周圍的電路 — 使用與專業 EDA 工具相同的 ngspice 引擎，完全在您的瀏覽器標籤頁中執行。",
+    "notLinear": "不是線性近似",
+    "notLinearBody": "AI物聯網實驗室 在每個時鐘週期求解完整的改進節點分析。非線性器件 — 二極體、BJT、MOSFET、帶飽和的運算放大器 — 表現如同真實器件，而非教科書理想化。",
+    "realFirmware": "真實韌體。真實電路。同一畫布。",
+    "realFirmwareBody": "GPIO 接腳作為電壓源驅動 SPICE 網路。ADC 輸入讀取求解後的節點電壓。analogRead() 返回電路實際產生的結果 — 而非模擬捷徑。",
+    "browserOffline": "100% 瀏覽器，100% 離線",
+    "browserOfflineBody": "透過開源 eecircuit-engine 將 ngspice 編譯為 WebAssembly。無伺服器、無雲端、無帳戶。首次載入後可離線工作。您的電路永遠不會離開您的機器。",
+    "catalogHeading": "100 多個 SPICE 精確元件",
+    "catalogLead": "完整的電子元件目錄 — 無源器件、半導體、邏輯器件、儀器 — 每個都使用真實的 ngspice 器件模型，而非行為替代。",
+    "coSimHeading": "混合數字 + 模擬協同模擬",
+    "coSimLead": "大多數瀏覽器模擬器要麼執行您的韌體，要麼執行電路 — 但從未同時執行兩者。AI物聯網實驗室 2.5 在同一時鐘上求解它們。",
+    "driveMotor": "從 Arduino 接腳驅動電機",
+    "driveMotorBody": "接腳高準位 → MOSFET 柵極 → 透過真實感性負載的漏極電流 → 透過續流二極體的反電動勢。全部由 SPICE 求解。並排觀察柵極和漏極電壓。",
+    "readSensor": "透過真實運算放大器讀取感測器",
+    "readSensorBody": "光電二極體 → 跨阻運算放大器 → ADC。調節光照滑塊，觀察 analogRead() 透過實際放大器級的響應 — 包括飽和、壓擺率等。",
+    "liveInstruments": "使用即時儀器除錯",
+    "liveInstrumentsBody": "在任何兩個節點之間放置電流表，在任何網路上放置電壓表。示波器同時捕獲數字接腳和模擬節點。沒有“假設” — 只有測量。",
+    "examplesHeading": "40 個新的模擬和混合範例",
+    "examplesLead": "預接線電路，一鍵開啟 — 從教科書基礎到真實的 Arduino+模擬系統。",
+    "examples": {
+      "fundamentals": {
+        "title": "基礎",
+        "body": "分壓器、RC 低通濾波器、RC 高通濾波器、LR 電路、電容充電、RLC 諧振、惠斯通電橋。"
+      },
+      "diodes": {
+        "title": "二極體與整流器",
+        "body": "半波整流器、全波橋式整流器、齊納穩壓器、鉗位器、限幅器、倍壓器。"
+      },
+      "opamps": {
+        "title": "運算放大器電路",
+        "body": "反相放大器、同相放大器、求和放大器、差分放大器、積分器、微分器、施密特觸發器、比較器。"
+      },
+      "transistors": {
+        "title": "電晶體電路",
+        "body": "共射放大器、電晶體開關、達林頓對、MOSFET 驅動器、H 橋、電流鏡。"
+      },
+      "arduino": {
+        "title": "Arduino + 模擬",
+        "body": "PWM 驅動 LED 帶 RC 平滑、Arduino 控制 MOSFET 電機驅動器、光隔離繼電器、光電二極體 + 運算放大器 + ADC 流水線。"
+      },
+      "sensors": {
+        "title": "感測器",
+        "body": "NTC 熱敏電阻電橋、光敏電阻照度計、光電二極體跨阻、電位器調光器、火焰探測器。"
+      }
+    },
+    "outcomeHeading": "成果",
+    "outcomeLead": "AI物聯網實驗室 2.5 閉環了韌體與硬體：執行您的程式碼的同一工具現在求解其周圍的電路。",
+    "outcome": {
+      "teach": "教授與學習電子學",
+      "teachBody": "面向學生的免費、基於瀏覽器的 SPICE 遊樂場 — 外加驅動真實微控制器韌體的優勢。無需授權條款、無需安裝、無需實驗室預約。",
+      "prototype": "焊接前進行原型驗證",
+      "prototypeBody": "在訂購任何零件之前，端到端驗證模擬前端、功率級和感測器流水線。示波器和萬用表已在工作臺上。",
+      "openSource": "仍然 100% 開源",
+      "openSourceBody": "GitHub 上的 AGPL-3.0。基於 ngspice、eecircuit-engine、avr8js、rp2040js、QEMU 和 wokwi-elements 構建。可分支、託管和擴充套件。"
+    },
+    "builtOnOssLead": "AI物聯網實驗室 2.5 站在數十年電子工具巨人的肩膀上。衷心感謝以下每個專案的維護者。",
+    "bottom": {
+      "title": "立即嘗試 AI物聯網實驗室 2.5",
+      "body": "開啟編輯器並開始模擬 — 韌體和類比電路，同一畫布，零設定。"
+    }
+  },
+  "v3": {
+    "versionBadge": "版本 3.0",
+    "heroAccent": "復古 CPU、多板系統、全電路精度",
+    "heroSubtitle": "AI物聯網實驗室 3.0 是迄今為止最大的版本。對經典 Z80、8080 和 4004 處理器進行程式設計，模擬 MicroSD 卡和 ePaper 顯示屏，將整個多板系統連線在一起，並在畫布上撤銷任何錯誤。超過 100 個新範例 — 全部免費、開源，並在瀏覽器中執行。",
+    "tryV3": "嘗試 AI物聯網實驗室 3.0",
+    "whatsNewHeading": "最大的 AI物聯網實驗室 版本",
+    "whatsNewLead": "AI物聯網實驗室 2.5 帶來了真實的類比電路。AI物聯網實驗室 3.0 同時向各個方向擴充套件 — 新處理器、儲存和顯示、真正的多板系統、更精確的模擬，以及您一直要求的編輯器最佳化。",
+    "retroTitle": "經典 CPU，完全可程式設計",
+    "retroBody": "將 Z80、8080、4004、4040 或 8086 放到畫布上，載入您自己的 ROM，並在編輯器中編寫彙編 — 無需主機板。",
+    "multiBoardTitle": "整個系統，而非單板",
+    "multiBoardBody": "在所有支援的開發板之間連線 UART、I2C、SPI 和普通 GPIO。ESP32 與 Pico 對話，Pico 與 Arduino 對話，全部在同一時鐘上求解。",
+    "polishTitle": "撤銷、小地圖、即時編輯",
+    "polishBody": "對每個畫布操作進行完整的撤銷/重做，可拖動的小地圖用於導航大型構建，以及在模擬執行時拖拽移動部件。",
+    "catalogHeading": "3.0 中的所有新功能",
+    "catalogLead": "版本的完整巡覽 — 新處理器、儲存和顯示、多板互連、模擬精度、效能，以及超過一百個全新範例。",
+    "examplesHeading": "100 多個新的相簿範例",
+    "examplesLead": "Pico Doom、ESP32-CAM 預覽、ePaper 儀表盤、復古 CPU 演示、100 天物聯網系列，以及數十個類比電路 — 每個只需單擊一次。",
+    "outcomeHeading": "成果",
+    "outcomeLead": "AI物聯網實驗室 3.0 將板級模擬器轉變為完整的嵌入式系統工作臺：處理器、外設、儲存、顯示和電路，全部在一個瀏覽器標籤頁中。",
+    "outcome": {
+      "build": "構建完整系統",
+      "buildBody": "具有真實 UART/I2C/SPI 鏈路、MicroSD 儲存和 ePaper 或攝像頭輸出的多板專案 — 在接觸硬體之前端到端原型驗證。",
+      "learn": "從復古到現代學習",
+      "learnBody": "逐條指令跟蹤 4 位 Intel 4004，然後跳轉到 32 位 RISC-V 或四核 ARM Linux 板 — 同一畫布，同一工具。",
+      "openSource": "仍然 100% 開源",
+      "openSourceBody": "GitHub 上的 AGPL-3.0。無需帳戶、無需雲端、無需安裝。可分支、自託管和擴充套件。"
+    },
+    "builtOnOssLead": "AI物聯網實驗室 3.0 站在數十年開源模擬和 EDA 工作的基礎上。衷心感謝以下每個專案的維護者。",
+    "bottom": {
+      "title": "立即嘗試 AI物聯網實驗室 3.0",
+      "body": "開啟編輯器並開始構建 — 處理器、外設、電路和多板系統，零設定。"
+    }
+  }
+}

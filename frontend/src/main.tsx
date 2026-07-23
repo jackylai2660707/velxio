@@ -5,19 +5,12 @@ import './index.css';
 // useTranslation() always resolves against a live instance. Must come
 // before App.
 import './i18n';
-import './components/velxio-components/IC74HC595';
-import './components/velxio-components/LogicGateElements';
-import './components/velxio-components/TransistorElements';
-import './components/velxio-components/OpAmpElements';
-import './components/velxio-components/PowerElements';
-import './components/velxio-components/DiodeElements';
-import './components/velxio-components/RelayElements';
-import './components/velxio-components/LogicICElements';
-import './components/velxio-components/MotorDriverElements';
-import './components/velxio-components/FlipFlopElements';
-import './components/velxio-components/RaspberryPi3Element';
-import './components/velxio-components/Bmp280Element';
-import './components/velxio-components/EPaperElement';
+// Side-effect import: registers EVERY custom element (upstream wokwi +
+// velxio-local) exactly once. Do NOT import individual element modules here —
+// add new elements to elements-register.ts instead, so the app runtime and
+// the tests/metadata-generator can never drift apart (a component that is
+// only registered in one place renders 0×0 with no pinInfo in the other).
+import './elements-register';
 import App from './App.tsx';
 
 // Configure monaco-editor for offline use via local static assets

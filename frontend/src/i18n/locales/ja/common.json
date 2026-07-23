@@ -132,7 +132,7 @@
           "name": "Maker",
           "tagline": "AI支援で実物の回路を作るメーカー向け。",
           "f1": "AIクレジット1日500回（月15,000回まで）",
-          "f2": "非公開プロジェクト + Velxio Desktop（オフライン）",
+          "f2": "非公開プロジェクト + AI IoT Lab Desktop（オフライン）",
           "f3": "ESP32・STM32・Raspberry Pi のシミュレーション時間が無制限",
           "cta": "Makerを始める"
         },
@@ -145,7 +145,7 @@
           "cta": "Proを購読"
         }
       },
-      "classroomBanner": "コースでVelxioを使いますか？ Velxio for Classroomは年$40から学生全員にProアクセスを提供します。",
+      "classroomBanner": "コースでVelxioを使いますか？ AI IoT Lab for Classroomは年$40から学生全員にProアクセスを提供します。",
       "classroomCta": "クラスプランを見る →"
     }
   },
@@ -368,15 +368,6 @@
     "loadingExample": "サンプルを読み込み中...",
     "notFound": "サンプル「{{id}}」が見つかりません。",
     "browseAll": "すべてのサンプルを閲覧"
-  },
-  "starBanner": {
-    "ariaLabel": "GitHubでVelxioにスターを付ける",
-    "title": "Velxioを気に入っていますか？",
-    "body": "GitHubで⭐を付けると、より多くの開発者がこのプロジェクトを発見できます—たった2秒で完了します！",
-    "title2": "ちょっとしたお願いです",
-    "body2": "Velxio は無料のオープンソースです。GitHub でスターを付けることが、プロジェクトを応援し、より多くの人に見つけてもらう一番簡単な方法です。",
-    "cta": "GitHubでスターを付ける",
-    "dismiss": "閉じる"
   },
   "auth": {
     "login": {

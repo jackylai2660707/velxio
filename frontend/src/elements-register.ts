@@ -14,12 +14,15 @@ import './velxio-elements';
 // double-registration and non-DOM environments).
 import './components/velxio-components/Attiny85Element';
 import './components/velxio-components/Bmp280Element';
+import './components/velxio-components/Dht11Element';
 import './components/velxio-components/DiodeElements';
+import './components/velxio-components/Ds18b20Element';
 import './components/velxio-components/EPaperElement';
 import './components/velxio-components/Esp32Element';
 import './components/velxio-components/FlipFlopElements';
 import './components/velxio-components/IC74HC595';
 import './components/velxio-components/LogicGateElements';
+import './components/velxio-components/Max7219Element';
 import './components/velxio-components/LogicICElements';
 import './components/velxio-components/MotorDriverElements';
 import './components/velxio-components/OpAmpElements';

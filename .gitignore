@@ -101,7 +101,7 @@ third-party/*/.cache/
 .claude/settings.local.json
 .history/*
 .daveagent/*
-data/*
+/data/*
 .publicar/*
 .publicar_discord/*
 img/*
@@ -190,3 +190,10 @@ MANIFEST.sha256
 *.sqlite-backup
 
 backend/.venv/*
+backend/.env.agent
+
+/data/
+backend/data/
+.devlogs/
+backend/qemu-lib/
+qa-shots/

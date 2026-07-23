@@ -12,6 +12,7 @@ import type { BoardKind } from '../../types/board';
 import { boardDisplayName } from '../../types/board';
 import { importProjectFile, PROJECT_FILE_ACCEPT } from '../../utils/importProject';
 import { showMessageDialog, showConfirmDialog } from '../../store/useMessageDialogStore';
+import { VersionHistoryModal } from '../versioning/VersionHistoryModal';
 import './FileExplorer.css';
 
 // SVG icons — same style as EditorToolbar (stroke-based, 16x16)
@@ -117,6 +118,24 @@ const IcoOpen = () => (
     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
     <polyline points="12 11 12 17" />
     <polyline points="9 14 12 11 15 14" />
+  </svg>
+);
+
+const IcoHistory = () => (
+  // Clock-with-arrow — version history (git-style snapshots & rollback).
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M3 3v5h5" />
+    <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" />
+    <path d="M12 7v5l4 2" />
   </svg>
 );
 
@@ -238,6 +257,7 @@ interface FileExplorerProps {
 
 export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewClick }) => {
   const { t } = useTranslation();
+  const [versionsOpen, setVersionsOpen] = useState(false);
   // Hidden <input type="file"> we trigger via ref when the user clicks
   // the Open project button.  Accepts both .vlx (Velxio native) and .zip
   // (Wokwi bundle); the dispatcher in utils/importProject.ts decides which
@@ -554,7 +574,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewCl
           </button>
           <button
             className="file-explorer-save-btn"
-            title="Open project (.vlx Velxio or .zip Wokwi)"
+            title="開啟專案(.vlx / .zip)"
             onClick={handleOpenProjectClick}
           >
             <IcoOpen />
@@ -573,8 +593,17 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewCl
           >
             <IcoSave />
           </button>
+          <button
+            className="file-explorer-save-btn"
+            title={t('versions.title')}
+            onClick={() => setVersionsOpen(true)}
+          >
+            <IcoHistory />
+          </button>
         </div>
       </div>
+
+      {versionsOpen && <VersionHistoryModal onClose={() => setVersionsOpen(false)} />}
 
       <div className="file-explorer-list">
         {boards.map((board) => {

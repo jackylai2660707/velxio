@@ -1,0 +1,43 @@
+.agent-usage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  font-size: 11px;
+  color: #8b95a3;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  user-select: none;
+}
+
+.agent-usage__label {
+  white-space: nowrap;
+}
+
+.agent-usage__bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.agent-usage__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0071e3, #22d3ee);
+  transition: width 0.4s ease;
+}
+
+.agent-usage--warn .agent-usage__fill {
+  background: linear-gradient(90deg, #d97706, #f0883e);
+}
+
+.agent-usage--danger .agent-usage__fill {
+  background: linear-gradient(90deg, #dc2626, #f85149);
+}
+
+.agent-usage__numbers {
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+}

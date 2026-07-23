@@ -45,7 +45,7 @@ export const FlashModal = ({ board, fqbn, onClose }: Props) => {
         kind: 'error',
         port: null,
         message:
-          'Hardware flashing requires Velxio Desktop. The web app cannot ' +
+          'Hardware flashing requires the desktop app. The web app cannot ' +
           'access local USB serial ports.',
         log: [],
       });

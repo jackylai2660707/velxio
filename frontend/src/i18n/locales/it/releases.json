@@ -3,17 +3,17 @@
     "versionBadge": "Versione 2.0",
     "heroAccent": "Simulatore multi-piattaforma per embedded",
     "heroSubtitle": "Simula Arduino, ESP32, Raspberry Pi Pico e Raspberry Pi 3 nel tuo browser. 19 schede, 68+ esempi pronti all'uso, simulazione realistica di sensori. Gratuito, open-source, nessuna installazione necessaria.",
-    "tryV2": "Prova Velxio 2.0",
+    "tryV2": "Prova AI IoT Lab 2.0",
     "joinDiscord": "Unisciti a Discord",
     "boardsHeading": "19 schede. 5 architetture. Un unico strumento.",
-    "boardsLead": "Dal AVR a 8 bit al ARM Linux quad-core — Velxio 2.0 emula ogni piattaforma embedded principale in una singola scheda del browser.",
+    "boardsLead": "Dal AVR a 8 bit al ARM Linux quad-core — AI IoT Lab 2.0 emula ogni piattaforma embedded principale in una singola scheda del browser.",
     "multipleBoards": "Più schede in un circuito",
     "mixArchitectures": "Mescola architetture",
     "mixArchitecturesBody": "Collega un ESP32 a un Raspberry Pi 3, collega tre Arduino insieme, o combina un Pico con un ESP32-C3. Qualsiasi combinazione funziona.",
     "realInterBoard": "Comunicazione reale tra schede",
     "realInterBoardBody": "Le schede comunicano tramite connessioni cablate — UART, I2C, SPI o semplici segnali GPIO, proprio come l'hardware reale.",
     "uniqueFeature": "Nessun altro simulatore fa questo",
-    "uniqueFeatureBody": "I simulatori tradizionali emulano una scheda isolata. Velxio simula interi sistemi con più schede in esecuzione simultanea.",
+    "uniqueFeatureBody": "I simulatori tradizionali emulano una scheda isolata. AI IoT Lab simula interi sistemi con più schede in esecuzione simultanea.",
     "whatsNew": "Novità della 2.0",
     "whatsNewLead": "Una trasformazione completa in un simulatore di sistemi embedded multi-piattaforma — più schede, emulazione più accurata, migliore esperienza sviluppatore.",
     "examplesHeading": "68+ esempi pronti all'uso",
@@ -45,7 +45,7 @@
       }
     },
     "outcomeHeading": "Il risultato",
-    "outcomeLead": "Velxio 2.0 trasforma il progetto in un simulatore di sistemi embedded multi-piattaforma completo e scalabile.",
+    "outcomeLead": "AI IoT Lab 2.0 trasforma il progetto in un simulatore di sistemi embedded multi-piattaforma completo e scalabile.",
     "outcome": {
       "realistic": "Emulazione più realistica",
       "realisticBody": "Emulazione Xtensa, RISC-V e ARM basata su QEMU. AVR8 ciclo-accurato tramite avr8js. Esecuzione reale del firmware, non approssimazioni.",
@@ -55,9 +55,9 @@
       "devExBody": "Editor Monaco, workspace multi-file, gestore librerie, oscilloscopio, pannello di controllo sensori, design responsive per dispositivi mobili."
     },
     "builtOnOss": "Costruito su open-source",
-    "builtOnOssLead": "Velxio è alimentato da questi progetti open-source. Senza di loro, nulla di tutto ciò sarebbe possibile.",
+    "builtOnOssLead": "AI IoT Lab è alimentato da questi progetti open-source. Senza di loro, nulla di tutto ciò sarebbe possibile.",
     "bottom": {
-      "title": "Prova Velxio 2.0 ora",
+      "title": "Prova AI IoT Lab 2.0 ora",
       "body": "Apri l'editor e inizia a simulare — 19 schede, 68+ esempi, zero configurazione.",
       "cta": "Avvia Simulatore"
     }
@@ -66,11 +66,11 @@
     "versionBadge": "Versione 2.5",
     "heroAccent": "Arduino incontra SPICE nel tuo browser",
     "heroSubtitle": "Simulazione circuitale analogica in tempo reale tramite ngspice-WASM, collegata ad Arduino, ESP32 e Raspberry Pi Pico. Resistenze, condensatori, amplificatori operazionali, transistor, amperometri e voltmetri live — co-simulati con il tuo firmware. Gratuito, open-source, nessuna installazione.",
-    "tryV25": "Prova Velxio 2.5",
+    "tryV25": "Prova AI IoT Lab 2.5",
     "fullEmulation": "Da solo digitale a emulazione circuitale completa",
-    "fullEmulationLead": "Velxio 2.0 simulava perfettamente il tuo firmware. Velxio 2.5 simula il circuito circostante — con lo stesso motore ngspice utilizzato dagli strumenti EDA professionali, eseguendo interamente nella scheda del tuo browser.",
+    "fullEmulationLead": "AI IoT Lab 2.0 simulava perfettamente il tuo firmware. AI IoT Lab 2.5 simula il circuito circostante — con lo stesso motore ngspice utilizzato dagli strumenti EDA professionali, eseguendo interamente nella scheda del tuo browser.",
     "notLinear": "Non un'approssimazione lineare",
-    "notLinearBody": "Velxio risolve l'Analisi Nodale Modificata completa ad ogni tick. I dispositivi non lineari — diodi, BJT, MOSFET, amplificatori operazionali con saturazione — si comportano come quelli reali, non come idealizzazioni da libro di testo.",
+    "notLinearBody": "AI IoT Lab risolve l'Analisi Nodale Modificata completa ad ogni tick. I dispositivi non lineari — diodi, BJT, MOSFET, amplificatori operazionali con saturazione — si comportano come quelli reali, non come idealizzazioni da libro di testo.",
     "realFirmware": "Firmware reale. Circuito reale. Stessa tela.",
     "realFirmwareBody": "I pin GPIO pilotano le reti SPICE come sorgenti di tensione. Gli ingressi ADC leggono le tensioni dei nodi risolte. analogRead() restituisce ciò che il circuito produce effettivamente — non una scorciatoia simulata.",
     "browserOffline": "100% browser, 100% offline",
@@ -78,7 +78,7 @@
     "catalogHeading": "100+ componenti SPICE-accurati",
     "catalogLead": "Un catalogo elettronico completo — passivi, semiconduttori, logica, strumenti — ognuno modellato con schede dispositivo ngspice reali, non sostituti comportamentali.",
     "coSimHeading": "Co-simulazione ibrida digitale + analogica",
-    "coSimLead": "La maggior parte dei simulatori browser esegue o il tuo firmware OPPURE un circuito — mai entrambi insieme. Velxio 2.5 li risolve sullo stesso clock.",
+    "coSimLead": "La maggior parte dei simulatori browser esegue o il tuo firmware OPPURE un circuito — mai entrambi insieme. AI IoT Lab 2.5 li risolve sullo stesso clock.",
     "driveMotor": "Aziona un motore da un pin Arduino",
     "driveMotorBody": "Pin HIGH → gate MOSFET → corrente di drain attraverso un carico induttivo reale → forza controelettromotrice attraverso un diodo flyback. Tutto risolto con SPICE. Visualizza le tensioni di gate e drain affiancate.",
     "readSensor": "Leggi un sensore attraverso un amplificatore operazionale reale",
@@ -114,7 +114,7 @@
       }
     },
     "outcomeHeading": "Il risultato",
-    "outcomeLead": "Velxio 2.5 chiude il ciclo tra firmware e hardware: lo stesso strumento che esegue il tuo sketch ora risolve il circuito circostante.",
+    "outcomeLead": "AI IoT Lab 2.5 chiude il ciclo tra firmware e hardware: lo stesso strumento che esegue il tuo sketch ora risolve il circuito circostante.",
     "outcome": {
       "teach": "Insegna e impara l'elettronica",
       "teachBody": "Un parco giochi SPICE gratuito basato su browser per studenti — con il vantaggio aggiuntivo di pilotare firmware di microcontrollori reali. Nessuna licenza, nessuna installazione, nessuna prenotazione di laboratorio.",
@@ -123,19 +123,19 @@
       "openSource": "Ancora 100% open source",
       "openSourceBody": "AGPL-3.0 su GitHub. Basato su ngspice, eecircuit-engine, avr8js, rp2040js, QEMU e wokwi-elements. Fai il fork, ospitalo, estendilo."
     },
-    "builtOnOssLead": "Velxio 2.5 si basa sulle spalle di decenni di strumentazione elettronica. Un enorme ringraziamento ai manutentori di ogni progetto qui sotto.",
+    "builtOnOssLead": "AI IoT Lab 2.5 si basa sulle spalle di decenni di strumentazione elettronica. Un enorme ringraziamento ai manutentori di ogni progetto qui sotto.",
     "bottom": {
-      "title": "Prova Velxio 2.5 ora",
+      "title": "Prova AI IoT Lab 2.5 ora",
       "body": "Apri l'editor e inizia a simulare — firmware e circuito analogico, stessa tela, zero configurazione."
     }
   },
   "v3": {
     "versionBadge": "Versione 3.0",
     "heroAccent": "CPU retro, sistemi multi-scheda, precisione circuitale completa",
-    "heroSubtitle": "Velxio 3.0 è la release più grande finora. Programma i classici Z80, 8080 e 4004, emula schede MicroSD e display ePaper, collega interi sistemi multi-scheda e annulla qualsiasi errore sulla tela. Oltre 100 nuovi esempi — tutto gratuito, open-source e in esecuzione nel tuo browser.",
-    "tryV3": "Prova Velxio 3.0",
-    "whatsNewHeading": "La più grande release di Velxio finora",
-    "whatsNewLead": "Velxio 2.5 ha portato circuiti analogici reali. Velxio 3.0 si espande in ogni direzione contemporaneamente — nuovi processori, storage e display, veri sistemi multi-scheda, simulazione più nitida e la rifinitura dell'editor che hai richiesto.",
+    "heroSubtitle": "AI IoT Lab 3.0 è la release più grande finora. Programma i classici Z80, 8080 e 4004, emula schede MicroSD e display ePaper, collega interi sistemi multi-scheda e annulla qualsiasi errore sulla tela. Oltre 100 nuovi esempi — tutto gratuito, open-source e in esecuzione nel tuo browser.",
+    "tryV3": "Prova AI IoT Lab 3.0",
+    "whatsNewHeading": "La più grande release di AI IoT Lab finora",
+    "whatsNewLead": "AI IoT Lab 2.5 ha portato circuiti analogici reali. AI IoT Lab 3.0 si espande in ogni direzione contemporaneamente — nuovi processori, storage e display, veri sistemi multi-scheda, simulazione più nitida e la rifinitura dell'editor che hai richiesto.",
     "retroTitle": "CPU classiche, completamente programmabili",
     "retroBody": "Posiziona un Z80, 8080, 4004, 4040 o 8086 sulla tela, carica la tua ROM e scrivi assembly direttamente nell'editor — nessuna scheda host richiesta.",
     "multiBoardTitle": "Sistemi interi, non singole schede",
@@ -147,7 +147,7 @@
     "examplesHeading": "100+ nuovi esempi nella galleria",
     "examplesLead": "Pico Doom, anteprime ESP32-CAM, dashboard ePaper, demo CPU retro, una serie 100 Giorni di IoT e dozzine di circuiti analogici — ognuno a un solo clic di distanza.",
     "outcomeHeading": "Il risultato",
-    "outcomeLead": "Velxio 3.0 trasforma un simulatore di schede in un banco di lavoro completo per sistemi embedded: processori, periferiche, storage, display e circuiti, insieme in una scheda del browser.",
+    "outcomeLead": "AI IoT Lab 3.0 trasforma un simulatore di schede in un banco di lavoro completo per sistemi embedded: processori, periferiche, storage, display e circuiti, insieme in una scheda del browser.",
     "outcome": {
       "build": "Costruisci sistemi completi",
       "buildBody": "Progetti multi-scheda con collegamenti UART/I2C/SPI reali, storage MicroSD e output ePaper o webcam — prototipati end-to-end prima di toccare l'hardware.",
@@ -156,9 +156,9 @@
       "openSource": "Ancora 100% open source",
       "openSourceBody": "AGPL-3.0 su GitHub. Nessun account, nessun cloud, nessuna installazione. Fai il fork, auto-ospitalo, estendilo."
     },
-    "builtOnOssLead": "Velxio 3.0 si basa su decenni di lavoro open-source su emulazione e EDA. Un enorme ringraziamento ai manutentori di ogni progetto qui sotto.",
+    "builtOnOssLead": "AI IoT Lab 3.0 si basa su decenni di lavoro open-source su emulazione e EDA. Un enorme ringraziamento ai manutentori di ogni progetto qui sotto.",
     "bottom": {
-      "title": "Prova Velxio 3.0 ora",
+      "title": "Prova AI IoT Lab 3.0 ora",
       "body": "Apri l'editor e inizia a costruire — processori, periferiche, circuiti e sistemi multi-scheda, con zero configurazione."
     }
   }

@@ -29,7 +29,8 @@ import { EditorPage } from './EditorPage';
 import { AppHeader } from '../components/layout/AppHeader';
 import { useSEO } from '../utils/useSEO';
 
-const DOMAIN = 'https://velxio.dev';
+// Relative canonical URLs — this deployment has no fixed domain.
+const DOMAIN = '';
 
 export const ExampleEditorPage: React.FC = () => {
   const { exampleId } = useParams<{ exampleId: string }>();
@@ -47,10 +48,10 @@ export const ExampleEditorPage: React.FC = () => {
 
   useSEO({
     title: example
-      ? `${example.title} — Velxio Arduino Simulator`
-      : 'Example — Velxio',
+      ? `${example.title} — AI物聯網實驗室`
+      : '範例 — AI物聯網實驗室',
     description:
-      example?.description ?? 'Arduino example running on Velxio.',
+      example?.description ?? '可直接在瀏覽器執行的 Arduino 電路範例。',
     url: example
       ? `${DOMAIN}/example/${example.id}`
       : `${DOMAIN}/examples`,

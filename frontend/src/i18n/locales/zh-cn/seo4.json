@@ -233,7 +233,7 @@
         "q1": "什么是ESP32-S3？",
         "a1": "ESP32-S3是乐鑫推出的Xtensa LX7双核微控制器，运行频率240 MHz。与原始ESP32相比，它增加了USB OTG、用于AI/ML的向量指令以及多达45个GPIO引脚。",
         "q2": "ESP32-S3模拟器免费吗？",
-        "a2": "是的。Velxio 100%免费开源。通过QEMU在浏览器中模拟ESP32-S3代码，进行真实的Xtensa LX7仿真——无需云、无需订阅。",
+        "a2": "是的。AI物联网实验室 100%免费开源。通过QEMU在浏览器中模拟ESP32-S3代码，进行真实的Xtensa LX7仿真——无需云、无需订阅。",
         "q3": "支持哪些ESP32-S3开发板？",
         "a3": "Velxio支持ESP32-S3 DevKitC-1、Seeed XIAO ESP32-S3和Arduino Nano ESP32（使用ESP32-S3芯片）。",
         "q4": "我可以在ESP32-S3上使用Arduino库吗？",

@@ -115,6 +115,27 @@ app.include_router(simulation.router, prefix="/api/simulation", tags=["simulatio
 from app.api.routes import iot_gateway
 app.include_router(iot_gateway.router, prefix="/api/gateway", tags=["iot-gateway"])
 
+# AI Assistant — streaming proxy to an OpenAI-compatible endpoint. The agent
+# loop and all tool execution live in the browser; this only relays one model
+# call per turn.
+from app.api.routes import agent
+app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
+
+# Self-contained cloud accounts + storage (SQLite; stdlib-only crypto).
+# Fork feature — the upstream OSS build is stateless and keeps auth in the
+# private velxio-prod overlay; this fork ships its own minimal version so
+# chat sessions and projects can live server-side. See services/cloud_db.py.
+from app.api.routes import auth as cloud_auth
+from app.api.routes import cloud
+from app.api.routes import lms
+from app.api.routes import admin as platform_admin
+app.include_router(cloud_auth.router, prefix="/api/auth", tags=["cloud-auth"])
+app.include_router(cloud.router, prefix="/api/cloud", tags=["cloud-storage"])
+# 「AI物聯網實驗室」learning management: classes, lesson progress, quizzes.
+app.include_router(lms.router, prefix="/api/lms", tags=["lms"])
+# Platform-operator admin: batch accounts, AI token quotas, password resets.
+app.include_router(platform_admin.router, prefix="/api/admin", tags=["admin"])
+
 # Optional pro extension. The `app.pro` package only exists in private builds
 # (overlaid at Docker build time by an external repo) — its absence in the
 # open-source image is expected and silently ignored. Anyone with private

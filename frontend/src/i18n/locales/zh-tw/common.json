@@ -1,0 +1,641 @@
+{
+  "header": {
+    "skipToContent": "跳轉到內容",
+    "openMenu": "開啟選單",
+    "closeMenu": "關閉選單",
+    "nav": {
+      "home": "首頁",
+      "documentation": "文件",
+      "examples": "範例",
+      "editor": "編輯器",
+      "about": "關於",
+      "pricing": "價格",
+      "download": "下載",
+      "blog": "部落格",
+      "github": "GitHub",
+      "discord": "Discord",
+      "classroom": "面向學校",
+      "learn": "課程",
+      "teacher": "教學管理",
+      "guide": "使用說明",
+      "admin": "管理後台"
+    },
+    "auth": {
+      "signIn": "登入",
+      "signUp": "註冊",
+      "myProjects": "我的專案",
+      "signOut": "登出"
+    },
+    "language": "語言",
+    "search": "搜尋"
+  },
+  "footer": {
+    "about": "AI物聯網實驗室 是一款免費、開源的電路和微控制器模擬器，完全在瀏覽器中執行。支援 Arduino、ESP32、RP2040 和 ATtiny85，並具有 SPICE 精度的模擬協同模擬。專為透過實踐學習的設計者、學生和嵌入式工程師打造。採用 AGPLv3 授權。"
+  },
+  "landing": {
+    "hero": {
+      "titleLine1": "Arduino、ESP32 和 Raspberry Pi。",
+      "titleAccent": "就在你的瀏覽器中。",
+      "subtitle": "編寫程式碼、連線元件、執行。支援 19 塊開發板，AI 智慧助手為你搭建電路，真實 CPU 模擬，完整離線桌面應用，AGPLv3 開源。",
+      "ctaPrimary": "免費線上試用模擬器 →",
+      "ctaGithub": "在 GitHub 上檢視",
+      "trustLine": "內建 AI 助手 · 離線可用 · AGPLv3 開源 · 無需註冊",
+      "imageAlt": "AI物聯網實驗室 編輯器中的 Arduino Uno 交通燈電路"
+    },
+    "boards": {
+      "label": "支援的硬體",
+      "titleLine1": "每種架構。",
+      "titleLine2": "一個工具。",
+      "subtitle": "19 種開發板，涵蓋 5 種 CPU 架構——AVR8、ARM Cortex-M0+、RISC-V、Xtensa 和 Linux。全部在本地執行，無需雲。"
+    },
+    "features": {
+      "label": "功能",
+      "title": "你需要的一切。",
+      "subtitle": "一個完整的 IDE、編譯器和多架構模擬器——在本地執行，無需外部服務。",
+      "spice": {
+        "title": "即時 SPICE 模擬",
+        "desc": "ngspice-WASM 引擎——完整的改進節點分析，約 60 Hz。電阻、電容、運放、BJT、MOSFET、穩壓器行為如同真實矽片，而非理想模型。"
+      },
+      "engines": {
+        "title": "5 種模擬引擎",
+        "desc": "AVR8（ATmega328P、ATmega2560、ATtiny85）、RP2040（ARM Cortex-M0+）、RV32IMC（ESP32-C3、CH32V003 透過 QEMU）、Xtensa LX6/LX7（ESP32 透過 QEMU）和 ARM Cortex-A53（Raspberry Pi 3 Linux）。"
+      },
+      "customChips": {
+        "title": "自定義晶片",
+        "desc": "使用 Wokwi 自定義晶片 API，用 C、Rust 或 AssemblyScript 編寫你自己的積體電路。編譯為 WebAssembly 並在專案間複用。"
+      },
+      "components": {
+        "title": "100 多個元件",
+        "desc": "SPICE 精度的模擬元件以及 48 多個 wokwi 視覺化元件——LED、LCD、ILI9341 TFT、伺服馬達、蜂鳴器、超音波感測器、鍵盤、NeoPixel 燈帶。"
+      },
+      "instruments": {
+        "title": "即時儀器",
+        "desc": "多通道示波器、電壓表、電流表、訊號發生器。放置在任何節點上，觀察波形隨模擬即時更新。"
+      },
+      "monaco": {
+        "title": "Monaco 編輯器 + arduino-cli",
+        "desc": "VS Code 級別的 C++ 編輯器，支援多檔案工作區。本地 arduino-cli 編譯為真實的 .hex / .uf2 / .bin 檔案——無需雲端往返。"
+      }
+    },
+    "support": {
+      "title": "支援專案",
+      "subtitle": "AI物聯網實驗室 是免費且開源的。如果它為你節省了時間，請考慮支援其開發。",
+      "ctaSponsors": "GitHub Sponsors",
+      "ctaPaypal": "透過 PayPal 捐贈"
+    },
+    "licensing": {
+      "label": "授權條款",
+      "title": "免費,提供商業選項。",
+      "subtitle": "開源版本採用 AGPLv3 協議。需要將 AI物聯網實驗室 整合到閉源產品中的團隊可選擇商業授權。",
+      "opensource": {
+        "title": "開源 — AGPLv3",
+        "desc": "個人使用、教育、研究和自託管永久免費。可修改、Fork 並重新分發 — 您的修改也必須以 AGPLv3 協議釋出。",
+        "cta": "在 GitHub 上檢視原始碼 →"
+      },
+      "commercial": {
+        "badge": "商業",
+        "title": "商業授權條款",
+        "desc": "適用於閉源產品、專有 SaaS 或 AGPLv3 協議的互惠條款與您的商業模式不相容的企業內部使用場景。",
+        "cta": "聯絡諮詢定價 →"
+      }
+    },
+    "ai": {
+      "label": "AI 智慧體",
+      "title": "由 AI 智慧體驅動。",
+      "subtitle": "多步驟 AI 智慧體在編輯器中執行,讀取畫布、編寫程式碼、放置元件並完成接線 — 全部透過自然語言。底層使用前沿 LLM,按成本與可用性自動路由。",
+      "cards": {
+        "wire": {
+          "title": "放置和接線",
+          "desc": "只需說\"在 D2 加一個按鈕,5V 上拉電阻\"。智慧體會選擇元件、放到畫布上、連線每個接腳並標註導線。"
+        },
+        "code": {
+          "title": "生成可用程式碼",
+          "desc": "描述你希望開發板做什麼,智慧體會寫出 Arduino / MicroPython 程式碼,編譯並載入韌體 — 無需從聊天框複製貼上。"
+        },
+        "debug": {
+          "title": "即時診斷電路",
+          "desc": "在佈線 bug 上卡住了?傳送畫布截圖,智慧體讀取原理圖、執行模擬、告訴你哪個接腳錯了。"
+        }
+      }
+    },
+    "pricing": {
+      "label": "定價",
+      "title": "電路免費,AI 收費。",
+      "subtitle": "模擬器永久免費。訂閱僅提升 AI 智慧體配額 — 積分每天重新整理。",
+      "popular": "最受歡迎",
+      "tiers": {
+        "free": {
+          "name": "Free",
+          "tagline": "體驗模擬器與輕量 AI 協助。",
+          "f1": "每日 20 AI 積分(每月最多 600)",
+          "f2": "30+ 塊開發板 + 48+ 元件",
+          "f3": "真實 CPU 模擬,公開專案",
+          "cta": "開始使用"
+        },
+        "maker": {
+          "name": "Maker",
+          "tagline": "面向用 AI 幫助構建真實電路的創客。",
+          "f1": "每日 500 AI 信用額度（每月最多 15,000）",
+          "f2": "未列出的專案 + AI物聯網實驗室 Desktop（離線）",
+          "f3": "ESP32、STM32 和 Raspberry Pi 模擬時長無限制",
+          "cta": "開始 Maker"
+        },
+        "pro": {
+          "name": "Pro",
+          "tagline": "私人專案、GitHub 同步與 BOM 匯出。",
+          "f1": "每日 2,000 AI 信用額度（每月最多 60,000）",
+          "f2": "私人專案 + BOM CSV + 原理圖 PNG",
+          "f3": "GitHub 同步 + 無水印嵌入",
+          "cta": "訂閱 Pro"
+        }
+      },
+      "classroomBanner": "準備在課程中使用 AI物聯網實驗室？AI物聯網實驗室 for Classroom 為每位學生提供 Pro 訪問授權權，每年 $40 起。",
+      "classroomCta": "檢視課堂方案 →"
+    }
+  },
+  "profile": {
+    "newProject": "新建專案",
+    "loading": "載入中…",
+    "empty": "暫無公開專案。",
+    "private": "私有",
+    "copyLink": "複製可分享連結",
+    "notFound": "未找到使用者。"
+  },
+  "pricing": {
+    "title": "定價",
+    "selfHosted": "此 AI物聯網實驗室 例項是從開源映象自託管的——所有功能對每位使用者免費。",
+    "hostedVersion": "託管版本 <link>velxio.dev</link> 提供可選的 Pro 層級，有助於資助開發。",
+    "sourceCode": "原始碼在 GitHub 上採用 <link>MIT 授權</link>。"
+  },
+  "admin": {
+    "loading": "載入中…",
+    "panel": "管理面板",
+    "logout": "退出登入",
+    "tabs": {
+      "dashboard": "儀表盤",
+      "users": "使用者",
+      "projects": "專案",
+      "boards": "開發板"
+    },
+    "errors": {
+      "save": "儲存失敗。"
+    },
+    "editUser": {
+      "title": "編輯使用者",
+      "username": "使用者名稱",
+      "email": "郵箱",
+      "newPassword": "新密碼（留空則保持不變）",
+      "passwordPlaceholder": "至少 8 個字元",
+      "admin": "管理員",
+      "active": "活躍",
+      "cancel": "取消",
+      "save": "儲存",
+      "saving": "儲存中…"
+    },
+    "setup": {
+      "title": "管理員設定",
+      "body": "尚未存在管理員帳戶。建立第一個管理員使用者以繼續。",
+      "password": "密碼",
+      "confirmPassword": "確認密碼",
+      "passwordMismatch": "密碼不匹配。",
+      "creating": "建立中…",
+      "createAdmin": "建立管理員",
+      "failed": "建立管理員失敗。"
+    },
+    "notAdmin": {
+      "title": "需要管理員授權權",
+      "body": "您必須以管理員身份登入才能訪問此面板。",
+      "goLogin": "前往登入"
+    },
+    "users": {
+      "loadFailed": "載入使用者失敗。",
+      "deleteFailed": "刪除使用者失敗。",
+      "confirmDelete": "刪除使用者 \"{{username}}\" 及其所有專案？此操作無法撤銷。",
+      "searchPlaceholder": "按使用者名稱或郵箱搜尋…",
+      "count_one": "{{count}} 個使用者",
+      "count_other": "{{count}} 個使用者",
+      "noResults": "未找到使用者。",
+      "col": {
+        "username": "使用者名稱",
+        "email": "郵箱",
+        "role": "角色",
+        "status": "狀態",
+        "projects": "專案數",
+        "compiles": "編譯次數",
+        "runs": "執行次數",
+        "boards": "開發板",
+        "country": "國家",
+        "lastActive": "最後活躍",
+        "joined": "加入時間",
+        "actions": "操作"
+      },
+      "actions": {
+        "activity": "活動",
+        "edit": "編輯",
+        "delete": "刪除",
+        "resetAgentUsage": "重置代理",
+        "resetAgentUsageTooltip": "清除今日的代理使用量，讓使用者可以繼續使用。"
+      },
+      "confirmResetAgentUsage": "為 \"{{username}}\" 重置代理配額（今日，UTC）？",
+      "resetAgentUsageDone": "已為 {{username}} 重置配額 — 在 {{rows}} 條事件中釋放了 {{cycles}} 個週期。",
+      "resetAgentUsageFailed": "無法重置代理使用量。"
+    },
+    "boards": {
+      "loadFailed": "載入開發板指標失敗。",
+      "range": "範圍：",
+      "byFamily": "按開發板系列",
+      "byFqbn": "按精確 FQBN",
+      "noData": "無資料。",
+      "col": {
+        "family": "系列",
+        "fqbn": "FQBN",
+        "compiles": "編譯次數",
+        "errors": "錯誤次數",
+        "successRate": "成功率",
+        "runs": "執行次數",
+        "distinctUsers": "不同使用者數",
+        "distinctProjects": "不同專案數"
+      }
+    },
+    "dashboard": {
+      "loadFailed": "載入指標失敗。",
+      "loadingMetrics": "載入指標中…",
+      "unknown": "未知",
+      "kpi": {
+        "totalUsers": "總使用者數",
+        "totalProjects": "總專案數",
+        "compilesAllTime": "編譯次數（全部時間）",
+        "runsAllTime": "執行次數（全部時間）",
+        "newIn30d": "30 天內新增 {{count}}",
+        "successPct": "成功率 {{pct}}%",
+        "dau": "過去 24 小時活躍",
+        "wau": "過去 7 天活躍",
+        "mau": "過去 30 天活躍",
+        "publicPrivate": "公開 / 私有"
+      },
+      "charts": {
+        "activityOverTime": "隨時間變化的活動",
+        "noActivity": "此範圍內尚無活動。",
+        "compilesByFamily": "按開發板系列的編譯次數（{{days}} 天）",
+        "diversityTitle": "每位使用者使用的開發板系列數",
+        "diversitySubtitle": "定價訊號——多板使用者可能適合付費層級。",
+        "boardCount_one": "{{count}} 塊開發板",
+        "boardCount_other": "{{count}} 塊開發板",
+        "noDataYet": "暫無資料。",
+        "topFqbn": "按 FQBN 的熱門開發板（{{days}} 天）",
+        "topCountries": "熱門國家（{{days}} 天）",
+        "countriesSubtitle": "來自 Cloudflare 的 CF-IPCountry 標頭。“使用者”=當前所在國家，“註冊”=註冊時所在國家，“活躍”=此範圍內有活動的不同使用者。",
+        "noCountryData": "暫無國家資料（可能未在 Cloudflare 後執行）。",
+        "topUsers": "按編譯次數排名的熱門使用者",
+        "topProjects": "按編譯次數排名的熱門專案"
+      },
+      "col": {
+        "country": "國家",
+        "users": "使用者數",
+        "signups": "註冊數",
+        "activeRange": "活躍（{{days}} 天）",
+        "user": "使用者"
+      }
+    },
+    "activity": {
+      "loadFailed": "載入活動失敗。",
+      "title": "每日活動 — {{username}}",
+      "subtitle": "該使用者每天、每個專案的編譯和執行次數。",
+      "noActivity": "所選範圍內無活動。",
+      "projectCount_one": "{{count}} 個專案",
+      "projectCount_other": "{{count}} 個專案",
+      "deletedProject": "（已刪除的專案）",
+      "noProject": "（無專案）",
+      "col": {
+        "date": "日期",
+        "saves": "儲存次數"
+      }
+    },
+    "projects": {
+      "loadFailed": "載入專案失敗。",
+      "deleteFailed": "刪除專案失敗。",
+      "confirmDelete": "刪除專案 \"{{name}}\"？此操作無法撤銷。",
+      "searchPlaceholder": "按名稱或所有者搜尋…",
+      "count_one": "{{count}} 個專案",
+      "count_other": "{{count}} 個專案",
+      "noResults": "未找到專案。",
+      "private": "私有",
+      "public": "公開",
+      "privateTitle": "私有專案（管理員檢視）",
+      "col": {
+        "name": "名稱",
+        "owner": "所有者",
+        "board": "開發板",
+        "visibility": "可見性",
+        "compiles": "編譯次數",
+        "runs": "執行次數",
+        "updates": "更新次數",
+        "lastCompile": "最後編譯",
+        "updated": "更新於"
+      }
+    },
+    "title": "管理後台",
+    "needSignin": "請以管理員帳號登入。",
+    "needAdmin": "這個頁面僅限平台管理員使用。"
+  },
+  "examples": {
+    "heading": "精選專案",
+    "subtitle": "瀏覽並執行範例專案——按開發板分類",
+    "searchPlaceholder": "搜尋範例——試試 'esp32 oled', 'blink', 'dht'…",
+    "searchLabel": "搜尋範例",
+    "clearSearch": "清除搜尋",
+    "clear": "清除",
+    "matchCount_one": "{{count}} 個匹配",
+    "matchCount_other": "{{count}} 個匹配",
+    "filters": {
+      "categoryLabel": "類別：",
+      "difficultyLabel": "難度：",
+      "category": {
+        "all": "全部",
+        "basics": "基礎",
+        "sensors": "感測器",
+        "displays": "顯示",
+        "communication": "通訊",
+        "games": "遊戲",
+        "robotics": "機器人",
+        "circuits": "電路"
+      },
+      "difficulty": {
+        "all": "全部",
+        "beginner": "初級",
+        "intermediate": "中級",
+        "advanced": "高階"
+      }
+    },
+    "copyLink": "複製可分享連結",
+    "empty": "未找到符合所選篩選條件的範例",
+    "emptyForQuery": "未找到 \"{{query}}\" 的範例，且符合所選篩選條件",
+    "resetFilters": "重置篩選條件",
+    "installing": "正在安裝庫（{{done}}/{{total}}）",
+    "loadingExample": "正在載入範例...",
+    "notFound": "未找到範例 \"{{id}}\"。",
+    "browseAll": "瀏覽所有範例"
+  },
+  "auth": {
+    "login": {
+      "title": "登入",
+      "subtitle": "以繼續使用 AI物聯網實驗室",
+      "email": "郵箱",
+      "password": "密碼",
+      "signIn": "登入",
+      "signingIn": "登入中…",
+      "or": "或",
+      "continueGoogle": "使用 Google 繼續",
+      "noAccount": "沒有帳戶？",
+      "failed": "登入失敗。"
+    },
+    "register": {
+      "title": "建立帳戶",
+      "subtitle": "免費開始構建",
+      "username": "使用者名稱",
+      "usernamePlaceholder": "例如 alice",
+      "passwordPlaceholder": "至少 8 個字元",
+      "create": "建立帳戶",
+      "creating": "建立帳戶中…",
+      "haveAccount": "已有帳戶？",
+      "errors": {
+        "reserved": "該使用者名稱已被保留。",
+        "usernameRules": "使用者名稱必須為 3-30 個字元（a-z、0-9、_、-）",
+        "passwordTooShort": "密碼必須至少 8 個字元。",
+        "failed": "註冊失敗。"
+      }
+    }
+  },
+  "quotaModal": {
+    "titleFree": "今日免費額度已用完",
+    "titlePaid": "已達到每日上限",
+    "bodyFree": "免費帳戶每天有 {{cap}} 條 AI 訊息。Pro ($15/月) 可享 {{proCap}}/天 —— 是免費版的 {{multiplier}} 倍。或等待配額重置。",
+    "bodyPaid": "您的 {{plan}} 套餐每天允許 {{cap}} 條訊息。升級到更高級別或等待重置。",
+    "today": "今日",
+    "thisMonth": "本月",
+    "resets": "重置時間",
+    "ctaUpgrade": "升級到 Pro — $15/月",
+    "ctaSeePlans": "檢視套餐",
+    "ctaWait": "等待重置"
+  },
+  "editor": {
+    "share": {
+      "updateFailed": "無法更改可見性，請重試。",
+      "visibility": {
+        "publicLabel": "公開",
+        "publicHint": "任何人拿到連結都能找到此專案。",
+        "unlistedLabel": "不列出",
+        "unlistedHint": "從搜尋和畫廊中隱藏 —— 只能透過分享連結訪問。",
+        "privateLabel": "私有",
+        "privateHint": "只有你能看到此專案。"
+      }
+    }
+  },
+  "agent": {
+    "title": "AI 助手",
+    "modelChip": "當前模型:{{model}}(點選修改)",
+    "settings": "介面設定",
+    "clear": "清空對話",
+    "close": "關閉",
+    "settingsHint": "支援任何 OpenAI 相容介面。留空的項使用伺服器端預設值。所有設定只儲存在你自己的瀏覽器中。",
+    "baseUrl": "Base URL(含 /v1)",
+    "apiKey": "API Key",
+    "apiKeyServerSet": "(伺服器已配置,可留空)",
+    "model": "模型",
+    "modelListFetch": "獲取模型列表",
+    "modelListLoading": "獲取中…",
+    "effort": "推理力度",
+    "effortDefault": "預設({{value}})",
+    "effortOff": "關",
+    "effortNone": "關閉",
+    "effortLow": "low(最快)",
+    "effortHigh": "high(最強)",
+    "test": "測試連線",
+    "testing": "測試中…",
+    "back": "返回對話",
+    "testOk": "✓ 連線成功 · {{message}} · {{ms}}ms",
+    "testFail": "✗ 連線失敗:{{message}}",
+    "needKey": "還沒有可用的 API Key — <1>開啟介面設定</1> 填入你的 OpenAI 相容介面地址和 Key(只儲存在本機瀏覽器)。",
+    "emptyTitle": "用自然語言描述專案,AI 自動搭電路、接線、寫程式碼、編譯執行。",
+    "emptySub": "生成之後你可以隨意手動修改,AI 每輪都會讀取最新狀態。",
+    "thinking": "思考中",
+    "deepThinking": "深度思考中 · 已推理 {{chars}} 字",
+    "error": "出錯了:{{message}}",
+    "retry": "重試",
+    "restore": "恢復專案到這條訊息之前",
+    "placeholder": "描述你想做的專案,例如:做一個呼吸燈",
+    "hint": "Enter 傳送 · Shift+Enter 換行",
+    "send": "傳送",
+    "stop": "停止",
+    "expand": "點選展開詳情",
+    "usage": "tokens:輸入 {{input}} · 輸出 {{output}}",
+    "restoreConfirm": "將整個專案(電路 + 程式碼)恢復到這條訊息之前的狀態?當前未儲存的改動會丟失。",
+    "steer": "排隊訊息(AI 正在工作)",
+    "steerPlaceholder": "AI 工作中也可以輸入,訊息會插入當前任務…",
+    "unqueue": "移除排隊訊息",
+    "capped": "AI 已達到單輪步數上限而暫停,任務可能未完成。",
+    "continue": "繼續",
+    "compacted": "較早的上下文已壓縮為摘要",
+    "contextLimit": "上下文上限(tokens,用於自動壓縮)",
+    "usageLabel": "本週 AI 用量",
+    "usageTip": "每週一重置。用完後 AI 助教會暫停,需請管理員調整額度。"
+  },
+  "cloud": {
+    "signIn": "登入",
+    "signUp": "註冊",
+    "signOut": "退出登入",
+    "myProjects": "我的專案",
+    "name": "暱稱",
+    "namePlaceholder": "例如:小明",
+    "email": "郵箱",
+    "password": "密碼(至少 6 位)",
+    "passwordPlaceholder": "至少 6 個字元",
+    "createAccount": "建立帳號",
+    "working": "處理中…",
+    "selfHostNote": "帳號只存在於當前這臺伺服器(自建 SQLite)。該例項的管理員可以看到儲存的資料——請勿使用重要密碼。",
+    "projectName": "專案名稱",
+    "projectNamePlaceholder": "例如:紅綠燈",
+    "saveToCloud": "儲存到雲端",
+    "saveOverwrite": "儲存(覆蓋)",
+    "saveAsNew": "另存為新專案",
+    "downloadVlxHint": "下載本地 .vlx 副本",
+    "noProjects": "還沒有云端專案",
+    "delete": "刪除",
+    "loadConfirm": "開啟這個雲端專案?當前工作區未儲存的改動會丟失。",
+    "deleteConfirm": "從雲端刪除「{{name}}」?此操作無法撤銷。",
+    "chatHistory": "對話歷史",
+    "newChat": "新對話",
+    "noChats": "還沒有儲存的對話",
+    "loadChatConfirm": "開啟這個對話?當前面板內容會被替換(它仍儲存在雲端)。",
+    "deleteChatConfirm": "從雲端刪除這個對話?",
+    "syncSaved": "已同步到雲端",
+    "syncSaving": "同步中…",
+    "syncError": "同步失敗——下次變動時重試",
+    "signInForHistory": "登入後對話會自動儲存到雲端,換裝置也能繼續。",
+    "currentChat": "當前",
+    "role": "我的身分",
+    "roleStudent": "學生",
+    "roleTeacher": "教師",
+    "teacherCode": "教師註冊碼(校方未設定則留白)",
+    "teacherCodePlaceholder": "選填"
+  },
+  "versions": {
+    "title": "版本歷史",
+    "defaultLabel": "手動儲存",
+    "savePlaceholder": "給這個版本起個名字(如\"紅綠燈完成\")",
+    "saveNow": "儲存版本",
+    "saved": "已儲存「{{label}}」",
+    "unchanged": "與最新版本相同,無需儲存",
+    "empty": "還沒有版本。AI 每輪開始前會自動儲存;你也可以在這裡手動儲存。",
+    "restore": "恢復",
+    "restoreConfirm": "把專案恢復到「{{label}}」?當前狀態會先自動備份。",
+    "restored": "已恢復「{{label}}」,之前的狀態已自動備份。",
+    "restoreFailed": "恢復失敗 — 無法載入該版本。",
+    "delete": "刪除版本",
+    "deleteConfirm": "刪除版本「{{label}}」?此操作不可撤銷。",
+    "renameHint": "雙擊重新命名",
+    "stats": "{{boards}} 塊板 · {{components}} 個元件 · {{files}} 個檔案",
+    "hint": "🖐 手動 · ✨ AI 輪自動儲存 · ⟳ 自動備份。最多保留 50 個版本;手動儲存的版本不會被自動清理。",
+    "source": {
+      "manual": "手動儲存",
+      "ai": "AI 輪開始前儲存",
+      "auto": "自動備份"
+    }
+  },
+  "brand": {
+    "name": "AI物聯網實驗室",
+    "seoTitle": "AI物聯網實驗室 — 免費線上 Arduino / ESP32 模擬器與物聯網課程平台",
+    "seoDescription": "為初中、高中學生與教師打造的免費開源學習平台:瀏覽器內模擬 Arduino、ESP32 等 19 種開發板,內建互動課程、選擇題測驗、班級管理與 AI 智慧助教。",
+    "hero": {
+      "badge": "免費 · 開源 · 免安裝 · 免硬體",
+      "titleTop": "在瀏覽器裡,",
+      "titleAccent": "打開你的物聯網實驗室",
+      "subtitle": "寫程式、接電路、跑模擬 — Arduino 與 ESP32 就在眼前動起來。跟著互動課程一步步學,AI 助教隨時解答,老師還能掌握全班進度。",
+      "ctaLearn": "開始上課",
+      "ctaEditor": "進入實驗室"
+    },
+    "features": {
+      "sim": {
+        "title": "真實模擬器",
+        "desc": "不是動畫,是真的在跑你的程式:AVR、ESP32、RP2040 晶片級模擬,100+ 個電子元件、示波器與序列埠監控,跟真實硬體一樣的行為。"
+      },
+      "courses": {
+        "title": "互動課程",
+        "desc": "從點亮第一顆 LED 到 ESP32 連上網路,每一課都有原理解說、可一鍵載入的電路範例,以及動手挑戰 — 邊做邊學,不用背講義。"
+      },
+      "quiz": {
+        "title": "測驗與班級管理",
+        "desc": "每課附選擇題測驗、即時對錯回饋與自動計分;老師建立班級代碼,學生一鍵加入,儀表板即時呈現全班進度與成績。"
+      }
+    },
+    "ai": {
+      "title": "AI 智慧助教,隨時在旁邊",
+      "desc": "用中文說「幫我做一個溫度警報器」,AI 助教就會在你的畫布上擺元件、接線、寫程式、跑模擬給你看;卡關的時候問它為什麼,它會像老師一樣,一次講一個觀念。",
+      "cta": "試試 AI 助教",
+      "demoUser": "為什麼我的 LED 不會亮?",
+      "demoAi": "我看了你的電路:LED 的陰極接到了 D13,應該接 GND 才能形成迴路。要我幫你改好並示範一次嗎?"
+    },
+    "teacherSection": {
+      "title": "給老師:一間開箱即用的電腦教室",
+      "desc": "不用採購硬體、不用安裝軟體:開一個班級代碼,學生用瀏覽器就能做完整個學期的實驗。課程進度、測驗成績一目了然,還能自行架設在校內伺服器,資料完全自主。",
+      "cta": "前往教學管理"
+    },
+    "footer": {
+      "oss": "開源軟體(AGPLv3 授權)",
+      "source": "原始碼"
+    }
+  },
+  "learn": {
+    "seoTitle": "課程 — AI物聯網實驗室",
+    "seoDescription": "Arduino 入門與 ESP32 物聯網互動課程:原理解說、一鍵載入電路範例、動手挑戰與選擇題測驗。",
+    "title": "課程",
+    "subtitle": "每一課都能直接在瀏覽器裡動手做:讀原理、開範例電路、完成挑戰,再用小測驗確認自己學會了。",
+    "signinHint": "進度會先存在這台電腦。登入後可跨裝置同步,老師也能在班級報表看到你的進度。",
+    "signinCta": "登入 / 註冊",
+    "progress": "{{done}}/{{total}} 課完成",
+    "minutes": "{{m}} 分鐘",
+    "backToCourses": "所有課程",
+    "openExample": "開啟本課電路範例",
+    "challenge": "動手挑戰",
+    "markDone": "完成本課",
+    "done": "已完成",
+    "quiz": {
+      "title": "📝 小測驗",
+      "best": "最佳成績",
+      "submit": "繳交答案",
+      "answerAll": "請先回答所有題目",
+      "correct": "答對了!",
+      "wrong": "答錯了。",
+      "score": "得分",
+      "retry": "再試一次"
+    },
+    "class": {
+      "mine": "我的班級",
+      "none": "尚未加入任何班級",
+      "codePlaceholder": "輸入班級代碼",
+      "join": "加入班級",
+      "joinedMsg": "已加入「{{name}}」!",
+      "unknownCode": "找不到這個班級代碼,請跟老師確認。",
+      "joinFailed": "加入失敗,請稍後再試。"
+    }
+  },
+  "teacher": {
+    "seoTitle": "教學管理 — AI物聯網實驗室",
+    "seoDescription": "建立班級、發放班級代碼,即時掌握每位學生的課程進度與測驗成績。",
+    "title": "教學管理",
+    "needSignin": "請先登入教師帳號,才能建立與管理班級。",
+    "needTeacherRole": "這個頁面需要教師帳號。你目前是學生身分 — 若你是老師,請用「教師」身分重新註冊一個帳號。",
+    "namePlaceholder": "班級名稱,例如:八年級甲班",
+    "create": "建立班級",
+    "empty": "還沒有班級。建立第一個班級後,把班級代碼發給學生,他們在「課程」頁輸入代碼即可加入。",
+    "members": "{{n}} 位學生",
+    "delete": "刪除",
+    "deleteConfirm": "確定要刪除這個班級嗎?學生的個人進度不會消失,但班級與名單會被移除。",
+    "copy": "複製代碼",
+    "copied": "已複製!",
+    "reportTitle": "「{{name}}」學習報表",
+    "noMembers": "還沒有學生加入。把代碼 {{code}} 發給學生吧!",
+    "student": "學生",
+    "progressCol": "進度"
+  }
+}

@@ -26,7 +26,7 @@
     "search": "搜索"
   },
   "footer": {
-    "about": "Velxio 是一款免费、开源的电路和微控制器模拟器，完全在浏览器中运行。支持 Arduino、ESP32、RP2040 和 ATtiny85，并具有 SPICE 精度的模拟协同仿真。专为通过实践学习的设计者、学生和嵌入式工程师打造。采用 AGPLv3 许可。"
+    "about": "AI物联网实验室 是一款免费、开源的电路和微控制器模拟器，完全在浏览器中运行。支持 Arduino、ESP32、RP2040 和 ATtiny85，并具有 SPICE 精度的模拟协同仿真。专为通过实践学习的设计者、学生和嵌入式工程师打造。采用 AGPLv3 许可。"
   },
   "landing": {
     "hero": {
@@ -36,7 +36,7 @@
       "ctaPrimary": "免费在线试用模拟器 →",
       "ctaGithub": "在 GitHub 上查看",
       "trustLine": "内置 AI 助手 · 离线可用 · AGPLv3 开源 · 无需注册",
-      "imageAlt": "Velxio 编辑器中的 Arduino Uno 交通灯电路"
+      "imageAlt": "AI物联网实验室 编辑器中的 Arduino Uno 交通灯电路"
     },
     "boards": {
       "label": "支持的硬件",
@@ -75,14 +75,14 @@
     },
     "support": {
       "title": "支持项目",
-      "subtitle": "Velxio 是免费且开源的。如果它为你节省了时间，请考虑支持其开发。",
+      "subtitle": "AI物联网实验室 是免费且开源的。如果它为你节省了时间，请考虑支持其开发。",
       "ctaSponsors": "GitHub Sponsors",
       "ctaPaypal": "通过 PayPal 捐赠"
     },
     "licensing": {
       "label": "许可证",
       "title": "免费,提供商业选项。",
-      "subtitle": "开源版本采用 AGPLv3 协议。需要将 Velxio 集成到闭源产品中的团队可选择商业许可。",
+      "subtitle": "开源版本采用 AGPLv3 协议。需要将 AI物联网实验室 集成到闭源产品中的团队可选择商业许可。",
       "opensource": {
         "title": "开源 — AGPLv3",
         "desc": "个人使用、教育、研究和自托管永久免费。可修改、Fork 并重新分发 — 您的修改也必须以 AGPLv3 协议发布。",
@@ -132,7 +132,7 @@
           "name": "Maker",
           "tagline": "面向用 AI 帮助构建真实电路的创客。",
           "f1": "每日 500 AI 信用额度（每月最多 15,000）",
-          "f2": "未列出的项目 + Velxio Desktop（离线）",
+          "f2": "未列出的项目 + AI物联网实验室 Desktop（离线）",
           "f3": "ESP32、STM32 和 Raspberry Pi 模拟时长无限制",
           "cta": "开始 Maker"
         },
@@ -145,7 +145,7 @@
           "cta": "订阅 Pro"
         }
       },
-      "classroomBanner": "准备在课程中使用 Velxio？Velxio for Classroom 为每位学生提供 Pro 访问权限，每年 $40 起。",
+      "classroomBanner": "准备在课程中使用 AI物联网实验室？AI物联网实验室 for Classroom 为每位学生提供 Pro 访问权限，每年 $40 起。",
       "classroomCta": "查看课堂方案 →"
     }
   },
@@ -159,7 +159,7 @@
   },
   "pricing": {
     "title": "定价",
-    "selfHosted": "此 Velxio 实例是从开源镜像自托管的——所有功能对每位用户免费。",
+    "selfHosted": "此 AI物联网实验室 实例是从开源镜像自托管的——所有功能对每位用户免费。",
     "hostedVersion": "托管版本 <link>velxio.dev</link> 提供可选的 Pro 层级，有助于资助开发。",
     "sourceCode": "源代码在 GitHub 上采用 <link>MIT 许可</link>。"
   },
@@ -369,19 +369,10 @@
     "notFound": "未找到示例 \"{{id}}\"。",
     "browseAll": "浏览所有示例"
   },
-  "starBanner": {
-    "ariaLabel": "在 GitHub 上为 Velxio 加星",
-    "title": "喜欢 Velxio 吗？",
-    "body": "在 GitHub 上点个 ⭐ 可以帮助更多开发者发现这个项目——只需 2 秒钟！",
-    "title2": "帮个小忙？",
-    "body2": "Velxio 是免费的开源项目。在 GitHub 上点个 star 是支持它、帮助更多人发现它最简单的方式。",
-    "cta": "在 GitHub 上加星",
-    "dismiss": "忽略"
-  },
   "auth": {
     "login": {
       "title": "登录",
-      "subtitle": "以继续使用 Velxio",
+      "subtitle": "以继续使用 AI物联网实验室",
       "email": "邮箱",
       "password": "密码",
       "signIn": "登录",
@@ -431,6 +422,110 @@
         "privateLabel": "私有",
         "privateHint": "只有你能看到此项目。"
       }
+    }
+  },
+  "agent": {
+    "title": "AI 助手",
+    "modelChip": "当前模型:{{model}}(点击修改)",
+    "settings": "接口设置",
+    "clear": "清空对话",
+    "close": "关闭",
+    "settingsHint": "支持任何 OpenAI 兼容接口。留空的项使用服务器端默认值。所有设置只保存在你自己的浏览器中。",
+    "baseUrl": "Base URL(含 /v1)",
+    "apiKey": "API Key",
+    "apiKeyServerSet": "(服务器已配置,可留空)",
+    "model": "模型",
+    "modelListFetch": "获取模型列表",
+    "modelListLoading": "获取中…",
+    "effort": "推理力度",
+    "effortDefault": "默认({{value}})",
+    "effortOff": "关",
+    "effortNone": "关闭",
+    "effortLow": "low(最快)",
+    "effortHigh": "high(最强)",
+    "test": "测试连接",
+    "testing": "测试中…",
+    "back": "返回对话",
+    "testOk": "✓ 连接成功 · {{message}} · {{ms}}ms",
+    "testFail": "✗ 连接失败:{{message}}",
+    "needKey": "还没有可用的 API Key — <1>打开接口设置</1> 填入你的 OpenAI 兼容接口地址和 Key(只保存在本机浏览器)。",
+    "emptyTitle": "用自然语言描述项目,AI 自动搭电路、接线、写代码、编译运行。",
+    "emptySub": "生成之后你可以随意手动修改,AI 每轮都会读取最新状态。",
+    "thinking": "思考中",
+    "deepThinking": "深度思考中 · 已推理 {{chars}} 字",
+    "error": "出错了:{{message}}",
+    "retry": "重试",
+    "restore": "恢复项目到这条消息之前",
+    "placeholder": "描述你想做的项目,例如:做一个呼吸灯",
+    "hint": "Enter 发送 · Shift+Enter 换行",
+    "send": "发送",
+    "stop": "停止",
+    "expand": "点击展开详情",
+    "usage": "tokens:输入 {{input}} · 输出 {{output}}",
+    "restoreConfirm": "将整个项目(电路 + 代码)恢复到这条消息之前的状态?当前未保存的改动会丢失。",
+    "steer": "排队消息(AI 正在工作)",
+    "steerPlaceholder": "AI 工作中也可以输入,消息会插入当前任务…",
+    "unqueue": "移除排队消息",
+    "capped": "AI 已达到单轮步数上限而暂停,任务可能未完成。",
+    "continue": "继续",
+    "compacted": "较早的上下文已压缩为摘要",
+    "contextLimit": "上下文上限(tokens,用于自动压缩)"
+  },
+  "cloud": {
+    "signIn": "登录",
+    "signUp": "注册",
+    "signOut": "退出登录",
+    "myProjects": "我的项目",
+    "name": "昵称",
+    "namePlaceholder": "例如:小明",
+    "email": "邮箱",
+    "password": "密码(至少 6 位)",
+    "passwordPlaceholder": "至少 6 个字符",
+    "createAccount": "创建账号",
+    "working": "处理中…",
+    "selfHostNote": "账号只存在于当前这台服务器(自建 SQLite)。该实例的管理员可以看到存储的数据——请勿使用重要密码。",
+    "projectName": "项目名称",
+    "projectNamePlaceholder": "例如:红绿灯",
+    "saveToCloud": "保存到云端",
+    "saveOverwrite": "保存(覆盖)",
+    "saveAsNew": "另存为新项目",
+    "downloadVlxHint": "下载本地 .vlx 副本",
+    "noProjects": "还没有云端项目",
+    "delete": "删除",
+    "loadConfirm": "打开这个云端项目?当前工作区未保存的改动会丢失。",
+    "deleteConfirm": "从云端删除「{{name}}」?此操作无法撤销。",
+    "chatHistory": "对话历史",
+    "newChat": "新对话",
+    "noChats": "还没有保存的对话",
+    "loadChatConfirm": "打开这个对话?当前面板内容会被替换(它仍保存在云端)。",
+    "deleteChatConfirm": "从云端删除这个对话?",
+    "syncSaved": "已同步到云端",
+    "syncSaving": "同步中…",
+    "syncError": "同步失败——下次变动时重试",
+    "signInForHistory": "登录后对话会自动保存到云端,换设备也能继续。",
+    "currentChat": "当前"
+  },
+  "versions": {
+    "title": "版本历史",
+    "defaultLabel": "手动保存",
+    "savePlaceholder": "给这个版本起个名字(如\"红绿灯完成\")",
+    "saveNow": "保存版本",
+    "saved": "已保存「{{label}}」",
+    "unchanged": "与最新版本相同,无需保存",
+    "empty": "还没有版本。AI 每轮开始前会自动保存;你也可以在这里手动保存。",
+    "restore": "恢复",
+    "restoreConfirm": "把项目恢复到「{{label}}」?当前状态会先自动备份。",
+    "restored": "已恢复「{{label}}」,之前的状态已自动备份。",
+    "restoreFailed": "恢复失败 — 无法加载该版本。",
+    "delete": "删除版本",
+    "deleteConfirm": "删除版本「{{label}}」?此操作不可撤销。",
+    "renameHint": "双击重命名",
+    "stats": "{{boards}} 块板 · {{components}} 个元件 · {{files}} 个文件",
+    "hint": "🖐 手动 · ✨ AI 轮自动保存 · ⟳ 自动备份。最多保留 50 个版本;手动保存的版本不会被自动清理。",
+    "source": {
+      "manual": "手动保存",
+      "ai": "AI 轮开始前保存",
+      "auto": "自动备份"
     }
   }
 }

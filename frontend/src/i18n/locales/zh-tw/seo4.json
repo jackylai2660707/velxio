@@ -1,0 +1,251 @@
+{
+  "seo": {
+    "attiny85": {
+      "hero": {
+        "title": "免費ATtiny85模擬器",
+        "accent": "瀏覽器中的週期精確AVR模擬",
+        "subtitle": "為ATtiny85編寫Arduino程式碼並立即執行——每個AVR操作碼都忠實模擬。所有6個I/O接腳、用於I²C/SPI的USI、Timer0/Timer1 PWM、10位ADC、看門狗。連線到真實的SPICE類比電路。免費，無需安裝，無需帳戶。",
+        "ctaPrimary": "開啟ATtiny85模擬器",
+        "ctaSecondary": "瀏覽ATtiny85範例",
+        "trust": "免費開源 · 週期精確的avr8js · 無需註冊"
+      },
+      "specs": {
+        "heading": "模擬器中的ATtiny85規格",
+        "lead": "無需程式設計器或麵包板即可開發ATtiny85韌體所需的一切。",
+        "coreTitle": "核心",
+        "coreBody": "AVR 8位RISC，8 KB快閃記憶體，512 B SRAM，512 B EEPROM。DIP-8接腳排列（PB0–PB5加VCC/GND）。",
+        "gpioTitle": "GPIO",
+        "gpioBody": "PORTB上的6個I/O接腳。可配置為輸入/輸出/上拉。接腳變化中斷（PCINT0–PCINT5）和外部INT0。",
+        "timersTitle": "定時器與PWM",
+        "timersBody": "Timer0（8位）在PB0/PB1上有兩個PWM通道。Timer1（8位）具有高速模式和兩個PWM通道（PB1/PB4）——適用於更高頻率的PWM。",
+        "adcTitle": "ADC",
+        "adcBody": "10位ADC，4個輸入通道（ADC0在PB5，ADC1在PB2，ADC2在PB4，ADC3在PB3）。內部1.1 V參考電壓。",
+        "usiTitle": "USI",
+        "usiBody": "通用序列介面——位碰撞實現I²C（TWI）和SPI。相容TinyWireM / TinyWireS和標準SPI庫。",
+        "wdtTitle": "看門狗與睡眠",
+        "wdtBody": "看門狗定時器，支援復位和中斷模式。掉電、ADC降噪和空閒睡眠模式——適用於低功耗演示。"
+      },
+      "build": {
+        "heading": "你能構建什麼？",
+        "lead": "ATtiny85專案在小型、低功耗和模擬感知方面表現出色——這正是AI物聯網實驗室結合SPICE求解器的優勢。",
+        "blinkTitle": "閃爍與PWM漸變",
+        "blinkBody": "經典入門——透過Timer0在PB1上實現硬體PWM驅動的LED漸變，以及PB4上的高速Timer1 PWM。",
+        "buttonTitle": "按鈕驅動LED",
+        "buttonBody": "在PB2上讀取帶內部上拉的按鈕，韌體去抖，驅動PB0上的LED。",
+        "ntcTitlePrefix": "NTC溫度",
+        "ntcBodyPrefix": "在ADC1上讀取NTC熱敏電阻/固定電阻分壓器——SPICE求解器將實際分壓電壓返回給",
+        "ntcBodyCode": "analogRead()",
+        "ntcBodySuffix": "。",
+        "i2cTitle": "透過USI的I²C外設",
+        "i2cBody": "使用TinyWireM與PB0/PB2上的OLED、EEPROM或RTC通訊。匯流排流量端到端模擬。",
+        "spiTitle": "SPI WS2812 / 移位",
+        "spiBody": "透過USI位碰撞驅動WS2812燈帶或74HC595移位暫存器，僅需幾個接腳。",
+        "analogTitle": "模擬開關",
+        "analogBody": "透過SPICE建模的柵極充電曲線，從PB1 PWM驅動MOSFET柵極——觀察負載上的壓擺率效應。"
+      },
+      "faq": {
+        "heading": "常見問題",
+        "q1": "這是真正的ATtiny85模擬器嗎？",
+        "a1": "是的。AI物聯網實驗室使用avr8js——週期精確的AVR8模擬器——逐位元組執行編譯後的ATtiny85韌體，就像在真實DIP-8晶片上執行一樣。",
+        "q2": "支援哪些ATtiny85特性？",
+        "a2": "所有6個GPIO接腳（PB0–PB5）、帶PWM的Timer0（8位）、帶PWM和高速模式的Timer1（8位）、看門狗定時器、帶4個輸入通道（ADC0–ADC3）的10位ADC、用於I²C（TWI）和SPI位碰撞的USI外設、接腳變化中斷和外部中斷（INT0）。",
+        "q3": "如何在AI物聯網實驗室中程式設計ATtiny85？",
+        "a3": "在Monaco編輯器中用C/C++（Arduino語法）編寫草圖。AI物聯網實驗室透過捆綁的arduino-cli使用ATTinyCore板級支援包編譯，生成真實的.hex檔案——與透過USBasp燒錄的檔案相同。",
+        "q4": "我可以使用Arduino相容庫嗎？",
+        "a4": "是的。庫管理器索引了完整的Arduino庫登錄檔。許多庫在ATtiny85上透過適當的接腳分配工作——用於I²C的TinyWireM、透過USI的SoftwareSerial、TinyServo等。",
+        "q5": "我可以將其連線到類比電路嗎？",
+        "a5": "是的。AI物聯網實驗室包含即時SPICE求解器——將ATtiny85 ADC接腳連線到分壓器、運放輸出或NTC熱敏電阻橋，analogRead()將返回該接腳的實際SPICE求解電壓。",
+        "q6": "它是免費的嗎？",
+        "a6": "是的——AI物聯網實驗室完全免費開源，採用GNU AGPLv3授權。無需帳戶。"
+      },
+      "bottom": {
+        "title": "無需硬體開發ATtiny85韌體",
+        "body": "開啟編輯器開始編碼——編譯、模擬、探測，只需幾秒鐘。",
+        "cta": "啟動ATtiny85模擬器"
+      }
+    },
+    "arduinoEmu": {
+      "hero": {
+        "title": "Arduino模擬器",
+        "accent": "真實的AVR8和RP2040模擬，免費",
+        "subtitle": "AI物聯網實驗室是一個週期精確的Arduino模擬器，完全在瀏覽器中執行。每個AVR操作碼在16 MHz下忠實執行——與真實硬體相同的矽行為，無需購買硬體。",
+        "ctaPrimary": "開啟模擬器",
+        "ctaSecondary": "模擬詳情",
+        "trust": "免費開源 · 基於avr8js和rp2040js · 無需註冊"
+      },
+      "accuracy": {
+        "heading": "模擬精度",
+        "leadPrefix": "AI物聯網實驗室使用",
+        "leadAvr": "avr8js",
+        "leadMid": "用於AVR8和",
+        "leadRp": "rp2040js",
+        "leadSuffix": "用於RP2040——由Wokwi團隊開發的開源庫，提供真正的硬體保真度。",
+        "isaTitle": "AVR8指令集",
+        "isaBody": "所有135條AVR指令均已模擬，包括MUL、MULSU、FMUL、LPM、SPM以及所有分支/跳轉指令。16 MHz時鐘。",
+        "timersTitle": "硬體定時器",
+        "timersBodyPrefix": "Timer0、Timer1、Timer2，支援預分頻器、溢位中斷和輸出比較——實現",
+        "timersBodyCode1": "delay()",
+        "timersBodyMid": "、",
+        "timersBodyCode2": "millis()",
+        "timersBodySuffix": "和PWM。",
+        "usartTitle": "USART序列埠",
+        "usartBodyPrefix": "完整的USART模擬，可配置波特率和TX/RX中斷。",
+        "usartBodyCode": "Serial.print()",
+        "usartBodySuffix": "與真實Arduino硬體上的工作方式完全相同。",
+        "adcTitle": "10位ADC",
+        "adcBodyPrefix": "模數轉換器模擬，支援模擬參考電壓。",
+        "adcBodyCode": "analogRead()",
+        "adcBodySuffix": "從模擬感測器返回精確值。",
+        "rpTitle": "RP2040雙核ARM",
+        "rpBody": "透過rp2040js進行Cortex-M0+模擬。執行Raspberry Pi Pico和Pico W的Arduino-pico和PlatformIO草圖。",
+        "riscvTitle": "RISC-V (ESP32-C3)",
+        "riscvBody": "透過QEMU lcgamboa分支（libqemu-riscv32，esp32c3-picsimlab機器）在160 MHz下對ESP32-C3進行RV32IMC模擬。"
+      },
+      "boards": {
+        "heading": "支援的開發板",
+        "lead": "5種CPU架構下的19塊開發板——AVR8、ARM Cortex-M0+、RISC-V、Xtensa LX6/LX7和ARM Cortex-A53。",
+        "avrTitle": "AVR8 — avr8js",
+        "avrBody": "Arduino Uno (ATmega328P)、Arduino Nano、Arduino Mega 2560 (ATmega2560)、ATtiny85、Arduino Leonardo (ATmega32u4)、Arduino Pro Mini。",
+        "rpTitle": "RP2040 — rp2040js",
+        "rpBody": "Raspberry Pi Pico、Raspberry Pi Pico W——雙核ARM Cortex-M0+，133 MHz。",
+        "riscvTitle": "RISC-V — QEMU",
+        "riscvBody": "ESP32-C3 DevKit、XIAO ESP32-C3、ESP32-C3 SuperMini、CH32V003——透過libqemu-riscv32在160 MHz下執行RV32IMC。",
+        "xtensaTitle": "Xtensa — QEMU",
+        "xtensaBody": "ESP32 DevKit V1/C V4、ESP32-S3、ESP32-CAM、Seeed XIAO ESP32-S3、Arduino Nano ESP32——Xtensa LX6/LX7，240 MHz。",
+        "armTitle": "ARM Cortex-A53 — QEMU",
+        "armBody": "Raspberry Pi 3B——四核1.2 GHz，完整Linux，Python 3。在瀏覽器中執行真實的作業系統級程式。"
+      },
+      "faq": {
+        "heading": "常見問題",
+        "q1": "什麼是Arduino模擬器？",
+        "a1": "Arduino模擬器在軟體中再現物理Arduino微控制器的行為——CPU指令執行、外設暫存器（GPIO、USART、ADC、定時器、PWM）和中斷——無需硬體。",
+        "q2": "AI物聯網實驗室的Arduino模擬有多精確？",
+        "a2": "AI物聯網實驗室使用avr8js，提供週期精確的AVR8指令模擬。每個AVR操作碼在16 MHz下忠實模擬，使其在燒錄到硬體之前可靠地開發和除錯真實韌體。",
+        "q3": "AI物聯網實驗室可以模擬哪些Arduino開發板？",
+        "a3": "Arduino Uno (ATmega328P)、Arduino Nano、Arduino Mega 2560 (ATmega2560)、ATtiny85 (AVR8)、Arduino Leonardo (ATmega32u4)、Arduino Pro Mini、Raspberry Pi Pico和Pico W (RP2040)，以及多個ESP32/RISC-V開發板。5種CPU架構下的19塊開發板。",
+        "q4": "模擬了哪些外設？",
+        "a4": "GPIO埠（PORTB、PORTC、PORTD）、硬體定時器（Timer0、Timer1、Timer2）、8/16位PWM、USART序列埠、10位ADC（模擬輸入）、SPI和I2C。所有標準Arduino庫函式都能正常工作。",
+        "q5": "AI物聯網實驗室與Wokwi有何不同？",
+        "a5": "AI物聯網實驗室完全自託管且開源，採用GNU AGPLv3授權。它使用與Wokwi相同的avr8js模擬庫，但完全在您自己的機器上執行——無雲依賴、無註冊、無訂閱。"
+      },
+      "bottom": {
+        "title": "今天開始模擬Arduino",
+        "body": "開啟編輯器，在真實的模擬CPU上執行您的韌體——無需購買硬體、無需雲、無限制。",
+        "cta": "啟動模擬器"
+      }
+    },
+    "esp32": {
+      "hero": {
+        "title": "免費ESP32模擬器",
+        "accent": "瀏覽器中的Xtensa LX6模擬",
+        "subtitle": "為ESP32編寫Arduino程式碼並立即模擬——透過QEMU在240 MHz下進行真實的Xtensa LX6模擬。48+個互動元件、序列埠監視器，無需安裝。",
+        "ctaPrimary": "開啟ESP32模擬器",
+        "ctaSecondary": "ESP32範例",
+        "trust": "免費開源 · 無需註冊 · QEMU驅動的模擬",
+        "imageAlt": "ESP32 DevKit V1開發板"
+      },
+      "boards": {
+        "heading": "支援的ESP32開發板",
+        "lead": "AI物聯網實驗室模擬完整的ESP32系列——Xtensa LX6 (ESP32)、Xtensa LX7 (ESP32-S3)和RISC-V (ESP32-C3)。每塊開發板都執行真實的CPU模擬，而非近似。",
+        "devkitTitle": "ESP32 DevKit V1 / C V4",
+        "devkitBody": "Xtensa LX6雙核240 MHz。WiFi + 藍牙。34個GPIO接腳、12位ADC、2× DAC、SPI、I2C、UART。",
+        "s3Title": "ESP32-S3 DevKitC",
+        "s3Body": "Xtensa LX7雙核240 MHz。USB OTG、向量指令、45個GPIO接腳。",
+        "camTitle": "ESP32-CAM",
+        "camBody": "帶OV2640攝像頭模組的ESP32。240 MHz Xtensa LX6，板載microSD插槽。",
+        "nanoTitle": "Arduino Nano ESP32",
+        "nanoBody": "Arduino Nano尺寸的ESP32-S3。USB-C、14個數字+8個模擬接腳，相容Arduino擴充套件板。",
+        "xiaoTitle": "XIAO ESP32-S3",
+        "xiaoBody": "Seeed Studio緊湊型開發板。Xtensa LX7、11個GPIO，超小尺寸21×17.5 mm。",
+        "c3Title": "ESP32-C3 (RISC-V)",
+        "c3BodyPrefix": "單核RISC-V RV32IMC，160 MHz，透過與Xtensa ESP32相同的QEMU後端模擬（libqemu-riscv32，esp32c3-picsimlab機器）。",
+        "c3Link": "瞭解更多"
+      },
+      "examples": {
+        "heading": "ESP32範例專案",
+        "lead": "直接跳轉到可執行的ESP32範例進行模擬——從基本的LED閃爍到感測器整合。",
+        "blinkTitle": "ESP32 LED閃爍",
+        "blinkBody": "為ESP32 GPIO改編的經典閃爍草圖。以1 Hz切換接腳2上的LED。",
+        "echoTitle": "ESP32序列埠回顯",
+        "echoBody": "從序列埠監視器讀取輸入並回顯——測試115200波特率的UART通訊。",
+        "dhtTitle": "ESP32 DHT22感測器",
+        "dhtBody": "從DHT22感測器讀取溫度和溼度，並在序列埠監視器中顯示數值。",
+        "sonarTitle": "ESP32 HC-SR04超音波",
+        "sonarBody": "使用超音波感測器測量距離。透過真實GPIO模擬實現觸發/回波時序。",
+        "servoTitle": "ESP32伺服馬達",
+        "servoBody": "使用ESP32 PWM將伺服馬達從0°掃到180°——使用ESP32Servo庫。",
+        "segTitle": "ESP32 7段七段顯示器",
+        "segBody": "驅動7段七段顯示器計數0–9。演示ESP32上的數字輸出接腳對映。",
+        "viewAll": "檢視全部68+範例"
+      },
+      "faq": {
+        "heading": "常見問題",
+        "q1": "這個ESP32模擬器免費嗎？",
+        "a1": "是的。AI物聯網實驗室完全免費開源（GNU AGPLv3）。在瀏覽器中模擬ESP32程式碼，或透過一個Docker命令自託管整個平臺——無需帳戶、無需付費。",
+        "q2": "ESP32模擬如何工作？",
+        "a2": "AI物聯網實驗室使用QEMU（lcgamboa分支）在240 MHz下模擬Xtensa LX6 CPU。您的Arduino草圖使用官方ESP32 Arduino核心編譯，生成的韌體在模擬硬體上執行——與真實矽片相同。",
+        "q3": "支援哪些ESP32開發板？",
+        "a3": "AI物聯網實驗室支援ESP32 DevKit V1、ESP32 DevKit C V4、ESP32-CAM、Arduino Nano ESP32、ESP32-S3 DevKitC、XIAO ESP32-S3、ESP32-C3 DevKit、XIAO ESP32-C3和ESP32-C3 SuperMini。",
+        "q4": "我可以模擬帶感測器和顯示屏的ESP32嗎？",
+        "a4": "是的。連線48+個互動元件：DHT22、HC-SR04超音波、MPU6050 IMU、伺服馬達、ILI9341 TFT顯示屏、LED、按鈕、7段七段顯示器等。",
+        "q5": "它支援ESP32的序列埠監視器嗎？",
+        "a5": "是的。序列埠監視器與ESP32配合使用，就像Arduino一樣——自動波特率檢測、即時TX/RX輸出，並向執行中的草圖傳送命令。"
+      },
+      "bottom": {
+        "title": "準備好模擬您的ESP32了嗎？",
+        "body": "開啟編輯器，選擇ESP32開發板，開始編碼——無需設定、無需安裝、無需帳戶。",
+        "cta": "啟動ESP32模擬器"
+      }
+    },
+    "esp32s3": {
+      "hero": {
+        "title": "免費ESP32-S3模擬器",
+        "accent": "Xtensa LX7 · 雙核 · 240 MHz",
+        "subtitle": "在瀏覽器中模擬ESP32-S3韌體——透過QEMU進行真實的Xtensa LX7雙核模擬。USB OTG、向量擴充套件、45個GPIO。編寫、編譯、執行，只需幾秒鐘。",
+        "ctaPrimary": "開啟ESP32-S3模擬器",
+        "ctaSecondary": "瀏覽範例",
+        "trust": "免費開源 · QEMU Xtensa LX7 · 無需帳戶",
+        "imageAlt": "ESP32-S3 DevKitC-1開發板"
+      },
+      "boards": {
+        "heading": "支援的ESP32-S3開發板",
+        "lead": "AI物聯網實驗室模擬三塊ESP32-S3開發板。每塊都執行透過arduino-cli編譯的官方ESP32 Arduino核心。",
+        "devkitTitle": "ESP32-S3 DevKitC-1",
+        "devkitBody": "樂鑫官方開發板。雙核Xtensa LX7，240 MHz，45個GPIO，USB OTG，512 KB SRAM。",
+        "xiaoTitle": "XIAO ESP32-S3",
+        "xiaoBody": "Seeed Studio超緊湊型開發板（21×17.5 mm）。11個GPIO，USB-C，適用於可穿戴裝置和物聯網。",
+        "nanoTitle": "Arduino Nano ESP32",
+        "nanoBody": "Arduino Nano尺寸的ESP32-S3。USB-C，14個數字+8個模擬接腳，Arduino生態系統相容性。"
+      },
+      "diff": {
+        "heading": "ESP32-S3 vs ESP32 — 新特性",
+        "cpuTitle": "Xtensa LX7 CPU",
+        "cpuBody": "更新的架構，每時鐘效能提升。相同的240 MHz雙核，但指令流水線更高效。",
+        "usbTitle": "USB OTG",
+        "usbBody": "原生USB裝置和主機支援——無需外部USB轉UART晶片。支援HID、CDC、MSC裝置類。",
+        "vectorTitle": "向量指令",
+        "vectorBody": "硬體加速向量運算，用於邊緣AI/ML推理。TensorFlow Lite Micro已最佳化。",
+        "gpioTitle": "更多GPIO",
+        "gpioBody": "45個可程式設計GPIO（ESP32為34個）。更多ADC通道、觸控接腳和外設選項。"
+      },
+      "faq": {
+        "heading": "常見問題",
+        "q1": "什麼是ESP32-S3？",
+        "a1": "ESP32-S3是樂鑫推出的Xtensa LX7雙核微控制器，執行頻率240 MHz。與原始ESP32相比，它增加了USB OTG、用於AI/ML的向量指令以及多達45個GPIO接腳。",
+        "q2": "ESP32-S3模擬器免費嗎？",
+        "a2": "是的。AI物聯網實驗室 100%免費開源。透過QEMU在瀏覽器中模擬ESP32-S3程式碼，進行真實的Xtensa LX7模擬——無需雲、無需訂閱。",
+        "q3": "支援哪些ESP32-S3開發板？",
+        "a3": "AI物聯網實驗室支援ESP32-S3 DevKitC-1、Seeed XIAO ESP32-S3和Arduino Nano ESP32（使用ESP32-S3晶片）。",
+        "q4": "我可以在ESP32-S3上使用Arduino庫嗎？",
+        "a4": "是的。AI物聯網實驗室使用官方ESP32 Arduino核心編譯您的草圖。從Arduino庫管理器安裝任何庫，並在您的ESP32-S3專案中使用。",
+        "q5": "ESP32和ESP32-S3有什麼區別？",
+        "a5": "ESP32-S3使用更新的Xtensa LX7架構（vs LX6），增加了USB OTG以支援原生USB裝置，包含用於AI工作負載的向量指令，並擁有更多GPIO接腳（45 vs 34）。"
+      },
+      "bottom": {
+        "title": "準備好模擬ESP32-S3了嗎？",
+        "body": "開啟編輯器，選擇ESP32-S3開發板，立即執行您的程式碼。",
+        "cta": "啟動ESP32-S3模擬器"
+      }
+    }
+  }
+}

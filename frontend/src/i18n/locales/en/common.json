@@ -14,7 +14,11 @@
       "blog": "Blog",
       "github": "GitHub",
       "discord": "Discord",
-      "classroom": "For schools"
+      "classroom": "For schools",
+      "learn": "Courses",
+      "teacher": "Teaching",
+      "guide": "User guide",
+      "admin": "Admin"
     },
     "auth": {
       "signIn": "Sign in",
@@ -26,7 +30,7 @@
     "search": "Search"
   },
   "footer": {
-    "about": "Velxio is a free, open-source circuit and microcontroller simulator that runs entirely in your browser. Arduino, ESP32, RP2040 and ATtiny85, with SPICE-accurate analog co-simulation. Built for makers, students and embedded engineers learning by doing. AGPLv3."
+    "about": "AI IoT Lab is a free, open-source circuit and microcontroller simulator that runs entirely in your browser. Arduino, ESP32, RP2040 and ATtiny85, with SPICE-accurate analog co-simulation. Built for makers, students and embedded engineers learning by doing. AGPLv3."
   },
   "landing": {
     "hero": {
@@ -36,7 +40,7 @@
       "ctaPrimary": "Try Simulator Free Online →",
       "ctaGithub": "View on GitHub",
       "trustLine": "AI agent included · Works offline · Open source AGPLv3 · No signup needed",
-      "imageAlt": "Velxio editor with Arduino Uno traffic-light circuit"
+      "imageAlt": "AI IoT Lab editor with Arduino Uno traffic-light circuit"
     },
     "boards": {
       "label": "Supported Hardware",
@@ -75,14 +79,14 @@
     },
     "support": {
       "title": "Support the project",
-      "subtitle": "Velxio is free and open source. If it saves you time, consider supporting its development.",
+      "subtitle": "AI IoT Lab is free and open source. If it saves you time, consider supporting its development.",
       "ctaSponsors": "GitHub Sponsors",
       "ctaPaypal": "Donate via PayPal"
     },
     "licensing": {
       "label": "Licensing",
       "title": "Free, with a commercial option.",
-      "subtitle": "AGPLv3 for the open-source release. A commercial license for teams that need to ship Velxio inside closed-source products.",
+      "subtitle": "AGPLv3 for the open-source release. A commercial license for teams that need to ship AI IoT Lab inside closed-source products.",
       "opensource": {
         "title": "Open source — AGPLv3",
         "desc": "Free forever for personal use, education, research and self-hosting. Modify, fork and redistribute — your changes stay under AGPLv3 too.",
@@ -132,7 +136,7 @@
           "name": "Maker",
           "tagline": "For makers shipping real circuits with AI help.",
           "f1": "500 daily AI credits (up to 15,000/month)",
-          "f2": "Unlisted projects + Velxio Desktop (offline)",
+          "f2": "Unlisted projects + AI IoT Lab Desktop (offline)",
           "f3": "Unlimited ESP32, STM32 & Raspberry Pi run time",
           "cta": "Start Maker"
         },
@@ -145,7 +149,7 @@
           "cta": "Subscribe to Pro"
         }
       },
-      "classroomBanner": "Bringing Velxio into a course? Velxio for Classroom gives every student Pro access from $40/year.",
+      "classroomBanner": "Bringing AI IoT Lab into a course? AI IoT Lab for Classroom gives every student Pro access from $40/year.",
       "classroomCta": "See classroom plans →"
     }
   },
@@ -159,7 +163,7 @@
   },
   "pricing": {
     "title": "Pricing",
-    "selfHosted": "This Velxio instance is self-hosted from the open-source image — all features are free for everyone using it.",
+    "selfHosted": "This AI IoT Lab instance is self-hosted from the open-source image — all features are free for everyone using it.",
     "hostedVersion": "The hosted version at <link>velxio.dev</link> offers an optional Pro tier that helps fund development.",
     "sourceCode": "Source code is <link>MIT-licensed on GitHub</link>."
   },
@@ -329,7 +333,10 @@
         "lastCompile": "Last compile",
         "updated": "Updated"
       }
-    }
+    },
+    "title": "Admin console",
+    "needSignin": "Sign in with the admin account.",
+    "needAdmin": "This page is for the platform administrator only."
   },
   "examples": {
     "heading": "Featured Projects",
@@ -369,19 +376,10 @@
     "notFound": "Example \"{{id}}\" not found.",
     "browseAll": "Browse all examples"
   },
-  "starBanner": {
-    "ariaLabel": "Star Velxio on GitHub",
-    "title": "Enjoying Velxio?",
-    "body": "A ⭐ on GitHub helps more developers discover the project — it only takes 2 seconds!",
-    "title2": "One quick favor?",
-    "body2": "Velxio is free and open-source. A star on GitHub is the simplest way to support it and help more people find the project.",
-    "cta": "Star on GitHub",
-    "dismiss": "Dismiss"
-  },
   "auth": {
     "login": {
       "title": "Sign in",
-      "subtitle": "to continue to Velxio",
+      "subtitle": "to continue to AI IoT Lab",
       "email": "Email",
       "password": "Password",
       "signIn": "Sign in",
@@ -425,12 +423,219 @@
       "updateFailed": "Could not update visibility — please try again.",
       "visibility": {
         "publicLabel": "Public",
-        "publicHint": "Anyone can find this project on velxio.dev.",
+        "publicHint": "Anyone with the link can find this project.",
         "unlistedLabel": "Unlisted",
         "unlistedHint": "Hidden from search and the gallery — only accessible via the share link.",
         "privateLabel": "Private",
         "privateHint": "Only you can see this project."
       }
     }
+  },
+  "agent": {
+    "title": "AI Assistant",
+    "modelChip": "Current model: {{model}} (click to change)",
+    "settings": "Endpoint settings",
+    "clear": "Clear chat",
+    "close": "Close",
+    "settingsHint": "Any OpenAI-compatible endpoint works. Fields left blank fall back to the server's defaults. Everything is stored only in this browser.",
+    "baseUrl": "Base URL (with /v1)",
+    "apiKey": "API Key",
+    "apiKeyServerSet": "(server has one — optional)",
+    "model": "Model",
+    "modelListFetch": "Load model list",
+    "modelListLoading": "Loading…",
+    "effort": "Reasoning effort",
+    "effortDefault": "Default ({{value}})",
+    "effortOff": "off",
+    "effortNone": "Off",
+    "effortLow": "low (fastest)",
+    "effortHigh": "high (strongest)",
+    "test": "Test connection",
+    "testing": "Testing…",
+    "back": "Back to chat",
+    "testOk": "✓ Connected · {{message}} · {{ms}}ms",
+    "testFail": "✗ Connection failed: {{message}}",
+    "needKey": "No API key yet — <1>open endpoint settings</1> and enter your OpenAI-compatible base URL and key (stored only in this browser).",
+    "emptyTitle": "Describe a project in plain language — the AI builds the circuit, wiring and code, then compiles and runs it.",
+    "emptySub": "You can hand-edit anything afterwards; the AI re-reads the latest state every turn.",
+    "thinking": "Thinking",
+    "deepThinking": "Deep reasoning · {{chars}} chars so far",
+    "error": "Error: {{message}}",
+    "retry": "Retry",
+    "restore": "Restore project to before this message",
+    "placeholder": "Describe what you want to build, e.g. a breathing LED",
+    "hint": "Enter to send · Shift+Enter for newline",
+    "send": "Send",
+    "stop": "Stop",
+    "expand": "Click to expand details",
+    "usage": "tokens: {{input}} in · {{output}} out",
+    "restoreConfirm": "Restore the whole project (circuit + code) to the state before this message? Unsaved changes will be lost.",
+    "steer": "Queue message (agent is working)",
+    "steerPlaceholder": "Type to steer the agent while it works…",
+    "unqueue": "Remove queued message",
+    "capped": "The agent paused at the step limit — the task may be unfinished.",
+    "continue": "Continue",
+    "compacted": "Earlier context was compacted into a summary",
+    "contextLimit": "Context limit (tokens, for auto-compaction)",
+    "usageLabel": "AI usage this week",
+    "usageTip": "Resets every Monday. When exhausted, the AI tutor pauses until an admin raises the quota."
+  },
+  "cloud": {
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "signOut": "Sign out",
+    "myProjects": "My projects",
+    "name": "Display name",
+    "namePlaceholder": "e.g. Xiao Ming",
+    "email": "Email",
+    "password": "Password (min 6 chars)",
+    "passwordPlaceholder": "at least 6 characters",
+    "createAccount": "Create account",
+    "working": "Working…",
+    "selfHostNote": "Accounts live on THIS server only (self-hosted SQLite). The admin of this instance can see stored data — don't reuse an important password.",
+    "projectName": "Project name",
+    "projectNamePlaceholder": "e.g. Traffic light",
+    "saveToCloud": "Save to cloud",
+    "saveOverwrite": "Save (overwrite)",
+    "saveAsNew": "Save as new",
+    "downloadVlxHint": "Download a local .vlx copy",
+    "noProjects": "No cloud projects yet",
+    "delete": "Delete",
+    "loadConfirm": "Open this cloud project? Unsaved changes in the current workspace will be lost.",
+    "deleteConfirm": "Delete \"{{name}}\" from the cloud? This cannot be undone.",
+    "chatHistory": "Chat history",
+    "newChat": "New chat",
+    "noChats": "No saved conversations yet",
+    "loadChatConfirm": "Open this conversation? The current chat panel content will be replaced (it stays saved in the cloud).",
+    "deleteChatConfirm": "Delete this conversation from the cloud?",
+    "syncSaved": "Synced to cloud",
+    "syncSaving": "Syncing…",
+    "syncError": "Sync failed — will retry on next change",
+    "signInForHistory": "Sign in to keep your conversations in the cloud and access them from any device.",
+    "currentChat": "current",
+    "role": "I am a…",
+    "roleStudent": "Student",
+    "roleTeacher": "Teacher",
+    "teacherCode": "Teacher registration code (leave blank if your school has none)",
+    "teacherCodePlaceholder": "Optional"
+  },
+  "versions": {
+    "title": "Version history",
+    "defaultLabel": "manual save",
+    "savePlaceholder": "Name this version (e.g. \"traffic light works\")",
+    "saveNow": "Save version",
+    "saved": "Saved \"{{label}}\"",
+    "unchanged": "Nothing new to save — identical to the newest version",
+    "empty": "No versions yet. The AI saves one before every turn; you can also save one here.",
+    "restore": "Restore",
+    "restoreConfirm": "Restore the project to \"{{label}}\"? Current state is backed up automatically first.",
+    "restored": "Restored \"{{label}}\". A backup of the previous state was saved.",
+    "restoreFailed": "Restore failed — the version could not be loaded.",
+    "delete": "Delete version",
+    "deleteConfirm": "Delete version \"{{label}}\"? This cannot be undone.",
+    "renameHint": "Double-click to rename",
+    "stats": "{{boards}} boards · {{components}} parts · {{files}} files",
+    "hint": "🖐 manual · ✨ saved by AI turn · ⟳ automatic backup. Up to 50 versions kept; manual saves are never pruned.",
+    "source": {
+      "manual": "Saved manually",
+      "ai": "Saved before an AI turn",
+      "auto": "Automatic backup"
+    }
+  },
+  "brand": {
+    "name": "AI IoT Lab",
+    "seoTitle": "AI IoT Lab — Free Online Arduino / ESP32 Simulator & IoT Course Platform",
+    "seoDescription": "A free, open-source learning platform for middle/high-school students and teachers: simulate Arduino, ESP32 and 19 boards in the browser, with interactive courses, quizzes, class management and an AI teaching assistant.",
+    "hero": {
+      "badge": "Free · Open source · No install · No hardware",
+      "titleTop": "Right in your browser,",
+      "titleAccent": "open your own IoT lab",
+      "subtitle": "Write code, wire circuits, run simulations — watch Arduino and ESP32 come alive. Learn step by step with interactive courses, ask the AI tutor anytime, and let teachers track the whole class.",
+      "ctaLearn": "Start learning",
+      "ctaEditor": "Open the lab"
+    },
+    "features": {
+      "sim": {
+        "title": "Real simulator",
+        "desc": "Not an animation — your code really runs: chip-level AVR, ESP32 and RP2040 emulation, 100+ electronic components, oscilloscope and serial monitor, behaving just like real hardware."
+      },
+      "courses": {
+        "title": "Interactive courses",
+        "desc": "From lighting your first LED to putting an ESP32 online: every lesson has clear theory, a one-click circuit example, and a hands-on challenge — learn by doing."
+      },
+      "quiz": {
+        "title": "Quizzes & classes",
+        "desc": "Each lesson ends with a multiple-choice quiz with instant feedback and auto-grading; teachers create a class code, students join in one click, and the dashboard shows live progress and scores."
+      }
+    },
+    "ai": {
+      "title": "An AI tutor, always by your side",
+      "desc": "Say \"build me a temperature alarm\" and the AI tutor places components, wires them, writes the firmware and runs the simulation on your canvas; when you are stuck, ask why — it explains one concept at a time, like a patient teacher.",
+      "cta": "Try the AI tutor",
+      "demoUser": "Why does my LED not light up?",
+      "demoAi": "I checked your circuit: the LED cathode is wired to D13 — it should go to GND to close the loop. Want me to fix it and show you?"
+    },
+    "teacherSection": {
+      "title": "For teachers: a ready-to-use computer classroom",
+      "desc": "No hardware to buy, nothing to install: open a class code and students complete a whole semester of experiments in the browser. Progress and quiz scores at a glance — and you can self-host on a school server, keeping all data yours.",
+      "cta": "Go to teaching dashboard"
+    },
+    "footer": {
+      "oss": "Open-source software, licensed AGPLv3",
+      "source": "Source code"
+    }
+  },
+  "learn": {
+    "seoTitle": "Courses — AI IoT Lab",
+    "seoDescription": "Interactive Arduino and ESP32 IoT courses: theory, one-click circuit examples, hands-on challenges and quizzes.",
+    "title": "Courses",
+    "subtitle": "Every lesson is hands-on, right in your browser: read the theory, open the circuit example, complete the challenge, then check yourself with a short quiz.",
+    "signinHint": "Progress is stored on this computer for now. Sign in to sync across devices and let your teacher see your progress.",
+    "signinCta": "Sign in / Register",
+    "progress": "{{done}}/{{total}} lessons done",
+    "minutes": "{{m}} min",
+    "backToCourses": "All courses",
+    "openExample": "Open this lesson's circuit",
+    "challenge": "Hands-on challenge",
+    "markDone": "Mark lesson complete",
+    "done": "Completed",
+    "quiz": {
+      "title": "📝 Quiz",
+      "best": "Best score",
+      "submit": "Submit answers",
+      "answerAll": "Answer all questions first",
+      "correct": "Correct!",
+      "wrong": "Not quite.",
+      "score": "Score",
+      "retry": "Try again"
+    },
+    "class": {
+      "mine": "My classes",
+      "none": "Not in any class yet",
+      "codePlaceholder": "Class code",
+      "join": "Join class",
+      "joinedMsg": "Joined “{{name}}”!",
+      "unknownCode": "Unknown class code — please check with your teacher.",
+      "joinFailed": "Could not join, please try again later."
+    }
+  },
+  "teacher": {
+    "seoTitle": "Teaching — AI IoT Lab",
+    "seoDescription": "Create classes, hand out join codes, and track every student's lesson progress and quiz scores in real time.",
+    "title": "Teaching",
+    "needSignin": "Sign in with a teacher account to create and manage classes.",
+    "needTeacherRole": "This page needs a teacher account. You are currently a student — if you are a teacher, register a new account with the Teacher role.",
+    "namePlaceholder": "Class name, e.g. Grade 8 Class A",
+    "create": "Create class",
+    "empty": "No classes yet. Create one, hand the class code to your students, and they can join from the Courses page.",
+    "members": "{{n}} students",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this class? Students keep their personal progress, but the class and its roster will be removed.",
+    "copy": "Copy code",
+    "copied": "Copied!",
+    "reportTitle": "“{{name}}” learning report",
+    "noMembers": "No students yet. Share the code {{code}} with your class!",
+    "student": "Student",
+    "progressCol": "Progress"
   }
 }

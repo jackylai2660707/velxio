@@ -23,8 +23,9 @@ import { SimulatorCanvas } from '../components/simulator/SimulatorCanvas';
 import { SerialMonitor } from '../components/simulator/SerialMonitor';
 import { Oscilloscope } from '../components/simulator/Oscilloscope';
 import { AppHeader } from '../components/layout/AppHeader';
+import { AgentChatPanel } from '../components/agent/AgentChatPanel';
+import { useAgentStore } from '../store/useAgentStore';
 import { triggerSaveAction } from '../lib/proSaveAction';
-import { GitHubStarBanner } from '../components/layout/GitHubStarBanner';
 import { useSimulatorStore, DEFAULT_BOARD_POSITION } from '../store/useSimulatorStore';
 import { useEditorStore } from '../store/useEditorStore';
 import { useCompileLogsStore } from '../store/useCompileLogsStore';
@@ -58,10 +59,9 @@ const resizeHandleStyle: React.CSSProperties = {
 export const EditorPage: React.FC = () => {
   const { t } = useTranslation();
   useSEO({
-    title: 'Multi-Board Simulator Editor — Arduino, ESP32, RP2040, RISC-V | Velxio',
+    title: '編輯器 — AI物聯網實驗室',
     description:
-      'Write, compile and simulate Arduino, ESP32, Raspberry Pi Pico, ESP32-C3, and Raspberry Pi 3 code in your browser. 19 boards, 5 CPU architectures, 48+ components. Free and open-source.',
-    url: 'https://velxio.dev/editor',
+      '在瀏覽器裡撰寫、編譯並模擬 Arduino、ESP32、Raspberry Pi Pico 程式:19 種開發板、100+ 電子元件,免安裝、免硬體。',
   });
 
   // Silent auto-save for the loaded project (only fires when authed AND
@@ -69,6 +69,12 @@ export const EditorPage: React.FC = () => {
   const autoSave = useAutoSaveProject();
 
   const [editorWidthPct, setEditorWidthPct] = useState(45);
+  // AI assistant dock state — the panel is a flex sibling of the editor and
+  // simulator panes, so opening it shrinks the canvas instead of overlapping
+  // the minimap / zoom controls / GitHub banner.
+  const agentPanelOpen = useAgentStore((s) => s.panelOpen);
+  const agentPanelWidth = useAgentStore((s) => s.panelWidth);
+  const toggleAgentPanel = useAgentStore((s) => s.togglePanel);
   // Desktop-only 3-way layout switch (code-only / circuit-only / both).
   // Lets users hide a pane to give the right-docked chat more room.
   const viewMode = useEditorStore((s) => s.viewMode);
@@ -91,8 +97,6 @@ export const EditorPage: React.FC = () => {
   const compileLogs = useCompileLogsStore((s) => s.logs);
   const setCompileLogs = useCompileLogsStore((s) => s.setLogs);
   const [bottomPanelHeight, setBottomPanelHeight] = useState(BOTTOM_PANEL_DEFAULT);
-  const [showStarBanner, setShowStarBanner] = useState(false);
-  const [starRound, setStarRound] = useState<1 | 2>(1);
 
   // ── Electrical simulation (one-time mount) ────────────────────────────────
   // `startSimulation()` is the single entry point: it constructs the
@@ -110,72 +114,6 @@ export const EditorPage: React.FC = () => {
     restoreStashedWorkspace();
   }, []);
 
-  // ── GitHub star prompt (show twice at most: 2nd visit OR after 3 min) ──────
-  // Three localStorage flags drive this:
-  //   velxio_star_prompted     → dismissed the first ask
-  //   velxio_star_prompted_v2  → dismissed the follow-up ask (stop forever)
-  //   velxio_star_clicked      → clicked through to the repo (stop forever)
-  // Anyone who dismissed the first ask WITHOUT clicking through gets one
-  // follow-up (round 2) with a stronger message; clicking the repo link at
-  // any time opts them out permanently.
-  useEffect(() => {
-    const STAR_KEY = 'velxio_star_prompted';
-    const STAR_KEY_V2 = 'velxio_star_prompted_v2';
-    const STAR_CLICKED_KEY = 'velxio_star_clicked';
-    const VISITS_KEY = 'velxio_editor_visits';
-    const FIRST_VISIT_KEY = 'velxio_editor_first_visit';
-    const THREE_MIN = 3 * 60 * 1000;
-
-    // Never bother people who already starred or already saw the follow-up.
-    if (localStorage.getItem(STAR_CLICKED_KEY)) return;
-    if (localStorage.getItem(STAR_KEY_V2)) return;
-
-    // Round 2 = they dismissed the first ask (without clicking through).
-    const round = localStorage.getItem(STAR_KEY) ? 2 : 1;
-    setStarRound(round);
-
-    // Increment visit counter
-    const visits = parseInt(localStorage.getItem(VISITS_KEY) ?? '0', 10) + 1;
-    localStorage.setItem(VISITS_KEY, String(visits));
-
-    // Record timestamp of first visit
-    if (!localStorage.getItem(FIRST_VISIT_KEY)) {
-      localStorage.setItem(FIRST_VISIT_KEY, String(Date.now()));
-    }
-    const firstVisit = parseInt(localStorage.getItem(FIRST_VISIT_KEY)!, 10);
-
-    // Show immediately on second+ visit
-    if (visits >= 2) {
-      setShowStarBanner(true);
-      return;
-    }
-
-    // Otherwise schedule after the 3-minute mark
-    const elapsed = Date.now() - firstVisit;
-    const delay = Math.max(0, THREE_MIN - elapsed);
-    const timer = setTimeout(() => {
-      if (!localStorage.getItem(STAR_CLICKED_KEY) && !localStorage.getItem(STAR_KEY_V2)) {
-        setShowStarBanner(true);
-      }
-    }, delay);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleDismissStarBanner = () => {
-    // First dismiss → mark round 1; second dismiss → mark round 2 (stop forever).
-    if (localStorage.getItem('velxio_star_prompted')) {
-      localStorage.setItem('velxio_star_prompted_v2', '1');
-    } else {
-      localStorage.setItem('velxio_star_prompted', '1');
-    }
-    setShowStarBanner(false);
-  };
-
-  const handleStarClick = () => {
-    // They went to the repo — opt them out of any further prompts.
-    localStorage.setItem('velxio_star_clicked', '1');
-    setShowStarBanner(false);
-  };
   const [explorerOpen, setExplorerOpen] = useState(true);
   const [explorerWidth, setExplorerWidth] = useState(EXPLORER_DEFAULT);
   const [isMobile, setIsMobile] = useState(
@@ -188,6 +126,9 @@ export const EditorPage: React.FC = () => {
   const [canvasHeaderSlot, setCanvasHeaderSlot] = useState<HTMLDivElement | null>(null);
   // Default to 'code' on mobile — show the editor so users can write/view code
   const [mobileView, setMobileView] = useState<'code' | 'circuit'>('code');
+  // Horizontal px the docked AI panel takes from the editor/canvas split
+  // (0 on mobile — there the panel is a fullscreen sheet, not a dock).
+  const agentDockPx = !isMobile && agentPanelOpen ? agentPanelWidth : 0;
 
   // Save is dispatched to the pro overlay, which inspects auth state and
   // shows the right modal (Save vs Login prompt). In OSS without the
@@ -420,6 +361,21 @@ export const EditorPage: React.FC = () => {
             </svg>
             <span>{t('editor.shell.circuit')}</span>
           </button>
+          <button
+            className={`mobile-tab-btn${agentPanelOpen ? ' mobile-tab-btn--active' : ''}`}
+            onClick={toggleAgentPanel}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M12 2l1.9 5.7L19.6 9.6l-5.7 1.9L12 17.2l-1.9-5.7L4.4 9.6l5.7-1.9L12 2z" />
+            </svg>
+            <span>AI</span>
+          </button>
         </nav>
       )}
 
@@ -517,21 +473,45 @@ export const EditorPage: React.FC = () => {
             />
           </div>
           <div className="unified-toolbar-canvas" ref={setCanvasHeaderSlot} />
+          {/* AI assistant toggle — far right of the bar, docks the chat panel */}
+          <button
+            className={`agent-toolbar-btn${agentPanelOpen ? ' agent-toolbar-btn--active' : ''}`}
+            onClick={toggleAgentPanel}
+            aria-pressed={agentPanelOpen}
+            title="AI 助手 (AI Assistant)"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M12 2l1.9 5.7L19.6 9.6l-5.7 1.9L12 17.2l-1.9-5.7L4.4 9.6l5.7-1.9L12 2z" />
+              <path d="M19 14l.95 2.85L22.8 17.8l-2.85.95L19 21.6l-.95-2.85-2.85-.95 2.85-.95L19 14z" />
+            </svg>
+            <span className="vm-label">AI</span>
+          </button>
         </div>
       )}
 
       <div className="app-container" ref={containerRef}>
-        {/* ── Editor side ── */}
+        {/* ── Editor side ──
+            Widths are computed against the space LEFT OF the docked AI panel
+            (agentDockPx) so opening the panel never overflows the row: the
+            editor keeps its share of the remaining space and the simulator
+            pane (flex: 1) absorbs the rest. */}
         <div
           className="editor-panel"
           style={{
             width: isMobile
               ? '100%'
               : viewMode === 'code'
-              ? '100%'
+              ? `calc(100% - ${agentDockPx}px)`
               : viewMode === 'circuit'
               ? '0%'
-              : `${editorWidthPct}%`,
+              : `calc((100% - ${agentDockPx}px) * ${editorWidthPct / 100})`,
+            maxWidth: !isMobile && viewMode === 'code' ? 'none' : undefined,
             display:
               (isMobile && mobileView !== 'code') || (!isMobile && viewMode === 'circuit')
                 ? 'none'
@@ -690,15 +670,13 @@ export const EditorPage: React.FC = () => {
             </>
           )}
         </div>
+
+        {/* ── OSS AI assistant — right-docked pane (fullscreen sheet on
+            mobile). Rendering it as a flex sibling means the canvas shrinks
+            when it opens; nothing overlaps. docs/wiki/ai-assistant.md */}
+        <AgentChatPanel />
       </div>
 
-      {showStarBanner && (
-        <GitHubStarBanner
-          onClose={handleDismissStarBanner}
-          onStarClick={handleStarClick}
-          round={starRound}
-        />
-      )}
       {/* Slot reserved for the private pro overlay (e.g. agent chat panel).
           Self-hosted builds without an overlay see nothing here. */}
       <div data-velxio-slot="agent-chat" />

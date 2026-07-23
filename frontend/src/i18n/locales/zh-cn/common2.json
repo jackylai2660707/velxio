@@ -21,7 +21,7 @@
         "title": "搜索并安装 Arduino 库",
         "label": "库"
       },
-      "import": "导入项目 (.vlx Velxio 或 .zip Wokwi)",
+      "import": "导入项目 (.vlx AI物联网实验室 或 .zip Wokwi)",
       "export": "将当前项目导出为 .zip 文件",
       "uploadFirmware": "上传固件 (.hex, .bin, .elf, .ihex) 以跳过编译",
       "toggleConsole": "切换输出控制台",
@@ -357,15 +357,15 @@
   },
   "about": {
     "hero": {
-      "title": "关于 Velxio",
+      "title": "关于 AI物联网实验室",
       "subtitle": "一个免费、开源的嵌入式系统仿真器 — 由一位对硬件和开源充满热情的个人开发者构建。"
     },
     "story": {
       "heading": "故事",
-      "p1": "Velxio 始于一次个人探索，研究微控制器仿真器内部如何工作 — CPU 指令、内存管理、外设时序和底层架构。最初只是一个假期中的学习项目，但很快发展成了更大的东西。",
+      "p1": "AI物联网实验室 始于一次个人探索，研究微控制器仿真器内部如何工作 — CPU 指令、内存管理、外设时序和底层架构。最初只是一个假期中的学习项目，但很快发展成了更大的东西。",
       "p2": "想法很简单：<strong>如果任何人都可以直接在浏览器中模拟 Arduino、ESP32 和 Raspberry Pi 板，无需购买硬件、无需安装工具链、无需云账户，会怎样？</strong>",
-      "p3": "Velxio v1 在 Product Hunt 和 Hacker News 上发布，支持 Arduino Uno 和 Raspberry Pi Pico。来自创客和嵌入式社区的反馈令人难以置信 — 并推动了项目向前发展。",
-      "p4": "<strong>Velxio 2.0</strong> 通过 QEMU（使用 lcgamboa 分支）提供了 ESP32 仿真、运行真实 Linux 的 Raspberry Pi 3、对 ESP32-C3 和 CH32V003 的 RISC-V 支持、逼真的传感器仿真（DHT22、HC-SR04、WS2812B NeoPixel），以及跨越 5 种 CPU 架构的 19 块板 — 全部运行真实编译的代码。",
+      "p3": "AI物联网实验室 v1 在 Product Hunt 和 Hacker News 上发布，支持 Arduino Uno 和 Raspberry Pi Pico。来自创客和嵌入式社区的反馈令人难以置信 — 并推动了项目向前发展。",
+      "p4": "<strong>AI物联网实验室 2.0</strong> 通过 QEMU（使用 lcgamboa 分支）提供了 ESP32 仿真、运行真实 Linux 的 Raspberry Pi 3、对 ESP32-C3 和 CH32V003 的 RISC-V 支持、逼真的传感器仿真（DHT22、HC-SR04、WS2812B NeoPixel），以及跨越 5 种 CPU 架构的 19 块板 — 全部运行真实编译的代码。",
       "p5": "v2 发布在 <strong>Hacker News 首页停留超过 20 小时</strong>，在不到 24 小时内获得了近 600 个 GitHub 星标和数千名访问者。现在，它被世界各地的学生、教授和创客使用。"
     },
     "howItWorks": {
@@ -377,7 +377,7 @@
     },
     "openSource": {
       "heading": "开源理念",
-      "lead": "Velxio 在 AGPLv3 许可下 <strong>100% 开源</strong>。无云依赖、无学生账户、无数据离开您的网络。大学和训练营可以使用单个 Docker 命令将其部署在自己的服务器上，让每个学生都能免费访问完整的嵌入式开发环境。",
+      "lead": "AI物联网实验室 在 AGPLv3 许可下 <strong>100% 开源</strong>。无云依赖、无学生账户、无数据离开您的网络。大学和训练营可以使用单个 Docker 命令将其部署在自己的服务器上，让每个学生都能免费访问完整的嵌入式开发环境。",
       "creditsIntro": "该项目建立在社区出色的开源工作之上：",
       "credits": {
         "avr8js": "Wokwi 的 AVR8 CPU 仿真",
@@ -386,7 +386,7 @@
         "qemuLcgamboa": "ESP32 和 Raspberry Pi QEMU 仿真",
         "arduinoCli": "Arduino 编译工具链"
       },
-      "inspiredBy": "Velxio 的灵感来自 <a>Wokwi</a>，这是一个很棒的工具。Velxio 的目标是走一条不同的道路：完全开源、可自托管，并在同一电路中支持多个异构板。"
+      "inspiredBy": "AI物联网实验室 的灵感来自 <a>Wokwi</a>，这是一个很棒的工具。AI物联网实验室 的目标是走一条不同的道路：完全开源、可自托管，并在同一电路中支持多个异构板。"
     },
     "creator": {
       "heading": "创建者",
@@ -426,7 +426,7 @@
       }
     },
     "cta": {
-      "title": "准备好尝试 Velxio 了吗？",
+      "title": "准备好尝试 AI物联网实验室 了吗？",
       "subtitle": "无需注册。100% 在浏览器中运行。免费且开源。",
       "openEditor": "打开编辑器"
     }

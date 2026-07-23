@@ -9,6 +9,7 @@ import { CircuitVerificationModal } from '../simulator/CircuitVerificationModal'
 import type { BoardKind, LanguageMode } from '../../types/board';
 import { BOARD_KIND_FQBN, BOARD_SUPPORTS_MICROPYTHON, isPiBoardKind, boardDisplayName } from '../../types/board';
 import { compileCode } from '../../services/compilation';
+import { registerToolbarActions } from '../../lib/agentBridge';
 import {
   compileRom,
   isChipProgramFile,
@@ -1145,6 +1146,26 @@ export const EditorToolbar = ({
       if (!anyBoardRunning) setElectricalPaused(false);
     }
   };
+
+  // ── AI assistant bridge ───────────────────────────────────────────────
+  // The agent's compile/run/stop tools call through to THESE handlers so an
+  // agent-triggered build behaves exactly like clicking the buttons (custom
+  // chips, MicroPython, ESP32 options, pre-flight checks included). The ref
+  // keeps the registered callbacks pointing at the latest render's closures.
+  const agentActionsRef = useRef({ handleCompile, handleRun, handleRunAll, handleStop });
+  agentActionsRef.current = { handleCompile, handleRun, handleRunAll, handleStop };
+  useEffect(
+    () =>
+      registerToolbarActions({
+        compile: () => agentActionsRef.current.handleCompile(),
+        run: () =>
+          useSimulatorStore.getState().boards.length > 1
+            ? agentActionsRef.current.handleRunAll()
+            : agentActionsRef.current.handleRun(),
+        stop: () => agentActionsRef.current.handleStop(),
+      }),
+    [],
+  );
 
   const handleExport = async () => {
     try {

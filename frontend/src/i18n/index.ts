@@ -1,14 +1,14 @@
 /**
- * react-i18next bootstrap. Loads the English source bundle synchronously and
- * lazy-imports the other locales on demand so the initial paint stays small
- * (each non-default JSON adds a few KB; loading 8 of them up front would
- * pad the bundle without payoff for English-speaking visitors).
+ * react-i18next bootstrap. Loads the Traditional Chinese bundle (the brand's
+ * default locale) plus the English source bundle synchronously — zh-tw for
+ * first paint, en as the missing-key fallback — and lazy-imports the other
+ * locales on demand so the initial paint stays small.
  *
  * The active locale is determined in priority order:
  *   1. URL prefix (`/es/...`) — the source of truth, what crawlers see.
  *   2. velxio_locale cookie — sticky preference, shared with the blog.
  *   3. Browser languages — Accept-Language fallback.
- *   4. DEFAULT_LOCALE ("en") — last resort.
+ *   4. DEFAULT_LOCALE ("zh-tw") — last resort.
  *
  * The URL is the source of truth at runtime; the cookie only seeds the
  * very first navigation so a returning visitor lands on their language
@@ -28,6 +28,15 @@ import enSeo from "./locales/en/seo.json";
 import enSeo2 from "./locales/en/seo2.json";
 import enSeo3 from "./locales/en/seo3.json";
 import enSeo4 from "./locales/en/seo4.json";
+import twCommon from "./locales/zh-tw/common.json";
+import twCommon2 from "./locales/zh-tw/common2.json";
+import twReleases from "./locales/zh-tw/releases.json";
+import twDocs from "./locales/zh-tw/docs.json";
+import twDocs2 from "./locales/zh-tw/docs2.json";
+import twSeo from "./locales/zh-tw/seo.json";
+import twSeo2 from "./locales/zh-tw/seo2.json";
+import twSeo3 from "./locales/zh-tw/seo3.json";
+import twSeo4 from "./locales/zh-tw/seo4.json";
 import { DEFAULT_LOCALE, LOCALES, type Locale } from "./config";
 
 const NAMESPACES = ["common"] as const;
@@ -45,6 +54,20 @@ void i18n
   .use(initReactI18next)
   .init({
     resources: {
+      "zh-tw": {
+        common: {
+          ...twCommon,
+          ...twCommon2,
+          ...twReleases,
+          seo: {
+            ...twSeo.seo,
+            ...twSeo2.seo,
+            ...twSeo3.seo,
+            ...twSeo4.seo,
+          },
+          docs: { ...twDocs.docs, ...twDocs2.docs },
+        },
+      },
       en: {
         common: {
           ...enCommon,
@@ -69,7 +92,9 @@ void i18n
     // `i18n.language !== target` guard was already satisfied so the bundle
     // was never fetched.
     lng: DEFAULT_LOCALE,
-    fallbackLng: DEFAULT_LOCALE,
+    // Missing zh-tw keys fall back to the English source bundle (also
+    // inlined above), never to raw key names.
+    fallbackLng: "en",
     supportedLngs: SUPPORTED_LANGS,
     // Our locale codes are lowercase with a lowercase region ("zh-cn",
     // "pt-br"). i18next's default code formatting rewrites those to

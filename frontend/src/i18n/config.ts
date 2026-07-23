@@ -9,6 +9,7 @@
  */
 
 export const LOCALES = [
+  "zh-tw",
   "en",
   "es",
   "pt-br",
@@ -22,10 +23,13 @@ export const LOCALES = [
 
 export type Locale = (typeof LOCALES)[number];
 
-export const DEFAULT_LOCALE: Locale = "en";
+// 「AI物聯網實驗室」brand: Traditional Chinese is the product's home
+// language — served prefix-free at `/`; every other locale (including
+// English) lives under its own URL prefix.
+export const DEFAULT_LOCALE: Locale = "zh-tw";
 
 export const NON_DEFAULT_LOCALES = LOCALES.filter(
-  (l): l is Exclude<Locale, "en"> => l !== DEFAULT_LOCALE
+  (l): l is Exclude<Locale, typeof DEFAULT_LOCALE> => l !== DEFAULT_LOCALE
 );
 
 export type LocaleMeta = {
@@ -40,6 +44,12 @@ export type LocaleMeta = {
 };
 
 export const LOCALE_META: Record<Locale, LocaleMeta> = {
+  "zh-tw": {
+    htmlLang: "zh-TW",
+    nativeName: "繁體中文",
+    ogLocale: "zh_TW",
+    dir: "ltr",
+  },
   en: { htmlLang: "en", nativeName: "English", ogLocale: "en_US", dir: "ltr" },
   es: { htmlLang: "es", nativeName: "Español", ogLocale: "es_ES", dir: "ltr" },
   "pt-br": {

@@ -146,6 +146,11 @@ interface EditorState {
   setActiveGroup: (groupId: string) => void;
   getGroupFiles: (groupId: string) => WorkspaceFile[];
   updateGroupFile: (groupId: string, fileId: string, content: string) => void;
+  /** Add a file to a specific group WITHOUT switching the active group.
+   *  Used by the AI assistant, which may target a non-active board. */
+  addFileToGroup: (groupId: string, name: string, content: string) => string;
+  /** Remove a file from a specific group (AI assistant counterpart of deleteFile). */
+  deleteFileFromGroup: (groupId: string, fileId: string) => void;
   /** Replace ALL file groups atomically (used when loading a saved project). */
   replaceFileGroups: (groups: Record<string, { name: string; content: string }[]>) => void;
 
@@ -430,7 +435,59 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const groupFiles = (s.fileGroups[groupId] ?? []).map((f) =>
         f.id === fileId ? { ...f, content, modified: true } : f,
       );
-      return { fileGroups: { ...s.fileGroups, [groupId]: groupFiles } };
+      const mirror =
+        groupId === s.activeGroupId
+          ? { files: groupFiles, codeChangedSinceLastCompile: true }
+          : { codeChangedSinceLastCompile: true };
+      return { fileGroups: { ...s.fileGroups, [groupId]: groupFiles }, ...mirror };
+    });
+  },
+
+  addFileToGroup: (groupId: string, name: string, content: string) => {
+    const id = generateUUID();
+    const newFile: WorkspaceFile = { id, name, content, modified: true };
+    set((s) => {
+      const groupFiles = [...(s.fileGroups[groupId] ?? []), newFile];
+      const mirror =
+        groupId === s.activeGroupId
+          ? {
+              files: groupFiles,
+              openFileIds: [...s.openFileIds, id],
+            }
+          : {};
+      return {
+        fileGroups: { ...s.fileGroups, [groupId]: groupFiles },
+        openGroupFileIds: {
+          ...s.openGroupFileIds,
+          [groupId]: [...(s.openGroupFileIds[groupId] ?? []), id],
+        },
+        codeChangedSinceLastCompile: true,
+        ...mirror,
+      };
+    });
+    return id;
+  },
+
+  deleteFileFromGroup: (groupId: string, fileId: string) => {
+    set((s) => {
+      const groupFiles = (s.fileGroups[groupId] ?? []).filter((f) => f.id !== fileId);
+      const groupOpenIds = (s.openGroupFileIds[groupId] ?? []).filter((fid) => fid !== fileId);
+      const mirror =
+        groupId === s.activeGroupId
+          ? {
+              files: groupFiles,
+              openFileIds: s.openFileIds.filter((fid) => fid !== fileId),
+              activeFileId:
+                s.activeFileId === fileId
+                  ? (groupOpenIds[0] ?? groupFiles[0]?.id ?? '')
+                  : s.activeFileId,
+            }
+          : {};
+      return {
+        fileGroups: { ...s.fileGroups, [groupId]: groupFiles },
+        openGroupFileIds: { ...s.openGroupFileIds, [groupId]: groupOpenIds },
+        ...mirror,
+      };
     });
   },
 

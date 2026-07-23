@@ -21,7 +21,7 @@
         "title": "Rechercher et installer des bibliothèques Arduino",
         "label": "Bibliothèques"
       },
-      "import": "Importer un projet (.vlx Velxio ou .zip Wokwi)",
+      "import": "Importer un projet (.vlx AI IoT Lab ou .zip Wokwi)",
       "export": "Exporter le projet actuel en fichier .zip",
       "uploadFirmware": "Téléverser le firmware (.hex, .bin, .elf, .ihex) pour contourner la compilation",
       "toggleConsole": "Afficher/Masquer la console de sortie",
@@ -357,15 +357,15 @@
   },
   "about": {
     "hero": {
-      "title": "À propos de Velxio",
+      "title": "À propos de AI IoT Lab",
       "subtitle": "Un émulateur de systèmes embarqués gratuit et open source — créé par un développeur passionné de matériel et d'open source."
     },
     "story": {
       "heading": "L'Histoire",
-      "p1": "Velxio a commencé comme une exploration personnelle du fonctionnement interne des émulateurs de microcontrôleurs — instructions CPU, gestion de la mémoire, temporisation des périphériques et architecture bas niveau. Ce qui a commencé comme un projet d'apprentissage pendant des vacances a rapidement grandi.",
+      "p1": "AI IoT Lab a commencé comme une exploration personnelle du fonctionnement interne des émulateurs de microcontrôleurs — instructions CPU, gestion de la mémoire, temporisation des périphériques et architecture bas niveau. Ce qui a commencé comme un projet d'apprentissage pendant des vacances a rapidement grandi.",
       "p2": "L'idée était simple : <strong>et si n'importe qui pouvait simuler des cartes Arduino, ESP32 et Raspberry Pi directement dans le navigateur, sans acheter de matériel, sans installer de chaînes d'outils, sans comptes cloud ?</strong>",
-      "p3": "Velxio v1 a été lancé sur Product Hunt et Hacker News, prenant en charge Arduino Uno et Raspberry Pi Pico. Les retours de la communauté maker et embarquée ont été incroyables — et ont poussé le projet vers l'avant.",
-      "p4": "<strong>Velxio 2.0</strong> a apporté l'émulation ESP32 via QEMU (en utilisant le fork lcgamboa), un Raspberry Pi 3 faisant tourner du vrai Linux, le support RISC-V pour ESP32-C3 et CH32V003, la simulation réaliste de capteurs (DHT22, HC-SR04, WS2812B NeoPixel), et 19 cartes sur 5 architectures CPU — le tout exécutant du code compilé réel.",
+      "p3": "AI IoT Lab v1 a été lancé sur Product Hunt et Hacker News, prenant en charge Arduino Uno et Raspberry Pi Pico. Les retours de la communauté maker et embarquée ont été incroyables — et ont poussé le projet vers l'avant.",
+      "p4": "<strong>AI IoT Lab 2.0</strong> a apporté l'émulation ESP32 via QEMU (en utilisant le fork lcgamboa), un Raspberry Pi 3 faisant tourner du vrai Linux, le support RISC-V pour ESP32-C3 et CH32V003, la simulation réaliste de capteurs (DHT22, HC-SR04, WS2812B NeoPixel), et 19 cartes sur 5 architectures CPU — le tout exécutant du code compilé réel.",
       "p5": "Le lancement de v2 a atteint la <strong>première page de Hacker News pendant plus de 20 heures</strong>, atteignant près de 600 étoiles GitHub et des milliers de visiteurs en moins de 24 heures. Il est maintenant utilisé par des étudiants, des professeurs et des makers du monde entier."
     },
     "howItWorks": {
@@ -377,7 +377,7 @@
     },
     "openSource": {
       "heading": "Philosophie open source",
-      "lead": "Velxio est <strong>100 % open source</strong> sous licence AGPLv3. Aucune dépendance cloud, aucun compte étudiant, aucune donnée quittant votre réseau. Les universités et bootcamps peuvent le déployer sur leurs propres serveurs avec une seule commande Docker et donner à chaque étudiant un accès à un environnement de développement embarqué complet — gratuitement.",
+      "lead": "AI IoT Lab est <strong>100 % open source</strong> sous licence AGPLv3. Aucune dépendance cloud, aucun compte étudiant, aucune donnée quittant votre réseau. Les universités et bootcamps peuvent le déployer sur leurs propres serveurs avec une seule commande Docker et donner à chaque étudiant un accès à un environnement de développement embarqué complet — gratuitement.",
       "creditsIntro": "Le projet s'appuie sur un travail open source incroyable de la communauté :",
       "credits": {
         "avr8js": "Émulation CPU AVR8 par Wokwi",
@@ -386,7 +386,7 @@
         "qemuLcgamboa": "Émulation QEMU ESP32 et Raspberry Pi",
         "arduinoCli": "Chaîne d'outils de compilation Arduino"
       },
-      "inspiredBy": "Velxio a été inspiré par <a>Wokwi</a>, qui est un outil fantastique. L'objectif de Velxio est de prendre une voie différente : entièrement open source, auto-hébergeable et prenant en charge plusieurs cartes hétérogènes dans le même circuit."
+      "inspiredBy": "AI IoT Lab a été inspiré par <a>Wokwi</a>, qui est un outil fantastique. L'objectif de AI IoT Lab est de prendre une voie différente : entièrement open source, auto-hébergeable et prenant en charge plusieurs cartes hétérogènes dans le même circuit."
     },
     "creator": {
       "heading": "Le Créateur",
@@ -426,7 +426,7 @@
       }
     },
     "cta": {
-      "title": "Prêt à essayer Velxio ?",
+      "title": "Prêt à essayer AI IoT Lab ?",
       "subtitle": "Aucune inscription requise. Fonctionne à 100 % dans votre navigateur. Gratuit et open source.",
       "openEditor": "Ouvrir l'éditeur"
     }

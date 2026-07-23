@@ -3,17 +3,17 @@
     "versionBadge": "Versão 2.0",
     "heroAccent": "Simulador Multiplataforma Embarcado",
     "heroSubtitle": "Simule Arduino, ESP32, Raspberry Pi Pico e Raspberry Pi 3 no seu navegador. 19 placas, 68+ exemplos prontos para executar, simulação realista de sensores. Gratuito, código aberto, sem instalação.",
-    "tryV2": "Experimente o Velxio 2.0",
+    "tryV2": "Experimente o AI IoT Lab 2.0",
     "joinDiscord": "Entre no Discord",
     "boardsHeading": "19 placas. 5 arquiteturas. Uma ferramenta.",
-    "boardsLead": "De AVR de 8 bits a ARM Linux quad-core — o Velxio 2.0 emula todas as principais plataformas embarcadas em uma única aba do navegador.",
+    "boardsLead": "De AVR de 8 bits a ARM Linux quad-core — o AI IoT Lab 2.0 emula todas as principais plataformas embarcadas em uma única aba do navegador.",
     "multipleBoards": "Múltiplas placas em um circuito",
     "mixArchitectures": "Misture arquiteturas",
     "mixArchitecturesBody": "Conecte um ESP32 a um Raspberry Pi 3, conecte três Arduinos ou combine um Pico com um ESP32-C3. Qualquer combinação funciona.",
     "realInterBoard": "Comunicação real entre placas",
     "realInterBoardBody": "As placas se comunicam através de conexões com fio — UART, I2C, SPI ou simples sinais GPIO, exatamente como hardware real.",
     "uniqueFeature": "Nenhum outro simulador faz isso",
-    "uniqueFeatureBody": "Simuladores tradicionais emulam uma placa isoladamente. O Velxio simula sistemas inteiros com múltiplas placas rodando simultaneamente.",
+    "uniqueFeatureBody": "Simuladores tradicionais emulam uma placa isoladamente. O AI IoT Lab simula sistemas inteiros com múltiplas placas rodando simultaneamente.",
     "whatsNew": "O que há de novo na versão 2.0",
     "whatsNewLead": "Uma transformação completa em um simulador de sistemas embarcados multiplataforma — mais placas, emulação mais precisa, melhor experiência do desenvolvedor.",
     "examplesHeading": "68+ exemplos prontos para executar",
@@ -45,7 +45,7 @@
       }
     },
     "outcomeHeading": "O resultado",
-    "outcomeLead": "O Velxio 2.0 transforma o projeto em um simulador completo e escalável de sistemas embarcados multiplataforma.",
+    "outcomeLead": "O AI IoT Lab 2.0 transforma o projeto em um simulador completo e escalável de sistemas embarcados multiplataforma.",
     "outcome": {
       "realistic": "Emulação mais realista",
       "realisticBody": "Emulação Xtensa, RISC-V e ARM baseada em QEMU. AVR8 preciso em ciclos via avr8js. Execução real de firmware, não aproximações.",
@@ -55,9 +55,9 @@
       "devExBody": "Editor Monaco, workspace multi-arquivo, gerenciador de bibliotecas, osciloscópio, painel de controle de sensores, design responsivo para dispositivos móveis."
     },
     "builtOnOss": "Construído sobre código aberto",
-    "builtOnOssLead": "O Velxio é alimentado por estes projetos de código aberto. Sem eles, nada disso seria possível.",
+    "builtOnOssLead": "O AI IoT Lab é alimentado por estes projetos de código aberto. Sem eles, nada disso seria possível.",
     "bottom": {
-      "title": "Experimente o Velxio 2.0 agora",
+      "title": "Experimente o AI IoT Lab 2.0 agora",
       "body": "Abra o editor e comece a simular — 19 placas, 68+ exemplos, zero configuração.",
       "cta": "Iniciar Simulador"
     }
@@ -66,11 +66,11 @@
     "versionBadge": "Versão 2.5",
     "heroAccent": "Arduino encontra SPICE no seu navegador",
     "heroSubtitle": "Simulação de circuitos analógicos em tempo real via ngspice-WASM, conectada a Arduino, ESP32 e Raspberry Pi Pico. Resistores, capacitores, amplificadores operacionais, transistores, amperímetros e voltímetros ao vivo — co-simulados com seu firmware. Gratuito, código aberto, sem instalação.",
-    "tryV25": "Experimente o Velxio 2.5",
+    "tryV25": "Experimente o AI IoT Lab 2.5",
     "fullEmulation": "De apenas digital para emulação completa de circuitos",
-    "fullEmulationLead": "O Velxio 2.0 simulava seu firmware perfeitamente. O Velxio 2.5 simula o circuito ao redor — com o mesmo mecanismo ngspice usado por ferramentas EDA profissionais, rodando inteiramente na sua aba do navegador.",
+    "fullEmulationLead": "O AI IoT Lab 2.0 simulava seu firmware perfeitamente. O AI IoT Lab 2.5 simula o circuito ao redor — com o mesmo mecanismo ngspice usado por ferramentas EDA profissionais, rodando inteiramente na sua aba do navegador.",
     "notLinear": "Não é uma aproximação linear",
-    "notLinearBody": "O Velxio resolve a Análise Nodal Modificada completa a cada tick. Dispositivos não lineares — diodos, BJTs, MOSFETs, amplificadores operacionais com saturação — se comportam como os reais, não como idealizações de livro texto.",
+    "notLinearBody": "O AI IoT Lab resolve a Análise Nodal Modificada completa a cada tick. Dispositivos não lineares — diodos, BJTs, MOSFETs, amplificadores operacionais com saturação — se comportam como os reais, não como idealizações de livro texto.",
     "realFirmware": "Firmware real. Circuito real. Mesma tela.",
     "realFirmwareBody": "Pinos GPIO acionam nets SPICE como fontes de tensão. Entradas ADC leem tensões de nó resolvidas. analogRead() retorna o que o circuito realmente produz — não um atalho simulado.",
     "browserOffline": "100% navegador, 100% offline",
@@ -78,7 +78,7 @@
     "catalogHeading": "Mais de 100 componentes precisos para SPICE",
     "catalogLead": "Um catálogo eletrônico completo — passivos, semicondutores, lógica, instrumentos — cada um modelado com cartas de dispositivo ngspice reais, não substitutos comportamentais.",
     "coSimHeading": "Co-simulação híbrida digital + analógica",
-    "coSimLead": "A maioria dos simuladores de navegador executa seu firmware OU um circuito — nunca ambos juntos. O Velxio 2.5 os resolve no mesmo clock.",
+    "coSimLead": "A maioria dos simuladores de navegador executa seu firmware OU um circuito — nunca ambos juntos. O AI IoT Lab 2.5 os resolve no mesmo clock.",
     "driveMotor": "Acione um motor a partir de um pino Arduino",
     "driveMotorBody": "Pino HIGH → porta MOSFET → corrente de dreno através de uma carga indutiva real → força contraeletromotriz através de um diodo flyback. Tudo resolvido por SPICE. Veja as tensões de porta e dreno lado a lado.",
     "readSensor": "Leia um sensor através de um amplificador operacional real",
@@ -114,7 +114,7 @@
       }
     },
     "outcomeHeading": "O resultado",
-    "outcomeLead": "O Velxio 2.5 fecha o loop entre firmware e hardware: a mesma ferramenta que executa seu sketch agora resolve o circuito ao redor.",
+    "outcomeLead": "O AI IoT Lab 2.5 fecha o loop entre firmware e hardware: a mesma ferramenta que executa seu sketch agora resolve o circuito ao redor.",
     "outcome": {
       "teach": "Ensine e aprenda eletrônica",
       "teachBody": "Um playground SPICE gratuito baseado em navegador para estudantes — com o benefício adicional de executar firmware de microcontrolador real. Sem licença, sem instalação, sem reserva de laboratório.",
@@ -123,19 +123,19 @@
       "openSource": "Ainda 100% código aberto",
       "openSourceBody": "AGPL-3.0 no GitHub. Construído sobre ngspice, eecircuit-engine, avr8js, rp2040js, QEMU e wokwi-elements. Faça fork, hospede, estenda."
     },
-    "builtOnOssLead": "O Velxio 2.5 se apoia em décadas de ferramentas de eletrônica. Muito obrigado aos mantenedores de cada projeto abaixo.",
+    "builtOnOssLead": "O AI IoT Lab 2.5 se apoia em décadas de ferramentas de eletrônica. Muito obrigado aos mantenedores de cada projeto abaixo.",
     "bottom": {
-      "title": "Experimente o Velxio 2.5 agora",
+      "title": "Experimente o AI IoT Lab 2.5 agora",
       "body": "Abra o editor e comece a simular — firmware e circuito analógico, mesma tela, zero configuração."
     }
   },
   "v3": {
     "versionBadge": "Versão 3.0",
     "heroAccent": "CPUs retrô, sistemas multi-placa, precisão total de circuito",
-    "heroSubtitle": "O Velxio 3.0 é o maior lançamento até agora. Programe processadores clássicos Z80, 8080 e 4004, emule cartões MicroSD e displays ePaper, conecte sistemas inteiros de múltiplas placas e desfaça qualquer erro na tela. Mais de 100 novos exemplos — tudo gratuito, código aberto e rodando no seu navegador.",
-    "tryV3": "Experimente o Velxio 3.0",
-    "whatsNewHeading": "O maior lançamento do Velxio até agora",
-    "whatsNewLead": "O Velxio 2.5 trouxe circuitos analógicos reais. O Velxio 3.0 expande em todas as direções ao mesmo tempo — novos processadores, armazenamento e displays, sistemas verdadeiramente multi-placa, simulação mais precisa e o polimento do editor que você estava pedindo.",
+    "heroSubtitle": "O AI IoT Lab 3.0 é o maior lançamento até agora. Programe processadores clássicos Z80, 8080 e 4004, emule cartões MicroSD e displays ePaper, conecte sistemas inteiros de múltiplas placas e desfaça qualquer erro na tela. Mais de 100 novos exemplos — tudo gratuito, código aberto e rodando no seu navegador.",
+    "tryV3": "Experimente o AI IoT Lab 3.0",
+    "whatsNewHeading": "O maior lançamento do AI IoT Lab até agora",
+    "whatsNewLead": "O AI IoT Lab 2.5 trouxe circuitos analógicos reais. O AI IoT Lab 3.0 expande em todas as direções ao mesmo tempo — novos processadores, armazenamento e displays, sistemas verdadeiramente multi-placa, simulação mais precisa e o polimento do editor que você estava pedindo.",
     "retroTitle": "CPUs clássicas, totalmente programáveis",
     "retroBody": "Coloque um Z80, 8080, 4004, 4040 ou 8086 na tela, carregue sua própria ROM e escreva assembly diretamente no editor — sem necessidade de placa hospedeira.",
     "multiBoardTitle": "Sistemas inteiros, não placas individuais",
@@ -147,7 +147,7 @@
     "examplesHeading": "Mais de 100 novos exemplos na galeria",
     "examplesLead": "Pico Doom, pré-visualizações ESP32-CAM, painéis ePaper, demonstrações de CPU retrô, uma série 100 Dias de IoT e dezenas de circuitos analógicos — todos a um clique de distância.",
     "outcomeHeading": "O resultado",
-    "outcomeLead": "O Velxio 3.0 transforma um simulador de placas em uma bancada completa de sistemas embarcados: processadores, periféricos, armazenamento, displays e circuitos, juntos em uma aba do navegador.",
+    "outcomeLead": "O AI IoT Lab 3.0 transforma um simulador de placas em uma bancada completa de sistemas embarcados: processadores, periféricos, armazenamento, displays e circuitos, juntos em uma aba do navegador.",
     "outcome": {
       "build": "Construa sistemas completos",
       "buildBody": "Projetos multi-placa com links reais UART/I2C/SPI, armazenamento MicroSD e saída ePaper ou webcam — prototipados de ponta a ponta antes de tocar no hardware.",
@@ -156,9 +156,9 @@
       "openSource": "Ainda 100% código aberto",
       "openSourceBody": "AGPL-3.0 no GitHub. Sem conta, sem nuvem, sem instalação. Faça fork, auto-hospede, estenda."
     },
-    "builtOnOssLead": "O Velxio 3.0 se apoia em décadas de trabalho em emulação e EDA de código aberto. Muito obrigado aos mantenedores de cada projeto abaixo.",
+    "builtOnOssLead": "O AI IoT Lab 3.0 se apoia em décadas de trabalho em emulação e EDA de código aberto. Muito obrigado aos mantenedores de cada projeto abaixo.",
     "bottom": {
-      "title": "Experimente o Velxio 3.0 agora",
+      "title": "Experimente o AI IoT Lab 3.0 agora",
       "body": "Abra o editor e comece a construir — processadores, periféricos, circuitos e sistemas multi-placa, com zero configuração."
     }
   }

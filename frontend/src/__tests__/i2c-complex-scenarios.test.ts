@@ -51,7 +51,11 @@ import '../simulation/parts/ProtocolParts';
 
 const ARDUINO_CLI_AVAILABLE = (() => {
   const r = spawnSync('arduino-cli', ['version'], { encoding: 'utf-8' });
-  return r.error == null && r.status === 0;
+  if (r.error != null || r.status !== 0) return false;
+  // The committed sketch fixtures are also required — a checkout without
+  // test/test_custom_chips (but with arduino-cli installed) should skip,
+  // not fail in beforeAll.
+  return existsSync(resolve(__dirname, '../../../test/test_custom_chips/sketches'));
 })();
 
 function hasLibrary(header: string): boolean {

@@ -104,7 +104,10 @@ Cada vez que el firmware hace un `digitalRead()` o `gpio_get_level()`, se llama 
 en todos los handlers activos. Cuando `step()` devuelve `True`, el handler se elimina.
 
 Esta arquitectura fue diseñada para **DHT22** y extendida a **HC-SR04** después de
-descartar varios enfoques alternativos.
+descartar varios enfoques alternativos. El **DHT11** reutiliza el mismo
+`DHT22SyncHandler` y las mismas fases — solo cambia el empaquetado del payload
+(`_dht11_build_payload`: bytes enteros `[hum, 0, temp, 0, checksum]` en lugar
+de décimas de grado).
 
 ---
 

@@ -98,55 +98,55 @@
     },
     "sectionMeta": {
       "intro": {
-        "title": "はじめに | Velxio ドキュメント",
+        "title": "はじめに | AI IoT Lab ドキュメント",
         "description": "Velxioについて学ぶ：無料のオープンソースArduinoエミュレータ。実際のAVR8およびRP2040 CPUエミュレーションと48以上のインタラクティブな電子部品を搭載。"
       },
       "gettingStarted": {
-        "title": "はじめに | Velxio ドキュメント",
+        "title": "はじめに | AI IoT Lab ドキュメント",
         "description": "Velxioを始める：ホスト型エディタを使用する、Dockerでセルフホストする、またはローカル開発環境をセットアップする。数分で最初のArduinoスケッチをシミュレート。"
       },
       "emulator": {
-        "title": "エミュレータアーキテクチャ | Velxio ドキュメント",
+        "title": "エミュレータアーキテクチャ | AI IoT Lab ドキュメント",
         "description": "VelxioがAVR8（ATmega328p）、RP2040、RISC-V（ESP32-C3）CPUをエミュレートする方法。サポートされているすべてのボードの実行ループ、ペリフェラル、ピンマッピングについて。"
       },
       "riscvEmulation": {
-        "title": "RISC-Vエミュレーション（ESP32-C3） | Velxio ドキュメント",
+        "title": "RISC-Vエミュレーション（ESP32-C3） | AI IoT Lab ドキュメント",
         "description": "ESP32-C3、XIAO ESP32-C3、C3 SuperMini向けブラウザサイドRV32IMCエミュレータ。メモリマップ、GPIO、UART0、ESP32イメージパーサー、RV32IMC ISA、テストスイートについて。"
       },
       "esp32Emulation": {
-        "title": "ESP32エミュレーション（Xtensa） | Velxio ドキュメント",
+        "title": "ESP32エミュレーション（Xtensa） | AI IoT Lab ドキュメント",
         "description": "ESP32およびESP32-S3（Xtensa LX6/LX7）向けQEMUベースのエミュレーション。lcgamboaフォーク、libqemu-xtensa、GPIO、WiFi、I2C、SPI、RMT/NeoPixel、LEDC/PWMについて。"
       },
       "components": {
-        "title": "コンポーネントリファレンス | Velxio ドキュメント",
+        "title": "コンポーネントリファレンス | AI IoT Lab ドキュメント",
         "description": "Velxioの48以上のインタラクティブな電子部品の完全リファレンス：LED、ディスプレイ、センサー、ボタン、ポテンショメータなど。配線とプロパティの詳細を含む。"
       },
       "roadmap": {
-        "title": "ロードマップ | Velxio ドキュメント",
+        "title": "ロードマップ | AI IoT Lab ドキュメント",
         "description": "Velxioの機能ロードマップ：実装済み、進行中、将来のリリースで計画されているもの。"
       },
       "architecture": {
-        "title": "プロジェクトアーキテクチャ | Velxio ドキュメント",
+        "title": "プロジェクトアーキテクチャ | AI IoT Lab ドキュメント",
         "description": "Velxioシステムアーキテクチャの詳細概要：フロントエンド、バックエンド、AVR8エミュレーションパイプライン、データフロー、Zustandストア、配線システム。"
       },
       "thirdParty": {
-        "title": "Wokwiライブラリ | Velxio ドキュメント",
+        "title": "Wokwiライブラリ | AI IoT Lab ドキュメント",
         "description": "Velxioが公式Wokwiオープンソースライブラリ（avr8js、wokwi-elements、rp2040js）を統合する方法。設定、更新、利用可能な48コンポーネントについて。"
       },
       "mcp": {
-        "title": "MCPサーバー | Velxio ドキュメント",
-        "description": "Velxio MCPサーバーリファレンス：AIエージェント（Claude、Cursor）をModel Context Protocol経由でVelxioと統合。ツール、トランスポート、回路フォーマット、サンプルウォークスルーについて。"
+        "title": "MCPサーバー | AI IoT Lab ドキュメント",
+        "description": "AI IoT Lab MCPサーバーリファレンス：AIエージェント（Claude、Cursor）をModel Context Protocol経由でVelxioと統合。ツール、トランスポート、回路フォーマット、サンプルウォークスルーについて。"
       },
       "setup": {
-        "title": "プロジェクトステータス | Velxio ドキュメント",
+        "title": "プロジェクトステータス | AI IoT Lab ドキュメント",
         "description": "実装済みのすべてのVelxio機能の完全なステータス：AVRエミュレーション、コンポーネントシステム、配線システム、コードエディタ、サンプルプロジェクト、次のステップ。"
       },
       "rp2040Emulation": {
-        "title": "RP2040エミュレーション（Raspberry Pi Pico） | Velxio ドキュメント",
+        "title": "RP2040エミュレーション（Raspberry Pi Pico） | AI IoT Lab ドキュメント",
         "description": "Velxioがrp2040jsを使用してRaspberry Pi PicoおよびPico Wをエミュレートする方法：ARM Cortex-M0+ 133 MHz、GPIO、UART、ADC、I2C、SPI、PWM、WFI最適化。"
       },
       "raspberryPi3Emulation": {
-        "title": "Raspberry Pi 3エミュレーション（QEMU） | Velxio ドキュメント",
+        "title": "Raspberry Pi 3エミュレーション（QEMU） | AI IoT Lab ドキュメント",
         "description": "VelxioがQEMU raspi3bを使用して完全なRaspberry Pi 3Bをエミュレートする方法：実際のRaspberry Pi OS、Python + RPi.GPIOシム、デュアルチャンネルUART、VFS、マルチボードシリアルブリッジ。"
       },
       "buildQemu": {

@@ -6614,6 +6614,241 @@ void loop() {
     ],
   },
   {
+    id: 'uno-dht11-serial',
+    title: 'Uno: DHT11 Temperature & Humidity',
+    description: 'Read temperature and humidity using a DHT11 sensor on pin 7.',
+    libraries: ['DHT sensor library'],
+    category: 'sensors',
+    difficulty: 'beginner',
+    boardFilter: 'arduino-uno',
+    tags: ['dht11', 'temperature', 'humidity'],
+    code: `// Arduino Uno — DHT11 Temperature & Humidity Sensor
+// Requires: Adafruit DHT sensor library (install via Library Manager)
+// Wiring: SDA (data) → pin 7  |  VCC → 5V  |  GND → GND
+
+#include <DHT.h>
+
+#define DHT_PIN  7
+#define DHT_TYPE DHT11
+
+DHT dht(DHT_PIN, DHT_TYPE);
+
+void setup() {
+  Serial.begin(9600);
+  dht.begin();
+  Serial.println("DHT11 Sensor ready!");
+}
+
+void loop() {
+  delay(2000);  // DHT11 needs >= 1 s between reads
+  float humidity = dht.readHumidity();
+  float tempC    = dht.readTemperature();
+
+  if (isnan(humidity) || isnan(tempC)) {
+    Serial.println("ERROR: Failed to read from DHT11!");
+    return;
+  }
+
+  Serial.print("Humidity   : "); Serial.print(humidity, 0); Serial.println(" %");
+  Serial.print("Temperature: "); Serial.print(tempC, 0);    Serial.println(" C");
+  Serial.println("---");
+}`,
+    components: [
+      {
+        type: 'velxio-dht11',
+        id: 'uno-dht11a',
+        x: 430,
+        y: 150,
+        properties: { temperature: '25', humidity: '60' },
+      },
+    ],
+    wires: [
+      {
+        id: 'ud11-vcc',
+        start: { componentId: 'arduino-uno', pinName: '5V' },
+        end: { componentId: 'uno-dht11a', pinName: 'VCC' },
+        color: '#ff0000',
+      },
+      {
+        id: 'ud11-gnd',
+        start: { componentId: 'arduino-uno', pinName: 'GND' },
+        end: { componentId: 'uno-dht11a', pinName: 'GND' },
+        color: '#000000',
+      },
+      {
+        id: 'ud11-sda',
+        start: { componentId: 'arduino-uno', pinName: '7' },
+        end: { componentId: 'uno-dht11a', pinName: 'SDA' },
+        color: '#22aaff',
+      },
+    ],
+  },
+  {
+    id: 'uno-ds18b20-serial',
+    title: 'Uno: DS18B20 1-Wire Temperature',
+    description:
+      'Read temperature from a DS18B20 1-Wire probe on pin 2 using the DallasTemperature library.',
+    libraries: ['OneWire', 'DallasTemperature'],
+    category: 'sensors',
+    difficulty: 'beginner',
+    boardFilter: 'arduino-uno',
+    tags: ['ds18b20', 'temperature', '1-wire', 'onewire'],
+    code: `// Arduino Uno — DS18B20 1-Wire Temperature Sensor
+// Requires: OneWire + DallasTemperature libraries (Library Manager)
+// Wiring: DQ → pin 2  |  VDD → 5V  |  GND → GND
+// (On a real breadboard add a 4.7 kΩ pull-up from DQ to 5V —
+//  the simulator provides the pull-up for you.)
+
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+#define ONE_WIRE_PIN 2
+
+OneWire oneWire(ONE_WIRE_PIN);
+DallasTemperature sensors(&oneWire);
+
+void setup() {
+  Serial.begin(9600);
+  sensors.begin();
+  Serial.print("DS18B20 sensors found: ");
+  Serial.println(sensors.getDeviceCount());
+}
+
+void loop() {
+  sensors.requestTemperatures();
+  float tempC = sensors.getTempCByIndex(0);
+
+  if (tempC == DEVICE_DISCONNECTED_C) {
+    Serial.println("ERROR: DS18B20 not found!");
+  } else {
+    Serial.print("Temperature: ");
+    Serial.print(tempC, 1);
+    Serial.println(" C");
+  }
+  delay(1000);
+}`,
+    components: [
+      {
+        type: 'velxio-ds18b20',
+        id: 'uno-ds18',
+        x: 440,
+        y: 160,
+        properties: { temperature: '25' },
+      },
+    ],
+    wires: [
+      {
+        id: 'uds-vdd',
+        start: { componentId: 'arduino-uno', pinName: '5V' },
+        end: { componentId: 'uno-ds18', pinName: 'VDD' },
+        color: '#ff0000',
+      },
+      {
+        id: 'uds-gnd',
+        start: { componentId: 'arduino-uno', pinName: 'GND' },
+        end: { componentId: 'uno-ds18', pinName: 'GND' },
+        color: '#000000',
+      },
+      {
+        id: 'uds-dq',
+        start: { componentId: 'arduino-uno', pinName: '2' },
+        end: { componentId: 'uno-ds18', pinName: 'DQ' },
+        color: '#ffaa00',
+      },
+    ],
+  },
+  {
+    id: 'uno-max7219-heart',
+    title: 'Uno: MAX7219 8×8 Dot Matrix Heart',
+    description:
+      'Draw a blinking heart on a MAX7219-driven 8×8 LED matrix with the LedControl library.',
+    libraries: ['LedControl'],
+    category: 'displays',
+    difficulty: 'beginner',
+    boardFilter: 'arduino-uno',
+    tags: ['max7219', 'dot matrix', 'led matrix', 'display'],
+    code: `// Arduino Uno — MAX7219 8x8 LED Dot Matrix (blinking heart)
+// Requires: LedControl library (install via Library Manager)
+// Wiring: DIN → pin 12  |  CLK → pin 11  |  CS → pin 10
+//         VCC → 5V  |  GND → GND
+
+#include <LedControl.h>
+
+// LedControl(DIN, CLK, CS, number of devices)
+LedControl lc = LedControl(12, 11, 10, 1);
+
+const byte HEART[8] = {
+  B00000000,
+  B01100110,
+  B11111111,
+  B11111111,
+  B11111111,
+  B01111110,
+  B00111100,
+  B00011000,
+};
+
+void setup() {
+  lc.shutdown(0, false);   // wake up from power-saving mode
+  lc.setIntensity(0, 8);   // brightness 0-15
+  lc.clearDisplay(0);
+}
+
+void drawHeart() {
+  for (int row = 0; row < 8; row++) {
+    lc.setRow(0, row, HEART[row]);
+  }
+}
+
+void loop() {
+  drawHeart();
+  delay(600);
+  lc.clearDisplay(0);
+  delay(300);
+}`,
+    components: [
+      {
+        type: 'velxio-max7219',
+        id: 'uno-matrix1',
+        x: 440,
+        y: 120,
+        properties: {},
+      },
+    ],
+    wires: [
+      {
+        id: 'umx-vcc',
+        start: { componentId: 'arduino-uno', pinName: '5V' },
+        end: { componentId: 'uno-matrix1', pinName: 'VCC' },
+        color: '#ff0000',
+      },
+      {
+        id: 'umx-gnd',
+        start: { componentId: 'arduino-uno', pinName: 'GND' },
+        end: { componentId: 'uno-matrix1', pinName: 'GND' },
+        color: '#000000',
+      },
+      {
+        id: 'umx-din',
+        start: { componentId: 'arduino-uno', pinName: '12' },
+        end: { componentId: 'uno-matrix1', pinName: 'DIN' },
+        color: '#2196f3',
+      },
+      {
+        id: 'umx-clk',
+        start: { componentId: 'arduino-uno', pinName: '11' },
+        end: { componentId: 'uno-matrix1', pinName: 'CLK' },
+        color: '#ff9800',
+      },
+      {
+        id: 'umx-cs',
+        start: { componentId: 'arduino-uno', pinName: '10' },
+        end: { componentId: 'uno-matrix1', pinName: 'CS' },
+        color: '#9c27b0',
+      },
+    ],
+  },
+  {
     id: 'uno-hcsr04',
     title: 'Uno: HC-SR04 Ultrasonic Distance',
     description:
@@ -7444,6 +7679,77 @@ void loop() {
     ],
   },
   {
+    id: 'esp32-dht11',
+    title: 'ESP32: DHT11 Temperature & Humidity',
+    description: 'Read temperature and humidity from a DHT11 sensor on GPIO4 of the ESP32.',
+    libraries: ['DHT sensor library', 'Adafruit Unified Sensor'],
+    category: 'sensors',
+    difficulty: 'beginner',
+    boardType: 'esp32',
+    boardFilter: 'esp32',
+    tags: ['dht11', 'temperature', 'humidity'],
+    code: `// ESP32 — DHT11 Temperature & Humidity Sensor
+// Requires: Adafruit DHT sensor library
+// Wiring: SDA (data) → GPIO4  |  VCC → 3V3  |  GND → GND
+
+#include <DHT.h>
+
+#define DHT_PIN  4    // GPIO 4
+#define DHT_TYPE DHT11
+
+DHT dht(DHT_PIN, DHT_TYPE);
+
+
+void setup() {
+  Serial.begin(115200);
+  dht.begin();
+  delay(2000);
+  Serial.println("ESP32 DHT11 ready!");
+}
+
+void loop() {
+  delay(2000);  // DHT11 needs >= 1 s between reads
+
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+
+  if (isnan(h) || isnan(t)) {
+    Serial.println("DHT11: waiting for sensor...");
+    return;
+  }
+  Serial.printf("Temp: %.0f C   Humidity: %.0f %%\\n", t, h);
+}`,
+    components: [
+      {
+        type: 'velxio-dht11',
+        id: 'e32-dht11a',
+        x: 430,
+        y: 150,
+        properties: { temperature: '24', humidity: '66' },
+      },
+    ],
+    wires: [
+      {
+        id: 'e32d11-vcc',
+        start: { componentId: 'arduino-uno', pinName: '3V3' },
+        end: { componentId: 'e32-dht11a', pinName: 'VCC' },
+        color: '#ff4444',
+      },
+      {
+        id: 'e32d11-gnd',
+        start: { componentId: 'arduino-uno', pinName: 'GND' },
+        end: { componentId: 'e32-dht11a', pinName: 'GND' },
+        color: '#000000',
+      },
+      {
+        id: 'e32d11-sda',
+        start: { componentId: 'arduino-uno', pinName: '4' },
+        end: { componentId: 'e32-dht11a', pinName: 'SDA' },
+        color: '#22aaff',
+      },
+    ],
+  },
+  {
     id: 'esp32-hcsr04',
     title: 'ESP32: HC-SR04 Ultrasonic Distance',
     description:
@@ -7650,6 +7956,106 @@ void loop() {
         start: { componentId: 'arduino-uno', pinName: '5' },
         end: { componentId: 'e32-pir1', pinName: 'OUT' },
         color: '#ffcc00',
+      },
+    ],
+  },
+  {
+    id: 'esp32-max7219-heart',
+    title: 'ESP32: MAX7219 8×8 Dot Matrix Heart',
+    description:
+      'Draw a blinking heart on a MAX7219-driven 8×8 LED matrix from an ESP32 — bare-metal shiftOut, no library needed.',
+    category: 'displays',
+    difficulty: 'beginner',
+    boardType: 'esp32',
+    boardFilter: 'esp32',
+    tags: ['max7219', 'dot matrix', 'led matrix', 'display'],
+    code: `// ESP32 — MAX7219 8x8 LED Dot Matrix (blinking heart)
+// No library needed: the MAX7219 speaks a simple 16-bit shift protocol.
+// (The classic LedControl library is AVR-only — it includes <avr/pgmspace.h>.)
+// Wiring: DIN → GPIO23  |  CLK → GPIO18  |  CS → GPIO5
+//         VCC → 3V3  |  GND → GND
+
+#define DIN_PIN 23
+#define CLK_PIN 18
+#define CS_PIN   5
+
+const uint8_t HEART[8] = {
+  0b00000000,
+  0b01100110,
+  0b11111111,
+  0b11111111,
+  0b11111111,
+  0b01111110,
+  0b00111100,
+  0b00011000,
+};
+
+// Send one (register, data) word: CS low, 16 bits MSB-first, CS high latches.
+void sendWord(uint8_t reg, uint8_t data) {
+  digitalWrite(CS_PIN, LOW);
+  shiftOut(DIN_PIN, CLK_PIN, MSBFIRST, reg);
+  shiftOut(DIN_PIN, CLK_PIN, MSBFIRST, data);
+  digitalWrite(CS_PIN, HIGH);
+}
+
+void setup() {
+  pinMode(DIN_PIN, OUTPUT);
+  pinMode(CLK_PIN, OUTPUT);
+  pinMode(CS_PIN, OUTPUT);
+  digitalWrite(CS_PIN, HIGH);
+
+  sendWord(0x0F, 0x00);  // display test off
+  sendWord(0x0B, 0x07);  // scan limit: all 8 rows
+  sendWord(0x09, 0x00);  // no BCD decode (raw bitmap)
+  sendWord(0x0A, 0x08);  // brightness 0-15
+  sendWord(0x0C, 0x01);  // shutdown register: normal operation
+}
+
+void loop() {
+  for (int row = 0; row < 8; row++) sendWord(row + 1, HEART[row]);
+  delay(600);
+  for (int row = 0; row < 8; row++) sendWord(row + 1, 0x00);
+  delay(300);
+}`,
+    components: [
+      {
+        type: 'velxio-max7219',
+        id: 'e32-matrix1',
+        x: 440,
+        y: 120,
+        properties: {},
+      },
+    ],
+    wires: [
+      {
+        id: 'e32mx-vcc',
+        start: { componentId: 'arduino-uno', pinName: '3V3' },
+        end: { componentId: 'e32-matrix1', pinName: 'VCC' },
+        color: '#ff4444',
+      },
+      {
+        id: 'e32mx-gnd',
+        start: { componentId: 'arduino-uno', pinName: 'GND' },
+        end: { componentId: 'e32-matrix1', pinName: 'GND' },
+        color: '#000000',
+      },
+      {
+        id: 'e32mx-din',
+        start: { componentId: 'arduino-uno', pinName: '23' },
+        end: { componentId: 'e32-matrix1', pinName: 'DIN' },
+        color: '#2196f3',
+      },
+      {
+        id: 'e32mx-clk',
+        start: { componentId: 'arduino-uno', pinName: '18' },
+        end: { componentId: 'e32-matrix1', pinName: 'CLK' },
+        color: '#ff9800',
+      },
+      {
+        id: 'e32mx-cs',
+        start: { componentId: 'arduino-uno', pinName: '5' },
+        end: { componentId: 'e32-matrix1', pinName: 'CS' },
+        color: '#9c27b0',
       },
     ],
   },
