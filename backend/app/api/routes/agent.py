@@ -50,6 +50,10 @@ ENV_EFFORT = os.environ.get("VELXIO_AGENT_EFFORT", "").strip() or None
 ENV_BASE_URL = os.environ.get("VELXIO_OPENAI_BASE_URL", "").strip().rstrip("/")
 ENV_API_KEY = os.environ.get("VELXIO_OPENAI_API_KEY", "")
 
+# Platform defaults when neither the panel nor the env pins them.
+DEFAULT_MODEL = "gpt-5.6-luna"
+DEFAULT_EFFORT = "high"
+
 VALID_EFFORTS = ("none", "low", "medium", "high")
 
 
@@ -90,9 +94,9 @@ def _resolve(cfg: ProviderConfig, header_key: str | None) -> Resolved:
     if not base_url.startswith(("http://", "https://")):
         raise HTTPException(status_code=422, detail="base_url must start with http(s)://")
 
-    model = (cfg.model or ENV_MODEL).strip() or "gpt-4o"
+    model = (cfg.model or ENV_MODEL).strip() or DEFAULT_MODEL
 
-    effort = (cfg.effort or ENV_EFFORT or "").strip().lower() or None
+    effort = (cfg.effort or ENV_EFFORT or DEFAULT_EFFORT).strip().lower() or None
     if effort == "none":
         effort = None
     if effort is not None and effort not in VALID_EFFORTS:
@@ -124,9 +128,12 @@ async def agent_config() -> dict[str, Any]:
         "enabled": True,
         "provider": "openai",
         "base_url": ENV_BASE_URL,
-        "model": ENV_MODEL,
-        "effort": ENV_EFFORT or "",
+        "model": ENV_MODEL or DEFAULT_MODEL,
+        "effort": ENV_EFFORT or DEFAULT_EFFORT,
         "server_has_key": bool(ENV_API_KEY),
+        # When the server key is in play, AI calls are metered per signed-in
+        # user against a weekly token quota (see /api/auth/usage).
+        "metered": bool(ENV_API_KEY),
     }
 
 
@@ -270,9 +277,16 @@ def _to_openai_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
 _FINISH_MAP = {"tool_calls": "tool_use", "stop": "end_turn", "length": "max_tokens"}
 
 
-async def _stream_events(req: AgentStreamRequest, r: Resolved) -> AsyncIterator[str]:
+async def _stream_events(
+    req: AgentStreamRequest, r: Resolved, usage_out: dict[str, int] | None = None
+) -> AsyncIterator[str]:
     """Stream the upstream chat completion, re-emitting chunks as the
-    block-oriented events the frontend accumulator understands."""
+    block-oriented events the frontend accumulator understands.
+
+    When `usage_out` is given it is filled with prompt/completion token
+    counts — the upstream-reported numbers when available, otherwise a
+    chars/4 estimate — so the caller can meter quota usage.
+    """
     import httpx
 
     base_payload: dict[str, Any] = {
@@ -296,6 +310,7 @@ async def _stream_events(req: AgentStreamRequest, r: Resolved) -> AsyncIterator[
     open_tool_indexes: set[int] = set()
     finish_reason: str | None = None
     usage: dict[str, Any] | None = None
+    emitted_chars = 0  # fallback estimator when upstream sends no usage
 
     async with httpx.AsyncClient(
         timeout=httpx.Timeout(300.0, connect=10.0),
@@ -350,10 +365,12 @@ async def _stream_events(req: AgentStreamRequest, r: Resolved) -> AsyncIterator[
                 # never enters the conversation history.
                 reasoning = delta.get("reasoning_content")
                 if reasoning:
+                    emitted_chars += len(reasoning)
                     yield emit({"type": "velxio_thinking", "chars": len(reasoning)})
 
                 text = delta.get("content")
                 if text:
+                    emitted_chars += len(text)
                     if not text_open:
                         text_open = True
                         yield emit(
@@ -390,6 +407,7 @@ async def _stream_events(req: AgentStreamRequest, r: Resolved) -> AsyncIterator[
                         )
                     args = (tc.get("function") or {}).get("arguments")
                     if args:
+                        emitted_chars += len(args)
                         yield emit(
                             {
                                 "type": "content_block_delta",
@@ -416,6 +434,17 @@ async def _stream_events(req: AgentStreamRequest, r: Resolved) -> AsyncIterator[
                 "completion_tokens": usage.get("completion_tokens", 0),
             }
         )
+    if usage_out is not None:
+        if usage:
+            usage_out["prompt_tokens"] = int(usage.get("prompt_tokens") or 0)
+            usage_out["completion_tokens"] = int(usage.get("completion_tokens") or 0)
+        else:
+            # Upstream sent no usage chunk — estimate at ~4 chars/token so
+            # quota accounting still moves (never free just because the
+            # provider omitted the numbers).
+            prompt_chars = len(req.system) + len(json.dumps(req.messages, ensure_ascii=False))
+            usage_out["prompt_tokens"] = max(1, prompt_chars // 4)
+            usage_out["completion_tokens"] = max(1, emitted_chars // 4)
     yield emit(
         {
             "type": "message_delta",
@@ -431,9 +460,34 @@ async def agent_stream(
     req: AgentStreamRequest,
     x_agent_key: str | None = Header(default=None),
     x_anthropic_key: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
 ) -> StreamingResponse:
-    r = _resolve(req, x_agent_key or x_anthropic_key)
-    inner = _stream_events(req, r)
+    header_key = x_agent_key or x_anthropic_key
+    r = _resolve(req, header_key)
+
+    # ── Quota gate ─────────────────────────────────────────────────────
+    # Requests served with the SERVER's key are metered per signed-in user
+    # against a weekly token quota. Users who bring their own key in the
+    # panel pay for themselves and are unmetered.
+    metered_user: dict[str, Any] | None = None
+    if not header_key and ENV_API_KEY:
+        from app.api.routes.auth import require_user
+        from app.services import cloud_db
+
+        metered_user = require_user(authorization)  # 401 when anonymous
+        quota = cloud_db.get_ai_usage(metered_user["id"])
+        if quota["used"] >= quota["limit"]:
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    f"本週 AI 用量已達上限({quota['limit']:,} tokens),"
+                    f"{quota['week_start']} 起算的額度將於下週一重置。"
+                    "如需提高額度請聯絡管理員。"
+                ),
+            )
+
+    usage_out: dict[str, int] = {}
+    inner = _stream_events(req, r, usage_out)
 
     async def event_stream():
         try:
@@ -448,6 +502,17 @@ async def agent_stream(
                 "message": str(getattr(exc, "message", None) or exc),
             }
             yield f"data: {json.dumps(payload)}\n\n"
+        finally:
+            if metered_user is not None and usage_out:
+                from app.services import cloud_db
+
+                total = usage_out.get("prompt_tokens", 0) + usage_out.get(
+                    "completion_tokens", 0
+                )
+                try:
+                    cloud_db.add_ai_usage(metered_user["id"], total)
+                except Exception:
+                    logger.exception("failed to record AI usage")
 
     return StreamingResponse(
         event_stream(),

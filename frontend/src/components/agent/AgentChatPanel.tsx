@@ -16,6 +16,7 @@ import { useAgentStore, needsApiKey, effectiveModel } from '../../store/useAgent
 import { useCloudStore } from '../../cloud/useCloudStore';
 import { showConfirmDialog } from '../../store/useMessageDialogStore';
 import type { UiMessage, UiSegment } from '../../agent/types';
+import { AgentUsageMeter } from './AgentUsageMeter';
 import './AgentChatPanel.css';
 
 const SUGGESTIONS_ZH: Array<{ icon: string; text: string }> = [
@@ -643,6 +644,8 @@ export function AgentChatPanel() {
               );
             })()}
           </div>
+
+          <AgentUsageMeter />
 
           <div className="agent-panel__composer">
             {store.cappedRun && !busy && (

@@ -17,7 +17,8 @@
       "classroom": "面向學校",
       "learn": "課程",
       "teacher": "教學管理",
-      "guide": "使用說明"
+      "guide": "使用說明",
+      "admin": "管理後台"
     },
     "auth": {
       "signIn": "登入",
@@ -332,7 +333,10 @@
         "lastCompile": "最後編譯",
         "updated": "更新於"
       }
-    }
+    },
+    "title": "管理後台",
+    "needSignin": "請以管理員帳號登入。",
+    "needAdmin": "這個頁面僅限平台管理員使用。"
   },
   "examples": {
     "heading": "精選專案",
@@ -472,7 +476,9 @@
     "capped": "AI 已達到單輪步數上限而暫停,任務可能未完成。",
     "continue": "繼續",
     "compacted": "較早的上下文已壓縮為摘要",
-    "contextLimit": "上下文上限(tokens,用於自動壓縮)"
+    "contextLimit": "上下文上限(tokens,用於自動壓縮)",
+    "usageLabel": "本週 AI 用量",
+    "usageTip": "每週一重置。用完後 AI 助教會暫停,需請管理員調整額度。"
   },
   "cloud": {
     "signIn": "登入",

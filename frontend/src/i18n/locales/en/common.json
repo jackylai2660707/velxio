@@ -17,7 +17,8 @@
       "classroom": "For schools",
       "learn": "Courses",
       "teacher": "Teaching",
-      "guide": "User guide"
+      "guide": "User guide",
+      "admin": "Admin"
     },
     "auth": {
       "signIn": "Sign in",
@@ -332,7 +333,10 @@
         "lastCompile": "Last compile",
         "updated": "Updated"
       }
-    }
+    },
+    "title": "Admin console",
+    "needSignin": "Sign in with the admin account.",
+    "needAdmin": "This page is for the platform administrator only."
   },
   "examples": {
     "heading": "Featured Projects",
@@ -472,7 +476,9 @@
     "capped": "The agent paused at the step limit — the task may be unfinished.",
     "continue": "Continue",
     "compacted": "Earlier context was compacted into a summary",
-    "contextLimit": "Context limit (tokens, for auto-compaction)"
+    "contextLimit": "Context limit (tokens, for auto-compaction)",
+    "usageLabel": "AI usage this week",
+    "usageTip": "Resets every Monday. When exhausted, the AI tutor pauses until an admin raises the quota."
   },
   "cloud": {
     "signIn": "Sign in",

@@ -71,8 +71,16 @@ export interface CloudUser {
   id: string;
   email: string;
   name: string;
-  /** 'teacher' unlocks the class-management dashboard; default 'student'. */
-  role?: 'student' | 'teacher';
+  /** 'teacher' unlocks class management; 'admin' the operator dashboard. */
+  role?: 'student' | 'teacher' | 'admin';
+}
+
+/** Current-week AI token usage for the signed-in user. */
+export interface AiUsage {
+  week_start: string;
+  used: number;
+  limit: number;
+  is_custom_limit: boolean;
 }
 
 export const authApi = {
@@ -93,6 +101,58 @@ export const authApi = {
   login: (email: string, password: string) =>
     request<{ token: string; user: CloudUser }>('POST', '/auth/login', { email, password }),
   me: () => request<{ user: CloudUser }>('GET', '/auth/me'),
+  usage: () => request<AiUsage>('GET', '/auth/usage'),
+};
+
+// ── Admin (platform operator) ──────────────────────────────────────────────
+
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  created_at: number;
+  weekly_token_limit: number | null;
+  effective_limit: number;
+  used_this_week: number;
+}
+
+export interface AdminBatchResult {
+  created: { email: string; password: string; name: string }[];
+  skipped: string[];
+  joined_class: number;
+}
+
+export const adminApi = {
+  overview: () =>
+    request<{
+      week_start: string;
+      users: Record<string, number>;
+      classes: number;
+      week_tokens: number;
+      default_weekly_limit: number;
+    }>('GET', '/admin/overview'),
+  listUsers: (query = '') =>
+    request<{ users: AdminUserRow[] }>('GET', `/admin/users?query=${encodeURIComponent(query)}`),
+  batchCreate: (payload: {
+    role: 'student' | 'teacher';
+    count: number;
+    prefix: string;
+    domain?: string;
+    name_prefix?: string;
+    start_number?: number;
+    class_code?: string;
+    weekly_token_limit?: number | null;
+  }) => request<AdminBatchResult>('POST', '/admin/users/batch', payload),
+  setQuota: (userId: string, weeklyTokenLimit: number | null) =>
+    request<{ ok: boolean } & AiUsage>('POST', `/admin/users/${userId}/quota`, {
+      weekly_token_limit: weeklyTokenLimit,
+    }),
+  resetPassword: (userId: string, password = '') =>
+    request<{ ok: boolean; password: string }>('POST', `/admin/users/${userId}/password`, {
+      password,
+    }),
+  deleteUser: (userId: string) => request<{ ok: boolean }>('DELETE', `/admin/users/${userId}`),
 };
 
 // ── Projects ───────────────────────────────────────────────────────────────

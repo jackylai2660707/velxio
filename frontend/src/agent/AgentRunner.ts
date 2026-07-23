@@ -52,6 +52,15 @@ async function streamOneMessage(
 ): Promise<StreamedMessage> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (settings.apiKey) headers['x-agent-key'] = settings.apiKey;
+  // Cloud session token: when the server's API key serves the request, the
+  // backend meters usage against this user's weekly token quota (and rejects
+  // anonymous calls), so the Bearer header must ride along.
+  try {
+    const cloudToken = localStorage.getItem('velxio-cloud-token');
+    if (cloudToken) headers['Authorization'] = `Bearer ${cloudToken}`;
+  } catch {
+    /* private mode */
+  }
 
   const resp = await fetch(`${getApiBase()}/agent/stream`, {
     method: 'POST',

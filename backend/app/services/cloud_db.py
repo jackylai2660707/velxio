@@ -45,6 +45,13 @@ MAX_CLASSES_PER_TEACHER = 20
 MAX_MEMBERS_PER_CLASS = 100
 MAX_QUIZ_ANSWERS_BYTES = 20_000
 
+# AI weekly token allowance (per user, resets Monday 00:00 UTC). Applies
+# only when a request is served with the SERVER's upstream API key — users
+# who bring their own key in the panel pay for themselves and are unmetered.
+DEFAULT_WEEKLY_TOKEN_LIMIT = int(os.environ.get("VELXIO_DEFAULT_WEEKLY_TOKENS", "2000000"))
+
+VALID_ROLES = ("student", "teacher", "admin")
+
 # Class join codes: unambiguous uppercase alphabet (no 0/O/1/I).
 _CLASS_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CLASS_CODE_LENGTH = 6
@@ -124,15 +131,24 @@ def init_db() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_quiz_user_lesson
                 ON quiz_attempts(user_id, lesson_id, created_at DESC);
+            CREATE TABLE IF NOT EXISTS ai_usage (
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                week_start TEXT NOT NULL,
+                tokens INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (user_id, week_start)
+            );
             """
         )
-        # Migration: users.role was added after the first release of the
-        # cloud schema — backfill existing databases in place.
+        # Migrations: columns added after the first release of the cloud
+        # schema — backfill existing databases in place.
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
         if "role" not in cols:
             conn.execute(
                 "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'student'"
             )
+        if "weekly_token_limit" not in cols:
+            # NULL = use DEFAULT_WEEKLY_TOKEN_LIMIT; admin can override per user.
+            conn.execute("ALTER TABLE users ADD COLUMN weekly_token_limit INTEGER")
 
 
 def _secret_key() -> bytes:
@@ -203,8 +219,10 @@ def _user_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
 def create_user(
     email: str, password: str, name: str, role: str = "student"
 ) -> dict[str, Any] | None:
-    """Returns the user, or None if the email is taken."""
-    if role not in ("student", "teacher"):
+    """Returns the user, or None if the email is taken. NOTE: only trusted
+    callers (admin routes / env bootstrap) may pass role='admin' — the
+    public register route restricts itself to student/teacher."""
+    if role not in VALID_ROLES:
         role = "student"
     salt = secrets.token_bytes(16)
     user_id = uuid.uuid4().hex
@@ -588,6 +606,142 @@ def record_quiz(
             (attempt_id, user_id, lesson_id, int(score), int(total), payload, time.time()),
         )
     return attempt_id
+
+
+# ── AI token usage (weekly, Monday-UTC reset) ──────────────────────────────
+
+
+def week_start(now: float | None = None) -> str:
+    """ISO date (YYYY-MM-DD) of the current week's Monday, UTC."""
+    import datetime as _dt
+
+    d = _dt.datetime.fromtimestamp(now if now is not None else time.time(), _dt.timezone.utc).date()
+    return (d - _dt.timedelta(days=d.weekday())).isoformat()
+
+
+def add_ai_usage(user_id: str, tokens: int) -> None:
+    if tokens <= 0:
+        return
+    ws = week_start()
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO ai_usage (user_id, week_start, tokens) VALUES (?, ?, ?) "
+            "ON CONFLICT(user_id, week_start) DO UPDATE SET tokens = tokens + ?",
+            (user_id, ws, int(tokens), int(tokens)),
+        )
+
+
+def get_ai_usage(user_id: str) -> dict[str, Any]:
+    """Current-week usage + the user's effective weekly limit."""
+    ws = week_start()
+    with _connect() as conn:
+        used_row = conn.execute(
+            "SELECT tokens FROM ai_usage WHERE user_id = ? AND week_start = ?",
+            (user_id, ws),
+        ).fetchone()
+        limit_row = conn.execute(
+            "SELECT weekly_token_limit FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+    limit = limit_row["weekly_token_limit"] if limit_row else None
+    return {
+        "week_start": ws,
+        "used": used_row["tokens"] if used_row else 0,
+        "limit": limit if limit is not None else DEFAULT_WEEKLY_TOKEN_LIMIT,
+        "is_custom_limit": limit is not None,
+    }
+
+
+def set_token_limit(user_id: str, limit: int | None) -> bool:
+    """Per-user weekly limit override. None reverts to the global default."""
+    with _connect() as conn:
+        cur = conn.execute(
+            "UPDATE users SET weekly_token_limit = ? WHERE id = ?",
+            (int(limit) if limit is not None else None, user_id),
+        )
+    return cur.rowcount > 0
+
+
+# ── Admin ──────────────────────────────────────────────────────────────────
+
+
+def ensure_admin_from_env() -> None:
+    """Bootstrap/refresh the admin account from VELXIO_ADMIN_EMAIL /
+    VELXIO_ADMIN_PASSWORD. Creates it if missing, promotes+updates the
+    password if the email already exists (so a lost admin password is
+    recoverable by redeploying with new env)."""
+    email = os.environ.get("VELXIO_ADMIN_EMAIL", "").strip().lower()
+    password = os.environ.get("VELXIO_ADMIN_PASSWORD", "")
+    if not email or not password:
+        return
+    with _connect() as conn:
+        row = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        if row:
+            salt = secrets.token_bytes(16)
+            conn.execute(
+                "UPDATE users SET role = 'admin', password_hash = ?, salt = ? WHERE id = ?",
+                (_hash_password(password, salt), salt, row["id"]),
+            )
+            return
+    create_user(email, password, email.split("@")[0], role="admin")
+
+
+def admin_list_users(query: str = "", limit: int = 200) -> list[dict[str, Any]]:
+    ws = week_start()
+    like = f"%{query.strip().lower()}%"
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT u.id, u.email, u.name, u.role, u.created_at, u.weekly_token_limit, "
+            "       COALESCE(a.tokens, 0) AS used_this_week "
+            "FROM users u "
+            "LEFT JOIN ai_usage a ON a.user_id = u.id AND a.week_start = ? "
+            "WHERE u.email LIKE ? OR lower(u.name) LIKE ? "
+            "ORDER BY u.created_at DESC LIMIT ?",
+            (ws, like, like, int(limit)),
+        ).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["effective_limit"] = (
+            d["weekly_token_limit"] if d["weekly_token_limit"] is not None else DEFAULT_WEEKLY_TOKEN_LIMIT
+        )
+        out.append(d)
+    return out
+
+
+def admin_reset_password(user_id: str, new_password: str) -> bool:
+    salt = secrets.token_bytes(16)
+    with _connect() as conn:
+        cur = conn.execute(
+            "UPDATE users SET password_hash = ?, salt = ? WHERE id = ?",
+            (_hash_password(new_password, salt), salt, user_id),
+        )
+    return cur.rowcount > 0
+
+
+def admin_delete_user(user_id: str) -> bool:
+    with _connect() as conn:
+        cur = conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    return cur.rowcount > 0
+
+
+def admin_overview() -> dict[str, Any]:
+    ws = week_start()
+    with _connect() as conn:
+        by_role = {
+            r["role"]: r["n"]
+            for r in conn.execute("SELECT role, COUNT(*) AS n FROM users GROUP BY role")
+        }
+        week_tokens = conn.execute(
+            "SELECT COALESCE(SUM(tokens), 0) FROM ai_usage WHERE week_start = ?", (ws,)
+        ).fetchone()[0]
+        classes = conn.execute("SELECT COUNT(*) FROM classes").fetchone()[0]
+    return {
+        "week_start": ws,
+        "users": by_role,
+        "classes": classes,
+        "week_tokens": week_tokens,
+        "default_weekly_limit": DEFAULT_WEEKLY_TOKEN_LIMIT,
+    }
 
 
 def get_quiz_best(user_id: str) -> dict[str, dict[str, Any]]:

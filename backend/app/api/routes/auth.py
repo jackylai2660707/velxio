@@ -16,16 +16,31 @@ from __future__ import annotations
 import os
 import re
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel
 
+from app.core import ratelimit
 from app.services import cloud_db
 
 router = APIRouter()
 
 cloud_db.init_db()
+# Bootstrap the admin account from VELXIO_ADMIN_EMAIL/PASSWORD (no-op when unset).
+cloud_db.ensure_admin_from_env()
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _check_rate(request: Request, bucket: str, limit: int, window: float) -> None:
+    if not ratelimit.allow(f"{bucket}:{_client_ip(request)}", limit, window):
+        raise HTTPException(status_code=429, detail="Too many attempts — try again later")
 
 
 class RegisterRequest(BaseModel):
@@ -57,7 +72,8 @@ def require_user(authorization: str | None) -> dict:
 
 
 @router.post("/register")
-async def register(req: RegisterRequest) -> dict:
+async def register(req: RegisterRequest, request: Request) -> dict:
+    _check_rate(request, "register", limit=10, window=600)
     email = req.email.strip().lower()
     if not EMAIL_RE.match(email):
         raise HTTPException(status_code=422, detail="Invalid email address")
@@ -76,7 +92,8 @@ async def register(req: RegisterRequest) -> dict:
 
 
 @router.post("/login")
-async def login(req: LoginRequest) -> dict:
+async def login(req: LoginRequest, request: Request) -> dict:
+    _check_rate(request, "login", limit=10, window=60)
     user = cloud_db.authenticate(req.email.strip(), req.password)
     if user is None:
         raise HTTPException(status_code=401, detail="Wrong email or password")
@@ -86,3 +103,10 @@ async def login(req: LoginRequest) -> dict:
 @router.get("/me")
 async def me(authorization: str | None = Header(default=None)) -> dict:
     return {"user": require_user(authorization)}
+
+
+@router.get("/usage")
+async def usage(authorization: str | None = Header(default=None)) -> dict:
+    """The signed-in user's current-week AI token usage and limit."""
+    user = require_user(authorization)
+    return cloud_db.get_ai_usage(user["id"])

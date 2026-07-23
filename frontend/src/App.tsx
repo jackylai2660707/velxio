@@ -11,6 +11,7 @@ import { ExamplesPage } from './pages/ExamplesPage';
 import { LearnPage } from './pages/LearnPage';
 import { LessonPage } from './pages/LessonPage';
 import { TeacherPage } from './pages/TeacherPage';
+import { AdminPage } from './pages/AdminPage';
 import { GuidePage } from './pages/GuidePage';
 import { ExampleDetailPage } from './pages/ExampleDetailPage';
 import { ExampleEditorPage } from './pages/ExampleEditorPage';
@@ -49,6 +50,7 @@ const ROUTES: { path: string; element: ReactElement; index?: boolean }[] = [
   { path: 'learn', element: <LearnPage /> },
   { path: 'learn/:courseId/:lessonId', element: <LessonPage /> },
   { path: 'teacher', element: <TeacherPage /> },
+  { path: 'admin', element: <AdminPage /> },
   { path: 'examples', element: <ExamplesPage /> },
   // /examples/<id> = SEO landing (preview, badges, "Open in Simulator" CTA).
   // /example/<id>  = live editor with the example pre-loaded; the URL

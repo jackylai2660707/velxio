@@ -142,6 +142,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ autoSave }) => {
                 {t('header.nav.teacher', '教學管理')}
               </Link>
             )}
+            {cloudUser?.role === 'admin' && (
+              <Link to={localize('/admin')} className={'header-nav-link' + isActive('/admin')}>
+                {t('header.nav.admin', '管理後台')}
+              </Link>
+            )}
           </nav>
           )}
         </div>

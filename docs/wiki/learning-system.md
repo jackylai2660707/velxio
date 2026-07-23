@@ -80,11 +80,42 @@ QuizQuestion { id, question, options[], answer, explanation }
 (`GET /classes/{id}/report`)回每位學生的完成課次清單與每課最佳測驗成績,
 前端以「課程 × 學生 × 課次」矩陣呈現。
 
+## 管理員(admin)與 AI token 配額
+
+- **admin 帳號**由環境變數 `VELXIO_ADMIN_EMAIL` / `VELXIO_ADMIN_PASSWORD`
+  在啟動時自動建立(已存在則升級角色並更新密碼 — 忘記管理密碼時換個
+  env 重啟即可救回)。沒有任何自助註冊路徑能取得 admin。
+- **管理後台** `/admin`(`frontend/src/pages/AdminPage.tsx`):
+  總覽統計、批量建立學生/教師帳號(前綴+編號@網域,密碼自動產生、
+  只顯示一次、可下載 CSV,學生可自動加入班級代碼)、帳號表
+  (本週用量條、逐人週額度編輯、重設密碼、刪除)。
+  API 見 `backend/app/api/routes/admin.py`。
+- **AI token 配額**(`cloud_db.py` ai_usage 表):
+  - 只有用「伺服器金鑰」(`VELXIO_OPENAI_API_KEY`)的請求才計量;
+    自帶金鑰的使用者不設限(自己付費)。匿名者不能用伺服器金鑰(401)。
+  - 每人每週額度,週一 00:00 UTC 重置;預設值
+    `VELXIO_DEFAULT_WEEKLY_TOKENS`(未設 = 2,000,000),admin 可逐人覆寫。
+  - 用量從上游 usage chunk 記帳;上游未回報時以 chars/4 估算,不會漏記。
+  - 超額 → `/api/agent/stream` 回 429 與中文說明。
+  - 使用者在 AI 面板下方看到「本週 AI 用量」進度條
+    (`AgentUsageMeter.tsx`,資料來自 `GET /api/auth/usage`)。
+- **預設模型**:`gpt-5.6-luna`、`reasoning_effort=high`
+  (`backend/app/api/routes/agent.py` 的 DEFAULT_MODEL/DEFAULT_EFFORT,
+  可用 `VELXIO_AGENT_MODEL` / `VELXIO_AGENT_EFFORT` 覆寫)。
+- **速率限制**:登入 10 次/分/IP、註冊 10 次/10 分/IP
+  (`app/core/ratelimit.py`,單機記憶體滑動視窗;多實例部署請再加
+  反向代理層限流)。
+- 測試:`python3 backend/test_admin.py`(27 項)。
+
 ## 部署備忘
 
 - SQLite 檔在 `$VELXIO_DATA_DIR`(Docker 內 `/app/data`,已是 volume)。
-- 建議校內部署時設定:`VELXIO_TEACHER_CODE`(教師註冊碼)、
-  `VELXIO_SECRET_KEY`(token 簽章金鑰,不設則自動生成並存於 data 目錄)。
+- 校內/正式部署必設:
+  - `VELXIO_ADMIN_EMAIL` / `VELXIO_ADMIN_PASSWORD`(管理員)
+  - `VELXIO_OPENAI_BASE_URL` / `VELXIO_OPENAI_API_KEY`(AI 上游)
+  - `VELXIO_TEACHER_CODE`(教師自助註冊碼;若帳號全由 admin 發放可不設)
+  - `VELXIO_SECRET_KEY`(token 簽章金鑰,不設則自動生成並存於 data 目錄)
+  - `VELXIO_DEFAULT_WEEKLY_TOKENS`(選填,預設 2,000,000)
 - AI 助教的系統提示已設定預設以繁體中文回覆
   (`frontend/src/agent/systemPrompt.ts`)。
 
