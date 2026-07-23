@@ -16,10 +16,14 @@ services:
         # Only needed when prebuilt/qemu/ has no .so files — a free personal
         # key from https://velxio.dev/license/signup unlocks the QEMU blobs.
         VELXIO_LICENSE_KEY: ${VELXIO_LICENSE_KEY:-}
+    container_name: ailab-app
     restart: unless-stopped
     env_file: .env
     expose:
       - "80"
+    networks:
+      - default
+      - caddy_net
     volumes:
       - app-data:/app/data # SQLite DB + secret key — BACK THIS UP
       - arduino15:/root/.arduino15 # arduino-cli cores/toolchains
@@ -27,19 +31,15 @@ services:
       - ccache:/var/cache/ccache # compile cache (fast rebuilds)
       - build-cache:/var/lib/velxio-build
 
-  caddy:
-    image: caddy:2
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      DOMAIN: ${DOMAIN}
-      TLS_EMAIL: ${TLS_EMAIL}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data # TLS certificates
-      - caddy-config:/config
+# NOTE: this host already runs a shared Caddy (compose project at
+# /opt/1panel/docker/compose/caddy) bound to 80/443 with per-site files in
+# sites.d/. The bundled caddy service is therefore not used here — the app
+# joins the external caddy_net network and sites.d/iot.armjp.yueseng-ys.com.caddy
+# reverse-proxies to ailab-app:80.
+
+networks:
+  caddy_net:
+    external: true
 
 volumes:
   app-data:
@@ -47,5 +47,3 @@ volumes:
   arduino-libs:
   ccache:
   build-cache:
-  caddy-data:
-  caddy-config:
