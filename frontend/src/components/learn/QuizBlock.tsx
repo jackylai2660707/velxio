@@ -128,6 +128,24 @@ export const QuizBlock: React.FC<Props> = ({ lessonKey, questions }) => {
             <button className="quiz-retry" onClick={retry}>
               {t('learn.quiz.retry', '再試一次')}
             </button>
+            {score === questions.length && (
+              <span className="quiz-confetti" aria-hidden>
+                {Array.from({ length: 26 }, (_, i) => (
+                  <i
+                    key={i}
+                    style={{
+                      // Deterministic pseudo-random spread — no Math.random so
+                      // the burst is identical on re-render.
+                      ['--dx' as string]: `${((i * 73) % 200) - 100}px`,
+                      ['--dy' as string]: `${-60 - ((i * 41) % 90)}px`,
+                      ['--rot' as string]: `${((i * 137) % 360)}deg`,
+                      ['--delay' as string]: `${(i % 7) * 0.05}s`,
+                      background: ['#58a6ff', '#00c896', '#f0883e', '#d2a8ff', '#ff7b72'][i % 5],
+                    }}
+                  />
+                ))}
+              </span>
+            )}
           </>
         )}
       </div>

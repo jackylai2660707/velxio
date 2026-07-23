@@ -143,3 +143,40 @@
   font-weight: 700;
   color: #58a6ff;
 }
+
+/* ── Perfect-score confetti burst ─────────────────────────── */
+
+.quiz-footer {
+  position: relative;
+}
+
+.quiz-confetti {
+  position: absolute;
+  left: 90px;
+  top: 10px;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.quiz-confetti i {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: confetti-pop 1.1s cubic-bezier(0.16, 0.8, 0.4, 1) var(--delay, 0s) forwards;
+}
+
+@keyframes confetti-pop {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0) scale(0.6); }
+  60% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx, 0), calc(var(--dy, -80px) + 120px)) rotate(var(--rot, 180deg)) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quiz-confetti { display: none; }
+}
