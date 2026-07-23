@@ -1,0 +1,51 @@
+# 「AI物聯網實驗室」production deployment: the app container (nginx SPA +
+# FastAPI + arduino-cli + QEMU) behind Caddy for automatic HTTPS.
+#
+#   cd deploy
+#   cp .env.example .env   # fill it in
+#   docker compose up -d --build
+#
+# See ../DEPLOY_HANDOFF.md for the full runbook.
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile.standalone
+      args:
+        # Only needed when prebuilt/qemu/ has no .so files — a free personal
+        # key from https://velxio.dev/license/signup unlocks the QEMU blobs.
+        VELXIO_LICENSE_KEY: ${VELXIO_LICENSE_KEY:-}
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "80"
+    volumes:
+      - app-data:/app/data # SQLite DB + secret key — BACK THIS UP
+      - arduino15:/root/.arduino15 # arduino-cli cores/toolchains
+      - arduino-libs:/root/Arduino # installed Arduino libraries
+      - ccache:/var/cache/ccache # compile cache (fast rebuilds)
+      - build-cache:/var/lib/velxio-build
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      TLS_EMAIL: ${TLS_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # TLS certificates
+      - caddy-config:/config
+
+volumes:
+  app-data:
+  arduino15:
+  arduino-libs:
+  ccache:
+  build-cache:
+  caddy-data:
+  caddy-config:
