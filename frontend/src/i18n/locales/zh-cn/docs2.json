@@ -3,7 +3,7 @@
     "riscv": {
       "label": "// risc-v",
       "heading": "RISC-V 仿真 (ESP32-C3)",
-      "lead": "ESP32-C3、XIAO ESP32-C3 和 C3 SuperMini 开发板运行在 <strong>RISC-V RV32IMC</strong> 架构上，主频 160 MHz。Velxio 通过与 Xtensa ESP32 系列相同的基于 QEMU 的后端来仿真它们，使用 <code>libqemu-riscv32</code> 和 <code>esp32c3-picsimlab</code> 机器目标。仓库中有一个独立的 TypeScript ISA 实现，用于单元测试 RV32IMC 指令解码，但它不是生产仿真路径。",
+      "lead": "ESP32-C3、XIAO ESP32-C3 和 C3 SuperMini 开发板运行在 <strong>RISC-V RV32IMC</strong> 架构上，主频 160 MHz。AI物联网实验室 通过与 Xtensa ESP32 系列相同的基于 QEMU 的后端来仿真它们，使用 <code>libqemu-riscv32</code> 和 <code>esp32c3-picsimlab</code> 机器目标。仓库中有一个独立的 TypeScript ISA 实现，用于单元测试 RV32IMC 指令解码，但它不是生产仿真路径。",
       "boardsHeading": "支持的开发板",
       "boardEsp32C3": "ESP32-C3 DevKit",
       "boardXiaoC3": "Seeed XIAO ESP32-C3",
@@ -74,7 +74,7 @@
     "setup": {
       "label": "// 项目状态",
       "heading": "项目状态",
-      "lead": "Velxio 中当前实现的所有功能的全面概述。",
+      "lead": "AI物联网实验室 中当前实现的所有功能的全面概述。",
       "avrHeading": "AVR 仿真 (avr8js)",
       "thFeature": "功能",
       "thStatus": "状态",
@@ -163,7 +163,7 @@
     "esp32": {
       "label": "// xtensa",
       "heading": "ESP32 仿真 (Xtensa)",
-      "lead": "ESP32 和 ESP32-S3 开发板使用 <strong>Xtensa LX6 / LX7</strong> 架构。由于没有生产质量的纯 JavaScript Xtensa 仿真器，Velxio 为这些开发板使用了一个 <strong>基于 QEMU 的后端</strong>，即 lcgamboa 分支，带有 libqemu-xtensa，编译为原生二进制文件，并由 FastAPI 后端提供服务。",
+      "lead": "ESP32 和 ESP32-S3 开发板使用 <strong>Xtensa LX6 / LX7</strong> 架构。由于没有生产质量的纯 JavaScript Xtensa 仿真器，AI物联网实验室 为这些开发板使用了一个 <strong>基于 QEMU 的后端</strong>，即 lcgamboa 分支，带有 libqemu-xtensa，编译为原生二进制文件，并由 FastAPI 后端提供服务。",
       "noteCallout": "<strong>注意：</strong> 本节适用于 <strong>ESP32</strong>、<strong>ESP32-S3</strong> (Xtensa) 和 <strong>ESP32-C3</strong> (RISC-V) - 它们都共享相同的 QEMU lcgamboa 管道，只是使用不同的 libqemu 二进制文件和机器目标。有关 C3 特定的差异，请参阅 <strong>RISC-V 仿真 (ESP32-C3)</strong>。",
       "howHeading": "工作原理",
       "how1": "Arduino 草图由 <code>arduino-cli</code> 编译为 ESP32 <code>.bin</code> 闪存映像。",
@@ -198,13 +198,13 @@
       "perLedc": "<strong>LEDC / PWM</strong>: 硬件 PWM 通道",
       "perWifi": "<strong>WiFi</strong>: 部分支持 (连接事件转发)",
       "requirementsHeading": "要求",
-      "requirementsBody": "基于 QEMU 的仿真需要运行 Velxio 后端。这意味着它适用于 <strong>托管版本</strong> (位于 <a>velxio.dev</a>) 和 <strong>Docker 自托管</strong>，但不适用于纯静态前端部署。",
+      "requirementsBody": "基于 QEMU 的仿真需要运行 AI物联网实验室 后端。这意味着它适用于 <strong>托管版本</strong> (位于 <a>velxio.dev</a>) 和 <strong>Docker 自托管</strong>，但不适用于纯静态前端部署。",
       "fullDetailsCallout": "<strong>完整详情：</strong> 仓库中的 <a>docs/ESP32_EMULATION.md</a>。"
     },
     "roadmap": {
       "label": "// 未来",
       "heading": "路线图",
-      "lead": "Velxio 已实现、正在进行中和计划在未来版本中实现的功能。",
+      "lead": "AI物联网实验室 已实现、正在进行中和计划在未来版本中实现的功能。",
       "implementedHeading": "已实现",
       "impMonaco": "Monaco 编辑器，支持 C++ 语法高亮、自动补全和缩略图",
       "impMultiFile": "多文件工作区，可创建、重命名、删除和切换文件",
@@ -244,7 +244,7 @@
     "emulator": {
       "label": "// 内部机制",
       "heading": "仿真器架构",
-      "lead": "Velxio 使用 <strong>真实的 CPU 仿真</strong>，而不是简化模型。本文档描述了仿真的每一层如何工作。",
+      "lead": "AI物联网实验室 使用 <strong>真实的 CPU 仿真</strong>，而不是简化模型。本文档描述了仿真的每一层如何工作。",
       "dataFlowHeading": "高级数据流",
       "avr8Heading": "AVR8 仿真 (Arduino Uno / Nano / Mega)",
       "avr8Body": "AVR 后端使用 <a>avr8js</a>，它实现了一个完整的 ATmega328p / ATmega2560 处理器。",
@@ -293,7 +293,7 @@
     "architecture": {
       "label": "// 系统设计",
       "heading": "项目架构",
-      "lead": "Velxio 是一个完全本地的 Arduino 仿真器，使用官方的 Wokwi 仓库以获得最大兼容性。它具有真实的 AVR8 CPU 仿真、48 个以上的交互式电子组件、全面的导线系统以及构建时的组件发现管道。",
+      "lead": "AI物联网实验室 是一个完全本地的 Arduino 仿真器，使用官方的 Wokwi 仓库以获得最大兼容性。它具有真实的 AVR8 CPU 仿真、48 个以上的交互式电子组件、全面的导线系统以及构建时的组件发现管道。",
       "overviewHeading": "高级概述",
       "dataFlowsHeading": "数据流",
       "compilationHeading": "1. 编译",
@@ -329,8 +329,8 @@
     "intro": {
       "label": "// 概述",
       "heading": "简介",
-      "lead": "<strong>Velxio</strong> 是一个完全本地、开源的 Arduino 仿真器，完全在浏览器中运行。编写 Arduino C++ 代码，使用真实的 <code>arduino-cli</code> 后端编译，并通过真实的 AVR8 / RP2040 CPU 仿真进行仿真，支持 48 个以上的交互式电子组件，无需在您的机器上安装任何软件。",
-      "whyHeading": "为什么选择 Velxio？",
+      "lead": "<strong>AI物联网实验室</strong> 是一个完全本地、开源的 Arduino 仿真器，完全在浏览器中运行。编写 Arduino C++ 代码，使用真实的 <code>arduino-cli</code> 后端编译，并通过真实的 AVR8 / RP2040 CPU 仿真进行仿真，支持 48 个以上的交互式电子组件，无需在您的机器上安装任何软件。",
+      "whyHeading": "为什么选择 AI物联网实验室？",
       "whyNoInstall": "<strong>无需安装</strong>：一切都在浏览器中运行。",
       "whyRealEmulation": "<strong>真实仿真</strong>：不是简化模型，而是精确的 AVR8 / RP2040 CPU 仿真。",
       "whyInteractive": "<strong>交互式组件</strong>：LED、按钮、电位器、显示屏、传感器等。",

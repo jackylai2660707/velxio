@@ -23,7 +23,7 @@
         "title": "Search and install Arduino libraries",
         "label": "Libraries"
       },
-      "import": "Import project (.vlx Velxio or .zip Wokwi)",
+      "import": "Import project (.vlx AI IoT Lab or .zip Wokwi)",
       "export": "Export the current project as a .zip file",
       "uploadFirmware": "Upload firmware (.hex, .bin, .elf, .ihex) to bypass compilation",
       "toggleConsole": "Toggle Output Console",
@@ -359,15 +359,15 @@
   },
   "about": {
     "hero": {
-      "title": "About Velxio",
+      "title": "About AI IoT Lab",
       "subtitle": "A free, open-source embedded systems emulator — built by a single developer with a passion for hardware and open source."
     },
     "story": {
       "heading": "The Story",
-      "p1": "Velxio started as a personal exploration into how microcontroller emulators work internally — CPU instructions, memory management, peripheral timing, and low-level architecture. What began as a learning project during a vacation quickly grew into something bigger.",
+      "p1": "AI IoT Lab started as a personal exploration into how microcontroller emulators work internally — CPU instructions, memory management, peripheral timing, and low-level architecture. What began as a learning project during a vacation quickly grew into something bigger.",
       "p2": "The idea was simple: <strong>what if anyone could simulate Arduino, ESP32, and Raspberry Pi boards directly in the browser, without buying hardware, without installing toolchains, without cloud accounts?</strong>",
-      "p3": "Velxio v1 launched on Product Hunt and Hacker News, supporting Arduino Uno and Raspberry Pi Pico. The feedback from the maker and embedded community was incredible — and it pushed the project forward.",
-      "p4": "<strong>Velxio 2.0</strong> shipped with ESP32 emulation via QEMU (using the lcgamboa fork), a Raspberry Pi 3 running real Linux, RISC-V support for ESP32-C3 and CH32V003, realistic sensor simulation (DHT22, HC-SR04, WS2812B NeoPixel), and 19 boards across 5 CPU architectures — all running real compiled code.",
+      "p3": "AI IoT Lab v1 launched on Product Hunt and Hacker News, supporting Arduino Uno and Raspberry Pi Pico. The feedback from the maker and embedded community was incredible — and it pushed the project forward.",
+      "p4": "<strong>AI IoT Lab 2.0</strong> shipped with ESP32 emulation via QEMU (using the lcgamboa fork), a Raspberry Pi 3 running real Linux, RISC-V support for ESP32-C3 and CH32V003, realistic sensor simulation (DHT22, HC-SR04, WS2812B NeoPixel), and 19 boards across 5 CPU architectures — all running real compiled code.",
       "p5": "The v2 launch hit the <strong>front page of Hacker News for over 20 hours</strong>, reaching nearly 600 GitHub stars and thousands of visitors in less than 24 hours. It's now being used by students, professors, and makers around the world."
     },
     "howItWorks": {
@@ -379,7 +379,7 @@
     },
     "openSource": {
       "heading": "Open Source Philosophy",
-      "lead": "Velxio is <strong>100% open source</strong> under the AGPLv3 license. No cloud dependency, no student accounts, no data leaving your network. Universities and bootcamps can deploy it on their own servers with a single Docker command and give every student access to a complete embedded development environment — for free.",
+      "lead": "AI IoT Lab is <strong>100% open source</strong> under the AGPLv3 license. No cloud dependency, no student accounts, no data leaving your network. Universities and bootcamps can deploy it on their own servers with a single Docker command and give every student access to a complete embedded development environment — for free.",
       "creditsIntro": "The project builds on top of amazing open-source work from the community:",
       "credits": {
         "avr8js": "AVR8 CPU emulation by Wokwi",
@@ -388,7 +388,7 @@
         "qemuLcgamboa": "ESP32 and Raspberry Pi QEMU emulation",
         "arduinoCli": "Arduino compilation toolchain"
       },
-      "inspiredBy": "Velxio was inspired by <a>Wokwi</a>, which is a fantastic tool. The goal of Velxio is to take a different path: fully open source, self-hostable, and supporting multiple heterogeneous boards in the same circuit."
+      "inspiredBy": "AI IoT Lab was inspired by <a>Wokwi</a>, which is a fantastic tool. The goal of AI IoT Lab is to take a different path: fully open source, self-hostable, and supporting multiple heterogeneous boards in the same circuit."
     },
     "creator": {
       "heading": "The Creator",
@@ -428,7 +428,7 @@
       }
     },
     "cta": {
-      "title": "Ready to try Velxio?",
+      "title": "Ready to try AI IoT Lab?",
       "subtitle": "No signup required. Runs 100% in your browser. Free and open source.",
       "openEditor": "Open Editor"
     }

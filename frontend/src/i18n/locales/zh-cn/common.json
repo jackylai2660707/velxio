@@ -26,7 +26,7 @@
     "search": "搜索"
   },
   "footer": {
-    "about": "Velxio 是一款免费、开源的电路和微控制器模拟器，完全在浏览器中运行。支持 Arduino、ESP32、RP2040 和 ATtiny85，并具有 SPICE 精度的模拟协同仿真。专为通过实践学习的设计者、学生和嵌入式工程师打造。采用 AGPLv3 许可。"
+    "about": "AI物联网实验室 是一款免费、开源的电路和微控制器模拟器，完全在浏览器中运行。支持 Arduino、ESP32、RP2040 和 ATtiny85，并具有 SPICE 精度的模拟协同仿真。专为通过实践学习的设计者、学生和嵌入式工程师打造。采用 AGPLv3 许可。"
   },
   "landing": {
     "hero": {
@@ -36,7 +36,7 @@
       "ctaPrimary": "免费在线试用模拟器 →",
       "ctaGithub": "在 GitHub 上查看",
       "trustLine": "内置 AI 助手 · 离线可用 · AGPLv3 开源 · 无需注册",
-      "imageAlt": "Velxio 编辑器中的 Arduino Uno 交通灯电路"
+      "imageAlt": "AI物联网实验室 编辑器中的 Arduino Uno 交通灯电路"
     },
     "boards": {
       "label": "支持的硬件",
@@ -75,14 +75,14 @@
     },
     "support": {
       "title": "支持项目",
-      "subtitle": "Velxio 是免费且开源的。如果它为你节省了时间，请考虑支持其开发。",
+      "subtitle": "AI物联网实验室 是免费且开源的。如果它为你节省了时间，请考虑支持其开发。",
       "ctaSponsors": "GitHub Sponsors",
       "ctaPaypal": "通过 PayPal 捐赠"
     },
     "licensing": {
       "label": "许可证",
       "title": "免费,提供商业选项。",
-      "subtitle": "开源版本采用 AGPLv3 协议。需要将 Velxio 集成到闭源产品中的团队可选择商业许可。",
+      "subtitle": "开源版本采用 AGPLv3 协议。需要将 AI物联网实验室 集成到闭源产品中的团队可选择商业许可。",
       "opensource": {
         "title": "开源 — AGPLv3",
         "desc": "个人使用、教育、研究和自托管永久免费。可修改、Fork 并重新分发 — 您的修改也必须以 AGPLv3 协议发布。",
@@ -132,7 +132,7 @@
           "name": "Maker",
           "tagline": "面向用 AI 帮助构建真实电路的创客。",
           "f1": "每日 500 AI 信用额度（每月最多 15,000）",
-          "f2": "未列出的项目 + Velxio Desktop（离线）",
+          "f2": "未列出的项目 + AI物联网实验室 Desktop（离线）",
           "f3": "ESP32、STM32 和 Raspberry Pi 模拟时长无限制",
           "cta": "开始 Maker"
         },
@@ -145,7 +145,7 @@
           "cta": "订阅 Pro"
         }
       },
-      "classroomBanner": "准备在课程中使用 Velxio？Velxio for Classroom 为每位学生提供 Pro 访问权限，每年 $40 起。",
+      "classroomBanner": "准备在课程中使用 AI物联网实验室？AI物联网实验室 for Classroom 为每位学生提供 Pro 访问权限，每年 $40 起。",
       "classroomCta": "查看课堂方案 →"
     }
   },
@@ -159,7 +159,7 @@
   },
   "pricing": {
     "title": "定价",
-    "selfHosted": "此 Velxio 实例是从开源镜像自托管的——所有功能对每位用户免费。",
+    "selfHosted": "此 AI物联网实验室 实例是从开源镜像自托管的——所有功能对每位用户免费。",
     "hostedVersion": "托管版本 <link>velxio.dev</link> 提供可选的 Pro 层级，有助于资助开发。",
     "sourceCode": "源代码在 GitHub 上采用 <link>MIT 许可</link>。"
   },
@@ -369,19 +369,10 @@
     "notFound": "未找到示例 \"{{id}}\"。",
     "browseAll": "浏览所有示例"
   },
-  "starBanner": {
-    "ariaLabel": "在 GitHub 上为 Velxio 加星",
-    "title": "喜欢 Velxio 吗？",
-    "body": "在 GitHub 上点个 ⭐ 可以帮助更多开发者发现这个项目——只需 2 秒钟！",
-    "title2": "帮个小忙？",
-    "body2": "Velxio 是免费的开源项目。在 GitHub 上点个 star 是支持它、帮助更多人发现它最简单的方式。",
-    "cta": "在 GitHub 上加星",
-    "dismiss": "忽略"
-  },
   "auth": {
     "login": {
       "title": "登录",
-      "subtitle": "以继续使用 Velxio",
+      "subtitle": "以继续使用 AI物联网实验室",
       "email": "邮箱",
       "password": "密码",
       "signIn": "登录",

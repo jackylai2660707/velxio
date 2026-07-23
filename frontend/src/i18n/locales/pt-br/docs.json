@@ -3,7 +3,7 @@
     "components": {
       "label": "// referência",
       "heading": "Referência de Componentes",
-      "lead": "Velxio vem com <strong>mais de 48 componentes eletrônicos interativos</strong> alimentados por <a>wokwi-elements</a>. Todos os componentes podem ser colocados na tela de simulação, conectados com fios e interagir com seu sketch Arduino em tempo real.",
+      "lead": "AI IoT Lab vem com <strong>mais de 48 componentes eletrônicos interativos</strong> alimentados por <a>wokwi-elements</a>. Todos os componentes podem ser colocados na tela de simulação, conectados com fios e interagir com seu sketch Arduino em tempo real.",
       "addingHeading": "Adicionando Componentes",
       "adding1": "Clique no botão <strong>+</strong> na tela de simulação.",
       "adding2": "Use a <strong>pesquisa</strong> ou navegue por <strong>categoria</strong> no seletor de componentes.",
@@ -98,59 +98,59 @@
     },
     "sectionMeta": {
       "intro": {
-        "title": "Introdução | Documentação Velxio",
-        "description": "Aprenda sobre Velxio, o emulador Arduino gratuito e de código aberto com emulação real de CPU AVR8 e RP2040 e mais de 48 componentes eletrônicos interativos."
+        "title": "Introdução | Documentação AI IoT Lab",
+        "description": "Aprenda sobre AI IoT Lab, o emulador Arduino gratuito e de código aberto com emulação real de CPU AVR8 e RP2040 e mais de 48 componentes eletrônicos interativos."
       },
       "gettingStarted": {
-        "title": "Primeiros Passos | Documentação Velxio",
-        "description": "Comece com Velxio: use o editor hospedado, auto-hospede com Docker ou configure um ambiente de desenvolvimento local. Simule seu primeiro sketch Arduino em minutos."
+        "title": "Primeiros Passos | Documentação AI IoT Lab",
+        "description": "Comece com AI IoT Lab: use o editor hospedado, auto-hospede com Docker ou configure um ambiente de desenvolvimento local. Simule seu primeiro sketch Arduino em minutos."
       },
       "emulator": {
-        "title": "Arquitetura do Emulador | Documentação Velxio",
-        "description": "Como Velxio emula CPUs AVR8 (ATmega328p), RP2040 e RISC-V (ESP32-C3). Abrange loops de execução, periféricos e mapeamento de pinos para todas as placas suportadas."
+        "title": "Arquitetura do Emulador | Documentação AI IoT Lab",
+        "description": "Como AI IoT Lab emula CPUs AVR8 (ATmega328p), RP2040 e RISC-V (ESP32-C3). Abrange loops de execução, periféricos e mapeamento de pinos para todas as placas suportadas."
       },
       "riscvEmulation": {
-        "title": "Emulação RISC-V (ESP32-C3) | Documentação Velxio",
+        "title": "Emulação RISC-V (ESP32-C3) | Documentação AI IoT Lab",
         "description": "Emulador RV32IMC no navegador para ESP32-C3, XIAO ESP32-C3 e C3 SuperMini. Abrange mapa de memória, GPIO, UART0, analisador de imagem ESP32, ISA RV32IMC e conjunto de testes."
       },
       "esp32Emulation": {
-        "title": "Emulação ESP32 (Xtensa) | Documentação Velxio",
+        "title": "Emulação ESP32 (Xtensa) | Documentação AI IoT Lab",
         "description": "Emulação baseada em QEMU para ESP32 e ESP32-S3 (Xtensa LX6/LX7). Abrange o fork lcgamboa, libqemu-xtensa, GPIO, WiFi, I2C, SPI, RMT/NeoPixel e LEDC/PWM."
       },
       "components": {
-        "title": "Referência de Componentes | Documentação Velxio",
-        "description": "Referência completa para todos os mais de 48 componentes eletrônicos interativos no Velxio: LEDs, displays, sensores, botões, potenciômetros e mais. Inclui detalhes de fiação e propriedades."
+        "title": "Referência de Componentes | Documentação AI IoT Lab",
+        "description": "Referência completa para todos os mais de 48 componentes eletrônicos interativos no AI IoT Lab: LEDs, displays, sensores, botões, potenciômetros e mais. Inclui detalhes de fiação e propriedades."
       },
       "roadmap": {
-        "title": "Roteiro | Documentação Velxio",
-        "description": "Roteiro de funcionalidades do Velxio: o que está implementado, o que está em andamento e o que está planejado para versões futuras."
+        "title": "Roteiro | Documentação AI IoT Lab",
+        "description": "Roteiro de funcionalidades do AI IoT Lab: o que está implementado, o que está em andamento e o que está planejado para versões futuras."
       },
       "architecture": {
-        "title": "Arquitetura do Projeto | Documentação Velxio",
-        "description": "Visão geral detalhada da arquitetura do sistema Velxio: frontend, backend, pipeline de emulação AVR8, fluxos de dados, stores Zustand e sistema de fios."
+        "title": "Arquitetura do Projeto | Documentação AI IoT Lab",
+        "description": "Visão geral detalhada da arquitetura do sistema AI IoT Lab: frontend, backend, pipeline de emulação AVR8, fluxos de dados, stores Zustand e sistema de fios."
       },
       "thirdParty": {
-        "title": "Bibliotecas Wokwi | Documentação Velxio",
-        "description": "Como Velxio integra as bibliotecas oficiais de código aberto do Wokwi: avr8js, wokwi-elements e rp2040js. Abrange configuração, atualizações e os 48 componentes disponíveis."
+        "title": "Bibliotecas Wokwi | Documentação AI IoT Lab",
+        "description": "Como AI IoT Lab integra as bibliotecas oficiais de código aberto do Wokwi: avr8js, wokwi-elements e rp2040js. Abrange configuração, atualizações e os 48 componentes disponíveis."
       },
       "mcp": {
-        "title": "Servidor MCP | Documentação Velxio",
-        "description": "Referência do Servidor MCP do Velxio: integre agentes de IA (Claude, Cursor) com Velxio via Model Context Protocol. Abrange ferramentas, transportes, formato de circuito e exemplos passo a passo."
+        "title": "Servidor MCP | Documentação AI IoT Lab",
+        "description": "Referência do Servidor MCP do AI IoT Lab: integre agentes de IA (Claude, Cursor) com AI IoT Lab via Model Context Protocol. Abrange ferramentas, transportes, formato de circuito e exemplos passo a passo."
       },
       "setup": {
-        "title": "Status do Projeto | Documentação Velxio",
-        "description": "Status completo de todas as funcionalidades implementadas do Velxio: emulação AVR, sistema de componentes, sistema de fios, editor de código, projetos de exemplo e próximos passos."
+        "title": "Status do Projeto | Documentação AI IoT Lab",
+        "description": "Status completo de todas as funcionalidades implementadas do AI IoT Lab: emulação AVR, sistema de componentes, sistema de fios, editor de código, projetos de exemplo e próximos passos."
       },
       "rp2040Emulation": {
-        "title": "Emulação RP2040 (Raspberry Pi Pico) | Documentação Velxio",
-        "description": "Como Velxio emula o Raspberry Pi Pico e Pico W usando rp2040js: ARM Cortex-M0+ a 133 MHz, GPIO, UART, ADC, I2C, SPI, PWM e otimização WFI."
+        "title": "Emulação RP2040 (Raspberry Pi Pico) | Documentação AI IoT Lab",
+        "description": "Como AI IoT Lab emula o Raspberry Pi Pico e Pico W usando rp2040js: ARM Cortex-M0+ a 133 MHz, GPIO, UART, ADC, I2C, SPI, PWM e otimização WFI."
       },
       "raspberryPi3Emulation": {
-        "title": "Emulação Raspberry Pi 3 (QEMU) | Documentação Velxio",
-        "description": "Como Velxio emula um Raspberry Pi 3B completo usando QEMU raspi3b: Raspberry Pi OS real, Python + shim RPi.GPIO, UART de canal duplo, VFS e ponte serial multi-placa."
+        "title": "Emulação Raspberry Pi 3 (QEMU) | Documentação AI IoT Lab",
+        "description": "Como AI IoT Lab emula um Raspberry Pi 3B completo usando QEMU raspi3b: Raspberry Pi OS real, Python + shim RPi.GPIO, UART de canal duplo, VFS e ponte serial multi-placa."
       },
       "buildQemu": {
-        "title": "Compilar QEMU a partir do código-fonte | Documentação Velxio",
+        "title": "Compilar QEMU a partir do código-fonte | Documentação AI IoT Lab",
         "description": "Guia passo a passo para compilar libqemu-xtensa e libqemu-riscv32 a partir do fork lcgamboa/qemu. Transparência total sob a licença AGPLv3."
       }
     },
@@ -209,7 +209,7 @@
     "rpi3": {
       "label": "// qemu raspi3b",
       "heading": "Emulação Raspberry Pi 3 (QEMU)",
-      "lead": "O Raspberry Pi 3B é emulado usando <strong>QEMU 8.1.3</strong> com <code>-M raspi3b</code>. Esta é a única placa no Velxio que roda um sistema operacional completo, uma imagem real do <strong>Raspberry Pi OS (Trixie)</strong> inicializada dentro do emulador. Os usuários escrevem scripts Python (não C++), que são executados pelo interpretador Python 3 real dentro da VM.",
+      "lead": "O Raspberry Pi 3B é emulado usando <strong>QEMU 8.1.3</strong> com <code>-M raspi3b</code>. Esta é a única placa no AI IoT Lab que roda um sistema operacional completo, uma imagem real do <strong>Raspberry Pi OS (Trixie)</strong> inicializada dentro do emulador. Os usuários escrevem scripts Python (não C++), que são executados pelo interpretador Python 3 real dentro da VM.",
       "boardsHeading": "Placas Suportadas",
       "boardRpi3": "Raspberry Pi 3B",
       "altRpi3": "Raspberry Pi 3B",
@@ -278,7 +278,7 @@
     "thirdParty": {
       "label": "// bibliotecas de código aberto",
       "heading": "Bibliotecas Wokwi",
-      "lead": "Velxio usa repositórios oficiais de código aberto do Wokwi clonados localmente em <code>third-party/</code>. Isso fornece mecanismos de emulação e componentes visuais atualizados e compatíveis sem dependências do registro npm.",
+      "lead": "AI IoT Lab usa repositórios oficiais de código aberto do Wokwi clonados localmente em <code>third-party/</code>. Isso fornece mecanismos de emulação e componentes visuais atualizados e compatíveis sem dependências do registro npm.",
       "clonedHeading": "Repositórios Clonados",
       "thLibrary": "Biblioteca",
       "thLocation": "Localização",
@@ -315,13 +315,13 @@
     "mcp": {
       "label": "// integração com IA",
       "heading": "Servidor MCP",
-      "lead": "Velxio expõe um servidor <a>Model Context Protocol</a> (MCP) que permite que agentes de IA (Claude, Cursor e outros) criem circuitos, gerem código e compilem sketches Arduino diretamente.",
+      "lead": "AI IoT Lab expõe um servidor <a>Model Context Protocol</a> (MCP) que permite que agentes de IA (Claude, Cursor e outros) criem circuitos, gerem código e compilem sketches Arduino diretamente.",
       "toolsHeading": "Ferramentas Disponíveis",
       "thTool": "Ferramenta",
       "toolCompileDesc": "Compilar arquivos de sketch Arduino - Intel HEX / binário",
       "toolRunDesc": "Compilar e marcar artefato como pronto para simulação",
-      "toolImportDesc": "Analisar um <code>diagram.json</code> do Wokwi - circuito Velxio",
-      "toolExportDesc": "Serializar um circuito Velxio - <code>diagram.json</code> do Wokwi",
+      "toolImportDesc": "Analisar um <code>diagram.json</code> do Wokwi - circuito AI IoT Lab",
+      "toolExportDesc": "Serializar um circuito AI IoT Lab - <code>diagram.json</code> do Wokwi",
       "toolCreateDesc": "Criar uma nova definição de circuito",
       "toolUpdateDesc": "Mesclar alterações em um circuito existente",
       "toolGenerateDesc": "Gerar código <code>.ino</code> inicial a partir de um circuito",
@@ -331,7 +331,7 @@
       "sseHeading": "2. SSE / HTTP: Cursor IDE / agentes web",
       "sseConfigBody": "Configuração do cliente MCP:",
       "circuitFormatHeading": "Formato de Dados do Circuito",
-      "circuitFormatLead": "Circuitos Velxio são objetos JSON simples:",
+      "circuitFormatLead": "Circuitos AI IoT Lab são objetos JSON simples:",
       "fqbnHeading": "FQBNs de Placa Suportados",
       "thFqbn": "FQBN",
       "exampleHeading": "Exemplo: Piscar LED do Zero",

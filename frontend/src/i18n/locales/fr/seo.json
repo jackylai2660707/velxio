@@ -11,7 +11,7 @@
       },
       "what": {
         "heading": "Que pouvez-vous simuler ?",
-        "lead": "Velxio exécute le solveur ngspice réel — le même moteur utilisé par les outils EDA professionnels — à chaque tick. Ce n'est pas une approximation linéaire. Les diodes ont une chute de tension directe correcte, les BJT saturent et se bloquent, les amplificateurs opérationnels atteignent leurs rails, les régulateurs ont un dropout."
+        "lead": "AI IoT Lab exécute le solveur ngspice réel — le même moteur utilisé par les outils EDA professionnels — à chaque tick. Ce n'est pas une approximation linéaire. Les diodes ont une chute de tension directe correcte, les BJT saturent et se bloquent, les amplificateurs opérationnels atteignent leurs rails, les régulateurs ont un dropout."
       },
       "cards": {
         "passive": {
@@ -41,13 +41,13 @@
       },
       "how": {
         "heading": "Comment fonctionne la simulation analogique",
-        "leadPrefix": "Velxio utilise ",
+        "leadPrefix": "AI IoT Lab utilise ",
         "leadHighlight": "ngspice-WASM",
         "leadMid": " via le moteur open-source ",
         "leadCode": "eecircuit-engine",
         "leadSuffix": ". Chaque fil sur le canevas devient un net SPICE, chaque composant devient une carte de dispositif SPICE, et le solveur exécute une analyse nodale modifiée complète à chaque tick.",
         "wireTitle": "1. Câbler",
-        "wireBody": "Déposez les composants, faites glisser les fils. Velxio fusionne le graphe des fils en nets SPICE en temps réel pendant que vous construisez.",
+        "wireBody": "Déposez les composants, faites glisser les fils. AI IoT Lab fusionne le graphe des fils en nets SPICE en temps réel pendant que vous construisez.",
         "solveTitle": "2. Résoudre",
         "solveBody": "ngspice résout le circuit complet à ~60 Hz. Les dispositifs non linéaires itèrent jusqu'à convergence — pas de raccourcis, pas d'idéalisations.",
         "probeTitle": "3. Sonder",
@@ -55,7 +55,7 @@
       },
       "co": {
         "heading": "La fonctionnalité unique : co-simulation hybride numérique + analogique",
-        "lead": "La plupart des simulateurs de circuits en ligne s'arrêtent à l'analogique passif. Velxio exécute également le firmware sur le microcontrôleur qui pilote le circuit — sur la même horloge.",
+        "lead": "La plupart des simulateurs de circuits en ligne s'arrêtent à l'analogique passif. AI IoT Lab exécute également le firmware sur le microcontrôleur qui pilote le circuit — sur la même horloge.",
         "gpioTitle": "GPIO pilote le circuit",
         "gpioBodyPrefix": "",
         "gpioBodyCode": "digitalWrite(HIGH)",
@@ -70,17 +70,17 @@
       "faq": {
         "heading": "Questions fréquentes",
         "q1": "Ce simulateur de circuits est-il vraiment gratuit ?",
-        "a1": "Oui. Velxio est entièrement gratuit et open-source sous licence GNU AGPLv3. Aucun compte requis, aucun abonnement cloud, aucun composant payant — chaque partie du simulateur fonctionne dans votre navigateur.",
-        "q2": "Quel type de simulation analogique Velxio utilise-t-il ?",
-        "a2": "Velxio exécute ngspice — le simulateur SPICE open-source utilisé par les outils EDA professionnels — compilé en WebAssembly via eecircuit-engine. Chaque tick effectue une analyse nodale modifiée complète, donc les dispositifs non linéaires (diodes, BJT, MOSFET, amplificateurs opérationnels avec saturation) se comportent comme du silicium réel, pas des approximations idéalisées.",
+        "a1": "Oui. AI IoT Lab est entièrement gratuit et open-source sous licence GNU AGPLv3. Aucun compte requis, aucun abonnement cloud, aucun composant payant — chaque partie du simulateur fonctionne dans votre navigateur.",
+        "q2": "Quel type de simulation analogique AI IoT Lab utilise-t-il ?",
+        "a2": "AI IoT Lab exécute ngspice — le simulateur SPICE open-source utilisé par les outils EDA professionnels — compilé en WebAssembly via eecircuit-engine. Chaque tick effectue une analyse nodale modifiée complète, donc les dispositifs non linéaires (diodes, BJT, MOSFET, amplificateurs opérationnels avec saturation) se comportent comme du silicium réel, pas des approximations idéalisées.",
         "q3": "Puis-je connecter un microcontrôleur à mon circuit ?",
         "a3": "Oui — et c'est la fonctionnalité unique. Les broches GPIO pilotent les nets SPICE comme sources de tension, et les entrées ADC lisent les tensions de nœud analogiques résolues dans votre firmware. Vous pouvez construire un filtre RC piloté par PWM, un interrupteur à transistor, une chaîne de signaux à ampli-op, ou un driver moteur MOSFET et voir le firmware et le circuit interagir en temps réel.",
         "q4": "Quels composants sont disponibles ?",
         "a4": "Résistances, condensateurs, inductances, potentiomètres, photorésistances (LDR), photodiodes, thermistances NTC, piles (9V/AA/bouton), 5 BJT (2N2222, 2N3055, 2N3906, BC547, BC557), 4 MOSFET (2N7000, IRF540, IRF9540, FQP27P06), 5 amplificateurs opérationnels (LM358, LM741, TL072, LM324, idéal), 4 régulateurs linéaires (7805, 7812, 7905, LM317), diodes Zener et Schottky, optocoupleurs (4N25, PC817), relais, driver pont en H double L293D, et 7 portes logiques plus 7 circuits intégrés série 74HC en boîtiers DIP-14.",
         "q5": "Le simulateur a-t-il un oscilloscope et un voltmètre ?",
-        "a5": "Oui. Velxio inclut un oscilloscope multicanal, un voltmètre, un ampèremètre et un générateur de signaux (sinus, carré, continu) comme instruments en direct que vous pouvez déposer sur le canevas. Ils sondent n'importe quel nœud ou fil et se mettent à jour en temps réel pendant la simulation.",
+        "a5": "Oui. AI IoT Lab inclut un oscilloscope multicanal, un voltmètre, un ampèremètre et un générateur de signaux (sinus, carré, continu) comme instruments en direct que vous pouvez déposer sur le canevas. Ils sondent n'importe quel nœud ou fil et se mettent à jour en temps réel pendant la simulation.",
         "q6": "Est-ce une alternative à Falstad / CircuitLab / Tinkercad ?",
-        "a6": "Pour les circuits analogiques, oui — et plus précise, car Velxio exécute le vrai moteur ngspice au lieu d'un solveur simplifié. Contrairement à ces outils, Velxio exécute également le firmware sur le microcontrôleur qui pilote le circuit, vous pouvez donc valider le firmware et le matériel ensemble sans quitter le navigateur."
+        "a6": "Pour les circuits analogiques, oui — et plus précise, car AI IoT Lab exécute le vrai moteur ngspice au lieu d'un solveur simplifié. Contrairement à ces outils, AI IoT Lab exécute également le firmware sur le microcontrôleur qui pilote le circuit, vous pouvez donc valider le firmware et le matériel ensemble sans quitter le navigateur."
       },
       "bottom": {
         "title": "Prêt à simuler votre circuit ?",
@@ -114,8 +114,8 @@
         "usartBody": "Série full duplex avec débit en bauds configurable. Interruptions TX, RX et UDRE. Fonctionne avec le moniteur série intégré."
       },
       "boards": {
-        "heading": "Cartes ATmega328P dans Velxio",
-        "lead": "L'ATmega328P alimente plusieurs cartes Arduino populaires — toutes sélectionnables dans Velxio. La famille AVR8 plus large inclut également ATmega2560 (Mega) et ATtiny85.",
+        "heading": "Cartes ATmega328P dans AI IoT Lab",
+        "lead": "L'ATmega328P alimente plusieurs cartes Arduino populaires — toutes sélectionnables dans AI IoT Lab. La famille AVR8 plus large inclut également ATmega2560 (Mega) et ATtiny85.",
         "unoTitle": "Arduino Uno R3",
         "unoBody": "La carte classique. 14 broches E/S numériques (6 PWM), 6 entrées analogiques, 32 Ko flash. La carte ATmega328P la plus utilisée.",
         "nanoTitle": "Arduino Nano",
@@ -132,7 +132,7 @@
         "q1": "Qu'est-ce que l'ATmega328P ?",
         "a1": "L'ATmega328P est un microcontrôleur AVR 8 bits de Microchip (anciennement Atmel). C'est le cœur de l'Arduino Uno et Arduino Nano, fonctionnant à 16 MHz avec 32 Ko de flash, 2 Ko de SRAM et 1 Ko d'EEPROM.",
         "q2": "Puis-je simuler du code au niveau des registres de l'ATmega328P ?",
-        "a2": "Oui. L'émulation AVR8 de Velxio exécute fidèlement tous les registres de l'ATmega328P : DDRB/C/D, PORTB/C/D, PINB/C/D, TCCR0/1/2, OCR0/1/2, UBRR, UDR, ADCL/ADCH, et tous les vecteurs d'interruption — y compris la manipulation directe des registres sans la couche d'abstraction Arduino.",
+        "a2": "Oui. L'émulation AVR8 de AI IoT Lab exécute fidèlement tous les registres de l'ATmega328P : DDRB/C/D, PORTB/C/D, PINB/C/D, TCCR0/1/2, OCR0/1/2, UBRR, UDR, ADCL/ADCH, et tous les vecteurs d'interruption — y compris la manipulation directe des registres sans la couche d'abstraction Arduino.",
         "q3": "Émule-t-il correctement les timers de l'ATmega328P ?",
         "a3": "Timer0 (8 bits), Timer1 (16 bits) et Timer2 (8 bits) sont tous émulés avec support complet du prescaler, modes PWM, interruptions de débordement et interruptions de comparaison de sortie. millis(), delay(), analogWrite() et tone() fonctionnent tous correctement.",
         "q4": "Puis-je utiliser analogRead() et analogWrite() dans le simulateur ?",
@@ -158,7 +158,7 @@
       },
       "boards": {
         "heading": "Cartes RISC-V supportées",
-        "lead": "Velxio émule les microcontrôleurs RISC-V via le fork QEMU lcgamboa — le même modèle de backend utilisé pour Xtensa ESP32 / ESP32-S3, avec libqemu-riscv32 au lieu de libqemu-xtensa.",
+        "lead": "AI IoT Lab émule les microcontrôleurs RISC-V via le fork QEMU lcgamboa — le même modèle de backend utilisé pour Xtensa ESP32 / ESP32-S3, avec libqemu-riscv32 au lieu de libqemu-xtensa.",
         "devkitTitle": "ESP32-C3 DevKitM-1",
         "devkitBody": "RISC-V RV32IMC à 160 MHz. WiFi + BLE 5.0, 22 GPIO, 400 Ko SRAM. La carte de développement officielle Espressif.",
         "xiaoTitle": "XIAO ESP32-C3",
@@ -192,11 +192,11 @@
         "q2": "Le simulateur ESP32-C3 fonctionne-t-il dans le navigateur ?",
         "a2": "Oui. Contrairement à l'ESP32 basé sur Xtensa, l'émulation RISC-V de l'ESP32-C3 fonctionne entièrement dans le navigateur — aucun backend QEMU nécessaire. Cela en fait la variante ESP32 la plus rapide à simuler.",
         "q3": "Est-ce aussi un simulateur RISC-V ?",
-        "a3": "Oui. L'ESP32-C3 utilise le jeu d'instructions RISC-V RV32IMC. Velxio supporte également le CH32V003 (RV32EC à 48 MHz) — un autre microcontrôleur RISC-V populaire.",
+        "a3": "Oui. L'ESP32-C3 utilise le jeu d'instructions RISC-V RV32IMC. AI IoT Lab supporte également le CH32V003 (RV32EC à 48 MHz) — un autre microcontrôleur RISC-V populaire.",
         "q4": "Quelles cartes ESP32-C3 sont supportées ?",
-        "a4": "Velxio supporte ESP32-C3 DevKitM-1, Seeed XIAO ESP32-C3 et ESP32-C3 SuperMini (Aitewinrobot). Les trois utilisent le même cœur RISC-V.",
+        "a4": "AI IoT Lab supporte ESP32-C3 DevKitM-1, Seeed XIAO ESP32-C3 et ESP32-C3 SuperMini (Aitewinrobot). Les trois utilisent le même cœur RISC-V.",
         "q5": "Puis-je utiliser du code Arduino avec ESP32-C3 ?",
-        "a5": "Oui. Velxio compile votre sketch .ino en utilisant le cœur Arduino ESP32 officiel avec la cible de carte ESP32-C3. Toutes les fonctions Arduino standard fonctionnent — Serial, GPIO, analogRead, etc."
+        "a5": "Oui. AI IoT Lab compile votre sketch .ino en utilisant le cœur Arduino ESP32 officiel avec la cible de carte ESP32-C3. Toutes les fonctions Arduino standard fonctionnent — Serial, GPIO, analogRead, etc."
       },
       "bottom": {
         "title": "Prêt à simuler ESP32-C3 ?",

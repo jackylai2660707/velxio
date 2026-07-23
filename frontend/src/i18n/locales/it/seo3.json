@@ -4,7 +4,7 @@
       "hero": {
         "title": "Crea i tuoi chip personalizzati",
         "accent": "in C, Rust o AssemblyScript",
-        "subtitle": "Definisci i tuoi circuiti integrati con l'API Custom Chips compatibile con Wokwi. Scrivi il chip in C, Rust o AssemblyScript; Velxio lo compila in WebAssembly e lo esegue sulla canvas come qualsiasi altro componente — pilotato dal firmware di Arduino, ESP32 o RP2040.",
+        "subtitle": "Definisci i tuoi circuiti integrati con l'API Custom Chips compatibile con Wokwi. Scrivi il chip in C, Rust o AssemblyScript; AI IoT Lab lo compila in WebAssembly e lo esegue sulla canvas come qualsiasi altro componente — pilotato dal firmware di Arduino, ESP32 o RP2040.",
         "ctaPrimary": "Apri l'Editor",
         "ctaSecondary": "Leggi la Documentazione",
         "trust": "API compatibile con Wokwi · Gratuito e open-source · Alimentato da WASM, funziona nel browser"
@@ -27,7 +27,7 @@
       },
       "api": {
         "heading": "Cosa ti offre l'API",
-        "lead": "Il runtime di Velxio Custom Chips è completamente compatibile con Wokwi, con extra per l'ambiente SPICE e multi-board.",
+        "lead": "Il runtime di AI IoT Lab Custom Chips è completamente compatibile con Wokwi, con extra per l'ambiente SPICE e multi-board.",
         "pinTitle": "I/O dei pin",
         "pinBody": "Leggi lo stato dei pin, scrivi digitale alto/basso, configura pull-up, reagisci ai fronti con callback di watch sui pin.",
         "attrTitle": "Attributi",
@@ -43,14 +43,14 @@
       },
       "faq": {
         "heading": "Domande frequenti",
-        "q1": "Cos'è un chip personalizzato in Velxio?",
-        "a1": "Un chip personalizzato è un circuito integrato definito dall'utente. Scrivi la logica del chip in C, Rust o AssemblyScript — Velxio lo compila in WebAssembly, lo istanzia sulla canvas come qualsiasi altro componente e pilota i suoi pin dal simulatore.",
-        "q2": "Quale API usa Velxio?",
-        "a2": "Velxio implementa l'API Custom Chips di Wokwi — la stessa API usata da Wokwi — quindi i chip che scrivi per Velxio sono portabili su Wokwi e viceversa. Velxio aggiunge uno shim WASI per permetterti di usare funzioni di libreria standard nel codice del chip.",
+        "q1": "Cos'è un chip personalizzato in AI IoT Lab?",
+        "a1": "Un chip personalizzato è un circuito integrato definito dall'utente. Scrivi la logica del chip in C, Rust o AssemblyScript — AI IoT Lab lo compila in WebAssembly, lo istanzia sulla canvas come qualsiasi altro componente e pilota i suoi pin dal simulatore.",
+        "q2": "Quale API usa AI IoT Lab?",
+        "a2": "AI IoT Lab implementa l'API Custom Chips di Wokwi — la stessa API usata da Wokwi — quindi i chip che scrivi per AI IoT Lab sono portabili su Wokwi e viceversa. AI IoT Lab aggiunge uno shim WASI per permetterti di usare funzioni di libreria standard nel codice del chip.",
         "q3": "Cosa posso costruire?",
         "a3": "Modelli comportamentali di IC reali (sensori, decodificatori, traduttori di livello, bridge di protocollo), logica digitale personalizzata, simulazioni di sensori per hardware che non hai ancora e mock a livello di protocollo per testare il firmware. I chip possono pilotare pin, leggere attributi, registrare timer e fare da bridge a bus I²C/SPI.",
         "q4": "Come posso condividere o riutilizzare un chip?",
-        "a4": "Salva il chip nel tuo account Velxio e riutilizzalo tra progetti. La definizione del chip include il layout dei pin, gli attributi e il WASM compilato — trascinalo su qualsiasi canvas di progetto come un componente integrato.",
+        "a4": "Salva il chip nel tuo account AI IoT Lab e riutilizzalo tra progetti. La definizione del chip include il layout dei pin, gli attributi e il WASM compilato — trascinalo su qualsiasi canvas di progetto come un componente integrato.",
         "q5": "Ho bisogno di un backend per eseguire il mio chip?",
         "a5": "No. Il WASM del chip compilato viene eseguito nella stessa scheda del browser del resto della simulazione. Aggiornamenti dei pin, letture degli attributi e tick dei timer sono tutti locali.",
         "q6": "Il mio chip personalizzato può comunicare con un Arduino?",
@@ -89,7 +89,7 @@
       },
       "audience": {
         "heading": "Per insegnanti, studenti e appassionati",
-        "lead": "Velxio è gratuito sotto AGPLv3 — nessun costo di licenza, nessun prezzo per posto, nessun account cloud. Self-hosting con un comando Docker per i laboratori universitari.",
+        "lead": "AI IoT Lab è gratuito sotto AGPLv3 — nessun costo di licenza, nessun prezzo per posto, nessun account cloud. Self-hosting con un comando Docker per i laboratori universitari.",
         "coursesTitle": "Per corsi",
         "coursesBody": "Usa lo stesso strumento dalla prima settimana (legge di Ohm, partitori di tensione) fino a progetti Arduino e catene di segnale con amplificatori operazionali. Un'unica interfaccia per l'intero programma.",
         "labsTitle": "Per laboratori",
@@ -99,16 +99,16 @@
       },
       "faq": {
         "heading": "Domande frequenti",
-        "q1": "Velxio è un simulatore elettronico completo?",
-        "a1": "Sì. Velxio combina un solutore analogico SPICE accurato, 19 microcontrollori simulati (Arduino, ESP32, RP2040, ATtiny85, Raspberry Pi 3), oltre 100 componenti, un oscilloscopio, voltmetro, amperometro e generatore di segnali — tutto ciò di cui hai bisogno per progettare e validare un progetto elettronico dall'inizio alla fine.",
+        "q1": "AI IoT Lab è un simulatore elettronico completo?",
+        "a1": "Sì. AI IoT Lab combina un solutore analogico SPICE accurato, 19 microcontrollori simulati (Arduino, ESP32, RP2040, ATtiny85, Raspberry Pi 3), oltre 100 componenti, un oscilloscopio, voltmetro, amperometro e generatore di segnali — tutto ciò di cui hai bisogno per progettare e validare un progetto elettronico dall'inizio alla fine.",
         "q2": "Posso usarlo come una breadboard virtuale?",
         "a2": "Sì. Posiziona i componenti sulla canvas, trascina i fili tra i pin e il simulatore costruisce automaticamente la netlist SPICE. I fili si agganciano a una griglia; i componenti ruotano con incrementi di 90°; i colori dei tipi di segnale marcano i percorsi VCC, GND, digitali e analogici.",
         "q3": "Devo installare qualcosa?",
         "a3": "No. Apri velxio.dev in qualsiasi browser moderno e inizia. Il solutore SPICE e gli emulatori AVR / RP2040 funzionano localmente nel tuo browser; le schede Xtensa e RISC-V (ESP32, ESP32-C3, CH32V003) più Raspberry Pi 3 Linux funzionano tramite QEMU lcgamboa, incluse nell'immagine Docker. La compilazione degli sketch Arduino utilizza il backend cloud arduino-cli.",
         "q4": "È adatto per insegnare elettronica?",
         "a4": "Sì — questo è uno degli obiettivi di progettazione. Gratuito, senza installazione, senza account, senza costi di licenza. Oltre 100 circuiti di esempio precablati coprono partitori di tensione, filtri RC, amplificatori con operazionali, interruttori a transistor, raddrizzatori e progetti Arduino completi. Ottimo per laboratori universitari e autodidatti.",
-        "q5": "Velxio è un'alternativa a Tinkercad / Falstad?",
-        "a5": "Sì — e più accurato. Velxio esegue ngspice reale (il motore usato dagli strumenti EDA professionali) e, a differenza di questi strumenti, esegue anche il firmware sul microcontrollore che pilota il circuito. Open-source sotto AGPLv3."
+        "q5": "AI IoT Lab è un'alternativa a Tinkercad / Falstad?",
+        "a5": "Sì — e più accurato. AI IoT Lab esegue ngspice reale (il motore usato dagli strumenti EDA professionali) e, a differenza di questi strumenti, esegue anche il firmware sul microcontrollore che pilota il circuito. Open-source sotto AGPLv3."
       },
       "bottom": {
         "title": "Apri la tua breadboard virtuale",
@@ -127,7 +127,7 @@
       },
       "what": {
         "heading": "Cosa puoi simulare?",
-        "lead": "Velxio simula programmi Arduino con piena accuratezza della CPU AVR8 — incluse porte GPIO, timer hardware, USART, ADC, PWM, SPI e I2C. Nessuna approssimazione, nessuna scorciatoia.",
+        "lead": "AI IoT Lab simula programmi Arduino con piena accuratezza della CPU AVR8 — incluse porte GPIO, timer hardware, USART, ADC, PWM, SPI e I2C. Nessuna approssimazione, nessuna scorciatoia.",
         "unoTitle": "Arduino Uno & Nano",
         "unoBody": "Simulazione completa ATmega328P a 16 MHz. Emulazione dei registri PORTB, PORTC, PORTD. Tutti i 14 pin digitali e 6 analogici.",
         "megaTitle": "Arduino Mega 2560",
@@ -145,7 +145,7 @@
       },
       "how": {
         "heading": "Come funziona il simulatore",
-        "leadPrefix": "Velxio utilizza ",
+        "leadPrefix": "AI IoT Lab utilizza ",
         "leadHighlight": "avr8js",
         "leadSuffix": " — la libreria di emulazione AVR8 open-source collaudata — per eseguire il tuo firmware compilato byte per byte, esattamente come funzionerebbe su hardware fisico.",
         "writeTitle": "1. Scrivi",
@@ -158,15 +158,15 @@
       "faq": {
         "heading": "Domande frequenti",
         "q1": "Questo simulatore Arduino è gratuito?",
-        "a1": "Sì. Velxio è completamente gratuito e open-source (GNU AGPLv3). Nessun account, nessun pagamento, nessun abbonamento cloud — eseguilo nel tuo browser o ospitalo autonomamente con un comando Docker.",
+        "a1": "Sì. AI IoT Lab è completamente gratuito e open-source (GNU AGPLv3). Nessun account, nessun pagamento, nessun abbonamento cloud — eseguilo nel tuo browser o ospitalo autonomamente con un comando Docker.",
         "q2": "Il simulatore Arduino funziona senza installare nulla?",
         "a2": "Il motore di simulazione funziona interamente nel tuo browser. La compilazione del codice richiede il backend arduino-cli, che puoi eseguire localmente o tramite Docker. Non è necessaria l'installazione dell'IDE.",
         "q3": "Quali schede Arduino posso simulare?",
-        "a3": "Velxio supporta 19 schede: Arduino Uno (ATmega328P), Arduino Nano, Arduino Mega 2560, ATtiny85, Arduino Leonardo, Arduino Pro Mini (AVR8) — più Raspberry Pi Pico (RP2040), ESP32-C3 / XIAO ESP32-C3 / CH32V003 (RISC-V), ESP32 / ESP32-S3 / ESP32-CAM (Xtensa tramite QEMU) e Raspberry Pi 3B (Linux tramite QEMU).",
+        "a3": "AI IoT Lab supporta 19 schede: Arduino Uno (ATmega328P), Arduino Nano, Arduino Mega 2560, ATtiny85, Arduino Leonardo, Arduino Pro Mini (AVR8) — più Raspberry Pi Pico (RP2040), ESP32-C3 / XIAO ESP32-C3 / CH32V003 (RISC-V), ESP32 / ESP32-S3 / ESP32-CAM (Xtensa tramite QEMU) e Raspberry Pi 3B (Linux tramite QEMU).",
         "q4": "Posso simulare LED, sensori e display?",
-        "a4": "Sì. Velxio include oltre 48 wokwi-elements interattivi: LED, resistori, pulsanti, servo motori, sensori a ultrasuoni, display TFT ILI9341, LCD, strisce NeoPixel, cicalini, DHT22 e altro.",
-        "q5": "Velxio è un'alternativa a Wokwi?",
-        "a5": "Sì. Velxio è un'alternativa gratuita e auto-ospitata a Wokwi. Utilizza la stessa libreria di emulazione avr8js e gli stessi componenti visivi wokwi-elements, ma funziona interamente sulla tua macchina senza dipendenza dal cloud."
+        "a4": "Sì. AI IoT Lab include oltre 48 wokwi-elements interattivi: LED, resistori, pulsanti, servo motori, sensori a ultrasuoni, display TFT ILI9341, LCD, strisce NeoPixel, cicalini, DHT22 e altro.",
+        "q5": "AI IoT Lab è un'alternativa a Wokwi?",
+        "a5": "Sì. AI IoT Lab è un'alternativa gratuita e auto-ospitata a Wokwi. Utilizza la stessa libreria di emulazione avr8js e gli stessi componenti visivi wokwi-elements, ma funziona interamente sulla tua macchina senza dipendenza dal cloud."
       },
       "bottom": {
         "title": "Pronto a simulare il tuo Arduino?",
@@ -190,7 +190,7 @@
       "pico": "Simulatore Pico",
       "rpiPico": "Simulatore RP2040",
       "rpi": "Simulatore Raspberry Pi 3",
-      "v25": "Rilascio Velxio 2.5",
+      "v25": "Rilascio AI IoT Lab 2.5",
       "examples": "Progetti di Esempio",
       "examplesAnalog": "Esempi Analogici",
       "examplesAll": "Tutti gli Esempi",

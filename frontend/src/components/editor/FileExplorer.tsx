@@ -574,7 +574,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewCl
           </button>
           <button
             className="file-explorer-save-btn"
-            title="Open project (.vlx Velxio or .zip Wokwi)"
+            title="開啟專案(.vlx / .zip)"
             onClick={handleOpenProjectClick}
           >
             <IcoOpen />

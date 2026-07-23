@@ -372,15 +372,6 @@
     "notFound": "未找到範例 \"{{id}}\"。",
     "browseAll": "瀏覽所有範例"
   },
-  "starBanner": {
-    "ariaLabel": "在 GitHub 上為 AI物聯網實驗室 加星",
-    "title": "喜歡 AI物聯網實驗室 嗎？",
-    "body": "在 GitHub 上點個 ⭐ 可以幫助更多開發者發現這個專案——只需 2 秒鐘！",
-    "title2": "幫個小忙？",
-    "body2": "AI物聯網實驗室 是免費的開源專案。在 GitHub 上點個 star 是支援它、幫助更多人發現它最簡單的方式。",
-    "cta": "在 GitHub 上加星",
-    "dismiss": "忽略"
-  },
   "auth": {
     "login": {
       "title": "登入",
@@ -428,7 +419,7 @@
       "updateFailed": "無法更改可見性，請重試。",
       "visibility": {
         "publicLabel": "公開",
-        "publicHint": "任何人都可以在 velxio.dev 上找到此專案。",
+        "publicHint": "任何人拿到連結都能找到此專案。",
         "unlistedLabel": "不列出",
         "unlistedHint": "從搜尋和畫廊中隱藏 —— 只能透過分享連結訪問。",
         "privateLabel": "私有",
@@ -584,7 +575,8 @@
       "cta": "前往教學管理"
     },
     "footer": {
-      "oss": "基於開源專案 Velxio 打造,AGPLv3 授權"
+      "oss": "開源軟體(AGPLv3 授權)",
+      "source": "原始碼"
     }
   },
   "learn": {

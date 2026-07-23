@@ -27,7 +27,7 @@
       },
       "build": {
         "heading": "Cosa puoi costruire?",
-        "lead": "I progetti ATtiny85 brillano quando sono piccoli, a basso consumo e attenti all'analogico — esattamente il punto di forza di Velxio con il risolutore SPICE integrato.",
+        "lead": "I progetti ATtiny85 brillano quando sono piccoli, a basso consumo e attenti all'analogico — esattamente il punto di forza di AI IoT Lab con il risolutore SPICE integrato.",
         "blinkTitle": "Blink e dissolvenza PWM",
         "blinkBody": "Le classiche introduzioni — dissolvenza LED tramite PWM hardware su PB1 con Timer0 e PWM ad alta velocità su PB4 con Timer1.",
         "buttonTitle": "LED controllati da pulsante",
@@ -46,17 +46,17 @@
       "faq": {
         "heading": "Domande frequenti",
         "q1": "È un vero emulatore ATtiny85?",
-        "a1": "Sì. Velxio usa avr8js — l'emulatore AVR8 ciclo-esatto — per eseguire il firmware ATtiny85 compilato byte per byte esattamente come su un vero chip DIP-8.",
+        "a1": "Sì. AI IoT Lab usa avr8js — l'emulatore AVR8 ciclo-esatto — per eseguire il firmware ATtiny85 compilato byte per byte esattamente come su un vero chip DIP-8.",
         "q2": "Quali funzionalità ATtiny85 sono supportate?",
         "a2": "Tutti i 6 pin GPIO (PB0–PB5), Timer0 (8 bit) con PWM, Timer1 (8 bit) con PWM e modalità alta velocità, watchdog timer, ADC a 10 bit con 4 canali di ingresso (ADC0–ADC3), periferica USI per I²C (TWI) e SPI bit-bang, interrupt su cambio pin e interrupt esterni (INT0).",
-        "q3": "Come programmo l'ATtiny85 in Velxio?",
-        "a3": "Scrivi il tuo sketch nell'editor Monaco in C/C++ (sintassi Arduino). Velxio lo compila tramite arduino-cli integrato usando il pacchetto board ATTinyCore e produce un vero file .hex — lo stesso che flasharesti via USBasp.",
+        "q3": "Come programmo l'ATtiny85 in AI IoT Lab?",
+        "a3": "Scrivi il tuo sketch nell'editor Monaco in C/C++ (sintassi Arduino). AI IoT Lab lo compila tramite arduino-cli integrato usando il pacchetto board ATTinyCore e produce un vero file .hex — lo stesso che flasharesti via USBasp.",
         "q4": "Posso usare librerie compatibili con Arduino?",
         "a4": "Sì. Il Library Manager indicizza l'intero registro librerie Arduino. Molte librerie funzionano su ATtiny85 con assegnazioni pin appropriate — TinyWireM per I²C, SoftwareSerial tramite USI, TinyServo, ecc.",
         "q5": "Posso collegarlo a circuiti analogici?",
-        "a5": "Sì. Velxio include un risolutore SPICE in tempo reale — collega il pin ADC dell'ATtiny85 a un partitore di tensione, all'uscita di un op-amp o a un ponte di termistori NTC e analogRead() restituirà la tensione effettiva risolta da SPICE su quel pin.",
+        "a5": "Sì. AI IoT Lab include un risolutore SPICE in tempo reale — collega il pin ADC dell'ATtiny85 a un partitore di tensione, all'uscita di un op-amp o a un ponte di termistori NTC e analogRead() restituirà la tensione effettiva risolta da SPICE su quel pin.",
         "q6": "È gratuito?",
-        "a6": "Sì — Velxio è completamente gratuito e open-source sotto GNU AGPLv3. Nessun account richiesto."
+        "a6": "Sì — AI IoT Lab è completamente gratuito e open-source sotto GNU AGPLv3. Nessun account richiesto."
       },
       "bottom": {
         "title": "Sviluppa firmware ATtiny85 senza hardware",
@@ -68,14 +68,14 @@
       "hero": {
         "title": "Emulatore Arduino",
         "accent": "Emulazione reale AVR8 e RP2040, gratuita",
-        "subtitle": "Velxio è un emulatore Arduino ciclo-esatto che funziona interamente nel tuo browser. Ogni opcode AVR è eseguito fedelmente a 16 MHz — lo stesso comportamento del silicio reale, senza acquistare hardware.",
+        "subtitle": "AI IoT Lab è un emulatore Arduino ciclo-esatto che funziona interamente nel tuo browser. Ogni opcode AVR è eseguito fedelmente a 16 MHz — lo stesso comportamento del silicio reale, senza acquistare hardware.",
         "ctaPrimary": "Apri l'emulatore",
         "ctaSecondary": "Dettagli sull'emulazione",
         "trust": "Gratuito e open-source · Basato su avr8js e rp2040js · Nessuna registrazione richiesta"
       },
       "accuracy": {
         "heading": "Precisione dell'emulazione",
-        "leadPrefix": "Velxio utilizza ",
+        "leadPrefix": "AI IoT Lab utilizza ",
         "leadAvr": "avr8js",
         "leadMid": " per AVR8 e ",
         "leadRp": "rp2040js",
@@ -119,14 +119,14 @@
         "heading": "Domande frequenti",
         "q1": "Cos'è un emulatore Arduino?",
         "a1": "Un emulatore Arduino riproduce il comportamento di un microcontrollore Arduino fisico nel software — esecuzione delle istruzioni della CPU, registri periferici (GPIO, USART, ADC, timer, PWM) e interrupt — senza bisogno di hardware.",
-        "q2": "Quanto è precisa l'emulazione Arduino di Velxio?",
-        "a2": "Velxio utilizza avr8js, che fornisce un'emulazione ciclo-esatta delle istruzioni AVR8. Ogni opcode AVR è emulato fedelmente a 16 MHz, rendendolo affidabile per lo sviluppo e il debug di firmware reali prima di flashare sull'hardware.",
-        "q3": "Quali schede Arduino può emulare Velxio?",
+        "q2": "Quanto è precisa l'emulazione Arduino di AI IoT Lab?",
+        "a2": "AI IoT Lab utilizza avr8js, che fornisce un'emulazione ciclo-esatta delle istruzioni AVR8. Ogni opcode AVR è emulato fedelmente a 16 MHz, rendendolo affidabile per lo sviluppo e il debug di firmware reali prima di flashare sull'hardware.",
+        "q3": "Quali schede Arduino può emulare AI IoT Lab?",
         "a3": "Arduino Uno (ATmega328P), Arduino Nano, Arduino Mega 2560 (ATmega2560), ATtiny85 (AVR8), Arduino Leonardo (ATmega32u4), Arduino Pro Mini, Raspberry Pi Pico e Pico W (RP2040) e diverse schede ESP32/RISC-V. 19 schede su 5 architetture CPU.",
         "q4": "Quali periferiche sono emulate?",
         "a4": "Porte GPIO (PORTB, PORTC, PORTD), timer hardware (Timer0, Timer1, Timer2), PWM a 8/16 bit, USART seriale, ADC a 10 bit (ingressi analogici), SPI e I2C. Tutte le funzioni standard delle librerie Arduino funzionano correttamente.",
-        "q5": "In cosa Velxio è diverso da Wokwi?",
-        "a5": "Velxio è completamente auto-ospitato e open-source sotto GNU AGPLv3. Utilizza la stessa libreria di emulazione avr8js di Wokwi ma funziona interamente sulla tua macchina — nessuna dipendenza dal cloud, nessuna registrazione, nessun abbonamento."
+        "q5": "In cosa AI IoT Lab è diverso da Wokwi?",
+        "a5": "AI IoT Lab è completamente auto-ospitato e open-source sotto GNU AGPLv3. Utilizza la stessa libreria di emulazione avr8js di Wokwi ma funziona interamente sulla tua macchina — nessuna dipendenza dal cloud, nessuna registrazione, nessun abbonamento."
       },
       "bottom": {
         "title": "Inizia a emulare Arduino oggi",
@@ -146,7 +146,7 @@
       },
       "boards": {
         "heading": "Schede ESP32 supportate",
-        "lead": "Velxio emula l'intera famiglia ESP32 — Xtensa LX6 (ESP32), Xtensa LX7 (ESP32-S3) e RISC-V (ESP32-C3). Ogni scheda funziona con emulazione CPU reale, non approssimazioni.",
+        "lead": "AI IoT Lab emula l'intera famiglia ESP32 — Xtensa LX6 (ESP32), Xtensa LX7 (ESP32-S3) e RISC-V (ESP32-C3). Ogni scheda funziona con emulazione CPU reale, non approssimazioni.",
         "devkitTitle": "ESP32 DevKit V1 / C V4",
         "devkitBody": "Xtensa LX6 dual-core a 240 MHz. WiFi + Bluetooth. 34 pin GPIO, ADC a 12 bit, 2× DAC, SPI, I2C, UART.",
         "s3Title": "ESP32-S3 DevKitC",
@@ -181,11 +181,11 @@
       "faq": {
         "heading": "Domande frequenti",
         "q1": "Questo simulatore ESP32 è gratuito?",
-        "a1": "Sì. Velxio è completamente gratuito e open-source (GNU AGPLv3). Simula codice ESP32 nel tuo browser o auto-ospita l'intera piattaforma con un comando Docker — nessun account, nessun pagamento.",
+        "a1": "Sì. AI IoT Lab è completamente gratuito e open-source (GNU AGPLv3). Simula codice ESP32 nel tuo browser o auto-ospita l'intera piattaforma con un comando Docker — nessun account, nessun pagamento.",
         "q2": "Come funziona l'emulazione ESP32?",
-        "a2": "Velxio utilizza QEMU (fork lcgamboa) per emulare la CPU Xtensa LX6 a 240 MHz. Il tuo sketch Arduino viene compilato con il core Arduino ESP32 ufficiale e il firmware risultante viene eseguito sull'hardware emulato — come sul silicio reale.",
+        "a2": "AI IoT Lab utilizza QEMU (fork lcgamboa) per emulare la CPU Xtensa LX6 a 240 MHz. Il tuo sketch Arduino viene compilato con il core Arduino ESP32 ufficiale e il firmware risultante viene eseguito sull'hardware emulato — come sul silicio reale.",
         "q3": "Quali schede ESP32 sono supportate?",
-        "a3": "Velxio supporta ESP32 DevKit V1, ESP32 DevKit C V4, ESP32-CAM, Arduino Nano ESP32, ESP32-S3 DevKitC, XIAO ESP32-S3, ESP32-C3 DevKit, XIAO ESP32-C3 e ESP32-C3 SuperMini.",
+        "a3": "AI IoT Lab supporta ESP32 DevKit V1, ESP32 DevKit C V4, ESP32-CAM, Arduino Nano ESP32, ESP32-S3 DevKitC, XIAO ESP32-S3, ESP32-C3 DevKit, XIAO ESP32-C3 e ESP32-C3 SuperMini.",
         "q4": "Posso simulare ESP32 con sensori e display?",
         "a4": "Sì. Collega 48+ componenti interattivi: DHT22, ultrasuoni HC-SR04, IMU MPU6050, servomotori, display TFT ILI9341, LED, pulsanti, display a 7 segmenti e altro.",
         "q5": "Supporta il Monitor Seriale per ESP32?",
@@ -209,7 +209,7 @@
       },
       "boards": {
         "heading": "Schede ESP32-S3 supportate",
-        "lead": "Velxio emula tre schede ESP32-S3. Ognuna esegue il core Arduino ESP32 ufficiale compilato tramite arduino-cli.",
+        "lead": "AI IoT Lab emula tre schede ESP32-S3. Ognuna esegue il core Arduino ESP32 ufficiale compilato tramite arduino-cli.",
         "devkitTitle": "ESP32-S3 DevKitC-1",
         "devkitBody": "Scheda di sviluppo ufficiale Espressif. Dual-core Xtensa LX7 a 240 MHz, 45 GPIO, USB OTG, 512 KB SRAM.",
         "xiaoTitle": "XIAO ESP32-S3",
@@ -233,11 +233,11 @@
         "q1": "Cos'è l'ESP32-S3?",
         "a1": "L'ESP32-S3 è un microcontrollore Xtensa LX7 dual-core di Espressif che funziona a 240 MHz. Aggiunge USB OTG, istruzioni vettoriali per AI/ML e fino a 45 pin GPIO rispetto all'ESP32 originale.",
         "q2": "Il simulatore ESP32-S3 è gratuito?",
-        "a2": "Sì. Velxio è 100% gratuito e open-source. Simula codice ESP32-S3 nel tuo browser con reale emulazione Xtensa LX7 tramite QEMU — nessun cloud, nessun abbonamento.",
+        "a2": "Sì. AI IoT Lab è 100% gratuito e open-source. Simula codice ESP32-S3 nel tuo browser con reale emulazione Xtensa LX7 tramite QEMU — nessun cloud, nessun abbonamento.",
         "q3": "Quali schede ESP32-S3 sono supportate?",
-        "a3": "Velxio supporta ESP32-S3 DevKitC-1, Seeed XIAO ESP32-S3 e Arduino Nano ESP32 (che utilizza il chip ESP32-S3).",
+        "a3": "AI IoT Lab supporta ESP32-S3 DevKitC-1, Seeed XIAO ESP32-S3 e Arduino Nano ESP32 (che utilizza il chip ESP32-S3).",
         "q4": "Posso usare librerie Arduino con ESP32-S3?",
-        "a4": "Sì. Velxio compila il tuo sketch con il core Arduino ESP32 ufficiale. Installa qualsiasi libreria dal Library Manager di Arduino e usala nel tuo progetto ESP32-S3.",
+        "a4": "Sì. AI IoT Lab compila il tuo sketch con il core Arduino ESP32 ufficiale. Installa qualsiasi libreria dal Library Manager di Arduino e usala nel tuo progetto ESP32-S3.",
         "q5": "Qual è la differenza tra ESP32 e ESP32-S3?",
         "a5": "L'ESP32-S3 utilizza la più recente architettura Xtensa LX7 (contro LX6), aggiunge USB OTG per supporto nativo di dispositivi USB, include istruzioni vettoriali per carichi di lavoro AI e ha più pin GPIO (45 contro 34)."
       },

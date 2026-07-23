@@ -3,7 +3,7 @@
     "riscv": {
       "label": "// risc-v",
       "heading": "Émulation RISC-V (ESP32-C3)",
-      "lead": "Les cartes ESP32-C3, XIAO ESP32-C3 et C3 SuperMini fonctionnent sur l'architecture <strong>RISC-V RV32IMC</strong> à 160 MHz. Velxio les émule via le même backend basé sur QEMU que la famille Xtensa ESP32, en utilisant <code>libqemu-riscv32</code> avec la cible machine <code>esp32c3-picsimlab</code>. Une implémentation TypeScript distincte du jeu d'instructions existe dans le dépôt pour les tests unitaires du décodage RV32IMC, mais ce n'est pas le chemin d'émulation de production.",
+      "lead": "Les cartes ESP32-C3, XIAO ESP32-C3 et C3 SuperMini fonctionnent sur l'architecture <strong>RISC-V RV32IMC</strong> à 160 MHz. AI IoT Lab les émule via le même backend basé sur QEMU que la famille Xtensa ESP32, en utilisant <code>libqemu-riscv32</code> avec la cible machine <code>esp32c3-picsimlab</code>. Une implémentation TypeScript distincte du jeu d'instructions existe dans le dépôt pour les tests unitaires du décodage RV32IMC, mais ce n'est pas le chemin d'émulation de production.",
       "boardsHeading": "Cartes supportées",
       "boardEsp32C3": "ESP32-C3 DevKit",
       "boardXiaoC3": "Seeed XIAO ESP32-C3",
@@ -74,7 +74,7 @@
     "setup": {
       "label": "// état du projet",
       "heading": "État du projet",
-      "lead": "Un aperçu complet de toutes les fonctionnalités actuellement implémentées dans Velxio.",
+      "lead": "Un aperçu complet de toutes les fonctionnalités actuellement implémentées dans AI IoT Lab.",
       "avrHeading": "Émulation AVR (avr8js)",
       "thFeature": "Fonctionnalité",
       "thStatus": "Statut",
@@ -163,7 +163,7 @@
     "esp32": {
       "label": "// xtensa",
       "heading": "Émulation ESP32 (Xtensa)",
-      "lead": "Les cartes ESP32 et ESP32-S3 utilisent une architecture <strong>Xtensa LX6 / LX7</strong>. Comme aucun émulateur Xtensa de qualité production n'est disponible en pur JavaScript, Velxio utilise un <strong>backend basé sur QEMU</strong> pour ces cartes, le fork lcgamboa avec libqemu-xtensa, compilé en binaire natif et servi par le backend FastAPI.",
+      "lead": "Les cartes ESP32 et ESP32-S3 utilisent une architecture <strong>Xtensa LX6 / LX7</strong>. Comme aucun émulateur Xtensa de qualité production n'est disponible en pur JavaScript, AI IoT Lab utilise un <strong>backend basé sur QEMU</strong> pour ces cartes, le fork lcgamboa avec libqemu-xtensa, compilé en binaire natif et servi par le backend FastAPI.",
       "noteCallout": "<strong>Remarque :</strong> Cette section s'applique aux <strong>ESP32</strong>, <strong>ESP32-S3</strong> (Xtensa) et <strong>ESP32-C3</strong> (RISC-V) - ils partagent tous le même pipeline QEMU lcgamboa, juste avec différents binaires libqemu et cibles machine. Voir <strong>Émulation RISC-V (ESP32-C3)</strong> pour les différences spécifiques au C3.",
       "howHeading": "Fonctionnement",
       "how1": "Le sketch Arduino est compilé par <code>arduino-cli</code> en une image flash ESP32 <code>.bin</code>.",
@@ -198,13 +198,13 @@
       "perLedc": "<strong>LEDC / PWM</strong> : canaux PWM matériels",
       "perWifi": "<strong>WiFi</strong> : partiel (événements de connexion transmis)",
       "requirementsHeading": "Prérequis",
-      "requirementsBody": "L'émulation basée sur QEMU nécessite que le backend Velxio soit en cours d'exécution. Cela signifie qu'elle fonctionne avec la <strong>version hébergée</strong> sur <a>velxio.dev</a> et avec <strong>l'auto-hébergement Docker</strong>, mais pas dans un déploiement frontend statique pur.",
+      "requirementsBody": "L'émulation basée sur QEMU nécessite que le backend AI IoT Lab soit en cours d'exécution. Cela signifie qu'elle fonctionne avec la <strong>version hébergée</strong> sur <a>velxio.dev</a> et avec <strong>l'auto-hébergement Docker</strong>, mais pas dans un déploiement frontend statique pur.",
       "fullDetailsCallout": "<strong>Détails complets :</strong> <a>docs/ESP32_EMULATION.md</a> dans le dépôt."
     },
     "roadmap": {
       "label": "// futur",
       "heading": "Feuille de route",
-      "lead": "Fonctionnalités implémentées, en cours et prévues pour les futures versions de Velxio.",
+      "lead": "Fonctionnalités implémentées, en cours et prévues pour les futures versions de AI IoT Lab.",
       "implementedHeading": "Implémenté",
       "impMonaco": "Éditeur Monaco avec coloration syntaxique C++, autocomplétion et minimap",
       "impMultiFile": "Espace de travail multi-fichiers, créer, renommer, supprimer et basculer entre les fichiers",
@@ -244,7 +244,7 @@
     "emulator": {
       "label": "// internes",
       "heading": "Architecture de l'émulateur",
-      "lead": "Velxio utilise une <strong>émulation CPU réelle</strong> plutôt qu'un modèle simplifié. Ce document décrit le fonctionnement de chaque couche de la simulation.",
+      "lead": "AI IoT Lab utilise une <strong>émulation CPU réelle</strong> plutôt qu'un modèle simplifié. Ce document décrit le fonctionnement de chaque couche de la simulation.",
       "dataFlowHeading": "Flux de données haut niveau",
       "avr8Heading": "Émulation AVR8 (Arduino Uno / Nano / Mega)",
       "avr8Body": "Le backend AVR utilise <a>avr8js</a>, qui implémente un processeur ATmega328p / ATmega2560 complet.",
@@ -293,7 +293,7 @@
     "architecture": {
       "label": "// conception système",
       "heading": "Architecture du projet",
-      "lead": "Velxio est un émulateur Arduino entièrement local utilisant les dépôts officiels Wokwi pour une compatibilité maximale. Il propose une émulation CPU AVR8 réelle, 48+ composants électroniques interactifs, un système de fils complet et un pipeline de découverte de composants à la compilation.",
+      "lead": "AI IoT Lab est un émulateur Arduino entièrement local utilisant les dépôts officiels Wokwi pour une compatibilité maximale. Il propose une émulation CPU AVR8 réelle, 48+ composants électroniques interactifs, un système de fils complet et un pipeline de découverte de composants à la compilation.",
       "overviewHeading": "Vue d'ensemble haut niveau",
       "dataFlowsHeading": "Flux de données",
       "compilationHeading": "1. Compilation",
@@ -329,8 +329,8 @@
     "intro": {
       "label": "// aperçu",
       "heading": "Introduction",
-      "lead": "<strong>Velxio</strong> est un émulateur Arduino open-source entièrement local qui fonctionne entièrement dans votre navigateur. Écrivez du code Arduino C++, compilez-le avec un vrai backend <code>arduino-cli</code>, et simulez-le en utilisant une véritable émulation CPU AVR8 / RP2040, avec 48+ composants électroniques interactifs, le tout sans installer de logiciel sur votre machine.",
-      "whyHeading": "Pourquoi Velxio ?",
+      "lead": "<strong>AI IoT Lab</strong> est un émulateur Arduino open-source entièrement local qui fonctionne entièrement dans votre navigateur. Écrivez du code Arduino C++, compilez-le avec un vrai backend <code>arduino-cli</code>, et simulez-le en utilisant une véritable émulation CPU AVR8 / RP2040, avec 48+ composants électroniques interactifs, le tout sans installer de logiciel sur votre machine.",
+      "whyHeading": "Pourquoi AI IoT Lab ?",
       "whyNoInstall": "<strong>Aucune installation requise</strong> : tout fonctionne dans le navigateur.",
       "whyRealEmulation": "<strong>Émulation réelle</strong> : pas un modèle simplifié, mais une émulation CPU AVR8 / RP2040 précise.",
       "whyInteractive": "<strong>Composants interactifs</strong> : LED, boutons, potentiomètres, afficheurs, capteurs, et plus.",
