@@ -16,8 +16,113 @@ import {
   adminApi,
   type AdminUserRow,
   type AdminBatchResult,
+  type PlatformSettings,
 } from '../cloud/cloudApi';
 import './AdminPage.css';
+
+/** 平台設定卡 — every operational knob, editable at runtime. */
+const SettingsCard: React.FC = () => {
+  const [settings, setSettings] = useState<PlatformSettings | null>(null);
+  const [draft, setDraft] = useState<PlatformSettings | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    adminApi
+      .getSettings()
+      .then((s) => {
+        setSettings(s);
+        setDraft(s);
+      })
+      .catch(() => {});
+  }, []);
+
+  if (!draft || !settings) return null;
+  const dirty = JSON.stringify(draft) !== JSON.stringify(settings);
+
+  const save = async () => {
+    if (!dirty || saving) return;
+    setSaving(true);
+    try {
+      const next = await adminApi.putSettings(draft);
+      setSettings(next);
+      setDraft(next);
+      setSavedAt(Date.now());
+      setTimeout(() => setSavedAt(null), 2500);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const set = <K extends keyof PlatformSettings>(k: K, v: PlatformSettings[K]) =>
+    setDraft((d) => (d ? { ...d, [k]: v } : d));
+
+  return (
+    <section className="admin-card">
+      <h2>平台設定</h2>
+      <p className="admin-hint">
+        即時生效,影響所有使用者。模型與額度是你的成本閥門 — 換模型前建議先用自己的帳號在編輯器試一輪。
+      </p>
+      <div className="admin-batch-grid">
+        <label>AI 模型
+          <input
+            list="admin-model-suggestions"
+            value={draft.ai_model}
+            onChange={(e) => set('ai_model', e.target.value)}
+            spellCheck={false}
+          />
+          <datalist id="admin-model-suggestions">
+            <option value="gpt-5.6-luna" />
+            <option value="gpt-5.6-terra" />
+            <option value="gpt-5.6-sol" />
+          </datalist>
+        </label>
+        <label>推理強度
+          <select value={draft.ai_effort} onChange={(e) => set('ai_effort', e.target.value as PlatformSettings['ai_effort'])}>
+            <option value="low">low(快、省)</option>
+            <option value="medium">medium</option>
+            <option value="high">high(最聰明)</option>
+          </select>
+        </label>
+        <label>學生每週 token 額度
+          <input type="number" min={0} value={draft.student_weekly_tokens}
+            onChange={(e) => set('student_weekly_tokens', Math.max(0, Number(e.target.value) || 0))} />
+        </label>
+        <label>教師每週 token 額度
+          <input type="number" min={0} value={draft.teacher_weekly_tokens}
+            onChange={(e) => set('teacher_weekly_tokens', Math.max(0, Number(e.target.value) || 0))} />
+        </label>
+        <label>教師註冊碼(留白=不限制)
+          <input value={draft.teacher_code} onChange={(e) => set('teacher_code', e.target.value)} spellCheck={false} />
+        </label>
+      </div>
+      <div className="admin-toggles">
+        <label className="admin-toggle">
+          <input type="checkbox" checked={draft.allow_registration}
+            onChange={(e) => set('allow_registration', e.target.checked)} />
+          開放自助註冊(關閉後只有你發的帳號能登入)
+        </label>
+        <label className="admin-toggle">
+          <input type="checkbox" checked={draft.allow_custom_model}
+            onChange={(e) => set('allow_custom_model', e.target.checked)} />
+          允許使用者自選模型/強度(關閉=全平台統一用上面的設定)
+        </label>
+        <label className="admin-toggle">
+          <input type="checkbox" checked={draft.allow_own_key}
+            onChange={(e) => set('allow_own_key', e.target.checked)} />
+          允許自帶 API Key(自帶者不計量、自行付費)
+        </label>
+      </div>
+      <div className="admin-settings-actions">
+        <button className="admin-primary" onClick={save} disabled={!dirty || saving}>
+          {saving ? '儲存中…' : '儲存設定'}
+        </button>
+        {savedAt && <span className="admin-saved">✓ 已生效</span>}
+        {dirty && !savedAt && <span className="admin-dirty">有未儲存的變更</span>}
+      </div>
+    </section>
+  );
+};
 
 const fmt = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M` : n >= 1000 ? `${Math.round(n / 1000)}K` : String(n);
@@ -162,9 +267,13 @@ export const AdminPage: React.FC = () => {
             <div><strong>{overview.users.teacher ?? 0}</strong><span>教師</span></div>
             <div><strong>{overview.classes}</strong><span>班級</span></div>
             <div><strong>{fmt(overview.week_tokens)}</strong><span>本週 AI tokens</span></div>
-            <div><strong>{fmt(overview.default_weekly_limit)}</strong><span>預設週額度/人</span></div>
+            <div><strong>{fmt(overview.default_weekly_limit)}</strong><span>學生預設額度/週</span></div>
+            <div><strong>{fmt(overview.teacher_weekly_limit)}</strong><span>教師預設額度/週</span></div>
           </div>
         )}
+
+        {/* ── Platform settings ────────────────────────── */}
+        <SettingsCard />
 
         {/* ── Batch creation ───────────────────────────── */}
         <section className="admin-card">

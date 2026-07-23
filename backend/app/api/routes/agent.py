@@ -83,7 +83,15 @@ class Resolved(BaseModel):
     api_key: str
 
 
+def _settings() -> dict[str, Any]:
+    from app.services import cloud_db
+
+    return cloud_db.get_settings()
+
+
 def _resolve(cfg: ProviderConfig, header_key: str | None) -> Resolved:
+    settings = _settings()
+
     base_url = (cfg.base_url or ENV_BASE_URL).strip().rstrip("/")
     if not base_url:
         raise HTTPException(
@@ -94,14 +102,26 @@ def _resolve(cfg: ProviderConfig, header_key: str | None) -> Resolved:
     if not base_url.startswith(("http://", "https://")):
         raise HTTPException(status_code=422, detail="base_url must start with http(s)://")
 
-    model = (cfg.model or ENV_MODEL).strip() or DEFAULT_MODEL
-
-    effort = (cfg.effort or ENV_EFFORT or DEFAULT_EFFORT).strip().lower() or None
+    # Platform model/effort come from admin settings; user overrides apply
+    # only when the admin has allowed them.
+    allow_custom = bool(settings["allow_custom_model"])
+    model = (
+        (cfg.model.strip() if allow_custom and cfg.model else "")
+        or str(settings["ai_model"]).strip()
+        or DEFAULT_MODEL
+    )
+    effort_src = (cfg.effort if allow_custom and cfg.effort else "") or str(
+        settings["ai_effort"] or DEFAULT_EFFORT
+    )
+    effort: str | None = effort_src.strip().lower() or None
     if effort == "none":
         effort = None
     if effort is not None and effort not in VALID_EFFORTS:
         raise HTTPException(status_code=422, detail=f"effort must be one of {VALID_EFFORTS}")
 
+    # Bring-your-own-key only when the admin allows it.
+    if header_key and not bool(settings["allow_own_key"]):
+        header_key = None
     api_key = header_key or ENV_API_KEY
     if not api_key:
         raise HTTPException(
@@ -123,17 +143,22 @@ def _http_transport():
 
 @router.get("/config")
 async def agent_config() -> dict[str, Any]:
-    """Environment defaults, used by the panel to prefill its settings UI."""
+    """Platform defaults (admin settings), used by the panel UI."""
+    s = _settings()
     return {
         "enabled": True,
         "provider": "openai",
         "base_url": ENV_BASE_URL,
-        "model": ENV_MODEL or DEFAULT_MODEL,
-        "effort": ENV_EFFORT or DEFAULT_EFFORT,
+        "model": str(s["ai_model"]) or DEFAULT_MODEL,
+        "effort": str(s["ai_effort"]) or DEFAULT_EFFORT,
         "server_has_key": bool(ENV_API_KEY),
         # When the server key is in play, AI calls are metered per signed-in
         # user against a weekly token quota (see /api/auth/usage).
         "metered": bool(ENV_API_KEY),
+        # Panel UI gating (admin settings): may users pick model/effort or
+        # bring their own key?
+        "allow_custom_model": bool(s["allow_custom_model"]),
+        "allow_own_key": bool(s["allow_own_key"]),
     }
 
 
@@ -468,9 +493,11 @@ async def agent_stream(
     # ── Quota gate ─────────────────────────────────────────────────────
     # Requests served with the SERVER's key are metered per signed-in user
     # against a weekly token quota. Users who bring their own key in the
-    # panel pay for themselves and are unmetered.
+    # panel pay for themselves and are unmetered — but only when the admin
+    # allows BYOK; otherwise the header key is ignored and metering applies.
+    own_key_in_play = bool(header_key) and bool(_settings()["allow_own_key"])
     metered_user: dict[str, Any] | None = None
-    if not header_key and ENV_API_KEY:
+    if not own_key_in_play and ENV_API_KEY:
         from app.api.routes.auth import require_user
         from app.services import cloud_db
 

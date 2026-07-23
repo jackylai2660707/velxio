@@ -143,49 +143,70 @@ function SettingsView() {
     setLoadingModels(false);
   };
 
+  // Admin platform settings gate what users may change here. Default to
+  // permissive when the config hasn't loaded (matches previous behaviour).
+  const allowOwnKey = serverConfig?.allow_own_key !== false;
+  const allowCustomModel = serverConfig?.allow_custom_model !== false;
+
   return (
     <div className="agent-settings">
       <h3>{t('agent.settings')}</h3>
       <p className="agent-settings__hint">{t('agent.settingsHint')}</p>
 
-      <label>
-        {t('agent.baseUrl')}
-        <input
-          type="text"
-          value={settings.baseUrl ?? ''}
-          placeholder={serverConfig?.base_url || 'https://api.example.com/v1'}
-          onChange={(e) => updateSettings({ baseUrl: e.target.value })}
-          spellCheck={false}
-        />
-      </label>
+      {!allowCustomModel && (
+        <p className="agent-settings__hint">
+          {t('agent.modelLocked', '模型由平台統一設定:')}
+          <strong>
+            {serverConfig?.model}
+            {serverConfig?.effort ? `(${serverConfig.effort})` : ''}
+          </strong>
+        </p>
+      )}
 
-      <label>
-        {t('agent.apiKey')}
-        <input
-          type="password"
-          value={settings.apiKey ?? ''}
-          placeholder={serverConfig?.server_has_key ? t('agent.apiKeyServerSet') : 'sk-...'}
-          onChange={(e) => updateSettings({ apiKey: e.target.value })}
-          spellCheck={false}
-        />
-      </label>
+      {allowOwnKey && (
+        <>
+          <label>
+            {t('agent.baseUrl')}
+            <input
+              type="text"
+              value={settings.baseUrl ?? ''}
+              placeholder={serverConfig?.base_url || 'https://api.example.com/v1'}
+              onChange={(e) => updateSettings({ baseUrl: e.target.value })}
+              spellCheck={false}
+            />
+          </label>
 
-      <label>
-        {t('agent.model')}
-        <input
-          type="text"
-          list="agent-model-list"
-          value={settings.model ?? ''}
-          placeholder={serverConfig?.model || 'gpt-4o'}
-          onChange={(e) => updateSettings({ model: e.target.value })}
-          spellCheck={false}
-        />
-        <datalist id="agent-model-list">
-          {modelList.map((m) => (
-            <option key={m} value={m} />
-          ))}
-        </datalist>
-      </label>
+          <label>
+            {t('agent.apiKey')}
+            <input
+              type="password"
+              value={settings.apiKey ?? ''}
+              placeholder={serverConfig?.server_has_key ? t('agent.apiKeyServerSet') : 'sk-...'}
+              onChange={(e) => updateSettings({ apiKey: e.target.value })}
+              spellCheck={false}
+            />
+          </label>
+        </>
+      )}
+
+      {allowCustomModel && (
+        <label>
+          {t('agent.model')}
+          <input
+            type="text"
+            list="agent-model-list"
+            value={settings.model ?? ''}
+            placeholder={serverConfig?.model || 'gpt-5.6-luna'}
+            onChange={(e) => updateSettings({ model: e.target.value })}
+            spellCheck={false}
+          />
+          <datalist id="agent-model-list">
+            {modelList.map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
+        </label>
+      )}
 
       <label>
         {t('agent.contextLimit')}
@@ -201,35 +222,37 @@ function SettingsView() {
         />
       </label>
 
-      <div className="agent-settings__row">
-        <label>
-          {t('agent.effort')}
-          <select
-            value={settings.effort ?? ''}
-            onChange={(e) => updateSettings({ effort: e.target.value || undefined })}
-          >
-            <option value="">
-              {t('agent.effortDefault', {
-                value: serverConfig?.effort || t('agent.effortOff'),
-              })}
-            </option>
-            <option value="none">{t('agent.effortNone')}</option>
-            <option value="low">{t('agent.effortLow')}</option>
-            <option value="medium">medium</option>
-            <option value="high">{t('agent.effortHigh')}</option>
-          </select>
-        </label>
-        <label>
-          &nbsp;
-          <button
-            className="agent-settings__test"
-            onClick={handleFetchModels}
-            disabled={loadingModels}
-          >
-            {loadingModels ? t('agent.modelListLoading') : t('agent.modelListFetch')}
-          </button>
-        </label>
-      </div>
+      {allowCustomModel && (
+        <div className="agent-settings__row">
+          <label>
+            {t('agent.effort')}
+            <select
+              value={settings.effort ?? ''}
+              onChange={(e) => updateSettings({ effort: e.target.value || undefined })}
+            >
+              <option value="">
+                {t('agent.effortDefault', {
+                  value: serverConfig?.effort || t('agent.effortOff'),
+                })}
+              </option>
+              <option value="none">{t('agent.effortNone')}</option>
+              <option value="low">{t('agent.effortLow')}</option>
+              <option value="medium">medium</option>
+              <option value="high">{t('agent.effortHigh')}</option>
+            </select>
+          </label>
+          <label>
+            &nbsp;
+            <button
+              className="agent-settings__test"
+              onClick={handleFetchModels}
+              disabled={loadingModels}
+            >
+              {loadingModels ? t('agent.modelListLoading') : t('agent.modelListFetch')}
+            </button>
+          </label>
+        </div>
+      )}
 
       <div className="agent-settings__actions">
         <button className="agent-settings__test" onClick={handleTest} disabled={testing}>

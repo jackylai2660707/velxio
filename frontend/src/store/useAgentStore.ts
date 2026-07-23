@@ -135,6 +135,10 @@ export interface AgentServerConfig {
   model: string;
   effort: string;
   server_has_key: boolean;
+  /** Admin settings: may users pick their own model/effort? */
+  allow_custom_model?: boolean;
+  /** Admin settings: may users bring their own base URL / API key? */
+  allow_own_key?: boolean;
 }
 
 interface TurnCheckpoint {

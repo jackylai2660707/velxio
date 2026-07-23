@@ -52,6 +52,33 @@ DEFAULT_WEEKLY_TOKEN_LIMIT = int(os.environ.get("VELXIO_DEFAULT_WEEKLY_TOKENS", 
 
 VALID_ROLES = ("student", "teacher", "admin")
 
+# ── Platform settings (admin-editable, stored in SQLite) ───────────────────
+# Every operational knob lives here so the admin UI can change it at runtime;
+# environment variables only seed the DEFAULTS below. Precedence:
+# settings row → env seed → hardcoded fallback.
+
+SETTING_DEFAULTS: dict[str, Any] = {
+    # AI upstream
+    "ai_model": os.environ.get("VELXIO_AGENT_MODEL", "").strip() or "gpt-5.6-luna",
+    "ai_effort": os.environ.get("VELXIO_AGENT_EFFORT", "").strip() or "high",
+    # May users pick their own model/effort in the panel? (False = platform
+    # values are forced server-side.)
+    "allow_custom_model": False,
+    # May users bring their own API key (unmetered, they pay)?
+    "allow_own_key": True,
+    # Weekly token quotas by role (per-user override still wins).
+    "student_weekly_tokens": DEFAULT_WEEKLY_TOKEN_LIMIT,
+    "teacher_weekly_tokens": int(
+        os.environ.get("VELXIO_TEACHER_WEEKLY_TOKENS", str(DEFAULT_WEEKLY_TOKEN_LIMIT * 2))
+    ),
+    # Accounts: self-service registration on/off, and the teacher-role code.
+    "allow_registration": True,
+    "teacher_code": os.environ.get("VELXIO_TEACHER_CODE", ""),
+}
+
+_BOOL_SETTINGS = {"allow_custom_model", "allow_own_key", "allow_registration"}
+_INT_SETTINGS = {"student_weekly_tokens", "teacher_weekly_tokens"}
+
 # Class join codes: unambiguous uppercase alphabet (no 0/O/1/I).
 _CLASS_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CLASS_CODE_LENGTH = 6
@@ -136,6 +163,10 @@ def init_db() -> None:
                 week_start TEXT NOT NULL,
                 tokens INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY (user_id, week_start)
+            );
+            CREATE TABLE IF NOT EXISTS platform_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
             );
             """
         )
@@ -608,6 +639,54 @@ def record_quiz(
     return attempt_id
 
 
+# ── Platform settings ──────────────────────────────────────────────────────
+
+
+def _coerce_setting(key: str, value: Any) -> Any:
+    if key in _BOOL_SETTINGS:
+        return bool(value) if isinstance(value, bool) else str(value).lower() in ("1", "true", "yes")
+    if key in _INT_SETTINGS:
+        try:
+            return max(0, int(value))
+        except (TypeError, ValueError):
+            return SETTING_DEFAULTS[key]
+    return str(value)
+
+
+def get_settings() -> dict[str, Any]:
+    """Effective platform settings: stored rows over the seeded defaults."""
+    out = dict(SETTING_DEFAULTS)
+    with _connect() as conn:
+        for row in conn.execute("SELECT key, value FROM platform_settings"):
+            if row["key"] in SETTING_DEFAULTS:
+                out[row["key"]] = _coerce_setting(row["key"], json.loads(row["value"]))
+    return out
+
+
+def update_settings(patch: dict[str, Any]) -> dict[str, Any]:
+    """Persist the given known keys; unknown keys are ignored. Returns the
+    new effective settings."""
+    with _connect() as conn:
+        for key, value in patch.items():
+            if key not in SETTING_DEFAULTS:
+                continue
+            conn.execute(
+                "INSERT INTO platform_settings (key, value) VALUES (?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = ?",
+                (key, json.dumps(_coerce_setting(key, value)), json.dumps(_coerce_setting(key, value))),
+            )
+    return get_settings()
+
+
+def default_limit_for_role(role: str, settings: dict[str, Any] | None = None) -> int:
+    s = settings or get_settings()
+    if role == "teacher":
+        return int(s["teacher_weekly_tokens"])
+    if role == "admin":
+        return 10 ** 9  # effectively unlimited for the operator
+    return int(s["student_weekly_tokens"])
+
+
 # ── AI token usage (weekly, Monday-UTC reset) ──────────────────────────────
 
 
@@ -632,7 +711,8 @@ def add_ai_usage(user_id: str, tokens: int) -> None:
 
 
 def get_ai_usage(user_id: str) -> dict[str, Any]:
-    """Current-week usage + the user's effective weekly limit."""
+    """Current-week usage + the user's effective weekly limit (per-user
+    override, else the role default from platform settings)."""
     ws = week_start()
     with _connect() as conn:
         used_row = conn.execute(
@@ -640,13 +720,14 @@ def get_ai_usage(user_id: str) -> dict[str, Any]:
             (user_id, ws),
         ).fetchone()
         limit_row = conn.execute(
-            "SELECT weekly_token_limit FROM users WHERE id = ?", (user_id,)
+            "SELECT weekly_token_limit, role FROM users WHERE id = ?", (user_id,)
         ).fetchone()
     limit = limit_row["weekly_token_limit"] if limit_row else None
+    role = limit_row["role"] if limit_row else "student"
     return {
         "week_start": ws,
         "used": used_row["tokens"] if used_row else 0,
-        "limit": limit if limit is not None else DEFAULT_WEEKLY_TOKEN_LIMIT,
+        "limit": limit if limit is not None else default_limit_for_role(role),
         "is_custom_limit": limit is not None,
     }
 
@@ -698,11 +779,14 @@ def admin_list_users(query: str = "", limit: int = 200) -> list[dict[str, Any]]:
             "ORDER BY u.created_at DESC LIMIT ?",
             (ws, like, like, int(limit)),
         ).fetchall()
+    settings = get_settings()
     out = []
     for r in rows:
         d = dict(r)
         d["effective_limit"] = (
-            d["weekly_token_limit"] if d["weekly_token_limit"] is not None else DEFAULT_WEEKLY_TOKEN_LIMIT
+            d["weekly_token_limit"]
+            if d["weekly_token_limit"] is not None
+            else default_limit_for_role(d["role"], settings)
         )
         out.append(d)
     return out
@@ -735,12 +819,14 @@ def admin_overview() -> dict[str, Any]:
             "SELECT COALESCE(SUM(tokens), 0) FROM ai_usage WHERE week_start = ?", (ws,)
         ).fetchone()[0]
         classes = conn.execute("SELECT COUNT(*) FROM classes").fetchone()[0]
+    settings = get_settings()
     return {
         "week_start": ws,
         "users": by_role,
         "classes": classes,
         "week_tokens": week_tokens,
-        "default_weekly_limit": DEFAULT_WEEKLY_TOKEN_LIMIT,
+        "default_weekly_limit": int(settings["student_weekly_tokens"]),
+        "teacher_weekly_limit": int(settings["teacher_weekly_tokens"]),
     }
 
 

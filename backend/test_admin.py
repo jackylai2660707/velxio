@@ -189,6 +189,66 @@ def main() -> None:
     r = client.delete(f"/api/admin/users/{stu_id}", headers=hdr(admin_tok))
     check("admin deletes a user", r.status_code == 200)
 
+    print("\n── Platform settings ──")
+    s0 = client.get("/api/admin/settings", headers=hdr(admin_tok)).json()
+    check("settings default model gpt-5.6-luna", s0["ai_model"] == "gpt-5.6-luna", str(s0))
+    check("settings default effort high", s0["ai_effort"] == "high")
+
+    r = client.put(
+        "/api/admin/settings",
+        json={
+            "ai_model": "gpt-5.6-terra",
+            "ai_effort": "medium",
+            "student_weekly_tokens": 700,
+            "allow_registration": False,
+            "teacher_code": "TCODE9",
+            "allow_own_key": False,
+        },
+        headers=hdr(admin_tok),
+    )
+    check("admin updates settings", r.status_code == 200 and r.json()["ai_model"] == "gpt-5.6-terra")
+
+    cfg = client.get("/api/agent/config").json()
+    check("agent config reflects settings", cfg["model"] == "gpt-5.6-terra" and cfg["effort"] == "medium", str(cfg))
+    check("agent config exposes gating flags", cfg["allow_custom_model"] is False and cfg["allow_own_key"] is False)
+
+    r = client.post(
+        "/api/auth/register", json={"email": "walkin@x.tw", "password": "secret123"}
+    )
+    check("registration closed → 403", r.status_code == 403, r.text)
+
+    # BYOK disabled → header key ignored → anonymous still 401 (metered path)
+    r = client.post(
+        "/api/agent/stream",
+        json={"system": "s", "messages": [], "tools": []},
+        headers={"x-agent-key": "sk-own"},
+    )
+    check("BYOK off: own key no longer bypasses metering", r.status_code == 401, r.text[:100])
+
+    # role-based default limit: a fresh teacher (no override) uses teacher default
+    t2 = client.post(
+        "/api/admin/users/batch",
+        json={"role": "teacher", "count": 1, "prefix": "teach2", "name_prefix": "老師"},
+        headers=hdr(admin_tok),
+    ).json()
+    t2_login = client.post(
+        "/api/auth/login",
+        json={"email": t2["created"][0]["email"], "password": t2["created"][0]["password"]},
+    ).json()
+    u2 = client.get("/api/auth/usage", headers=hdr(t2_login["token"])).json()
+    check(
+        "teacher default limit from settings",
+        u2["limit"] == s0["teacher_weekly_tokens"],
+        str(u2),
+    )
+
+    r = client.put(
+        "/api/admin/settings",
+        json={"allow_registration": True, "allow_own_key": True},
+        headers=hdr(admin_tok),
+    )
+    check("settings restored", r.status_code == 200)
+
     print("\n── Login rate limit ──")
     ratelimit.reset()
     codes = [

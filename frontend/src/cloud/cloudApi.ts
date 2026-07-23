@@ -123,6 +123,17 @@ export interface AdminBatchResult {
   joined_class: number;
 }
 
+export interface PlatformSettings {
+  ai_model: string;
+  ai_effort: 'low' | 'medium' | 'high';
+  allow_custom_model: boolean;
+  allow_own_key: boolean;
+  student_weekly_tokens: number;
+  teacher_weekly_tokens: number;
+  allow_registration: boolean;
+  teacher_code: string;
+}
+
 export const adminApi = {
   overview: () =>
     request<{
@@ -131,7 +142,11 @@ export const adminApi = {
       classes: number;
       week_tokens: number;
       default_weekly_limit: number;
+      teacher_weekly_limit: number;
     }>('GET', '/admin/overview'),
+  getSettings: () => request<PlatformSettings>('GET', '/admin/settings'),
+  putSettings: (patch: Partial<PlatformSettings>) =>
+    request<PlatformSettings>('PUT', '/admin/settings', patch),
   listUsers: (query = '') =>
     request<{ users: AdminUserRow[] }>('GET', `/admin/users?query=${encodeURIComponent(query)}`),
   batchCreate: (payload: {
