@@ -43,6 +43,15 @@ export interface Wire {
    * re-generated whenever the part moves.
    */
   bb?: boolean;
+  /**
+   * The SYSTEM owns this wire's shape: its waypoints came from the
+   * auto-router (pin-to-pin creation or an agent add_wire), and the
+   * post-move pass may re-route it to keep it clear of components and
+   * other wires. Cleared the moment the user drags a segment — from then
+   * on the wire is hand-authored and is never re-shaped. Absent on wires
+   * from older projects, which are treated as hand-authored.
+   */
+  autoRouted?: boolean;
 }
 
 export interface WireInProgress {
@@ -51,4 +60,13 @@ export interface WireInProgress {
   color: string;
   currentX: number;
   currentY: number;
+  /**
+   * Live obstacle-avoiding route to the cursor (interior corners), shown
+   * by the preview so the committed wire matches what the user saw while
+   * dragging. Only computed while there are no user-placed waypoints;
+   * null when the direct elbow is already clean.
+   */
+  routedPreview?: { x: number; y: number }[] | null;
+  /** Throttle stamp for preview routing (ms epoch). */
+  lastRouteAt?: number;
 }

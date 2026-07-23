@@ -27,6 +27,8 @@ import {
   useSimulatorStore,
   getBoardPinManager,
 } from '../../store/useSimulatorStore';
+import { stm32LinearToPinName } from '../Stm32Bridge';
+import { isStm32BoardKind, isPiBoardKind } from '../../types/board';
 import { useElectricalStore } from '../../store/useElectricalStore';
 import { BOARD_PIN_GROUPS } from './boardPinGroups';
 import type { CircuitSimulationService } from './CircuitSimulationService';
@@ -82,6 +84,19 @@ export function connectMcuEdgesToService(service: CircuitSimulationService): () 
       return `GP${arduinoPin}`;
     }
     if (boardKind.startsWith('esp32')) {
+      return `GPIO${arduinoPin}`;
+    }
+    // STM32 wires reference port-style names (PA0 / PC13); its PinManager is
+    // keyed on the linear pin index. Without this reverse mapping the MCU-edge
+    // listener never attaches ("13" ≠ "PC13") — previously masked because
+    // PinManager requested a full re-solve on EVERY mcu edge; now that the
+    // full tick only fires on first classification, this fine-grained path
+    // must actually cover STM32.
+    if (isStm32BoardKind(boardKind)) {
+      return stm32LinearToPinName(arduinoPin);
+    }
+    // Raspberry Pi (Linux boards) wires use GPIO-style names like ESP32.
+    if (isPiBoardKind(boardKind)) {
       return `GPIO${arduinoPin}`;
     }
     // ATtiny85 wires reference port-style names (PB0..PB5), matching the

@@ -812,6 +812,19 @@ export const EditorToolbar = ({
       // QEMU boards: auto-compile if no firmware available yet
       if (isQemuBoard) {
         console.log('[handleRun] QEMU path');
+        // Clean restart when the board is already running. Esp32Bridge.connect()
+        // is a no-op while the socket is non-CLOSED, so startBoard() on a live
+        // session does NOTHING — and if the backend QEMU session has since died
+        // but the frontend socket is still zombie (CONNECTING/OPEN/CLOSING), the
+        // user sees a dead sim that only a page reload fixes. This is the exact
+        // "el agente terminó, di Run y no funcionó; recargué y sí" report: the
+        // agent's run_simulation left the board running, so the user's Run
+        // no-op'd. Stop first (closes the WS), let it settle, then boot fresh —
+        // mirrors what the MicroPython branch above already does.
+        if (board?.running) {
+          stopBoard(activeBoardId);
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        }
         if (!board?.compiledProgram || codeChangedSinceLastCompile) {
           console.log('[handleRun] auto-compile + run');
           autoRunAfterCompile.current = true;

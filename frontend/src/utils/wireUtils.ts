@@ -26,6 +26,48 @@ export const WIRE_KEY_COLORS: Record<string, string> = {
 export const DEFAULT_WIRE_COLOR = '#22c55e';
 
 /**
+ * Jumper palette for breadboard wires — like a real jumper kit, neighbouring
+ * wires get visibly different colors instead of a wall of green. Red and
+ * black are deliberately absent: they're reserved for power-rail wires.
+ */
+export const WIRE_JUMPER_PALETTE = [
+  '#22c55e', // green
+  '#0000cc', // blue
+  '#FF8C00', // orange
+  '#8B00FF', // violet
+  '#FFD700', // gold
+  '#00FFFF', // cyan
+  '#FF00FF', // magenta
+  '#8B4513', // brown
+  '#808080', // gray
+  '#32CD32', // limegreen
+] as const;
+
+/**
+ * Power-rail hole → mandated wire color: positive rails (tp./bp.) are red,
+ * negative rails (tn./bn.) are black, like the stripes on a real breadboard.
+ * Returns null for anything that isn't a rail hole.
+ */
+export function railWireColor(pinName: string): string | null {
+  if (/^[tb]p\.\d+$/.test(pinName)) return '#cc0000';
+  if (/^[tb]n\.\d+$/.test(pinName)) return '#000000';
+  return null;
+}
+
+/**
+ * Deterministic palette pick for a wire id — stable across reloads so a
+ * saved project keeps its colors, and different ids spread across the
+ * palette so adjacent jumpers rarely collide.
+ */
+export function jumperColorForId(wireId: string): string {
+  let h = 0;
+  for (let i = 0; i < wireId.length; i++) {
+    h = (h * 31 + wireId.charCodeAt(i)) >>> 0;
+  }
+  return WIRE_JUMPER_PALETTE[h % WIRE_JUMPER_PALETTE.length];
+}
+
+/**
  * Automatically determine wire color from the starting pin name.
  * GND → black, VCC/5V/3.3V/VBUS/VIN → red, everything else → green.
  */

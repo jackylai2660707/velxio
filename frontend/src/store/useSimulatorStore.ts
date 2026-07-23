@@ -36,7 +36,12 @@ import {
   normalizeWireWaypoints,
   previewElbow,
 } from '../utils/wireUtils';
-import { routeAroundObstacles, collectComponentObstacles } from '../utils/wireAutoRoute';
+import {
+  routeAroundObstacles,
+  collectComponentObstacles,
+  collectComponentRects,
+  collectWireSegments,
+} from '../utils/wireAutoRoute';
 import { isBreadboard } from '../utils/breadboardNets';
 import { computeSeating } from '../utils/breadboardSnap';
 import { createSerialBatcher } from './serialBatcher';
@@ -2515,6 +2520,16 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
       // null = geometry unmeasurable (unmounted DOM) — keep whatever
       // seating exists rather than tearing out live connections.
       if (seating === null) return;
+      // Nothing seated and nothing to clear: skip the store write. The
+      // mount-time reseat (DynamicComponent) calls this for EVERY part as
+      // its element becomes measurable — on a project load that would churn
+      // the wires array identity once per off-board component for no change.
+      if (
+        seating.length === 0 &&
+        !get().wires.some((w) => w.bb && (w.start.componentId === id || w.end.componentId === id))
+      ) {
+        return;
+      }
       set((state) => {
         const kept = state.wires.filter(
           (w) => !(w.bb && (w.start.componentId === id || w.end.componentId === id)),
@@ -2532,11 +2547,22 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
     },
 
     updateComponentState: (id, state) => {
-      set((prevState) => ({
-        components: prevState.components.map((c) =>
-          c.id === id ? { ...c, properties: { ...c.properties, state, value: state } } : c,
-        ),
-      }));
+      set((prevState) => {
+        // No-op guard: this runs per GPIO edge for wire-connected components.
+        // Unconditionally minting a new components array re-rendered every
+        // subscriber (canvas, editor page, console) thousands of times per
+        // second on a fast-toggling sketch — the main cause of the frozen
+        // browser on the ESP32 multiplexed-clock projects.
+        const comp = prevState.components.find((c) => c.id === id);
+        if (!comp || (comp.properties.state === state && comp.properties.value === state)) {
+          return prevState;
+        }
+        return {
+          components: prevState.components.map((c) =>
+            c.id === id ? { ...c, properties: { ...c.properties, state, value: state } } : c,
+          ),
+        };
+      });
     },
 
     handleComponentEvent: (_componentId, _eventName, _data) => {},
@@ -2584,8 +2610,35 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
 
     updateWireInProgress: (x, y) =>
       set((state) => {
-        if (!state.wireInProgress) return state;
-        return { wireInProgress: { ...state.wireInProgress, currentX: x, currentY: y } };
+        const wip = state.wireInProgress;
+        if (!wip) return state;
+
+        // Live routed preview: while the wire has no user-placed waypoints,
+        // route start -> cursor so the preview dodges components and other
+        // wires AS THE MOUSE MOVES — the committed shape then matches what
+        // the user was seeing instead of snapping on the final click.
+        // Throttled: between routings the last route keeps rendering, so
+        // the preview trails by at most one throttle window.
+        let routedPreview = wip.routedPreview ?? null;
+        let lastRouteAt = wip.lastRouteAt ?? 0;
+        if (wip.waypoints.length === 0) {
+          const now = Date.now();
+          if (now - lastRouteAt >= 40) {
+            lastRouteAt = now;
+            routedPreview = routeAroundObstacles(
+              { x: wip.startEndpoint.x, y: wip.startEndpoint.y },
+              { x, y },
+              collectComponentObstacles(state.components, [wip.startEndpoint.componentId]),
+              collectWireSegments(state.wires),
+            );
+          }
+        } else {
+          routedPreview = null; // user is hand-guiding — show their path
+        }
+
+        return {
+          wireInProgress: { ...wip, currentX: x, currentY: y, routedPreview, lastRouteAt },
+        };
       }),
 
     addWireWaypoint: (x, y) =>
@@ -2614,10 +2667,10 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
       const finalColor = color === DEFAULT_WIRE_COLOR ? autoWireColor(endpoint.pinName) : color;
 
       // First-time auto-routing: a direct pin-to-pin wire (no user-placed
-      // waypoints) gets routed around other components. This only ever
-      // happens here at creation — the routed corners become ordinary
-      // stored waypoints, so any later manual edit stays exactly where
-      // the user puts it, never re-routed.
+      // waypoints) gets routed around other components AND clear of the
+      // wires already on the canvas. The wire is marked `autoRouted`, so
+      // the post-move pass keeps it clean when parts move; the moment the
+      // user drags a segment the flag is cleared and the shape is theirs.
       let routed: { x: number; y: number }[] | null = null;
       if (waypoints.length === 0) {
         routed = routeAroundObstacles(
@@ -2627,6 +2680,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
             startEndpoint.componentId,
             endpoint.componentId,
           ]),
+          collectWireSegments(state.wires),
         );
       }
 
@@ -2649,6 +2703,9 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           { x: endpoint.x, y: endpoint.y },
         ),
         color: finalColor,
+        // System-owned shape only when the user placed no waypoints —
+        // guided wires are hand-authored from birth.
+        autoRouted: waypoints.length === 0,
       };
       set((state) => ({ wires: [...state.wires, newWire], wireInProgress: null }));
     },
@@ -2737,6 +2794,58 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
 
         return updated;
       });
+
+      // ── Re-route system-owned wires ──────────────────────────────────
+      // Endpoints just moved (component drag, agent batch, mount settle):
+      // waypoints stored earlier may now cross parts or ride other wires.
+      // Re-route every `autoRouted` wire; hand-authored wires keep their
+      // shape untouched, exactly where the user left them.
+      //
+      // This runs at drag END and on settle timers — never per drag frame
+      // (updateWirePositions handles those and does not route).
+      //
+      // Sequential on purpose: each wire sees the already-re-routed shapes
+      // of the ones before it, which is what lays parallel runs out as a
+      // tidy side-by-side bus instead of a shuffle of overlaps.
+      if (updatedWires.some((w) => w.autoRouted && !w.bb)) {
+        const rectsById = collectComponentRects(state.components);
+        for (let i = 0; i < updatedWires.length; i++) {
+          const wire = updatedWires[i];
+          if (!wire.autoRouted || wire.bb) continue;
+          const rects = rectsById
+            .filter((r) => r.id !== wire.start.componentId && r.id !== wire.end.componentId)
+            .map((r) => r.rect);
+          const routed = routeAroundObstacles(
+            { x: wire.start.x, y: wire.start.y },
+            { x: wire.end.x, y: wire.end.y },
+            rects,
+            collectWireSegments(updatedWires, wire.id),
+          );
+          // routed === null means the PREVIEW elbow (longer-axis-first) is
+          // clear — so that exact elbow must be materialised. Storing []
+          // instead renders the implicit horizontal-first corner, a
+          // DIFFERENT elbow the router never checked: three agent wires
+          // shipped crossing a display that way while their checked route
+          // was clean.
+          const elbow =
+            routed === null
+              ? previewElbow(
+                  { x: wire.start.x, y: wire.start.y },
+                  wire.end.x,
+                  wire.end.y,
+                )
+              : null;
+          updatedWires[i] = {
+            ...wire,
+            waypoints: normalizeWireWaypoints(
+              { x: wire.start.x, y: wire.start.y },
+              routed ?? (elbow ? [elbow] : []),
+              { x: wire.end.x, y: wire.end.y },
+            ),
+          };
+        }
+      }
+
       set({ wires: updatedWires });
     },
 
