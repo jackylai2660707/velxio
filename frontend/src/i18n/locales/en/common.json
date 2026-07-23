@@ -514,7 +514,12 @@
     "syncSaving": "Syncing…",
     "syncError": "Sync failed — will retry on next change",
     "signInForHistory": "Sign in to keep your conversations in the cloud and access them from any device.",
-    "currentChat": "current"
+    "currentChat": "current",
+    "role": "I am a…",
+    "roleStudent": "Student",
+    "roleTeacher": "Teacher",
+    "teacherCode": "Teacher registration code (leave blank if your school has none)",
+    "teacherCodePlaceholder": "Optional"
   },
   "versions": {
     "title": "Version history",
@@ -580,5 +585,58 @@
     "footer": {
       "oss": "Built on the open-source Velxio project, licensed AGPLv3"
     }
+  },
+  "learn": {
+    "seoTitle": "Courses — AI IoT Lab",
+    "seoDescription": "Interactive Arduino and ESP32 IoT courses: theory, one-click circuit examples, hands-on challenges and quizzes.",
+    "title": "Courses",
+    "subtitle": "Every lesson is hands-on, right in your browser: read the theory, open the circuit example, complete the challenge, then check yourself with a short quiz.",
+    "signinHint": "Progress is stored on this computer for now. Sign in to sync across devices and let your teacher see your progress.",
+    "signinCta": "Sign in / Register",
+    "progress": "{{done}}/{{total}} lessons done",
+    "minutes": "{{m}} min",
+    "backToCourses": "All courses",
+    "openExample": "Open this lesson's circuit",
+    "challenge": "Hands-on challenge",
+    "markDone": "Mark lesson complete",
+    "done": "Completed",
+    "quiz": {
+      "title": "📝 Quiz",
+      "best": "Best score",
+      "submit": "Submit answers",
+      "answerAll": "Answer all questions first",
+      "correct": "Correct!",
+      "wrong": "Not quite.",
+      "score": "Score",
+      "retry": "Try again"
+    },
+    "class": {
+      "mine": "My classes",
+      "none": "Not in any class yet",
+      "codePlaceholder": "Class code",
+      "join": "Join class",
+      "joinedMsg": "Joined “{{name}}”!",
+      "unknownCode": "Unknown class code — please check with your teacher.",
+      "joinFailed": "Could not join, please try again later."
+    }
+  },
+  "teacher": {
+    "seoTitle": "Teaching — AI IoT Lab",
+    "seoDescription": "Create classes, hand out join codes, and track every student's lesson progress and quiz scores in real time.",
+    "title": "Teaching",
+    "needSignin": "Sign in with a teacher account to create and manage classes.",
+    "needTeacherRole": "This page needs a teacher account. You are currently a student — if you are a teacher, register a new account with the Teacher role.",
+    "namePlaceholder": "Class name, e.g. Grade 8 Class A",
+    "create": "Create class",
+    "empty": "No classes yet. Create one, hand the class code to your students, and they can join from the Courses page.",
+    "members": "{{n}} students",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this class? Students keep their personal progress, but the class and its roster will be removed.",
+    "copy": "Copy code",
+    "copied": "Copied!",
+    "reportTitle": "“{{name}}” learning report",
+    "noMembers": "No students yet. Share the code {{code}} with your class!",
+    "student": "Student",
+    "progressCol": "Progress"
   }
 }

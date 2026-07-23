@@ -20,6 +20,8 @@ export function AuthModal() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [role, setRole] = useState<'student' | 'teacher'>('student');
+  const [teacherCode, setTeacherCode] = useState('');
   const [error, setError] = useState('');
 
   if (!open) return null;
@@ -28,7 +30,7 @@ export function AuthModal() {
     setError('');
     try {
       if (mode === 'login') await login(email.trim(), password);
-      else await register(email.trim(), password, name.trim());
+      else await register(email.trim(), password, name.trim(), role, teacherCode.trim());
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -63,16 +65,49 @@ export function AuthModal() {
           </div>
 
           {mode === 'register' && (
-            <label>
-              {t('cloud.name')}
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('cloud.namePlaceholder')}
-                autoComplete="nickname"
-              />
-            </label>
+            <>
+              <label>
+                {t('cloud.name')}
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t('cloud.namePlaceholder')}
+                  autoComplete="nickname"
+                />
+              </label>
+              <div className="cloud-role-picker">
+                <span className="cloud-role-label">{t('cloud.role', '我的身分')}</span>
+                <div className="cloud-role-options">
+                  <button
+                    type="button"
+                    className={role === 'student' ? 'active' : ''}
+                    onClick={() => setRole('student')}
+                  >
+                    🎓 {t('cloud.roleStudent', '學生')}
+                  </button>
+                  <button
+                    type="button"
+                    className={role === 'teacher' ? 'active' : ''}
+                    onClick={() => setRole('teacher')}
+                  >
+                    👩‍🏫 {t('cloud.roleTeacher', '教師')}
+                  </button>
+                </div>
+              </div>
+              {role === 'teacher' && (
+                <label>
+                  {t('cloud.teacherCode', '教師註冊碼(校方未設定則留白)')}
+                  <input
+                    type="text"
+                    value={teacherCode}
+                    onChange={(e) => setTeacherCode(e.target.value)}
+                    placeholder={t('cloud.teacherCodePlaceholder', '選填')}
+                    autoComplete="off"
+                  />
+                </label>
+              )}
+            </>
           )}
           <label>
             {t('cloud.email')}

@@ -9,6 +9,9 @@ import { DocsPage } from './pages/DocsPage';
 // OSS split. They register themselves via registerProRoutes() inside
 // mountPro() and appear under /login, /admin, /:username etc. only when
 // the overlay is loaded.
+import { LearnPage } from './pages/LearnPage';
+import { LessonPage } from './pages/LessonPage';
+import { TeacherPage } from './pages/TeacherPage';
 import { ExampleDetailPage } from './pages/ExampleDetailPage';
 import { ExampleEditorPage } from './pages/ExampleEditorPage';
 import { ArduinoSimulatorPage } from './pages/ArduinoSimulatorPage';
@@ -60,6 +63,11 @@ const ROOT_ELEMENT: ReactElement = import.meta.env.VITE_DESKTOP ? (
 const ROUTES: { path: string; element: ReactElement; index?: boolean }[] = [
   { path: '/', element: ROOT_ELEMENT, index: true },
   { path: 'editor', element: <EditorPage /> },
+  // 「AI物聯網實驗室」learning module: course list, lesson player, and the
+  // teacher class-management dashboard.
+  { path: 'learn', element: <LearnPage /> },
+  { path: 'learn/:courseId/:lessonId', element: <LessonPage /> },
+  { path: 'teacher', element: <TeacherPage /> },
   { path: 'examples', element: <ExamplesPage /> },
   // /examples/<id> = SEO landing (preview, badges, "Open in Simulator" CTA).
   // /example/<id>  = live editor with the example pre-loaded; the URL

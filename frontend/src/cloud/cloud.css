@@ -289,3 +289,39 @@
   padding: 14px 0;
   font-size: 12px;
 }
+
+/* ── Role picker (register) ─────────────────────────────── */
+
+.cloud-role-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cloud-role-label {
+  font-size: 12.5px;
+  color: #9aa4b2;
+}
+
+.cloud-role-options {
+  display: flex;
+  gap: 8px;
+}
+
+.cloud-role-options button {
+  flex: 1;
+  padding: 9px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  color: #c9d1d9;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.cloud-role-options button.active {
+  border-color: #0071e3;
+  background: rgba(0, 113, 227, 0.18);
+  color: #fff;
+  font-weight: 700;
+}

@@ -76,11 +76,19 @@ export interface CloudUser {
 }
 
 export const authApi = {
-  register: (email: string, password: string, name: string) =>
+  register: (
+    email: string,
+    password: string,
+    name: string,
+    role: 'student' | 'teacher' = 'student',
+    teacherCode = '',
+  ) =>
     request<{ token: string; user: CloudUser }>('POST', '/auth/register', {
       email,
       password,
       name,
+      role,
+      teacher_code: teacherCode,
     }),
   login: (email: string, password: string) =>
     request<{ token: string; user: CloudUser }>('POST', '/auth/login', { email, password }),
@@ -117,6 +125,70 @@ export interface CloudChatMeta {
   updated_at: number;
   size: number;
 }
+
+// ── LMS: classes, progress, quizzes ────────────────────────────────────────
+
+export interface LmsClassTeaching {
+  id: string;
+  name: string;
+  code: string;
+  created_at: number;
+  member_count: number;
+}
+
+export interface LmsClassJoined {
+  id: string;
+  name: string;
+  teacher_name: string;
+  joined_at: number;
+}
+
+export interface LmsQuizBest {
+  best_score: number;
+  total: number;
+  attempts: number;
+}
+
+export interface LmsClassReportMember {
+  id: string;
+  name: string;
+  email: string;
+  joined_at: number;
+  progress: string[];
+  quiz: Record<string, LmsQuizBest>;
+}
+
+export interface LmsClassReport {
+  id: string;
+  name: string;
+  code: string;
+  created_at: number;
+  members: LmsClassReportMember[];
+}
+
+export const lmsApi = {
+  listClasses: () =>
+    request<{ teaching: LmsClassTeaching[]; joined: LmsClassJoined[] }>('GET', '/lms/classes'),
+  createClass: (name: string) =>
+    request<{ id: string; name: string; code: string }>('POST', '/lms/classes', { name }),
+  deleteClass: (id: string) => request<{ ok: boolean }>('DELETE', `/lms/classes/${id}`),
+  joinClass: (code: string) =>
+    request<{ id: string; name: string; teacher_name: string }>('POST', '/lms/classes/join', {
+      code,
+    }),
+  classReport: (id: string) => request<LmsClassReport>('GET', `/lms/classes/${id}/report`),
+  getProgress: () =>
+    request<{ done: string[]; quiz: Record<string, LmsQuizBest> }>('GET', '/lms/progress'),
+  setProgress: (lessonId: string, status: 'done' | 'reset' = 'done') =>
+    request<{ ok: boolean }>('POST', '/lms/progress', { lesson_id: lessonId, status }),
+  submitQuiz: (lessonId: string, score: number, total: number, answers: number[]) =>
+    request<{ id: string }>('POST', '/lms/quiz', {
+      lesson_id: lessonId,
+      score,
+      total,
+      answers,
+    }),
+};
 
 export const chatApi = {
   list: () => request<{ chats: CloudChatMeta[] }>('GET', '/cloud/chats'),

@@ -71,7 +71,13 @@ interface CloudState {
 
   checkSession: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    name: string,
+    role?: 'student' | 'teacher',
+    teacherCode?: string,
+  ) => Promise<void>;
   logout: () => void;
 
   refreshProjects: () => Promise<void>;
@@ -131,10 +137,10 @@ export const useCloudStore = create<CloudState>((set, get) => ({
     }
   },
 
-  register: async (email, password, name) => {
+  register: async (email, password, name, role = 'student', teacherCode = '') => {
     set({ authBusy: true });
     try {
-      const { token, user } = await authApi.register(email, password, name);
+      const { token, user } = await authApi.register(email, password, name, role, teacherCode);
       setToken(token);
       set({ user, sessionStatus: 'signed-in', authModalOpen: false });
     } finally {

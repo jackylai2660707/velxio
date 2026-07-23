@@ -514,7 +514,12 @@
     "syncSaving": "同步中…",
     "syncError": "同步失敗——下次變動時重試",
     "signInForHistory": "登入後對話會自動儲存到雲端,換裝置也能繼續。",
-    "currentChat": "當前"
+    "currentChat": "當前",
+    "role": "我的身分",
+    "roleStudent": "學生",
+    "roleTeacher": "教師",
+    "teacherCode": "教師註冊碼(校方未設定則留白)",
+    "teacherCodePlaceholder": "選填"
   },
   "versions": {
     "title": "版本歷史",
@@ -580,5 +585,58 @@
     "footer": {
       "oss": "基於開源專案 Velxio 打造,AGPLv3 授權"
     }
+  },
+  "learn": {
+    "seoTitle": "課程 — AI物聯網實驗室",
+    "seoDescription": "Arduino 入門與 ESP32 物聯網互動課程:原理解說、一鍵載入電路範例、動手挑戰與選擇題測驗。",
+    "title": "課程",
+    "subtitle": "每一課都能直接在瀏覽器裡動手做:讀原理、開範例電路、完成挑戰,再用小測驗確認自己學會了。",
+    "signinHint": "進度會先存在這台電腦。登入後可跨裝置同步,老師也能在班級報表看到你的進度。",
+    "signinCta": "登入 / 註冊",
+    "progress": "{{done}}/{{total}} 課完成",
+    "minutes": "{{m}} 分鐘",
+    "backToCourses": "所有課程",
+    "openExample": "開啟本課電路範例",
+    "challenge": "動手挑戰",
+    "markDone": "完成本課",
+    "done": "已完成",
+    "quiz": {
+      "title": "📝 小測驗",
+      "best": "最佳成績",
+      "submit": "繳交答案",
+      "answerAll": "請先回答所有題目",
+      "correct": "答對了!",
+      "wrong": "答錯了。",
+      "score": "得分",
+      "retry": "再試一次"
+    },
+    "class": {
+      "mine": "我的班級",
+      "none": "尚未加入任何班級",
+      "codePlaceholder": "輸入班級代碼",
+      "join": "加入班級",
+      "joinedMsg": "已加入「{{name}}」!",
+      "unknownCode": "找不到這個班級代碼,請跟老師確認。",
+      "joinFailed": "加入失敗,請稍後再試。"
+    }
+  },
+  "teacher": {
+    "seoTitle": "教學管理 — AI物聯網實驗室",
+    "seoDescription": "建立班級、發放班級代碼,即時掌握每位學生的課程進度與測驗成績。",
+    "title": "教學管理",
+    "needSignin": "請先登入教師帳號,才能建立與管理班級。",
+    "needTeacherRole": "這個頁面需要教師帳號。你目前是學生身分 — 若你是老師,請用「教師」身分重新註冊一個帳號。",
+    "namePlaceholder": "班級名稱,例如:八年級甲班",
+    "create": "建立班級",
+    "empty": "還沒有班級。建立第一個班級後,把班級代碼發給學生,他們在「課程」頁輸入代碼即可加入。",
+    "members": "{{n}} 位學生",
+    "delete": "刪除",
+    "deleteConfirm": "確定要刪除這個班級嗎?學生的個人進度不會消失,但班級與名單會被移除。",
+    "copy": "複製代碼",
+    "copied": "已複製!",
+    "reportTitle": "「{{name}}」學習報表",
+    "noMembers": "還沒有學生加入。把代碼 {{code}} 發給學生吧!",
+    "student": "學生",
+    "progressCol": "進度"
   }
 }
