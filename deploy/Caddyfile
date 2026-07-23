@@ -1,0 +1,13 @@
+# Automatic HTTPS reverse proxy for the app container.
+# DOMAIN and TLS_EMAIL come from deploy/.env via docker-compose.
+
+{$DOMAIN} {
+	tls {$TLS_EMAIL}
+	encode gzip
+
+	reverse_proxy app:80 {
+		# The AI assistant streams Server-Sent Events — flush immediately
+		# so tokens appear live instead of arriving in buffered bursts.
+		flush_interval -1
+	}
+}

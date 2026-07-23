@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **正在生產伺服器上部署?** 完整的部署任務書在
+> [DEPLOY_HANDOFF.md](DEPLOY_HANDOFF.md) —— 先讀它,照著做即可
+> (compose 檔在 `deploy/`;營運手冊在 `docs/wiki/operations-playbook.md`)。
+> 本 fork 是「AI物聯網實驗室」:在 Velxio 之上加了繁中品牌、互動課程、
+> 測驗、師生班級管理與 AI token 配額(詳見 `docs/wiki/learning-system.md`)。
+
 ## Project Overview
 
 **Velxio** — a fully local, open-source Arduino emulator 
