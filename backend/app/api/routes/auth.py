@@ -13,7 +13,6 @@ proxy limiter before exposing it publicly.
 
 from __future__ import annotations
 
-import os
 import re
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -74,6 +73,12 @@ def require_user(authorization: str | None) -> dict:
 @router.post("/register")
 async def register(req: RegisterRequest, request: Request) -> dict:
     _check_rate(request, "register", limit=10, window=600)
+    settings = cloud_db.get_settings()
+    if not settings["allow_registration"]:
+        raise HTTPException(
+            status_code=403,
+            detail="此平台未開放自助註冊,帳號由管理員發放 — 請向老師或管理員索取。",
+        )
     email = req.email.strip().lower()
     if not EMAIL_RE.match(email):
         raise HTTPException(status_code=422, detail="Invalid email address")
@@ -82,7 +87,7 @@ async def register(req: RegisterRequest, request: Request) -> dict:
     name = req.name.strip() or email.split("@")[0]
     role = req.role if req.role in ("student", "teacher") else "student"
     if role == "teacher":
-        required = os.environ.get("VELXIO_TEACHER_CODE", "")
+        required = str(settings["teacher_code"] or "")
         if required and req.teacher_code.strip() != required:
             raise HTTPException(status_code=403, detail="Wrong teacher registration code")
     user = cloud_db.create_user(email, req.password, name[:50], role=role)

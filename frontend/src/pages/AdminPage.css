@@ -283,3 +283,44 @@
   font-size: 12px;
   color: #56d4a0;
 }
+
+/* Settings card */
+
+.admin-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0 16px;
+}
+
+.admin-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: #c9d1d9;
+  cursor: pointer;
+}
+
+.admin-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #0071e3;
+}
+
+.admin-settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.admin-saved {
+  color: #56d4a0;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.admin-dirty {
+  color: #f0883e;
+  font-size: 13px;
+}

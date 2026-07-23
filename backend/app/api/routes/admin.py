@@ -68,6 +68,17 @@ class QuotaSet(BaseModel):
     weekly_token_limit: int | None = Field(default=None, ge=0)
 
 
+class SettingsPatch(BaseModel):
+    ai_model: str | None = None
+    ai_effort: str | None = None
+    allow_custom_model: bool | None = None
+    allow_own_key: bool | None = None
+    student_weekly_tokens: int | None = Field(default=None, ge=0)
+    teacher_weekly_tokens: int | None = Field(default=None, ge=0)
+    allow_registration: bool | None = None
+    teacher_code: str | None = None
+
+
 class PasswordReset(BaseModel):
     # Omit to have the server generate a readable one (returned once).
     password: str = ""
@@ -77,6 +88,23 @@ class PasswordReset(BaseModel):
 async def overview(authorization: str | None = Header(default=None)) -> dict:
     require_admin(authorization)
     return cloud_db.admin_overview()
+
+
+@router.get("/settings")
+async def settings_get(authorization: str | None = Header(default=None)) -> dict:
+    require_admin(authorization)
+    return cloud_db.get_settings()
+
+
+@router.put("/settings")
+async def settings_put(
+    req: SettingsPatch, authorization: str | None = Header(default=None)
+) -> dict:
+    require_admin(authorization)
+    if req.ai_effort is not None and req.ai_effort not in ("low", "medium", "high"):
+        raise HTTPException(status_code=422, detail="ai_effort must be low|medium|high")
+    patch = {k: v for k, v in req.model_dump().items() if v is not None}
+    return cloud_db.update_settings(patch)
 
 
 @router.get("/users")

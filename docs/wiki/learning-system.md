@@ -99,9 +99,12 @@ QuizQuestion { id, question, options[], answer, explanation }
   - 超額 → `/api/agent/stream` 回 429 與中文說明。
   - 使用者在 AI 面板下方看到「本週 AI 用量」進度條
     (`AgentUsageMeter.tsx`,資料來自 `GET /api/auth/usage`)。
-- **預設模型**:`gpt-5.6-luna`、`reasoning_effort=high`
-  (`backend/app/api/routes/agent.py` 的 DEFAULT_MODEL/DEFAULT_EFFORT,
-  可用 `VELXIO_AGENT_MODEL` / `VELXIO_AGENT_EFFORT` 覆寫)。
+- **平台設定(admin UI 即時可調,存 `platform_settings` 表)**:AI 模型
+  (預設 `gpt-5.6-luna`)、推理強度(預設 `high`)、學生/教師各自的
+  預設週額度、是否允許使用者自選模型、是否允許自帶 API Key、是否開放
+  自助註冊、教師註冊碼。環境變數(`VELXIO_AGENT_MODEL` 等)只作為
+  初始種子,UI 儲存後以資料庫為準。運營流程見
+  [operations-playbook.md](operations-playbook.md)。
 - **速率限制**:登入 10 次/分/IP、註冊 10 次/10 分/IP
   (`app/core/ratelimit.py`,單機記憶體滑動視窗;多實例部署請再加
   反向代理層限流)。
