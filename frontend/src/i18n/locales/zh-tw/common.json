@@ -16,7 +16,8 @@
       "discord": "Discord",
       "classroom": "面向學校",
       "learn": "課程",
-      "teacher": "教學管理"
+      "teacher": "教學管理",
+      "guide": "使用說明"
     },
     "auth": {
       "signIn": "登入",

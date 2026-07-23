@@ -16,7 +16,8 @@
       "discord": "Discord",
       "classroom": "For schools",
       "learn": "Courses",
-      "teacher": "Teaching"
+      "teacher": "Teaching",
+      "guide": "User guide"
     },
     "auth": {
       "signIn": "Sign in",

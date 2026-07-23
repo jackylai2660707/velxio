@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { BrandLandingPage } from './pages/BrandLandingPage';
 import { EditorPage } from './pages/EditorPage';
 import { ExamplesPage } from './pages/ExamplesPage';
-import { DocsPage } from './pages/DocsPage';
 // Login, Register, ForgotPassword, ResetPassword, Admin, UserProfile,
 // Project, ProjectById — moved to the pro overlay in Phase 3 of the
 // OSS split. They register themselves via registerProRoutes() inside
@@ -12,27 +11,9 @@ import { DocsPage } from './pages/DocsPage';
 import { LearnPage } from './pages/LearnPage';
 import { LessonPage } from './pages/LessonPage';
 import { TeacherPage } from './pages/TeacherPage';
+import { GuidePage } from './pages/GuidePage';
 import { ExampleDetailPage } from './pages/ExampleDetailPage';
 import { ExampleEditorPage } from './pages/ExampleEditorPage';
-import { ArduinoSimulatorPage } from './pages/ArduinoSimulatorPage';
-import { ArduinoEmulatorPage } from './pages/ArduinoEmulatorPage';
-import { AtmegaSimulatorPage } from './pages/AtmegaSimulatorPage';
-import { ArduinoMegaSimulatorPage } from './pages/ArduinoMegaSimulatorPage';
-import { Attiny85SimulatorPage } from './pages/Attiny85SimulatorPage';
-import { CircuitSimulatorPage } from './pages/CircuitSimulatorPage';
-import { SpiceSimulatorPage } from './pages/SpiceSimulatorPage';
-import { ElectronicsSimulatorPage } from './pages/ElectronicsSimulatorPage';
-import { CustomChipSimulatorPage } from './pages/CustomChipSimulatorPage';
-import { Esp32SimulatorPage } from './pages/Esp32SimulatorPage';
-import { Esp32S3SimulatorPage } from './pages/Esp32S3SimulatorPage';
-import { Esp32C3SimulatorPage } from './pages/Esp32C3SimulatorPage';
-import { RaspberryPiPicoSimulatorPage } from './pages/RaspberryPiPicoSimulatorPage';
-import { RaspberryPiSimulatorPage } from './pages/RaspberryPiSimulatorPage';
-import { Velxio2Page } from './pages/Velxio2Page';
-import { Velxio25Page } from './pages/Velxio25Page';
-import { Velxio3Page } from './pages/Velxio3Page';
-import { AboutPage } from './pages/AboutPage';
-import { PricingPlaceholder } from './pages/PricingPlaceholder';
 import { LocaleSync } from './i18n/LocaleSync';
 import { NON_DEFAULT_LOCALES } from './i18n/config';
 import { useProRoutes } from './lib/proRoutes';
@@ -75,31 +56,14 @@ const ROUTES: { path: string; element: ReactElement; index?: boolean }[] = [
   // Singular vs plural is intentional — Google indexes the plural landings.
   { path: 'examples/:exampleId', element: <ExampleDetailPage /> },
   { path: 'example/:exampleId', element: <ExampleEditorPage /> },
-  { path: 'docs', element: <DocsPage /> },
-  { path: 'docs/:section', element: <DocsPage /> },
-  // SEO landing pages — keyword-targeted
-  { path: 'circuit-simulator', element: <CircuitSimulatorPage /> },
-  { path: 'spice-simulator', element: <SpiceSimulatorPage /> },
-  { path: 'electronics-simulator', element: <ElectronicsSimulatorPage /> },
-  { path: 'custom-chip-simulator', element: <CustomChipSimulatorPage /> },
-  { path: 'attiny85-simulator', element: <Attiny85SimulatorPage /> },
-  { path: 'arduino-simulator', element: <ArduinoSimulatorPage /> },
-  { path: 'arduino-emulator', element: <ArduinoEmulatorPage /> },
-  { path: 'atmega328p-simulator', element: <AtmegaSimulatorPage /> },
-  { path: 'arduino-mega-simulator', element: <ArduinoMegaSimulatorPage /> },
-  { path: 'esp32-simulator', element: <Esp32SimulatorPage /> },
-  { path: 'esp32-s3-simulator', element: <Esp32S3SimulatorPage /> },
-  { path: 'esp32-c3-simulator', element: <Esp32C3SimulatorPage /> },
-  { path: 'raspberry-pi-pico-simulator', element: <RaspberryPiPicoSimulatorPage /> },
-  { path: 'raspberry-pi-simulator', element: <RaspberryPiSimulatorPage /> },
-  { path: 'v2', element: <Velxio2Page /> },
-  { path: 'v2-5', element: <Velxio25Page /> },
-  { path: 'v3', element: <Velxio3Page /> },
-  { path: 'about', element: <AboutPage /> },
-  // Pricing — placeholder by default; private overlays portal-inject the real page
-  { path: 'pricing', element: <PricingPlaceholder /> },
-  // project/:id, :username/:projectName, :username — also moved to the
-  // pro overlay (project persistence + public profiles are pro features).
+  // The product's only documentation: a non-technical user guide for
+  // students and teachers. The upstream developer DocsPage and the SEO
+  // marketing landing pages (circuit-simulator, v2, pricing, …) are
+  // intentionally not routed — this deployment is a classroom product,
+  // not the velxio.dev marketing site.
+  { path: 'guide', element: <GuidePage /> },
+  { path: 'docs', element: <GuidePage /> },
+  { path: 'docs/:section', element: <GuidePage /> },
 ];
 
 /**
