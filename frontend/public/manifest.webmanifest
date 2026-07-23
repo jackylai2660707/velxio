@@ -1,15 +1,15 @@
 {
-  "name": "Velxio — Circuit & Arduino Simulator",
-  "short_name": "Velxio",
-  "description": "Online circuit and Arduino simulator. ESP32, RP2040, Pi Pico, ATtiny85, SPICE analog simulation, 100+ components. Free and open source.",
-  "start_url": "/editor",
+  "name": "AI物聯網實驗室 — 線上 Arduino / ESP32 模擬與學習平台",
+  "short_name": "AI物聯網實驗室",
+  "description": "免費開源的線上物聯網學習平台:模擬 Arduino、ESP32、Pi Pico 等 19 種開發板,內建互動課程、測驗與班級管理。",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0d0d0f",
-  "theme_color": "#007acc",
-  "categories": ["developer", "education", "productivity"],
-  "lang": "en",
+  "theme_color": "#0071e3",
+  "categories": ["education", "developer", "productivity"],
+  "lang": "zh-TW",
   "icons": [
     {
       "src": "/favicon-16x16.png",
@@ -45,7 +45,7 @@
       "src": "/og-image.svg",
       "sizes": "1200x630",
       "type": "image/svg+xml",
-      "label": "Velxio Arduino Emulator"
+      "label": "AI物聯網實驗室 — 線上 Arduino / ESP32 模擬與學習平台"
     }
   ]
 }

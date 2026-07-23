@@ -71,6 +71,8 @@ export interface CloudUser {
   id: string;
   email: string;
   name: string;
+  /** 'teacher' unlocks the class-management dashboard; default 'student'. */
+  role?: 'student' | 'teacher';
 }
 
 export const authApi = {

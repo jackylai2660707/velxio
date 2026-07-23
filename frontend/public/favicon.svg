@@ -2,19 +2,21 @@
   <!-- Background -->
   <rect width="32" height="32" rx="6" fill="#0d0d0f"/>
   <!-- IC body (filled, high contrast) -->
-  <rect x="8" y="8" width="16" height="16" rx="2" fill="#007acc"/>
+  <rect x="8" y="8" width="16" height="16" rx="2" fill="#0071e3"/>
   <!-- Die (darker inset) -->
-  <rect x="11" y="11" width="10" height="10" rx="1" fill="#005fa3"/>
+  <rect x="10.5" y="10.5" width="11" height="11" rx="1" fill="#0056ad"/>
+  <!-- "AI" lettering on the die -->
+  <text x="16" y="19.9" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="8.4" font-weight="bold" fill="#ffffff">AI</text>
   <!-- Top pins -->
-  <rect x="12" y="3" width="3" height="5" rx="1" fill="#007acc"/>
-  <rect x="17" y="3" width="3" height="5" rx="1" fill="#007acc"/>
+  <rect x="12" y="3" width="3" height="5" rx="1" fill="#0071e3"/>
+  <rect x="17" y="3" width="3" height="5" rx="1" fill="#0071e3"/>
   <!-- Bottom pins -->
-  <rect x="12" y="24" width="3" height="5" rx="1" fill="#007acc"/>
-  <rect x="17" y="24" width="3" height="5" rx="1" fill="#007acc"/>
+  <rect x="12" y="24" width="3" height="5" rx="1" fill="#0071e3"/>
+  <rect x="17" y="24" width="3" height="5" rx="1" fill="#0071e3"/>
   <!-- Left pins -->
-  <rect x="3" y="12" width="5" height="3" rx="1" fill="#007acc"/>
-  <rect x="3" y="17" width="5" height="3" rx="1" fill="#007acc"/>
+  <rect x="3" y="12" width="5" height="3" rx="1" fill="#0071e3"/>
+  <rect x="3" y="17" width="5" height="3" rx="1" fill="#0071e3"/>
   <!-- Right pins -->
-  <rect x="24" y="12" width="5" height="3" rx="1" fill="#007acc"/>
-  <rect x="24" y="17" width="5" height="3" rx="1" fill="#007acc"/>
+  <rect x="24" y="12" width="5" height="3" rx="1" fill="#0071e3"/>
+  <rect x="24" y="17" width="5" height="3" rx="1" fill="#0071e3"/>
 </svg>

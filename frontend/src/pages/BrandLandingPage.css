@@ -1,0 +1,267 @@
+/* 「AI物聯網實驗室」landing page. Dark theme to match the app shell. */
+
+.brand-landing {
+  min-height: 100vh;
+  background:
+    radial-gradient(1000px 500px at 70% -10%, rgba(0, 113, 227, 0.16), transparent 60%),
+    radial-gradient(800px 400px at 10% 30%, rgba(0, 200, 150, 0.07), transparent 60%),
+    #0d1117;
+  color: #e6edf3;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Hero ─────────────────────────────────────────────────── */
+
+.brand-hero {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 88px 24px 56px;
+  text-align: center;
+}
+
+.brand-hero-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border: 1px solid rgba(0, 113, 227, 0.5);
+  border-radius: 999px;
+  background: rgba(0, 113, 227, 0.1);
+  color: #58a6ff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin-bottom: 28px;
+}
+
+.brand-hero-title {
+  font-size: clamp(32px, 6vw, 56px);
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0 0 20px;
+}
+
+.brand-hero-accent {
+  display: block;
+  background: linear-gradient(90deg, #58a6ff, #00c896);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.brand-hero-subtitle {
+  font-size: clamp(15px, 2.2vw, 19px);
+  line-height: 1.8;
+  color: #9aa4b2;
+  max-width: 640px;
+  margin: 0 auto 36px;
+}
+
+.brand-hero-ctas {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 44px;
+}
+
+.brand-cta {
+  display: inline-block;
+  padding: 13px 34px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.brand-cta-primary {
+  background: linear-gradient(90deg, #0071e3, #0a84ff);
+  color: #fff;
+  box-shadow: 0 6px 24px rgba(0, 113, 227, 0.35);
+}
+
+.brand-cta-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 113, 227, 0.45);
+}
+
+.brand-cta-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #e6edf3;
+}
+
+.brand-cta-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+.brand-hero-boards {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.brand-board-chip {
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #8b949e;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+}
+
+/* ── Feature cards ────────────────────────────────────────── */
+
+.brand-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.brand-feature-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  padding: 28px 24px;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.brand-feature-card:hover {
+  border-color: rgba(0, 113, 227, 0.55);
+  transform: translateY(-3px);
+}
+
+.brand-feature-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(0, 113, 227, 0.14);
+  color: #58a6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.brand-feature-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.brand-feature-card h3 {
+  margin: 0 0 10px;
+  font-size: 19px;
+}
+
+.brand-feature-card p {
+  margin: 0;
+  color: #9aa4b2;
+  font-size: 14.5px;
+  line-height: 1.75;
+}
+
+/* ── AI section ───────────────────────────────────────────── */
+
+.brand-ai {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: center;
+  max-width: 1040px;
+  margin: 48px auto 0;
+  padding: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.brand-ai-text h2 {
+  font-size: clamp(24px, 4vw, 34px);
+  margin: 0 0 16px;
+}
+
+.brand-ai-text p {
+  color: #9aa4b2;
+  line-height: 1.85;
+  margin: 0 0 24px;
+}
+
+.brand-ai-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.brand-chat-bubble {
+  padding: 14px 18px;
+  border-radius: 14px;
+  font-size: 14.5px;
+  line-height: 1.7;
+  max-width: 85%;
+}
+
+.brand-chat-user {
+  align-self: flex-end;
+  background: rgba(0, 113, 227, 0.25);
+  border: 1px solid rgba(0, 113, 227, 0.4);
+}
+
+.brand-chat-ai {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 760px) {
+  .brand-ai {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Teacher call-out ─────────────────────────────────────── */
+
+.brand-teacher {
+  max-width: 760px;
+  margin: 56px auto 0;
+  padding: 40px 24px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.brand-teacher h2 {
+  font-size: clamp(22px, 3.6vw, 30px);
+  margin: 0 0 14px;
+}
+
+.brand-teacher p {
+  color: #9aa4b2;
+  line-height: 1.85;
+  margin: 0 0 26px;
+}
+
+/* ── Footer ───────────────────────────────────────────────── */
+
+.brand-footer {
+  margin-top: auto;
+  padding: 28px 24px;
+  text-align: center;
+  color: #6e7681;
+  font-size: 13px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.brand-footer a {
+  color: #58a6ff;
+  text-decoration: none;
+}
+
+.brand-footer-sep {
+  margin: 0 10px;
+}

@@ -79,7 +79,7 @@
   <!-- Badge pill -->
   <rect x="480" y="140" width="240" height="34" rx="17" fill="none" stroke="#007acc" stroke-width="1.5" opacity="0.5"/>
   <rect x="481" y="141" width="238" height="32" rx="16" fill="#007acc" opacity="0.1"/>
-  <text x="600" y="163" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#007acc" letter-spacing="2">OPEN SOURCE · FREE · LOCAL</text>
+  <text x="600" y="163" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#007acc" letter-spacing="2">開源 · 免費 · 為學生與教師打造</text>
 
   <!-- Main logo chip icon -->
   <g transform="translate(548, 192)" stroke="#007acc" stroke-width="3" fill="none" stroke-linecap="round">
@@ -95,17 +95,17 @@
     <line x1="44" y1="30" x2="54" y2="30"/>
   </g>
 
-  <!-- Title: VELXIO -->
+  <!-- Title -->
   <text x="600" y="340" text-anchor="middle"
-        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
-        font-size="96" font-weight="900" letter-spacing="-3"
-        fill="url(#title-grad)">VELXIO</text>
+        font-family="'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', system-ui, sans-serif"
+        font-size="82" font-weight="900" letter-spacing="2"
+        fill="url(#title-grad)">AI物聯網實驗室</text>
 
   <!-- Subtitle -->
   <text x="600" y="400" text-anchor="middle"
-        font-family="system-ui, -apple-system, sans-serif"
+        font-family="'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', system-ui, sans-serif"
         font-size="26" font-weight="400" fill="#7a7a8c">
-    Arduino Emulator — Real AVR8 · 48+ Components · Monaco Editor
+    線上 Arduino / ESP32 模擬器 · 互動課程 · 測驗 · 班級管理
   </text>
 
   <!-- Tags row -->
@@ -137,6 +137,6 @@
   <text x="600" y="608" text-anchor="middle"
         font-family="system-ui, -apple-system, sans-serif"
         font-size="16" fill="#444" letter-spacing="0.5">
-    github.com/davidmonterocrespo24/velxio
+    github.com/jackylai2660707/velxio
   </text>
 </svg>
