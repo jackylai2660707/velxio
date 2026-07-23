@@ -27,10 +27,16 @@
 }
 
 :root {
+  /* Traditional-Chinese-first UI: after the latin faces, fall through to
+     the platform's TC fonts (macOS 蘋方 / Windows 微軟正黑 / Android-Linux
+     Noto) so 繁體中文 renders with proper glyphs everywhere. */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text',
-               'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+               'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+               'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC',
+               'Noto Sans CJK TC', sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', Consolas,
-               'Liberation Mono', monospace;
+               'Liberation Mono', 'PingFang TC', 'Microsoft JhengHei',
+               'Noto Sans CJK TC', monospace;
 
   /* Type ramp (size / line-height pairs in the same token) */
   --text-caption2:   400 11px/13px var(--font-sans);

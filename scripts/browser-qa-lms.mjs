@@ -144,13 +144,23 @@ try {
   check('側欄有課次列表', lesson.sidebarItems >= 5, String(lesson.sidebarItems));
 
   // answer every question (first option), submit, expect a score
-  const submitState = await page.evaluate(() => {
+  await page.evaluate(() => {
     document
       .querySelectorAll('.quiz-question')
       .forEach((q) => q.querySelector('.quiz-option')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    return document.querySelector('.quiz-submit')?.textContent ?? 'missing';
   });
-  check('全部作答後可繳交', submitState.includes('繳交'), submitState);
+  // React re-renders asynchronously — wait for the submit button to enable.
+  const canSubmit = await page
+    .waitForFunction(
+      () => {
+        const b = document.querySelector('.quiz-submit');
+        return b && !b.disabled;
+      },
+      { timeout: 10000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  check('全部作答後可繳交', canSubmit);
   await page.click('.quiz-submit');
   await page.waitForSelector('.quiz-score', { timeout: 10000 });
   const quiz = await page.evaluate(() => ({
@@ -201,8 +211,20 @@ try {
   await page.evaluate((tok) => localStorage.setItem('velxio-cloud-token', tok), tTok);
   await page.goto(APP + '/teacher', { waitUntil: 'networkidle2' });
   await page.waitForSelector('.teacher-class-card', { timeout: 30000 });
-  await page.click('.teacher-class-card');
-  await page.waitForSelector('.teacher-report table', { timeout: 30000 });
+  // Session/classes load causes re-renders around the first paint; a single
+  // coordinate click can land between renders. DOM-click with retry instead.
+  let hasTable = false;
+  for (let i = 0; i < 5 && !hasTable; i++) {
+    await page.evaluate(() => document.querySelector('.teacher-class-card')?.click());
+    hasTable = await page
+      .waitForSelector('.teacher-report table', { timeout: 5000 })
+      .then(() => true)
+      .catch(() => false);
+  }
+  if (!hasTable) {
+    await shot('teacher-fail');
+    throw new Error('teacher report table never appeared');
+  }
   const report = await page.evaluate(() => {
     const rows = [...document.querySelectorAll('.teacher-course-table')].map((tbl) => ({
       course: tbl.querySelector('h3')?.textContent ?? '',
