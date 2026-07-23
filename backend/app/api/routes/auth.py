@@ -13,6 +13,7 @@ proxy limiter before exposing it publicly.
 
 from __future__ import annotations
 
+import os
 import re
 
 from fastapi import APIRouter, Header, HTTPException
@@ -31,6 +32,11 @@ class RegisterRequest(BaseModel):
     email: str
     password: str
     name: str = ""
+    # LMS: 'student' (default) or 'teacher'. When the instance sets
+    # VELXIO_TEACHER_CODE, registering as a teacher requires that code —
+    # so a school deployment can hand it only to staff.
+    role: str = "student"
+    teacher_code: str = ""
 
 
 class LoginRequest(BaseModel):
@@ -58,7 +64,12 @@ async def register(req: RegisterRequest) -> dict:
     if len(req.password) < 6:
         raise HTTPException(status_code=422, detail="Password must be at least 6 characters")
     name = req.name.strip() or email.split("@")[0]
-    user = cloud_db.create_user(email, req.password, name[:50])
+    role = req.role if req.role in ("student", "teacher") else "student"
+    if role == "teacher":
+        required = os.environ.get("VELXIO_TEACHER_CODE", "")
+        if required and req.teacher_code.strip() != required:
+            raise HTTPException(status_code=403, detail="Wrong teacher registration code")
+    user = cloud_db.create_user(email, req.password, name[:50], role=role)
     if user is None:
         raise HTTPException(status_code=409, detail="This email is already registered")
     return {"token": cloud_db.make_token(user["id"]), "user": user}

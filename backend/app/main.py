@@ -127,8 +127,11 @@ app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
 # chat sessions and projects can live server-side. See services/cloud_db.py.
 from app.api.routes import auth as cloud_auth
 from app.api.routes import cloud
+from app.api.routes import lms
 app.include_router(cloud_auth.router, prefix="/api/auth", tags=["cloud-auth"])
 app.include_router(cloud.router, prefix="/api/cloud", tags=["cloud-storage"])
+# 「AI物聯網實驗室」learning management: classes, lesson progress, quizzes.
+app.include_router(lms.router, prefix="/api/lms", tags=["lms"])
 
 # Optional pro extension. The `app.pro` package only exists in private builds
 # (overlaid at Docker build time by an external repo) — its absence in the

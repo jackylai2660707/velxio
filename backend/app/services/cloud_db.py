@@ -1,8 +1,10 @@
 """
-Self-contained cloud persistence for the OSS fork: accounts, projects, and
-AI-chat sessions in a single SQLite file. Deliberately stdlib-only
-(sqlite3 + hashlib/hmac/secrets) — no ORM, no crypto deps, nothing to
-install, works inside the existing Docker volume (/app/data).
+Self-contained cloud persistence for the OSS fork: accounts, projects,
+AI-chat sessions, and the「AI物聯網實驗室」learning-management layer
+(teacher/student roles, classes, lesson progress, quiz attempts) in a
+single SQLite file. Deliberately stdlib-only (sqlite3 + hashlib/hmac/
+secrets) — no ORM, no crypto deps, nothing to install, works inside the
+existing Docker volume (/app/data).
 
 Security model: a self-hosted classroom/personal instance.
 - Passwords: PBKDF2-HMAC-SHA256, 200k iterations, per-user salt.
@@ -38,6 +40,14 @@ MAX_PROJECTS_PER_USER = 100
 MAX_CHATS_PER_USER = 100
 MAX_PROJECT_BYTES = 2_000_000
 MAX_CHAT_BYTES = 1_500_000
+
+MAX_CLASSES_PER_TEACHER = 20
+MAX_MEMBERS_PER_CLASS = 100
+MAX_QUIZ_ANSWERS_BYTES = 20_000
+
+# Class join codes: unambiguous uppercase alphabet (no 0/O/1/I).
+_CLASS_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+CLASS_CODE_LENGTH = 6
 
 
 # ── Bootstrap ──────────────────────────────────────────────────────────────
@@ -83,8 +93,46 @@ def init_db() -> None:
                 updated_at REAL NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_chats_user ON chats(user_id, updated_at DESC);
+            CREATE TABLE IF NOT EXISTS classes (
+                id TEXT PRIMARY KEY,
+                teacher_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                code TEXT NOT NULL UNIQUE,
+                created_at REAL NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS class_members (
+                class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                joined_at REAL NOT NULL,
+                PRIMARY KEY (class_id, user_id)
+            );
+            CREATE TABLE IF NOT EXISTS lesson_progress (
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                lesson_id TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'done',
+                updated_at REAL NOT NULL,
+                PRIMARY KEY (user_id, lesson_id)
+            );
+            CREATE TABLE IF NOT EXISTS quiz_attempts (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                lesson_id TEXT NOT NULL,
+                score INTEGER NOT NULL,
+                total INTEGER NOT NULL,
+                answers TEXT NOT NULL,
+                created_at REAL NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_quiz_user_lesson
+                ON quiz_attempts(user_id, lesson_id, created_at DESC);
             """
         )
+        # Migration: users.role was added after the first release of the
+        # cloud schema — backfill existing databases in place.
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
+        if "role" not in cols:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'student'"
+            )
 
 
 def _secret_key() -> bytes:
@@ -144,23 +192,40 @@ def verify_token(token: str) -> str | None:
 
 
 def _user_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
-    return {"id": row["id"], "email": row["email"], "name": row["name"]}
+    return {
+        "id": row["id"],
+        "email": row["email"],
+        "name": row["name"],
+        "role": row["role"] if "role" in row.keys() else "student",
+    }
 
 
-def create_user(email: str, password: str, name: str) -> dict[str, Any] | None:
+def create_user(
+    email: str, password: str, name: str, role: str = "student"
+) -> dict[str, Any] | None:
     """Returns the user, or None if the email is taken."""
+    if role not in ("student", "teacher"):
+        role = "student"
     salt = secrets.token_bytes(16)
     user_id = uuid.uuid4().hex
     try:
         with _connect() as conn:
             conn.execute(
-                "INSERT INTO users (id, email, name, password_hash, salt, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (user_id, email.lower(), name, _hash_password(password, salt), salt, time.time()),
+                "INSERT INTO users (id, email, name, password_hash, salt, created_at, role) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    user_id,
+                    email.lower(),
+                    name,
+                    _hash_password(password, salt),
+                    salt,
+                    time.time(),
+                    role,
+                ),
             )
     except sqlite3.IntegrityError:
         return None
-    return {"id": user_id, "email": email.lower(), "name": name}
+    return {"id": user_id, "email": email.lower(), "name": name, "role": role}
 
 
 def authenticate(email: str, password: str) -> dict[str, Any] | None:
@@ -331,3 +396,212 @@ def delete_chat(user_id: str, chat_id: str) -> bool:
     with _connect() as conn:
         cur = conn.execute("DELETE FROM chats WHERE id = ? AND user_id = ?", (chat_id, user_id))
     return cur.rowcount > 0
+
+
+# ── LMS: classes ───────────────────────────────────────────────────────────
+
+
+def _new_class_code() -> str:
+    return "".join(secrets.choice(_CLASS_CODE_ALPHABET) for _ in range(CLASS_CODE_LENGTH))
+
+
+def create_class(teacher_id: str, name: str) -> dict[str, Any] | None:
+    """Returns the class, or None when the teacher is over quota."""
+    with _connect() as conn:
+        count = conn.execute(
+            "SELECT COUNT(*) FROM classes WHERE teacher_id = ?", (teacher_id,)
+        ).fetchone()[0]
+        if count >= MAX_CLASSES_PER_TEACHER:
+            return None
+        class_id = uuid.uuid4().hex
+        now = time.time()
+        # Retry on the (unlikely) join-code collision.
+        for _ in range(10):
+            code = _new_class_code()
+            try:
+                conn.execute(
+                    "INSERT INTO classes (id, teacher_id, name, code, created_at) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (class_id, teacher_id, name, code, now),
+                )
+                return {"id": class_id, "name": name, "code": code, "created_at": now}
+            except sqlite3.IntegrityError:
+                continue
+    raise RuntimeError("could not allocate a unique class code")
+
+
+def delete_class(teacher_id: str, class_id: str) -> bool:
+    with _connect() as conn:
+        cur = conn.execute(
+            "DELETE FROM classes WHERE id = ? AND teacher_id = ?", (class_id, teacher_id)
+        )
+    return cur.rowcount > 0
+
+
+def list_classes_teaching(teacher_id: str) -> list[dict[str, Any]]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT c.id, c.name, c.code, c.created_at, "
+            "       (SELECT COUNT(*) FROM class_members m WHERE m.class_id = c.id) AS member_count "
+            "FROM classes c WHERE c.teacher_id = ? ORDER BY c.created_at DESC",
+            (teacher_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def list_classes_joined(user_id: str) -> list[dict[str, Any]]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT c.id, c.name, u.name AS teacher_name, m.joined_at "
+            "FROM class_members m "
+            "JOIN classes c ON c.id = m.class_id "
+            "JOIN users u ON u.id = c.teacher_id "
+            "WHERE m.user_id = ? ORDER BY m.joined_at DESC",
+            (user_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def join_class(user_id: str, code: str) -> dict[str, Any] | None:
+    """Join by code. Returns the class meta, None for an unknown code.
+    Raises ValueError when the class is full."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT c.id, c.name, u.name AS teacher_name "
+            "FROM classes c JOIN users u ON u.id = c.teacher_id WHERE c.code = ?",
+            (code.strip().upper(),),
+        ).fetchone()
+        if not row:
+            return None
+        members = conn.execute(
+            "SELECT COUNT(*) FROM class_members WHERE class_id = ?", (row["id"],)
+        ).fetchone()[0]
+        already = conn.execute(
+            "SELECT 1 FROM class_members WHERE class_id = ? AND user_id = ?",
+            (row["id"], user_id),
+        ).fetchone()
+        if not already:
+            if members >= MAX_MEMBERS_PER_CLASS:
+                raise ValueError("class full")
+            conn.execute(
+                "INSERT INTO class_members (class_id, user_id, joined_at) VALUES (?, ?, ?)",
+                (row["id"], user_id, time.time()),
+            )
+    return {"id": row["id"], "name": row["name"], "teacher_name": row["teacher_name"]}
+
+
+def get_class_report(teacher_id: str, class_id: str) -> dict[str, Any] | None:
+    """Full progress/quiz report for one class. None unless owned by teacher_id."""
+    with _connect() as conn:
+        cls = conn.execute(
+            "SELECT id, name, code, created_at FROM classes WHERE id = ? AND teacher_id = ?",
+            (class_id, teacher_id),
+        ).fetchone()
+        if not cls:
+            return None
+        members = conn.execute(
+            "SELECT u.id, u.name, u.email, m.joined_at "
+            "FROM class_members m JOIN users u ON u.id = m.user_id "
+            "WHERE m.class_id = ? ORDER BY m.joined_at",
+            (class_id,),
+        ).fetchall()
+        out_members: list[dict[str, Any]] = []
+        for m in members:
+            progress = [
+                r["lesson_id"]
+                for r in conn.execute(
+                    "SELECT lesson_id FROM lesson_progress "
+                    "WHERE user_id = ? AND status = 'done'",
+                    (m["id"],),
+                )
+            ]
+            quiz = {
+                r["lesson_id"]: {
+                    "best_score": r["best_score"],
+                    "total": r["total"],
+                    "attempts": r["attempts"],
+                }
+                for r in conn.execute(
+                    "SELECT lesson_id, MAX(score) AS best_score, total, COUNT(*) AS attempts "
+                    "FROM quiz_attempts WHERE user_id = ? GROUP BY lesson_id",
+                    (m["id"],),
+                )
+            }
+            out_members.append(
+                {
+                    "id": m["id"],
+                    "name": m["name"],
+                    "email": m["email"],
+                    "joined_at": m["joined_at"],
+                    "progress": progress,
+                    "quiz": quiz,
+                }
+            )
+    return {
+        "id": cls["id"],
+        "name": cls["name"],
+        "code": cls["code"],
+        "created_at": cls["created_at"],
+        "members": out_members,
+    }
+
+
+# ── LMS: lesson progress & quizzes ─────────────────────────────────────────
+
+
+def set_progress(user_id: str, lesson_id: str, status: str = "done") -> None:
+    with _connect() as conn:
+        if status == "reset":
+            conn.execute(
+                "DELETE FROM lesson_progress WHERE user_id = ? AND lesson_id = ?",
+                (user_id, lesson_id),
+            )
+            return
+        conn.execute(
+            "INSERT INTO lesson_progress (user_id, lesson_id, status, updated_at) "
+            "VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(user_id, lesson_id) DO UPDATE SET status = ?, updated_at = ?",
+            (user_id, lesson_id, status, time.time(), status, time.time()),
+        )
+
+
+def get_progress(user_id: str) -> list[str]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT lesson_id FROM lesson_progress WHERE user_id = ? AND status = 'done'",
+            (user_id,),
+        ).fetchall()
+    return [r["lesson_id"] for r in rows]
+
+
+def record_quiz(
+    user_id: str, lesson_id: str, score: int, total: int, answers: list[Any]
+) -> str:
+    payload = json.dumps(answers, ensure_ascii=False)
+    if len(payload.encode()) > MAX_QUIZ_ANSWERS_BYTES:
+        raise ValueError("answers too large")
+    attempt_id = uuid.uuid4().hex
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO quiz_attempts (id, user_id, lesson_id, score, total, answers, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (attempt_id, user_id, lesson_id, int(score), int(total), payload, time.time()),
+        )
+    return attempt_id
+
+
+def get_quiz_best(user_id: str) -> dict[str, dict[str, Any]]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT lesson_id, MAX(score) AS best_score, total, COUNT(*) AS attempts "
+            "FROM quiz_attempts WHERE user_id = ? GROUP BY lesson_id",
+            (user_id,),
+        ).fetchall()
+    return {
+        r["lesson_id"]: {
+            "best_score": r["best_score"],
+            "total": r["total"],
+            "attempts": r["attempts"],
+        }
+        for r in rows
+    }
