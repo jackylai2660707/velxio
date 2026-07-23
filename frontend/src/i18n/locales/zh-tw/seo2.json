@@ -1,0 +1,231 @@
+{
+  "seo": {
+    "spice": {
+      "hero": {
+        "title": "免費線上SPICE模擬器",
+        "accent": "真正的ngspice，就在你的瀏覽器中",
+        "subtitle": "AI物聯網實驗室執行編譯為WebAssembly的開源ngspice引擎。真實的器件模型，完整的改進節點分析，即時瞬態模擬——並且你可以將其連線到真實的Arduino / ESP32 / RP2040韌體。免費，無需安裝，無需帳戶。",
+        "ctaPrimary": "開啟SPICE模擬器",
+        "ctaSecondary": "檢視AI物聯網實驗室 2.5版本釋出",
+        "trust": "真正的ngspice · 免費開源 · 100%在瀏覽器中執行"
+      },
+      "why": {
+        "heading": "為什麼選擇AI物聯網實驗室進行SPICE模擬？",
+        "lead": "瀏覽器中的SPICE歷來要麼根本沒有SPICE（線性近似器），要麼是需要帳戶的託管工具。AI物聯網實驗室免費在本地執行真正的引擎。",
+        "realTitle": "真正的ngspice",
+        "realBody": "與專業EDA工作流相同的引擎，透過eecircuit-engine編譯為WebAssembly。沒有簡化求解器——完整的MNA，完整的器件庫。",
+        "noServerTitle": "無需伺服器，無需帳戶",
+        "noServerBody": "求解器在你的瀏覽器標籤頁中執行。你的電路永遠不會離開你的機器。首次載入後可離線工作。",
+        "coTitle": "與韌體協同模擬",
+        "coBody": "Arduino / ESP32 / RP2040 / ATtiny85的GPIO驅動SPICE源，ADC讀取求解的節點電壓。這是其他瀏覽器內工具無法提供的獨特組合。"
+      },
+      "devices": {
+        "heading": "器件庫",
+        "lead": "畫布上的每個元件都對映到真實的ngspice器件卡——而不是行為替代品。",
+        "passivesTitle": "無源器件",
+        "passivesBody": "電阻、電容（電解/陶瓷/極性感知）、電感、電位器、光敏電阻（LDR）、光電二極體、NTC熱敏電阻。",
+        "diodesTitle": "二極體",
+        "diodesBody": "1N4148、1N4007、1N5817 / 1N5819（肖特基）、齊納1N4733——具有正確的正向壓降、反向擊穿和恢復特性。",
+        "bjtTitle": "雙極型電晶體",
+        "bjtBody": "2N2222、2N3055（大電流NPN）、2N3906、BC547、BC557——具有截止區、放大區和飽和區行為。",
+        "mosfetTitle": "MOSFET",
+        "mosfetBody": "2N7000（小訊號N溝道）、IRF540（功率N溝道）、IRF9540（功率P溝道）、FQP27P06——Level 3模型。",
+        "opampTitle": "運算放大器",
+        "opampBody": "LM358、LM741、TL072、LM324、理想——具有真實的飽和軌，使輸出削波看起來正確。",
+        "regulatorsTitle": "線性穩壓器",
+        "regulatorsBody": "7805、7812、7905、LM317——具有壓差。在畫布上構建完整的電源。",
+        "logicTitle": "邏輯IC",
+        "logicBody": "74HC系列DIP-14封裝、基本門（AND/OR/NAND/NOR/XOR/XNOR/NOT）、邊沿觸發的D/T/JK觸發器、SR鎖存器。",
+        "powerTitle": "功率級器件",
+        "powerBody": "L293D雙H橋、光耦（4N25、PC817，帶CTR）、SPDT繼電器，帶線圈電感、遲滯和續流二極體。",
+        "sourcesTitle": "源與儀器",
+        "sourcesBody": "9V / AA / 紐扣電池，帶真實ESR、訊號發生器（正弦/方波/直流）、示波器、電壓表、電流表。"
+      },
+      "faq": {
+        "heading": "常見問題",
+        "q1": "這是真正的ngspice在我的瀏覽器中執行嗎？",
+        "a1": "是的。AI物聯網實驗室透過開源eecircuit-engine載入編譯為WebAssembly的ngspice。驅動專業EDA工作流的相同SPICE引擎在你的瀏覽器標籤頁中執行——無需伺服器，無需安裝。",
+        "q2": "它執行哪種分析？",
+        "a2": "即時瞬態分析。求解器在每個時鐘週期（約60 Hz）執行改進節點分析，因此你可以看到波形隨電路執行而演變。非線性器件在每一步迭代至收斂。",
+        "q3": "支援哪些SPICE器件模型？",
+        "a3": "電阻、電容、電感、理想電壓源和電流源、二極體（1N4148、1N4007、1N5817、1N5819、齊納1N4733）、雙極型電晶體（2N2222、2N3055、2N3906、BC547、BC557）、MOSFET（2N7000、IRF540、IRF9540、FQP27P06——Level 3模型）、運算放大器（LM358、LM741、TL072、LM324、理想）帶飽和軌、線性穩壓器（7805、7812、7905、LM317）、光耦（4N25、PC817）和帶電感的繼電器線圈。",
+        "q4": "我可以編寫原始的SPICE網表嗎？",
+        "a4": "AI物聯網實驗室根據原理圖為你構建網表——在畫布上連線元件，模擬器生成SPICE卡。你不必手寫網表，但底層引擎是完整的ngspice，接受標準器件卡。",
+        "q5": "它包含儀器嗎？",
+        "a5": "是的——多通道示波器、電壓表、電流表和訊號發生器（正弦/方波/直流，可配置頻率、幅度、偏移）。所有儀器探測即時的SPICE節點電壓和支路電流。",
+        "q6": "SPICE可以與微控制器通訊嗎？",
+        "a6": "是的。這是獨特的功能。Arduino / ESP32 / RP2040 / ATtiny85的GPIO驅動SPICE電壓源；ADC輸入讀取求解的節點電壓。在一個工具中構建端到端的真實韌體驅動模擬訊號鏈。"
+      },
+      "bottom": {
+        "title": "執行真正的SPICE——無需安裝，無需帳戶",
+        "body": "開啟編輯器，幾秒鐘內開始求解真實電路。",
+        "cta": "啟動SPICE模擬器"
+      }
+    },
+    "mega": {
+      "hero": {
+        "title": "Arduino Mega 2560模擬器",
+        "accent": "免費線上AVR8模擬",
+        "subtitle": "在瀏覽器中模擬Arduino Mega 2560草圖，具有完整的ATmega2560模擬——256 KB快閃記憶體、54個數字接腳、16個模擬輸入、4個序列埠和6個定時器。免費開源。",
+        "ctaPrimary": "開啟Mega 2560模擬器",
+        "ctaSecondary": "瀏覽範例",
+        "trust": "免費開源 · 無需註冊 · 完整的ATmega2560模擬"
+      },
+      "specs": {
+        "heading": "Arduino Mega 2560——完整規格模擬",
+        "lead": "ATmega2560是Arduino系列中最強大的AVR8微控制器。AI物聯網實驗室模擬其完整的外設集，使每個Mega特有的功能在模擬器中都能工作。",
+        "flashTitle": "256 KB快閃記憶體",
+        "flashBody": "比Arduino Uno多8倍的程式儲存空間。執行大型草圖、複雜狀態機和資料密集型應用，無需擔心儲存限制。",
+        "gpioTitle": "54個數字接腳",
+        "gpioBody": "完整的PORTA到PORTL模擬。比Uno多40個I/O接腳——非常適合多路複用顯示器、大型按鈕矩陣和多模組專案。",
+        "adcTitle": "16個模擬輸入",
+        "adcBody": "10位ADC，16個通道（A0–A15）。在模擬中同時連線多個感測器、電位器和模擬元件。",
+        "serialTitle": "4個硬體序列埠",
+        "serialBody": "Serial（USART0–3）全部模擬。Serial1、Serial2、Serial3出現在序列監視器中——測試多裝置序列通訊專案。",
+        "timersTitle": "6個硬體定時器",
+        "timersBody": "Timer0/1/2/3/4/5。比Uno多三個16位定時器（Timer3、Timer4、Timer5）——更多PWM輸出和精確定時通道。",
+        "pwmTitle": "15個PWM輸出",
+        "pwmBody": "15個接腳支援透過analogWrite()進行硬體PWM。非常適合電機控制、伺服馬達陣列、LED調光和音訊輸出專案。"
+      },
+      "uses": {
+        "heading": "Mega 2560的用途",
+        "lead": "Arduino Mega 2560是複雜創客專案的首選板。無需硬體即可全部模擬。",
+        "printerTitle": "3D印表機韌體",
+        "printerBody": "Marlin和RAMPS 1.4擴充套件板執行在ATmega2560上。在模擬器中原型設計和除錯印表機控制邏輯。",
+        "cncTitle": "CNC與機器人",
+        "cncBody": "GRBL CNC控制器和多伺服馬達機械臂受益於Mega的額外I/O接腳和定時器。",
+        "ledTitle": "大型LED矩陣",
+        "ledBody": "驅動8×8或16×16 LED矩陣需要許多接腳。Mega的54個數字輸出使其成為理想選擇。",
+        "sensorTitle": "多感測器系統",
+        "sensorBody": "16個模擬輸入允許同時讀取溫度、壓力、溼度和光照感測器，無需多路複用。"
+      },
+      "faq": {
+        "heading": "常見問題",
+        "q1": "什麼是Arduino Mega 2560？",
+        "a1": "Arduino Mega 2560是一款基於ATmega2560的微控制器板。它提供256 KB快閃記憶體、8 KB SRAM、54個數字I/O接腳（15個PWM）、16個模擬輸入和4個硬體USART通道——使其成為大型複雜Arduino專案的首選板。",
+        "q2": "我可以在瀏覽器中模擬Arduino Mega 2560程式碼嗎？",
+        "a2": "是的。AI物聯網實驗室提供完整的ATmega2560 AVR8模擬。在板選擇器中選擇“Arduino Mega 2560”，編寫你的草圖，編譯並模擬——所有54個數字接腳和16個模擬輸入均可用。",
+        "q3": "Arduino Mega 2560模擬準確嗎？",
+        "a3": "AI物聯網實驗室使用avr8js進行週期精確的AVR8指令模擬。ATmega2560與ATmega328P共享相同的AVR8核心，但具有擴充套件的記憶體、更多埠（PORTA–PORTL）和額外的定時器（Timer3、Timer4、Timer5）——全部模擬。",
+        "q4": "Mega比Arduino Uno多了哪些功能？",
+        "a4": "Arduino Mega 2560增加了：8倍快閃記憶體（256 KB vs 32 KB）、4倍SRAM（8 KB vs 2 KB）、40個額外數字接腳、10個額外模擬輸入、3個額外硬體序列埠（Serial1、Serial2、Serial3）和3個額外16位定時器（Timer3、Timer4、Timer5）。",
+        "q5": "Mega模擬器支援多個序列埠嗎？",
+        "a5": "是的。Serial（USART0）、Serial1（USART1）、Serial2（USART2）和Serial3（USART3）全部模擬。每個都出現在序列監視器標籤中，因此你可以監控多序列通訊專案。"
+      },
+      "bottom": {
+        "title": "模擬你的Arduino Mega專案",
+        "body": "在編輯器中選擇Mega 2560板並開始模擬——完整的ATmega2560模擬，無需購買硬體。",
+        "cta": "啟動Mega 2560模擬器"
+      }
+    },
+    "rpi": {
+      "hero": {
+        "title": "免費Raspberry Pi 3模擬器",
+        "accent": "完整的Linux · Python · GPIO —— 在你的瀏覽器中",
+        "subtitle": "直接在瀏覽器中執行完整的Raspberry Pi 3B和Raspberry Pi OS——透過QEMU進行ARM Cortex-A53四核模擬。編寫Python，控制GPIO，安裝軟體包。無需硬體。",
+        "ctaPrimary": "開啟Pi 3模擬器",
+        "ctaSecondary": "閱讀文件",
+        "trust": "免費開源 · QEMU ARM64 · 完整的Raspberry Pi OS",
+        "imageAlt": "Raspberry Pi 3板示意圖"
+      },
+      "what": {
+        "heading": "你能用Pi 3模擬器做什麼？",
+        "lead": "AI物聯網實驗室模擬完整的Raspberry Pi 3B——不僅僅是GPIO接腳，而是整個Linux作業系統。它是你瀏覽器中的一臺完整計算機。",
+        "pythonTitle": "執行Python指令碼",
+        "pythonBody": "Python 3預裝在Raspberry Pi OS上。執行指令碼，使用pip，匯入庫——完整的Python環境。",
+        "gpioTitle": "GPIO控制",
+        "gpioBody": "使用RPi.GPIO或gpiozero控制LED、讀取按鈕、驅動電機——QEMU中的真實GPIO模擬。",
+        "linuxTitle": "Linux終端",
+        "linuxBody": "完整的bash終端，帶有apt、nano、git和所有標準Linux工具。安裝軟體包，編輯檔案，執行服務。",
+        "armTitle": "ARM Cortex-A53",
+        "armBody": "透過QEMU raspi3b機器，四核64位ARM CPU，1.2 GHz。執行官方的Raspberry Pi OS映象。",
+        "sdTitle": "無需SD卡",
+        "sdBody": "作業系統映象已預載入。無需刷寫，無需SD卡，無需電源——只需開啟瀏覽器即可開始編碼。",
+        "multiTitle": "多板畫布",
+        "multiBody": "在同一模擬畫布上混合使用Raspberry Pi 3與Arduino和ESP32。透過序列從Pi控制Arduino。"
+      },
+      "compare": {
+        "heading": "Raspberry Pi Pico vs Pi 3——如何選擇？",
+        "picoTitle": "Raspberry Pi Pico (RP2040)",
+        "picoBodyPrefix": "微控制器。ARM Cortex-M0+，133 MHz。執行Arduino C++程式碼。無作業系統，裸機。最適合嵌入式、物聯網、感測器。",
+        "picoLink": "嘗試Pico模擬器",
+        "pi3Title": "Raspberry Pi 3 (ARM Cortex-A53)",
+        "pi3Body": "完整的Linux計算機。四核1.2 GHz。執行Python、Node.js、bash。最適合自動化、伺服器、GPIO指令碼、教育。"
+      },
+      "faq": {
+        "heading": "常見問題",
+        "q1": "我可以在瀏覽器中模擬Raspberry Pi 3嗎？",
+        "a1": "是的。AI物聯網實驗室使用QEMU raspi3b模擬完整的Raspberry Pi 3B——ARM Cortex-A53四核1.2 GHz，執行Raspberry Pi OS (Linux)。你得到一個真實的終端來執行Python、bash和系統命令。",
+        "q2": "這個Raspberry Pi模擬器免費嗎？",
+        "a2": "是的。AI物聯網實驗室 100%免費開源（GNU AGPLv3）。無需帳戶，無需訂閱——在瀏覽器中模擬Raspberry Pi 3程式碼，或使用Docker自行託管。",
+        "q3": "我可以在Raspberry Pi模擬器上執行Python指令碼嗎？",
+        "a3": "是的。模擬的Raspberry Pi 3執行完整的Raspberry Pi OS，預裝Python 3。你可以執行Python指令碼，使用RPi.GPIO進行GPIO控制，安裝pip包等。",
+        "q4": "Pi Pico和Pi 3模擬有什麼區別？",
+        "a4": "Raspberry Pi Pico (RP2040) 是微控制器——執行Arduino C++程式碼，無作業系統。Raspberry Pi 3是完整的Linux計算機——執行Python、bash和系統服務。AI物聯網實驗室兩者都支援。",
+        "q5": "它支援Raspberry Pi 3上的GPIO嗎？",
+        "a5": "是的。QEMU模擬的Raspberry Pi 3透過RPi.GPIO和gpiozero Python庫支援GPIO。從Python控制LED、讀取按鈕並與感測器互動。"
+      },
+      "bottom": {
+        "title": "準備好模擬Raspberry Pi 3了嗎？",
+        "body": "開啟編輯器，選擇Raspberry Pi 3，啟動進入Linux——就在你的瀏覽器中。",
+        "cta": "啟動Pi 3模擬器"
+      }
+    },
+    "pico": {
+      "hero": {
+        "title": "免費Raspberry Pi Pico模擬器",
+        "accent": "RP2040 ARM Cortex-M0+模擬",
+        "subtitle": "為Raspberry Pi Pico編寫Arduino程式碼並在瀏覽器中模擬——真正的RP2040 ARM Cortex-M0+模擬，133 MHz。26個GPIO接腳，I2C，SPI，UART，ADC。無需硬體。",
+        "ctaPrimary": "開啟Pico模擬器",
+        "ctaSecondary": "Pico範例",
+        "trust": "免費開源 · rp2040js模擬 · 無需帳戶",
+        "imageAlt": "Raspberry Pi Pico板"
+      },
+      "boards": {
+        "heading": "支援的RP2040板",
+        "lead": "兩款官方Raspberry Pi Pico板均受支援，透過rp2040js進行完整的RP2040 CPU模擬。",
+        "picoTitle": "Raspberry Pi Pico",
+        "picoBody": "RP2040雙核ARM Cortex-M0+，133 MHz。264 KB SRAM，2 MB快閃記憶體。26個GPIO，3個ADC，2× SPI，2× I2C，2× UART。",
+        "picoWTitle": "Raspberry Pi Pico W",
+        "picoWBody": "相同的RP2040晶片加上英飛凌CYW43439，支援WiFi 4和藍牙5.2。與Pico接腳相容。",
+        "specsTitle": "RP2040規格",
+        "specsBody": "雙核Cortex-M0+，133 MHz，264 KB SRAM，硬體插值器，8個PIO狀態機，DMA控制器。"
+      },
+      "examples": {
+        "heading": "Pico範例專案",
+        "lead": "18+個即用型Raspberry Pi Pico範例——從LED閃爍到I2C、SPI和感測器整合。",
+        "blinkTitle": "Pico閃爍",
+        "blinkBody": "切換板載LED（GP25）。RP2040最簡單的起點。",
+        "echoTitle": "Pico序列回顯",
+        "echoBody": "從序列讀取並回顯。測試RP2040上的UART通訊。",
+        "i2cTitle": "Pico I2C掃描器",
+        "i2cBody": "掃描I2C匯流排並報告連線的裝置。感測器專案的基礎。",
+        "adcTitle": "Pico ADC讀取",
+        "adcBody": "讀取12位ADC——測量模擬電壓、溫度感測器或電位器。",
+        "dhtTitle": "Pico DHT22感測器",
+        "dhtBody": "從DHT22讀取溫度和溼度。序列輸出帶格式化的讀數。",
+        "servoTitle": "Pico伺服馬達",
+        "servoBody": "使用RP2040 PWM將伺服馬達從0°掃到180°。平滑運動，可配置範圍。",
+        "viewAll": "檢視全部68+範例"
+      },
+      "faq": {
+        "heading": "常見問題",
+        "q1": "這個Raspberry Pi Pico模擬器免費嗎？",
+        "a1": "是的。AI物聯網實驗室完全免費開源（GNU AGPLv3）。在瀏覽器中模擬RP2040程式碼——無需Raspberry Pi硬體，無需帳戶，無需付費。",
+        "q2": "RP2040模擬如何工作？",
+        "a2": "AI物聯網實驗室使用rp2040js——開源RP2040模擬器——模擬ARM Cortex-M0+ CPU，133 MHz。你的程式碼使用Earle Philhower的官方Arduino-Pico核心編譯。",
+        "q3": "它支援Raspberry Pi Pico W嗎？",
+        "a3": "是的。Raspberry Pi Pico和Pico W都受支援。RP2040核心模擬相同——WiFi功能計劃在未來的更新中實現。",
+        "q4": "我可以將Arduino程式碼用於Raspberry Pi Pico嗎？",
+        "a4": "是的。AI物聯網實驗室使用arduino-pico核心（Earle Philhower）編譯你的.ino草圖。標準的Arduino函式如Serial、digitalWrite、analogRead和I2C/SPI開箱即用。",
+        "q5": "哪些元件與Pico模擬相容？",
+        "a5": "所有48+元件：LED、電阻、按鈕、DHT22、HC-SR04、伺服馬達、7段顯示器、RGB LED、NTC感測器、搖桿等。將它們連線到26個GPIO接腳中的任何一個。"
+      },
+      "bottom": {
+        "title": "準備好模擬Raspberry Pi Pico了嗎？",
+        "body": "開啟編輯器，選擇Pico板，開始編碼——無需Raspberry Pi硬體。",
+        "cta": "啟動Pico模擬器"
+      }
+    }
+  }
+}

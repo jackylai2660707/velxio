@@ -1,6 +1,6 @@
 import { useEffect, type ReactElement } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { LandingPage } from './pages/LandingPage';
+import { BrandLandingPage } from './pages/BrandLandingPage';
 import { EditorPage } from './pages/EditorPage';
 import { ExamplesPage } from './pages/ExamplesPage';
 import { DocsPage } from './pages/DocsPage';
@@ -54,7 +54,7 @@ import './App.css';
 const ROOT_ELEMENT: ReactElement = import.meta.env.VITE_DESKTOP ? (
   <Navigate to="/editor" replace />
 ) : (
-  <LandingPage />
+  <BrandLandingPage />
 );
 
 const ROUTES: { path: string; element: ReactElement; index?: boolean }[] = [
@@ -95,16 +95,16 @@ const ROUTES: { path: string; element: ReactElement; index?: boolean }[] = [
 ];
 
 /**
- * The default locale (English) is served at the root with NO `/en` prefix, so
- * `/en/...` matches no route and renders blank. People reasonably guess `/en/`
- * by analogy with `/es/`, `/zh-cn/`, … — redirect them to the prefix-free path
- * (`/en/project/x` → `/project/x`, `/en` → `/`) instead of a blank page. This
- * keeps the canonical no-prefix English URLs (good for SEO) while handling the
- * guessed ones gracefully.
+ * The default locale (Traditional Chinese) is served at the root with NO
+ * `/zh-tw` prefix, so `/zh-tw/...` matches no route and renders blank. People
+ * reasonably guess `/zh-tw/` by analogy with `/en/`, `/zh-cn/`, … — redirect
+ * them to the prefix-free path (`/zh-tw/editor` → `/editor`, `/zh-tw` → `/`)
+ * instead of a blank page. This keeps the canonical no-prefix URLs while
+ * handling the guessed ones gracefully.
  */
-function EnPrefixRedirect() {
+function DefaultPrefixRedirect() {
   const { pathname, search, hash } = useLocation();
-  const stripped = pathname.replace(/^\/en(?=\/|$)/, '');
+  const stripped = pathname.replace(/^\/zh-tw(?=\/|$)/, '');
   return <Navigate to={(stripped || '/') + search + hash} replace />;
 }
 
@@ -132,7 +132,7 @@ function App() {
     <Router>
       <LocaleSync>
         <Routes>
-          {/* Default locale (English) — no URL prefix. */}
+          {/* Default locale (Traditional Chinese) — no URL prefix. */}
           {allRoutes.map((r) =>
             r.index ? (
               <Route key="root" path="/" element={r.element} />
@@ -163,9 +163,9 @@ function App() {
             </Route>
           ))}
 
-          {/* `/en/...` is the default locale spelled out — redirect to the
+          {/* `/zh-tw/...` is the default locale spelled out — redirect to the
               canonical prefix-free path instead of rendering a blank page. */}
-          <Route path="/en/*" element={<EnPrefixRedirect />} />
+          <Route path="/zh-tw/*" element={<DefaultPrefixRedirect />} />
         </Routes>
       </LocaleSync>
       {/* Global alert() replacement — opened from anywhere (React or plain

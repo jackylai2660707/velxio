@@ -14,7 +14,9 @@
       "blog": "Blog",
       "github": "GitHub",
       "discord": "Discord",
-      "classroom": "For schools"
+      "classroom": "For schools",
+      "learn": "Courses",
+      "teacher": "Teaching"
     },
     "auth": {
       "signIn": "Sign in",
@@ -535,6 +537,48 @@
       "manual": "Saved manually",
       "ai": "Saved before an AI turn",
       "auto": "Automatic backup"
+    }
+  },
+  "brand": {
+    "name": "AI IoT Lab",
+    "seoTitle": "AI IoT Lab — Free Online Arduino / ESP32 Simulator & IoT Course Platform",
+    "seoDescription": "A free, open-source learning platform for middle/high-school students and teachers: simulate Arduino, ESP32 and 19 boards in the browser, with interactive courses, quizzes, class management and an AI teaching assistant.",
+    "hero": {
+      "badge": "Free · Open source · No install · No hardware",
+      "titleTop": "Right in your browser,",
+      "titleAccent": "open your own IoT lab",
+      "subtitle": "Write code, wire circuits, run simulations — watch Arduino and ESP32 come alive. Learn step by step with interactive courses, ask the AI tutor anytime, and let teachers track the whole class.",
+      "ctaLearn": "Start learning",
+      "ctaEditor": "Open the lab"
+    },
+    "features": {
+      "sim": {
+        "title": "Real simulator",
+        "desc": "Not an animation — your code really runs: chip-level AVR, ESP32 and RP2040 emulation, 100+ electronic components, oscilloscope and serial monitor, behaving just like real hardware."
+      },
+      "courses": {
+        "title": "Interactive courses",
+        "desc": "From lighting your first LED to putting an ESP32 online: every lesson has clear theory, a one-click circuit example, and a hands-on challenge — learn by doing."
+      },
+      "quiz": {
+        "title": "Quizzes & classes",
+        "desc": "Each lesson ends with a multiple-choice quiz with instant feedback and auto-grading; teachers create a class code, students join in one click, and the dashboard shows live progress and scores."
+      }
+    },
+    "ai": {
+      "title": "An AI tutor, always by your side",
+      "desc": "Say \"build me a temperature alarm\" and the AI tutor places components, wires them, writes the firmware and runs the simulation on your canvas; when you are stuck, ask why — it explains one concept at a time, like a patient teacher.",
+      "cta": "Try the AI tutor",
+      "demoUser": "Why does my LED not light up?",
+      "demoAi": "I checked your circuit: the LED cathode is wired to D13 — it should go to GND to close the loop. Want me to fix it and show you?"
+    },
+    "teacherSection": {
+      "title": "For teachers: a ready-to-use computer classroom",
+      "desc": "No hardware to buy, nothing to install: open a class code and students complete a whole semester of experiments in the browser. Progress and quiz scores at a glance — and you can self-host on a school server, keeping all data yours.",
+      "cta": "Go to teaching dashboard"
+    },
+    "footer": {
+      "oss": "Built on the open-source Velxio project, licensed AGPLv3"
     }
   }
 }

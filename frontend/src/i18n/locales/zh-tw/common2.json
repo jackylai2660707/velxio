@@ -1,0 +1,434 @@
+{
+  "editor": {
+    "toolbar": {
+      "languageMode": "語言模式",
+      "compile": {
+        "addBoard": "新增要編譯的板",
+        "loading": "載入中…",
+        "loadMicropython": "載入 MicroPython",
+        "compile": "編譯 (Ctrl+B)"
+      },
+      "run": {
+        "addBoard": "新增要執行的板",
+        "runMicropython": "執行 MicroPython",
+        "run": "執行 (如需則自動編譯)"
+      },
+      "stop": "停止",
+      "reset": "重置",
+      "compileAll": "編譯所有板",
+      "runAll": "執行所有板",
+      "libraries": {
+        "title": "搜尋並安裝 Arduino 庫",
+        "label": "庫"
+      },
+      "import": "匯入專案 (.vlx AI物聯網實驗室 或 .zip Wokwi)",
+      "export": "將當前專案匯出為 .zip 檔案",
+      "uploadFirmware": "上傳韌體 (.hex, .bin, .elf, .ihex) 以跳過編譯",
+      "toggleConsole": "切換輸出控制台",
+      "libHint": {
+        "message": "缺少庫？從",
+        "cta": "庫管理器",
+        "dismiss": "忽略"
+      },
+      "exportBom": "匯出物料清單 (CSV — Pro)",
+      "exportScreenshot": "匯出原理圖為圖片 (PNG — Pro)"
+    },
+    "fileExplorer": {
+      "workspace": "工作區",
+      "newWorkspace": "新建工作區 (清除板、元件、導線和檔案)",
+      "confirmNew": {
+        "title": "開始新的工作區？",
+        "message": "這將清除所有板、元件、導線和檔案。此操作無法撤銷。",
+        "confirm": "新建",
+        "cancel": "取消"
+      },
+      "confirmLoad": {
+        "title": "載入專案？",
+        "message": "載入此 {{type}} 專案？您當前的工作區將被替換。此操作無法撤銷。",
+        "confirm": "載入"
+      },
+      "saveProject": "儲存專案 (Ctrl+S)",
+      "clickToEdit": "點選編輯",
+      "collapse": "摺疊",
+      "expand": "展開",
+      "newFileInBoard": "在此板中新建檔案",
+      "unsavedChanges": "未儲存的更改",
+      "unsavedSuffix": "未儲存",
+      "emptyState": "向畫布新增一塊板以開始編輯程式碼。",
+      "confirmDelete": "刪除此檔案？",
+      "status": {
+        "running": "執行中",
+        "compiled": "已編譯",
+        "idle": "空閒"
+      },
+      "contextMenu": {
+        "rename": "重新命名",
+        "delete": "刪除"
+      }
+    },
+    "fileTabs": {
+      "unsavedChanges": "未儲存的更改",
+      "close": "關閉",
+      "confirmClose": "關閉包含未儲存更改的檔案？",
+      "closeAnyway": "仍然關閉",
+      "cancel": "取消"
+    },
+    "loginPrompt": {
+      "title": "登入以儲存專案",
+      "body": "建立免費帳戶以儲存和分享您的專案。",
+      "createAccount": "建立帳戶",
+      "cancel": "取消"
+    },
+    "saveProject": {
+      "titleSave": "儲存專案",
+      "titleUpdate": "更新專案",
+      "nameLabel": "專案名稱 *",
+      "namePlaceholder": "我的精彩專案",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "可選",
+      "save": "儲存",
+      "update": "更新",
+      "saving": "儲存中…",
+      "cancel": "取消",
+      "visibility": {
+        "public": "公開",
+        "publicHint": "擁有連結的任何人都可以檢視",
+        "private": "私有",
+        "privateHint": "只有您能看到"
+      },
+      "errors": {
+        "nameRequired": "專案名稱是必填項。",
+        "unreachable": "伺服器不可達。請檢查您的連線並重試。",
+        "notAuth": "未認證。請登入後重試。",
+        "failedStatus": "儲存失敗 ({{status}})。"
+      }
+    },
+    "share": {
+      "title": "分享專案",
+      "public": "公開",
+      "private": "私有",
+      "publicHint": "擁有連結的任何人都可以檢視此專案",
+      "privateHint": "只有您能看到此專案",
+      "makePrivate": "設為私有",
+      "makePublic": "設為公開",
+      "copy": "複製",
+      "privateWarning": "此專案為私有。其他人開啟此連結時將看到 403 錯誤。",
+      "close": "關閉"
+    },
+    "canvas": {
+      "status": {
+        "running": "執行中",
+        "stopped": "已停止"
+      },
+      "activeBoard": "活動板",
+      "noBoard": "無板",
+      "noBoardHint": "畫布上沒有板 — 使用“新增”按鈕新增一塊板以編譯和執行程式碼",
+      "undo": {
+        "label": "撤銷",
+        "title": "撤銷: {{description}} (Ctrl+Z)",
+        "empty": "沒有可撤銷的操作"
+      },
+      "redo": {
+        "label": "重做",
+        "title": "重做: {{description}} (Ctrl+Y)",
+        "empty": "沒有可重做的操作"
+      },
+      "toggleSerialMonitor": "切換序列監視器",
+      "serial": "序列",
+      "toggleScope": "切換示波器/邏輯分析儀",
+      "scope": "示波器",
+      "zoomIn": "放大",
+      "zoomOut": "縮小",
+      "resetView": "重置檢視 (點選重置)",
+      "componentCount_one": "{{count}} 個元件",
+      "componentCount_other": "{{count}} 個元件",
+      "addComponentTitle": "新增元件",
+      "add": "新增",
+      "dismiss": "忽略",
+      "removeBoard": "移除板",
+      "wireCount_one": "{{count}} 根導線",
+      "wireCount_other": "{{count}} 根導線",
+      "removeConfirm": {
+        "boardFallback": "板",
+        "title": "移除 {{label}}？",
+        "body": "這將從工作區中移除該板。此操作無法撤銷。",
+        "bodyWithWires_one": "這將從工作區中移除該板以及 {{count}} 根連線的導線。此操作無法撤銷。",
+        "bodyWithWires_other": "這將從工作區中移除該板以及 {{count}} 根連線的導線。此操作無法撤銷。",
+        "cancel": "取消",
+        "remove": "移除"
+      }
+    },
+    "componentPicker": {
+      "title": "新增元件",
+      "close": "關閉",
+      "searchPlaceholder": "搜尋元件...",
+      "clearSearch": "清除搜尋",
+      "allComponents": "所有元件",
+      "boards": "板",
+      "loading": "載入元件中...",
+      "noResults": "未找到元件",
+      "clearFilters": "清除篩選"
+    },
+    "libraryManager": {
+      "title": "庫管理器",
+      "searchTab": "搜尋",
+      "installedTab": "已安裝",
+      "filterPlaceholder": "篩選您的搜尋...",
+      "searchingFor": "正在搜尋 \"{{query}}\"…",
+      "loadingLibraries": "載入庫中…",
+      "noResults": "沒有可用的庫",
+      "noResultsFor": "未找到 \"{{query}}\" 的庫",
+      "byAuthor": "作者 {{author}}",
+      "install": "安裝",
+      "installing": "安裝中...",
+      "uninstall": "解除安裝",
+      "uninstalling": "解除安裝中...",
+      "loadingInstalled": "載入已安裝的庫...",
+      "noneInstalled": "尚未安裝任何庫。",
+      "useSearchTab": "使用“搜尋”選項卡安裝庫。"
+    },
+    "installLibs": {
+      "title": "必需的庫",
+      "installingProgress": "正在安裝 {{done}} / {{total}}…",
+      "allDone": "所有庫已成功安裝",
+      "required_one": "此專案需要 {{count}} 個庫。安裝它以正確編譯。",
+      "required_other": "此專案需要 {{count}} 個庫。安裝它們以正確編譯。",
+      "wokwiHosted": "Wokwi 託管的庫",
+      "pending": "待處理",
+      "installing": "安裝中…",
+      "installed": "已安裝",
+      "errorStatus": "錯誤",
+      "close": "關閉",
+      "skip": "跳過",
+      "installAll": "全部安裝 ({{count}})",
+      "installingShort": "安裝中…"
+    },
+    "shell": {
+      "code": "程式碼",
+      "both": "兩者",
+      "circuit": "電路",
+      "showExplorer": "顯示檔案瀏覽器",
+      "hideExplorer": "隱藏檔案瀏覽器",
+      "viewMode": "檢視模式",
+      "dragResize": "拖動以調整大小"
+    },
+    "oscilloscope": {
+      "title": "示波器",
+      "addChannelTitle": "新增接腳通道",
+      "addChannel": "新增通道",
+      "timeDiv": "時間/格:",
+      "pauseTitle": "暫停捕獲",
+      "resumeTitle": "恢復捕獲",
+      "pause": "暫停",
+      "run": "執行",
+      "clearTitle": "清除所有捕獲的樣本",
+      "clear": "清除",
+      "noChannels": "未新增通道。",
+      "noChannelsHint": "點選“+ 新增通道”以監視接腳。",
+      "removeChannel": "移除 {{label}}"
+    },
+    "componentProps": {
+      "close": "關閉",
+      "tapToConnect": "點選接腳以連線:",
+      "tapToWire": "點選接腳以連線:",
+      "pinRoles": "接腳角色:",
+      "arduinoPin": "Arduino 接腳:",
+      "confirmDelete": "刪除 {{name}}？",
+      "confirmDeleteTitle": "確認刪除",
+      "deleteTitle": "刪除元件",
+      "rotate90": "旋轉 90°",
+      "rotate": "旋轉",
+      "delete": "刪除",
+      "cancel": "取消",
+      "keyboardKey": "鍵盤按鍵",
+      "assignKey": "分配按鍵",
+      "pressAKey": "請按一個鍵…",
+      "clearKey": "移除按鍵繫結",
+      "keyInUse": "也已分配給另一個按鈕，兩個按鈕會同時按下。"
+    },
+    "selectionBar": {
+      "label": "選擇操作",
+      "rotate90": "旋轉 90°",
+      "rotate": "旋轉",
+      "delete": "刪除",
+      "deselect": "取消選擇",
+      "changeColor": "更改顏色",
+      "deleteKind": {
+        "wire": "刪除導線",
+        "component": "刪除元件",
+        "board": "刪除板"
+      }
+    },
+    "console": {
+      "title": "輸出",
+      "errorCount_one": "{{count}} 個錯誤",
+      "errorCount_other": "{{count}} 個錯誤",
+      "warningCount_one": "{{count}} 個警告",
+      "warningCount_other": "{{count}} 個警告",
+      "filterAll": "全部",
+      "filterErrors": "錯誤",
+      "filterWarnings": "警告",
+      "auto": "自動",
+      "clear": "清除輸出",
+      "close": "關閉",
+      "empty": "尚無編譯輸出。點選“編譯”開始。"
+    },
+    "boardPicker": {
+      "title": "新增板"
+    },
+    "pinPicker": {
+      "close": "關閉",
+      "filterPins": "篩選接腳…",
+      "noMatch": "沒有匹配的接腳。",
+      "rotate": "旋轉",
+      "delete": "刪除"
+    },
+    "boardOptions": {
+      "confirmOverwrite": {
+        "title": "覆蓋檔案？",
+        "message": "已存在名為 \"{{name}}\" 的檔案。是否覆蓋？",
+        "confirm": "覆蓋",
+        "cancel": "跳過"
+      }
+    },
+    "pi": {
+      "connected": "已連線",
+      "starting": "啟動中…",
+      "bootingTitle": "正在啟動 {{board}}…",
+      "bootingNote": "正在啟動 Linux，首次啟動最多可能需要一分鐘。",
+      "offline": "離線",
+      "powerOnTitle": "開啟 Raspberry Pi 電源",
+      "startPi": "啟動 Pi",
+      "connectTitle": "連線終端到 Pi",
+      "connect": "連線",
+      "disconnectTitle": "斷開終端",
+      "disconnect": "斷開",
+      "terminal": "終端",
+      "close": "關閉",
+      "offlineTitle": "{{board}} 已關機",
+      "offlineSubtitle": "啟動 Pi 以開啟終端並與 Linux 系統互動。",
+      "offlineNote1": "注意：檔案瀏覽器顯示暫存區域。",
+      "offlineNote2": "“上傳到 Pi”會將這些檔案傳輸到正在執行的系統，並在需要時自動啟動 Pi。",
+      "loadingTerminal": "載入終端中…",
+      "confirmDelete": {
+        "title": "刪除",
+        "message": "刪除 \"{{name}}\"？",
+        "confirm": "刪除",
+        "cancel": "取消"
+      },
+      "selectFile": "從瀏覽器中選擇一個檔案進行編輯。"
+    },
+    "sensorPanel": {
+      "close": "關閉"
+    },
+    "customChip": {
+      "title": "自定義晶片 — {{chipName}}",
+      "tabExamples": "範例",
+      "tabEditor": "編輯器",
+      "attributes": "屬性",
+      "compiling": "編譯中…",
+      "compile": "編譯",
+      "compiledOk": "✓ 編譯成功 — {{kb}} KB",
+      "compileFailed": "編譯失敗",
+      "cancel": "取消",
+      "savePlace": "儲存並放置",
+      "compileFirst": "請先編譯"
+    },
+    "serial": {
+      "title": "序列監視器",
+      "addBoard": "新增一塊板以啟動序列監視器。",
+      "autoscroll": "自動滾動",
+      "clearTitle": "清除此板的輸出",
+      "clear": "清除",
+      "send": "傳送",
+      "iotGatewayTitle": "點選透過 IoT 閘道器開啟",
+      "openIotGateway": "開啟 IoT 閘道器",
+      "waitingData": "等待序列資料...",
+      "startSim": "啟動模擬以檢視序列輸出。",
+      "placeholderText": "輸入要傳送的訊息...",
+      "placeholderPython": "輸入 Python 表示式... (Ctrl+C 中斷)",
+      "lineEnd": {
+        "none": "無行尾",
+        "nl": "換行",
+        "cr": "回車",
+        "both": "換行和回車"
+      }
+    }
+  },
+  "about": {
+    "hero": {
+      "title": "關於 AI物聯網實驗室",
+      "subtitle": "一個免費、開源的嵌入式系統模擬器 — 由一位對硬體和開源充滿熱情的個人開發者構建。"
+    },
+    "story": {
+      "heading": "故事",
+      "p1": "AI物聯網實驗室 始於一次個人探索，研究微控制器模擬器內部如何工作 — CPU 指令、記憶體管理、外設時序和底層架構。最初只是一個假期中的學習專案，但很快發展成了更大的東西。",
+      "p2": "想法很簡單：<strong>如果任何人都可以直接在瀏覽器中模擬 Arduino、ESP32 和 Raspberry Pi 板，無需購買硬體、無需安裝工具鏈、無需雲帳戶，會怎樣？</strong>",
+      "p3": "AI物聯網實驗室 v1 在 Product Hunt 和 Hacker News 上釋出，支援 Arduino Uno 和 Raspberry Pi Pico。來自創客和嵌入式社群的反饋令人難以置信 — 並推動了專案向前發展。",
+      "p4": "<strong>AI物聯網實驗室 2.0</strong> 透過 QEMU（使用 lcgamboa 分支）提供了 ESP32 模擬、執行真實 Linux 的 Raspberry Pi 3、對 ESP32-C3 和 CH32V003 的 RISC-V 支援、逼真的感測器模擬（DHT22、HC-SR04、WS2812B NeoPixel），以及跨越 5 種 CPU 架構的 19 塊板 — 全部執行真實編譯的程式碼。",
+      "p5": "v2 釋出在 <strong>Hacker News 首頁停留超過 20 小時</strong>，在不到 24 小時內獲得了近 600 個 GitHub 星標和數千名訪問者。現在，它被世界各地的學生、教授和創客使用。"
+    },
+    "howItWorks": {
+      "heading": "工作原理",
+      "avrRp2040Body": "週期精確的模擬完全在瀏覽器中使用 avr8js 和 rp2040js 執行。模擬無需後端。",
+      "esp32Body": "Xtensa ESP32 和 ESP32-S3 在後端 QEMU（lcgamboa 分支）上執行，具有真實的快閃記憶體映像、GPIO、ADC 和定時器。",
+      "riscvBody": "ESP32-C3（DevKit、XIAO、SuperMini）和 CH32V003 透過 QEMU lcgamboa 分支使用 libqemu-riscv32 進行模擬，與 Xtensa ESP32 相同的後端模式。",
+      "raspiBody": "透過 QEMU raspi3b 實現完整的 ARM Cortex-A53 Linux — 啟動真實的 Raspberry Pi OS 並執行帶有 RPi.GPIO 的 Python。"
+    },
+    "openSource": {
+      "heading": "開源理念",
+      "lead": "AI物聯網實驗室 在 AGPLv3 授權下 <strong>100% 開源</strong>。無雲依賴、無學生帳戶、無資料離開您的網路。大學和訓練營可以使用單個 Docker 命令將其部署在自己的伺服器上，讓每個學生都能免費訪問完整的嵌入式開發環境。",
+      "creditsIntro": "該專案建立在社群出色的開源工作之上：",
+      "credits": {
+        "avr8js": "Wokwi 的 AVR8 CPU 模擬",
+        "rp2040js": "Wokwi 的 RP2040 模擬",
+        "wokwiElements": "Wokwi 的 48+ 個視覺化電子元件",
+        "qemuLcgamboa": "ESP32 和 Raspberry Pi QEMU 模擬",
+        "arduinoCli": "Arduino 編譯工具鏈"
+      },
+      "inspiredBy": "AI物聯網實驗室 的靈感來自 <a>Wokwi</a>，這是一個很棒的工具。AI物聯網實驗室 的目標是走一條不同的道路：完全開源、可自託管，並在同一電路中支援多個異構板。"
+    },
+    "creator": {
+      "heading": "建立者",
+      "role": "應用架構師 @ IBM · 烏拉圭蒙得維的亞",
+      "bio1": "應用架構師，擁有超過 10 年領導大型企業生態系統開發的經驗。專長於生成式 AI（LLM、RAG、LangChain）、雲原生架構（OpenShift、Kubernetes），以及認證的 Odoo ERP 專家。目前在 IBM 為烏拉圭國家保險銀行（BSE）開發企業應用。",
+      "bio2": "2012-2017 年在古巴東方大學學習電腦科學工程，隨後移居烏拉圭，職業生涯跨越 Quanam（為政府機構實施 Odoo）和 IBM（為 BPS 和 BSE 進行企業架構）。",
+      "bio3": "程式設計和機器人愛好者。其他開源專案的建立者，包括一個 <a>在 ESP32 上執行的 3D 賽車遊戲</a>（在 Reddit 上 viral，超過 4 萬次觀看）和一個用於 Raspberry Pi 的 iPod Classic 克隆。",
+      "techStack": "技術棧"
+    },
+    "releases": {
+      "heading": "近期釋出",
+      "latest": "最新",
+      "v3Tagline": "復古 CPU、多板系統、全電路精度",
+      "v3Blurb": "可程式設計的 Z80/8080/4004 復古 CPU，帶有自定義 ROM、MicroSD 和 ePaper 模擬、真正的多板 UART/I2C/SPI 互連、ESP32-CAM、完整的撤銷/重做、完整的 ngspice WASM 遷移、縮小 88% 的包體積，以及 100 多個新範例。",
+      "v25Tagline": "Arduino 在瀏覽器中與 SPICE 相遇",
+      "v25Blurb": "透過 ngspice-WASM 實現即時類比電路模擬，連線到 Arduino、ESP32 和 Raspberry Pi Pico。100 多個 SPICE 精確元件、即時電流表和電壓表、40 個新的模擬/混合範例 — 與您的韌體協同模擬。",
+      "v2Tagline": "多板畫布、ESP32、Raspberry Pi 3",
+      "v2Blurb": "完整的 QEMU 驅動的 ESP32 模擬，支援 WiFi/BLE、Raspberry Pi 3B Linux、Pico/ESP32 上的 MicroPython 支援、自定義 WASM 晶片，以及重新設計的支援多板協同模擬的畫布。",
+      "readNotes": "閱讀釋出說明 →"
+    },
+    "quote": {
+      "p1": "\"我於 2012 年至 2017 年在古巴學習電腦科學，當我搬到烏拉圭時，最常見的問題是：<em>'沒有網際網路、沒有電腦、沒有 YouTube，你是怎麼畢業成為工程師的？'</em>",
+      "p2": "我的答案只有四個字：<strong>堅持！堅持！堅持！堅持！</strong>",
+      "p3": "沒有比沒有 B 計劃更好的動力了。\""
+    },
+    "community": {
+      "heading": "社群與媒體",
+      "stats": {
+        "githubStars": "GitHub 星標",
+        "countries": "國家",
+        "supportedBoards": "支援的板",
+        "cpuArchitectures": "CPU 架構"
+      },
+      "featuredOn": "特色報道：",
+      "press": {
+        "hackerNews": "Hacker News（首頁）"
+      }
+    },
+    "cta": {
+      "title": "準備好嘗試 AI物聯網實驗室 了嗎？",
+      "subtitle": "無需註冊。100% 在瀏覽器中執行。免費且開源。",
+      "openEditor": "開啟編輯器"
+    }
+  }
+}

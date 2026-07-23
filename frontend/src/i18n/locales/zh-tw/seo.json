@@ -1,0 +1,208 @@
+{
+  "seo": {
+    "circuit": {
+      "hero": {
+        "title": "免費線上電路模擬器",
+        "accent": "SPICE精度的模擬，就在您的瀏覽器中",
+        "subtitle": "在畫布上放置電阻、電容、運放、電晶體和穩壓器——每個元件都由執行在WebAssembly中的真實ngspice求解。將其連線到Arduino、ESP32或Raspberry Pi Pico韌體，觀察它們協同模擬。免費，無需安裝，無需帳戶。",
+        "ctaPrimary": "開啟電路模擬器",
+        "ctaSecondary": "瀏覽40+模擬範例",
+        "trust": "免費開源 · 真實ngspice引擎 · 100%在瀏覽器中執行"
+      },
+      "what": {
+        "heading": "您可以模擬什麼？",
+        "lead": "AI物聯網實驗室在每個時間步執行真實的ngspice求解器——與專業EDA工具使用的引擎相同。這不是線性近似。二極體具有正確的正向壓降，BJT會截止和飽和，運放會觸及電源軌，穩壓器有壓差。"
+      },
+      "cards": {
+        "passive": {
+          "title": "無源網路",
+          "body": "分壓器、RC/RL/RLC濾波器、惠斯通電橋、電容充電曲線、諧振槽路。"
+        },
+        "diodes": {
+          "title": "二極體與整流器",
+          "body": "半波、全波橋式整流器、齊納穩壓器、倍壓器、限幅器和鉗位器。"
+        },
+        "bjt": {
+          "title": "電晶體電路",
+          "body": "BJT共射放大器、電晶體開關、達林頓對、MOSFET驅動器、H橋電機驅動、電流鏡。"
+        },
+        "opamp": {
+          "title": "運放電路",
+          "body": "反相/同相放大器、求和放大器、差分放大器、積分器、微分器、施密特觸發器、比較器。"
+        },
+        "logic": {
+          "title": "邏輯閘與觸發器",
+          "body": "AND/OR/NAND/NOR/XOR/XNOR/NOT門、74HC系列DIP-14封裝、邊沿觸發D/T/JK觸發器、SR鎖存器。"
+        },
+        "power": {
+          "title": "電源與感測器",
+          "body": "7805/7812/LM317穩壓器、光電二極體+跨阻放大器鏈路、NTC熱敏電阻電橋、PIR/火焰感測器滑塊、光耦、繼電器。"
+        }
+      },
+      "how": {
+        "heading": "模擬模擬如何工作",
+        "leadPrefix": "AI物聯網實驗室使用",
+        "leadHighlight": "ngspice-WASM",
+        "leadMid": "透過開源",
+        "leadCode": "eecircuit-engine",
+        "leadSuffix": "。畫布上的每條導線都成為SPICE網表，每個元件都成為SPICE器件卡，求解器在每個時間步執行完整的改進節點分析法。",
+        "wireTitle": "1. 連線",
+        "wireBody": "放置元件，拖動導線。AI物聯網實驗室在您構建時即時將導線圖合併為SPICE網表。",
+        "solveTitle": "2. 求解",
+        "solveBody": "ngspice以約60 Hz的頻率求解完整電路。非線性器件迭代至收斂——沒有捷徑，沒有理想化。",
+        "probeTitle": "3. 探測",
+        "probeBody": "在任何節點上放置電壓表、電流表或示波器通道。模擬執行時即時更新讀數。"
+      },
+      "co": {
+        "heading": "獨特功能：混合數字+模擬協同模擬",
+        "lead": "大多數瀏覽器電路模擬器止步於無源模擬。AI物聯網實驗室還在同一時鐘上執行驅動電路的微控制器韌體。",
+        "gpioTitle": "GPIO驅動電路",
+        "gpioBodyPrefix": "",
+        "gpioBodyCode": "digitalWrite(HIGH)",
+        "gpioBodySuffix": " 在您的草圖中將SPICE電壓源設定為高準位。驅動MOSFET柵極、切換繼電器、透過電阻給電容充電——全部來自真實韌體。",
+        "adcTitle": "ADC讀取電路",
+        "adcBodyPrefix": "",
+        "adcBodyCode": "analogRead()",
+        "adcBodySuffix": " 返回輸入節點上經SPICE求解的電壓——經過運放增益級、分壓器、飽和之後。您測量到的就是電路產生的值。",
+        "sameTitle": "同一畫布，同一時鐘",
+        "sameBody": "Arduino + 電晶體 + 電機在同一板上。ESP32 + 光電二極體 + 運放 + ADC。CH32V003 + 齊納管 + LED。在焊接前一起驗證韌體和硬體。"
+      },
+      "faq": {
+        "heading": "常見問題",
+        "q1": "這個電路模擬器真的免費嗎？",
+        "a1": "是的。AI物聯網實驗室完全免費開源，採用GNU AGPLv3授權條款。無需帳戶，無需雲訂閱，無付費元件——模擬器的每個部分都在您的瀏覽器中執行。",
+        "q2": "AI物聯網實驗室使用哪種模擬模擬？",
+        "a2": "AI物聯網實驗室執行ngspice——專業EDA工具使用的開源SPICE模擬器——透過eecircuit-engine編譯為WebAssembly。每個時間步執行完整的改進節點分析法求解，因此非線性器件（二極體、BJT、MOSFET、帶飽和的運放）表現如真實矽片，而非理想化近似。",
+        "q3": "我可以將微控制器連線到我的電路嗎？",
+        "a3": "可以——這是獨特功能。GPIO接腳作為電壓源驅動SPICE網表，ADC輸入將求解的模擬節點電壓讀回韌體。您可以構建PWM驅動的RC濾波器、電晶體開關、運放訊號鏈或MOSFET電機驅動器，並即時觀察韌體和電路的互動。",
+        "q4": "有哪些元件可用？",
+        "a4": "電阻、電容、電感、電位器、光敏電阻（LDR）、光電二極體、NTC熱敏電阻、電池（9V/AA/紐扣）、5種BJT（2N2222、2N3055、2N3906、BC547、BC557）、4種MOSFET（2N7000、IRF540、IRF9540、FQP27P06）、5種運放（LM358、LM741、TL072、LM324、理想）、4種線性穩壓器（7805、7812、7905、LM317）、齊納和肖特基二極體、光耦（4N25、PC817）、繼電器、L293D雙H橋驅動器，以及7種邏輯閘和7種74HC系列IC（DIP-14封裝）。",
+        "q5": "模擬器有示波器和電壓表嗎？",
+        "a5": "有。AI物聯網實驗室包含多通道示波器、電壓表、電流表和訊號發生器（正弦、方波、直流）作為即時儀器，可放置在畫布上。它們探測任何節點或導線，並在模擬執行時即時更新。",
+        "q6": "這是Falstad / CircuitLab / Tinkercad的替代品嗎？",
+        "a6": "對於類比電路，是的——而且更精確，因為AI物聯網實驗室執行真實的ngspice引擎而非簡化求解器。與這些工具不同，AI物聯網實驗室還執行驅動電路的微控制器韌體，因此您無需離開瀏覽器即可同時驗證韌體和硬體。"
+      },
+      "bottom": {
+        "title": "準備好模擬您的電路了嗎？",
+        "body": "開啟編輯器，幾秒鐘內放置您的第一個SPICE元件——零設定。",
+        "cta": "啟動電路模擬器"
+      }
+    },
+    "atmega": {
+      "hero": {
+        "title": "ATmega328P 模擬器",
+        "accent": "免費AVR8模擬，在您的瀏覽器中",
+        "subtitle": "精確模擬ATmega328P韌體，如同在Arduino Uno和Nano上執行——真實的AVR8指令執行，16 MHz，完整GPIO、定時器、ADC和USART模擬。無需硬體，無需安裝。",
+        "ctaPrimary": "開啟ATmega328P模擬器",
+        "ctaSecondary": "技術細節",
+        "trust": "免費開源 · 真實AVR8模擬 · 100%在瀏覽器中執行"
+      },
+      "specs": {
+        "heading": "ATmega328P規格——完全模擬",
+        "lead": "ATmega328P的一切都被模擬：暫存器、外設、中斷和時序。編寫裸機韌體或使用Arduino核心庫——兩者在模擬器中工作方式相同。",
+        "coreTitle": "CPU核心",
+        "coreBody": "AVR8（8位RISC），16 MHz，135條指令，32個通用暫存器，2級流水線。",
+        "flashTitle": "快閃記憶體",
+        "flashBody": "32 KB程式快閃記憶體。上傳由arduino-cli編譯的任何草圖。支援透過SPM指令自程式設計。",
+        "gpioTitle": "GPIO埠",
+        "gpioBody": "PORTB（接腳8–13）、PORTC（A0–A5）、PORTD（0–7）。DDR、PORT、PIN暫存器全部模擬。透過PCINT支援接腳變化中斷。",
+        "timersTitle": "定時器0/1/2",
+        "timersBody": "8位定時器0和定時器2，16位定時器1。所有PWM模式。預分頻器1–1024。CTC、快速PWM、相位修正PWM。",
+        "adcTitle": "10位ADC",
+        "adcBody": "6個模擬輸入通道（A0–A5）。單次轉換和自由執行模式。模擬電壓來自模擬元件。",
+        "usartTitle": "USART0",
+        "usartBody": "全雙工序列，可配置波特率。TX、RX和UDRE中斷。與內建序列埠監視器配合使用。"
+      },
+      "boards": {
+        "heading": "AI物聯網實驗室中的ATmega328P板",
+        "lead": "ATmega328P為幾款流行的Arduino板供電——全部可在AI物聯網實驗室中選擇。更廣泛的AVR8系列還包括ATmega2560（Mega）和ATtiny85。",
+        "unoTitle": "Arduino Uno R3",
+        "unoBody": "經典板。14個數字I/O接腳（6個PWM），6個模擬輸入，32 KB快閃記憶體。最廣泛使用的ATmega328P板。",
+        "nanoTitle": "Arduino Nano",
+        "nanoBody": "相同的ATmega328P，緊湊的45×18mm外形，帶mini-USB。接腳數與Uno相同。",
+        "proTitle": "Arduino Pro Mini",
+        "proBody": "無USB晶片的裸機ATmega328P。提供3.3 V/8 MHz和5 V/16 MHz兩種版本。",
+        "tinyTitle": "ATtiny85",
+        "tinyBody": "超緊湊8接腳AVR。8 KB快閃記憶體，6個I/O接腳（PB0–PB5），USI（Wire），定時器0/1，10位ADC。適合嵌入式微型專案。",
+        "megaTitle": "Arduino Mega 2560",
+        "megaBody": "ATmega2560，256 KB快閃記憶體，54個數字接腳，16個模擬輸入，4個硬體USART通道。"
+      },
+      "faq": {
+        "heading": "常見問題",
+        "q1": "什麼是ATmega328P？",
+        "a1": "ATmega328P是Microchip（原Atmel）的8位AVR微控制器。它是Arduino Uno和Arduino Nano的核心，執行在16 MHz，具有32 KB快閃記憶體、2 KB SRAM和1 KB EEPROM。",
+        "q2": "我可以模擬ATmega328P暫存器級程式碼嗎？",
+        "a2": "可以。AI物聯網實驗室的AVR8模擬忠實執行所有ATmega328P暫存器：DDRB/C/D、PORTB/C/D、PINB/C/D、TCCR0/1/2、OCR0/1/2、UBRR、UDR、ADCL/ADCH以及所有中斷向量——包括無需Arduino抽象層的直接暫存器操作。",
+        "q3": "它是否正確模擬了ATmega328P定時器？",
+        "a3": "定時器0（8位）、定時器1（16位）和定時器2（8位）全部模擬，支援完整預分頻器、PWM模式、溢位中斷和輸出比較匹配中斷。millis()、delay()、analogWrite()和tone()均正常工作。",
+        "q4": "我可以在模擬器中使用analogRead()和analogWrite()嗎？",
+        "a4": "可以。10位ADC（analogRead）和PWM輸出（接腳3、5、6、9、10、11上的analogWrite）已完全模擬。您可以連線模擬感測器、電位器和任何wokwi-elements模擬元件。",
+        "q5": "我可以在ATmega328P上模擬USART/Serial嗎？",
+        "a5": "可以。USART0已完全模擬。Serial.begin()、Serial.print()、Serial.println()和Serial.read()均正常工作。內建序列埠監視器顯示TX輸出，並允許您向執行中的程式傳送RX資料。"
+      },
+      "bottom": {
+        "title": "立即模擬您的ATmega328P程式碼",
+        "body": "開啟編輯器，貼上您的草圖，點選模擬——無需設定，無需購買硬體。",
+        "cta": "啟動ATmega328P模擬器"
+      }
+    },
+    "esp32c3": {
+      "hero": {
+        "title": "免費ESP32-C3模擬器",
+        "accent": "透過QEMU進行RISC-V模擬",
+        "subtitle": "透過QEMU lcgamboa後端（libqemu-riscv32，esp32c3-picsimlab機器）模擬ESP32-C3和CH32V003 RISC-V程式碼。RV32IMC，160 MHz，48+互動式元件。",
+        "ctaPrimary": "開啟ESP32-C3模擬器",
+        "ctaSecondary": "C3範例",
+        "trust": "免費開源 · QEMU lcgamboa後端 · libqemu-riscv32",
+        "imageAlt": "ESP32-C3 DevKitM-1板"
+      },
+      "boards": {
+        "heading": "支援的RISC-V板",
+        "lead": "AI物聯網實驗室透過QEMU lcgamboa分支模擬RISC-V微控制器——與Xtensa ESP32/ESP32-S3相同的後端模式，使用libqemu-riscv32代替libqemu-xtensa。",
+        "devkitTitle": "ESP32-C3 DevKitM-1",
+        "devkitBody": "RISC-V RV32IMC，160 MHz。WiFi + BLE 5.0，22個GPIO，400 KB SRAM。官方Espressif開發板。",
+        "xiaoTitle": "XIAO ESP32-C3",
+        "xiaoBody": "Seeed Studio緊湊型RISC-V板。11個GPIO，USB-C，電池充電IC。21×17.5 mm。",
+        "superTitle": "ESP32-C3 SuperMini",
+        "superBody": "Aitewinrobot超緊湊板。相同RISC-V核心，最小外形，適合嵌入式專案。",
+        "chTitle": "CH32V003",
+        "chBody": "WCH RISC-V RV32EC，48 MHz。超低成本DIP-8封裝，2 KB SRAM，16 KB快閃記憶體。每晶片僅幾美分。"
+      },
+      "examples": {
+        "heading": "ESP32-C3範例專案",
+        "lead": "ESP32-C3的即用範例——從基本GPIO到感測器整合。",
+        "blinkTitle": "C3閃爍LED",
+        "blinkBody": "在GPIO 8上切換LED。在RISC-V上執行的經典閃爍草圖。",
+        "rgbTitle": "C3 RGB LED",
+        "rgbBody": "使用三個PWM通道驅動RGB LED——在RISC-V上平滑顏色迴圈。",
+        "buttonTitle": "C3按鈕+LED",
+        "buttonBody": "讀取GPIO 9上的按鈕並切換LED——ESP32-C3上的數字輸入/輸出。",
+        "dhtTitle": "C3 DHT22感測器",
+        "dhtBody": "從ESP32-C3上的DHT22讀取溫度和溼度。序列埠監視器輸出。",
+        "sonarTitle": "C3 HC-SR04超音波",
+        "sonarBody": "使用超音波感測器測量距離。RISC-V GPIO上的觸發/回波時序。",
+        "servoTitle": "C3伺服馬達",
+        "servoBody": "使用ESP32-C3 PWM輸出將伺服馬達從0°掃到180°。",
+        "viewAll": "檢視全部68+範例"
+      },
+      "faq": {
+        "heading": "常見問題",
+        "q1": "什麼是ESP32-C3？",
+        "a1": "ESP32-C3是Espressif的RISC-V單核微控制器，執行在160 MHz（RV32IMC指令集）。它具有WiFi + 藍牙5.0、22個GPIO接腳，是首批擁有成熟Arduino生態的RISC-V MCU之一。",
+        "q2": "ESP32-C3模擬器在瀏覽器中執行嗎？",
+        "a2": "是的。與基於Xtensa的ESP32不同，ESP32-C3 RISC-V模擬完全在瀏覽器中執行——無需QEMU後端。這使其成為模擬最快的ESP32變體。",
+        "q3": "這也是RISC-V模擬器嗎？",
+        "a3": "是的。ESP32-C3使用RISC-V RV32IMC指令集。AI物聯網實驗室還支援CH32V003（RV32EC，48 MHz）——另一款流行的RISC-V微控制器。",
+        "q4": "支援哪些ESP32-C3板？",
+        "a4": "AI物聯網實驗室支援ESP32-C3 DevKitM-1、Seeed XIAO ESP32-C3和ESP32-C3 SuperMini（Aitewinrobot）。三者使用相同的RISC-V核心。",
+        "q5": "我可以將Arduino程式碼與ESP32-C3一起使用嗎？",
+        "a5": "可以。AI物聯網實驗室使用官方ESP32 Arduino核心（以ESP32-C3板為目標）編譯您的.ino草圖。所有標準Arduino函式均有效——Serial、GPIO、analogRead等。"
+      },
+      "bottom": {
+        "title": "準備好模擬ESP32-C3了嗎？",
+        "body": "開啟編輯器，選擇ESP32-C3板，開始編碼——在您的瀏覽器中即時執行。",
+        "cta": "啟動ESP32-C3模擬器"
+      }
+    }
+  }
+}
