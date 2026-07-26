@@ -31,7 +31,7 @@ if (!existsSync(join(distDir, 'index.html'))) {
 }
 
 const baseHtml = readFileSync(join(distDir, 'index.html'), 'utf-8');
-const DOMAIN = 'https://velxio.dev';
+const DOMAIN = 'https://iot.armjp.yueseng-ys.com';
 
 // nginx serves each prerendered route as `<route>/index.html` and
 // 301-redirects the slash-less URL to add the trailing slash. Canonical +

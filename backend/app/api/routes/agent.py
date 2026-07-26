@@ -92,7 +92,25 @@ def _settings() -> dict[str, Any]:
 def _resolve(cfg: ProviderConfig, header_key: str | None) -> Resolved:
     settings = _settings()
 
-    base_url = (cfg.base_url or ENV_BASE_URL).strip().rstrip("/")
+    # Bring-your-own-key mode: a caller may use its OWN key AND choose the
+    # destination base_url, but only when the admin has enabled BYOK. This
+    # gates the credential and the destination together on purpose. When we
+    # fall back to the SERVER key we MUST send it only to the trusted,
+    # server-configured upstream — otherwise a client could set base_url to a
+    # host it controls and capture our secret key from the outgoing
+    # Authorization header (SSRF key exfiltration).
+    byok = bool(header_key) and bool(settings["allow_own_key"])
+    api_key = (header_key if byok else None) or ENV_API_KEY
+    if not api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="No API key configured. Enter one in the AI panel settings, or set "
+            "VELXIO_OPENAI_API_KEY on the server.",
+        )
+
+    # base_url from the client is honoured ONLY in BYOK mode (see above);
+    # server-key requests always go to ENV_BASE_URL.
+    base_url = ((cfg.base_url if byok else "") or ENV_BASE_URL).strip().rstrip("/")
     if not base_url:
         raise HTTPException(
             status_code=422,
@@ -119,16 +137,6 @@ def _resolve(cfg: ProviderConfig, header_key: str | None) -> Resolved:
     if effort is not None and effort not in VALID_EFFORTS:
         raise HTTPException(status_code=422, detail=f"effort must be one of {VALID_EFFORTS}")
 
-    # Bring-your-own-key only when the admin allows it.
-    if header_key and not bool(settings["allow_own_key"]):
-        header_key = None
-    api_key = header_key or ENV_API_KEY
-    if not api_key:
-        raise HTTPException(
-            status_code=401,
-            detail="No API key configured. Enter one in the AI panel settings, or set "
-            "VELXIO_OPENAI_API_KEY on the server.",
-        )
     return Resolved(base_url=base_url, model=model, effort=effort, api_key=api_key)
 
 
@@ -167,10 +175,17 @@ async def agent_models(
     cfg: ProviderConfig,
     x_agent_key: str | None = Header(default=None),
     x_anthropic_key: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
 ) -> dict[str, Any]:
     """Proxy the upstream `GET {base_url}/models` list for the settings UI."""
     import httpx
 
+    from app.api.routes.auth import require_user
+
+    # Settings-panel action — never anonymous. Prevents unauthenticated callers
+    # from using the server key against the upstream (metering bypass) or
+    # probing the model list.
+    require_user(authorization)
     r = _resolve(cfg, x_agent_key or x_anthropic_key)
     try:
         async with httpx.AsyncClient(
@@ -198,10 +213,16 @@ async def agent_test(
     cfg: ProviderConfig,
     x_agent_key: str | None = Header(default=None),
     x_anthropic_key: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
 ) -> dict[str, Any]:
     """Cheap connectivity check for the settings UI: one tiny completion."""
     import httpx
 
+    from app.api.routes.auth import require_user
+
+    # Settings-panel action — never anonymous (the tiny completion runs on the
+    # server key; anonymous access would be unmetered use of it).
+    require_user(authorization)
     r = _resolve(cfg, x_agent_key or x_anthropic_key)
     t0 = time.monotonic()
     try:

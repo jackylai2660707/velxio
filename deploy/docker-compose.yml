@@ -21,6 +21,20 @@ services:
     env_file: .env
     expose:
       - "80"
+    # Surfaces app liveness in `docker ps` / monitoring. /health is nginx →
+    # FastAPI /health ({"status":"healthy"}). python3 is always present in the
+    # runtime image (no curl/wget dependency). Long start_period covers the
+    # first-boot arduino-cli core install (cores are volume-cached afterwards).
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:80/health',timeout=5).status==200 else 1)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
     networks:
       - default
       - caddy_net

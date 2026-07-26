@@ -9,7 +9,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DOMAIN = 'https://velxio.dev';
+const DOMAIN = 'https://iot.armjp.yueseng-ys.com';
 const TODAY = new Date().toISOString().slice(0, 10);
 
 // Extract top-level ExampleProject ids from examples.ts.

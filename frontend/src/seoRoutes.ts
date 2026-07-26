@@ -9,7 +9,7 @@
  * Routes with `seoMeta` get prerendered HTML at build time.
  */
 
-const DOMAIN = 'https://velxio.dev';
+const DOMAIN = 'https://iot.armjp.yueseng-ys.com';
 
 export interface SeoMeta {
   title: string;
@@ -40,10 +40,12 @@ export const SEO_ROUTES: SeoRoute[] = [
     priority: 1.0,
     changefreq: 'weekly',
     seoMeta: {
-      title:
-        'Velxio — Free Online Circuit & Arduino Simulator | SPICE · ESP32 · RP2040 · ATtiny85 · Custom Chips',
+      // Match the runtime brand SEO (BrandLandingPage useSEO / i18n
+      // brand.seoTitle) so the prerendered snapshot + link-preview cards show
+      // the fork's brand, not the upstream English Velxio title.
+      title: 'AI物聯網實驗室 — 免費線上 Arduino / ESP32 模擬器與物聯網課程平台',
       description:
-        'Velxio is a free, open-source online circuit simulator. Real-time SPICE analog simulation (ngspice-WASM) wired to 19 boards: Arduino Uno/Mega/ATtiny85 (AVR8), ESP32 (Xtensa QEMU), ESP32-C3/CH32V003 (RISC-V via QEMU libqemu-riscv32), Raspberry Pi Pico (RP2040), Raspberry Pi 3 (Linux). Build custom chips in C/Rust. 100+ components, oscilloscope, voltmeter, ammeter — no cloud.',
+        '為初中、高中學生與教師打造的免費開源學習平台:瀏覽器內模擬 Arduino、ESP32 等 19 種開發板,內建互動課程、選擇題測驗、班級管理與 AI 智慧助教。',
       url: `${DOMAIN}/`,
     },
   },
