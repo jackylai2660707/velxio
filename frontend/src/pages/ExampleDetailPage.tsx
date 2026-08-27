@@ -275,6 +275,28 @@ export const ExampleDetailPage: React.FC = () => {
             </div>
           </section>
 
+          <section style={{ marginBottom: 36, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 14 }}>
+            <div style={{ padding: '16px 18px', background: '#202020', border: '1px solid #353535', borderRadius: 8 }}>
+              <h2 style={{ margin: '0 0 10px', color: '#e5eaec', fontSize: 14 }}>Circuit map / 接線摘要</h2>
+              <p style={{ margin: '0 0 10px', color: '#8f9ba1', fontSize: 13, lineHeight: 1.55 }}>
+                {example.wires?.length ?? 0} connections / 條接線 · {example.components?.length ?? 0} parts / 個元件
+              </p>
+              <ul style={{ margin: 0, paddingLeft: 18, color: '#b8c4c9', fontSize: 12, lineHeight: 1.65 }}>
+                {(example.components ?? []).slice(0, 4).map((component) => <li key={component.id}>{component.type}</li>)}
+                {(example.components?.length ?? 0) > 4 && <li>…and more / 以及其他元件</li>}
+              </ul>
+            </div>
+            <div style={{ padding: '16px 18px', background: '#202020', border: '1px solid #353535', borderRadius: 8 }}>
+              <h2 style={{ margin: '0 0 10px', color: '#e5eaec', fontSize: 14 }}>Try this / 動手試試</h2>
+              <ol style={{ margin: 0, paddingLeft: 18, color: '#b8c4c9', fontSize: 12, lineHeight: 1.75 }}>
+                <li>Run the project / 執行專案</li>
+                <li>Watch Serial Monitor / 觀察序列埠</li>
+                <li>Change one value or wire / 修改一個數值或接線</li>
+                <li>Ask Agent to explain the result / 請 Agent 解釋結果</li>
+              </ol>
+            </div>
+          </section>
+
           {/* What you'll learn section */}
           <section style={{ marginBottom: 36 }}>
             <h2
