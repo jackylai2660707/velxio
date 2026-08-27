@@ -260,6 +260,28 @@ def _normalise_answer(value: Any) -> Any:
     return value
 
 
+def _answers_match(question: Any, actual: Any, expected: Any) -> bool:
+    """Compare an answer by stored index or visible option text.  Teachers
+    commonly author manifests with ``answer: 1`` while imported quiz banks
+    use ``answer: 'HIGH'``; accepting both keeps grading deterministic."""
+    if _normalise_answer(actual) == _normalise_answer(expected):
+        return True
+    options = question.get("options") if isinstance(question, dict) else None
+    if not isinstance(options, list):
+        return False
+    actual_candidates = [actual]
+    expected_candidates = [expected]
+    if isinstance(actual, int) and 0 <= actual < len(options):
+        actual_candidates.append(options[actual])
+    if isinstance(expected, int) and 0 <= expected < len(options):
+        expected_candidates.append(options[expected])
+    return any(
+        _normalise_answer(left) == _normalise_answer(right)
+        for left in actual_candidates
+        for right in expected_candidates
+    )
+
+
 def _auto_grade_quiz(quiz: Any, submitted: Any, max_score: float) -> tuple[float, str] | None:
     questions = _quiz_questions(quiz)
     if not questions:
@@ -286,7 +308,7 @@ def _auto_grade_quiz(quiz: Any, submitted: Any, max_score: float) -> tuple[float
         graded += 1
         qid = question.get("id", question.get("key", index)) if isinstance(question, dict) else index
         actual = by_id.get(str(qid), by_id.get(str(index)))
-        if _normalise_answer(actual) == _normalise_answer(expected):
+        if _answers_match(question, actual, expected):
             correct += 1
     if graded == 0:
         return None

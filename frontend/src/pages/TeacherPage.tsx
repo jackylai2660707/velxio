@@ -16,7 +16,7 @@ import {
   type LmsClassTeaching,
   type LmsClassReport,
 } from '../cloud/cloudApi';
-import { COURSES } from '../learn/courses';
+import { COURSES, getLesson } from '../learn/courses';
 import { lessonKey } from '../learn/types';
 import './TeacherPage.css';
 
@@ -183,6 +183,11 @@ export const TeacherPage: React.FC = () => {
     setAssignmentBusy(true);
     setAssignmentNotice('');
     try {
+      const [courseId, lessonId] = assignmentForm.lesson_id.split('/');
+      const linkedLesson = courseId && lessonId ? getLesson(courseId, lessonId) : null;
+      const quiz = assignmentForm.assignment_type === 'quiz' && linkedLesson
+        ? linkedLesson.lesson.quiz
+        : undefined;
       const created = await lmsApi.createAssignment(selectedId, {
         title: assignmentForm.title.trim(),
         instructions: assignmentForm.instructions.trim(),
@@ -191,6 +196,7 @@ export const TeacherPage: React.FC = () => {
         max_score: Math.max(1, Number(assignmentForm.max_score) || 100),
         auto_grade: assignmentForm.auto_grade,
         assignment_type: assignmentForm.assignment_type,
+        quiz,
       });
       const assignment = publishImmediately ? await lmsApi.publishAssignment(created.id) : created;
       setAssignments((current) => [assignment, ...current]);

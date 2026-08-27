@@ -320,6 +320,8 @@ export interface LmsAssignmentCreate {
   lesson_id?: string;
   project_template?: Record<string, unknown> | string;
   assignment_type?: LmsAssignmentType;
+  /** Optional quiz manifest; answer keys stay teacher-side on the server. */
+  quiz?: Array<{ id: string; question: string; options: string[]; answer: number; explanation?: string }>;
   due_at?: string;
   max_score?: number;
   auto_grade?: boolean;

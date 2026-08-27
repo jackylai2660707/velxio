@@ -148,9 +148,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
   const [attachProject, setAttachProject] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState<LmsSubmission | null>(
-    assignment.submission ?? null,
-  );
+  const [submitted, setSubmitted] = useState<LmsSubmission | null>(assignment.submission ?? null);
 
   const questions = assignmentQuestions(detail.quiz);
   const allAnswered = questions.every((q) => answers[q.id] !== undefined);
