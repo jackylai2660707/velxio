@@ -1426,12 +1426,26 @@ def _split_filter_values(value: str | list[str] | tuple[str, ...] | None) -> lis
 
 
 def _dashboard_status(row: dict[str, Any]) -> str:
-    """Derive a teacher-facing status, including roster rows with no submit."""
+    """Return persisted status, including roster rows with no submit.
+
+    ``is_late`` remains an independent flag.  A late submission may already be
+    graded, and replacing ``graded`` with ``late`` would hide that fact from a
+    teacher's counters and CSV export.  The caller handles a ``late`` filter by
+    checking this flag in addition to the persisted status.
+    """
     if row.get("status") in (None, "", "missing"):
         return "missing"
-    if row.get("is_late"):
-        return "late"
     return str(row["status"])
+
+
+def _dashboard_matches_status(row: dict[str, Any], statuses: set[str]) -> bool:
+    """Match a status filter without collapsing late + graded states."""
+    if not statuses:
+        return True
+    state = str(row.get("status") or "missing").casefold()
+    if state in statuses:
+        return True
+    return "late" in statuses and bool(row.get("is_late"))
 
 
 def _dashboard_sort_key(name: str | None) -> str:
@@ -1639,7 +1653,7 @@ def get_teacher_dashboard(
                 }
             )
             row["status"] = _dashboard_status(row)
-            if statuses and row["status"].casefold() not in statuses:
+            if not _dashboard_matches_status(row, statuses):
                 continue
             if search:
                 haystack = " ".join(
@@ -1711,7 +1725,7 @@ def get_teacher_dashboard(
             item["graded_count"] += 1
         if state == "missing":
             item["missing_count"] += 1
-        if state == "late":
+        if state == "late" or row.get("is_late"):
             item["late_count"] += 1
         if row.get("score") is not None:
             scores_by_student.setdefault(row["student_id"], []).append(float(row["score"]))
@@ -1739,7 +1753,7 @@ def get_teacher_dashboard(
                 "submission_count": submitted_count,
                 "graded_count": graded_count,
                 "missing_count": sum(row["status"] == "missing" for row in class_rows),
-                "late_count": sum(row["status"] == "late" for row in class_rows),
+                "late_count": sum(row["status"] == "late" or row.get("is_late") for row in class_rows),
                 "average_score": round(sum(scores) / len(scores), 2) if scores else None,
                 "completion_rate": round(100 * submitted_count / len(class_rows), 2) if class_rows else 0,
             }
@@ -1756,7 +1770,7 @@ def get_teacher_dashboard(
         "submitted_count": sum(row["status"] in ("submitted", "graded", "returned", "late") for row in all_rows),
         "graded_count": sum(row["status"] in ("graded", "returned") for row in all_rows),
         "missing_count": sum(row["status"] == "missing" for row in all_rows),
-        "late_count": sum(row["status"] == "late" for row in all_rows),
+        "late_count": sum(row["status"] == "late" or row.get("is_late") for row in all_rows),
         "average_score": round(sum(score_values) / len(score_values), 2) if score_values else None,
         "completion_rate": round(
             100 * sum(row["status"] in ("submitted", "graded", "returned", "late") for row in all_rows)
@@ -1775,7 +1789,7 @@ def get_teacher_dashboard(
                 "filtered_submission_count": sum(row["status"] != "missing" for row in rows),
                 "filtered_graded_count": sum(row["status"] in ("graded", "returned") for row in rows),
                 "filtered_missing_count": sum(row["status"] == "missing" for row in rows),
-                "filtered_late_count": sum(row["status"] == "late" for row in rows),
+                "filtered_late_count": sum(row["status"] == "late" or row.get("is_late") for row in rows),
             }
         )
         assignment_summary.append(item)
@@ -1789,6 +1803,12 @@ def get_teacher_dashboard(
         "submissions": result_rows,
         "total": total_rows,
         "summary": summary,
+        "totals": {
+            "students": summary["student_count"],
+            "assignments": summary["assignment_count"],
+            "submissions": summary["submission_count"],
+            "completion_rate": summary["completion_rate"],
+        },
         "filters": {
             "class_ids": selected_ids,
             "status": sorted(statuses),
