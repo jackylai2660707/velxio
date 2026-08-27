@@ -395,6 +395,196 @@ def _teacher_dashboard(
     )
 
 
+def _teacher_export_csv(
+    authorization: str | None,
+    *,
+    class_ids: str | None = None,
+    class_id: str | None = None,
+    status: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    q: str | None = None,
+) -> Response:
+    """Build a safe UTF-8 CSV from exactly the dashboard's filtered rows."""
+    user = _require_teacher(authorization)
+    selected = class_ids if class_ids is not None else class_id
+    if status:
+        statuses = {item.strip().casefold() for item in status.split(",") if item.strip()}
+        allowed = {"missing", "submitted", "graded", "returned", "late", "draft"}
+        if statuses - allowed:
+            raise HTTPException(status_code=422, detail="Unknown dashboard status")
+    if order and str(order).casefold() not in (
+        "asc", "ascending", "desc", "descending", "up", "down"
+    ):
+        raise HTTPException(status_code=422, detail="order must be asc or desc")
+    rows = cloud_db.get_teacher_submission_rows(
+        user["id"],
+        _query_class_ids(selected),
+        status=status,
+        q=q,
+        sort=sort,
+        order=order,
+    )
+    stream = io.StringIO(newline="")
+    writer = csv.writer(stream, lineterminator="\r\n")
+    writer.writerow(
+        [
+            "class_id", "class_name", "assignment_id", "assignment_title",
+            "assignment_type", "assignment_status", "lesson_id", "student_id",
+            "student_name", "student_email", "status", "attempt_no", "submitted",
+            "submitted_at", "graded_at", "is_late", "score", "max_score", "feedback",
+        ]
+    )
+    for row in rows:
+        writer.writerow(
+            [
+                _csv_cell(row.get("class_id")),
+                _csv_cell(row.get("class_name")),
+                _csv_cell(row.get("assignment_id")),
+                _csv_cell(row.get("assignment_title")),
+                _csv_cell(row.get("assignment_type")),
+                _csv_cell(row.get("assignment_status")),
+                _csv_cell(row.get("lesson_id")),
+                _csv_cell(row.get("student_id")),
+                _csv_cell(row.get("student_name")),
+                _csv_cell(row.get("student_email")),
+                _csv_cell(row.get("status")),
+                _csv_cell(row.get("attempt_no")),
+                _csv_cell(row.get("submitted")),
+                _csv_cell(row.get("submitted_at")),
+                _csv_cell(row.get("graded_at")),
+                _csv_cell(row.get("is_late")),
+                _csv_cell(row.get("score")),
+                _csv_cell(row.get("max_score")),
+                _csv_cell(row.get("feedback")),
+            ]
+        )
+    # Excel and Numbers recognise the BOM and preserve Traditional Chinese
+    # names without requiring the teacher to choose an encoding manually.
+    body = "\ufeff" + stream.getvalue()
+    return Response(
+        content=body,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="velxio-lms-submissions.csv"'},
+    )
+
+
+# These routes intentionally live before ``/classes/{class_id}`` and
+# ``/assignments/{assignment_id}`` so FastAPI treats the dotted/static paths as
+# routes rather than IDs.  ``/reports/*`` and ``/assignments/export.csv`` are
+# compatibility aliases used by older teacher dashboards.
+
+
+@router.get("/teacher/dashboard")
+async def teacher_dashboard(
+    class_ids: str | None = None,
+    status: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    q: str | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    return _teacher_dashboard(
+        authorization,
+        class_ids=class_ids,
+        status=status,
+        sort=sort,
+        order=order,
+        q=q,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/reports/students")
+async def teacher_student_report(
+    class_ids: str | None = None,
+    status: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    q: str | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    return _teacher_dashboard(
+        authorization,
+        class_ids=class_ids,
+        status=status,
+        sort=sort,
+        order=order,
+        q=q,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/teacher/export.csv")
+@router.get("/assignments/export.csv")
+async def teacher_export_csv(
+    class_ids: str | None = None,
+    class_id: str | None = None,
+    status: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    q: str | None = None,
+    authorization: str | None = Header(default=None),
+) -> Response:
+    return _teacher_export_csv(
+        authorization,
+        class_ids=class_ids,
+        class_id=class_id,
+        status=status,
+        sort=sort,
+        order=order,
+        q=q,
+    )
+
+
+@router.get("/reports/export.csv")
+async def teacher_reports_export_csv(
+    class_ids: str | None = None,
+    class_id: str | None = None,
+    status: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    q: str | None = None,
+    authorization: str | None = Header(default=None),
+) -> Response:
+    return _teacher_export_csv(
+        authorization,
+        class_ids=class_ids,
+        class_id=class_id,
+        status=status,
+        sort=sort,
+        order=order,
+        q=q,
+    )
+
+
+@router.get("/assignments/export.csv")
+async def assignments_export_csv(
+    class_ids: str | None = None,
+    class_id: str | None = None,
+    status: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    q: str | None = None,
+    authorization: str | None = Header(default=None),
+) -> Response:
+    return _teacher_export_csv(
+        authorization,
+        class_ids=class_ids,
+        class_id=class_id,
+        status=status,
+        sort=sort,
+        order=order,
+        q=q,
+    )
+
+
 # ── Classes ────────────────────────────────────────────────────────────────
 
 
@@ -652,11 +842,6 @@ async def submission_save(
     assignment = cloud_db.get_assignment_for_user(assignment_id, user["id"], role="student")
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment not found")
-    # Server clock is authoritative for classroom deadlines. Draft autosaves
-    # remain allowed, but final submissions after due_at are rejected so a
-    # client cannot bypass the UI countdown by changing its local clock.
-    if req.submit and assignment.get("due_at") is not None and time.time() > float(assignment["due_at"]):
-        raise HTTPException(status_code=409, detail="Assignment deadline has passed")
     submit = req.submit
     if req.save is not None:
         submit = not req.save
@@ -664,6 +849,10 @@ async def submission_save(
         if req.status not in ("draft", "submitted"):
             raise HTTPException(status_code=422, detail="status must be draft|submitted")
         submit = req.status == "submitted"
+    # Server clock is authoritative for final submissions. Draft autosaves
+    # remain allowed, while the client countdown is only a convenience.
+    if submit and assignment.get("due_at") is not None and time.time() > float(assignment["due_at"]):
+        raise HTTPException(status_code=409, detail="Assignment deadline has passed")
     answers = req.answers if req.answers is not None else req.answer
     try:
         submission, _created = cloud_db.save_submission(
