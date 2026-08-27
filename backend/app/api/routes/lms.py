@@ -618,13 +618,17 @@ def _teacher_export_csv(
     ai_results: dict[str, dict[str, Any]] = {}
     try:
         from app.services import ai_grade_store
+        ai_results = ai_grade_store.latest_results(
+            [str(row["id"]) for row in rows if row.get("id")]
+        )
         for row in rows:
             submission_id = row.get("id")
             if not submission_id:
                 continue
-            result = ai_grade_store.latest_result(str(submission_id))
+            result = ai_results.get(str(submission_id))
             if result and int(result.get("attempt_no") or 0) == int(row.get("attempt_no") or 0):
-                ai_results[str(submission_id)] = result
+                continue
+            ai_results.pop(str(submission_id), None)
     except Exception:
         # Keep exports available while an older database is upgrading.
         ai_results = {}
@@ -1339,8 +1343,9 @@ async def submissions_list(
     # publishing an official score.
     try:
         from app.services import ai_grade_store
+        ai_results = ai_grade_store.latest_results([str(item["id"]) for item in submissions])
         for item in submissions:
-            ai_result = ai_grade_store.latest_result(item["id"])
+            ai_result = ai_results.get(str(item["id"]))
             if ai_result and int(ai_result.get("attempt_no") or 0) == int(item.get("attempt_no") or 0):
                 item["ai_grade_status"] = ai_result.get("status")
                 item["ai_grade"] = ai_result
