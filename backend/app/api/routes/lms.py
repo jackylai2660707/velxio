@@ -968,6 +968,17 @@ async def submission_save(
             score, feedback = result
             submission = cloud_db.auto_grade_submission(submission["id"], score=score, feedback=feedback)
             auto_graded = submission is not None
+    elif submit and assignment.get("auto_grade") and assignment.get("assignment_type") != "quiz":
+        # Rubric/AI grading runs server-side after final submit. Provider
+        # failures become a persisted needs_review result and never reject a
+        # valid student submission.
+        try:
+            from app.api.routes.grading import _grade
+            graded = await _grade(assignment, submission or {}, user)
+            submission = graded.get("submission") or submission
+            auto_graded = graded.get("ai_grade", {}).get("status") == "graded"
+        except Exception:
+            auto_graded = False
     return {"submission": submission, **(submission or {}), "auto_graded": auto_graded}
 
 
