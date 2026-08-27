@@ -4,7 +4,7 @@
  * every course; progress lives in localStorage until they sign in.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AppHeader } from '../components/layout/AppHeader';
@@ -14,10 +14,18 @@ import { COURSES, courseLessonKeys } from '../learn/courses';
 import { lessonKey } from '../learn/types';
 import { useLearnStore } from '../learn/useLearnStore';
 import { useCloudStore } from '../cloud/useCloudStore';
-import { lmsApi, type LmsClassJoined, CloudApiError } from '../cloud/cloudApi';
+import { buildVlxPayload } from '../utils/vlxFile';
+import {
+  lmsApi,
+  type LmsAssignment,
+  type LmsAssignmentQuestion,
+  type LmsClassJoined,
+  type LmsSubmission,
+  CloudApiError,
+} from '../cloud/cloudApi';
 import './LearnPage.css';
 
-const JoinClassWidget: React.FC = () => {
+const JoinClassWidget: React.FC<{ onJoined?: () => void }> = ({ onJoined }) => {
   const { t } = useTranslation();
   const user = useCloudStore((s) => s.user);
   const [classes, setClasses] = useState<LmsClassJoined[]>([]);
@@ -42,16 +50,15 @@ const JoinClassWidget: React.FC = () => {
     try {
       const cls = await lmsApi.joinClass(code);
       setCode('');
-      setMessage(
-        t('learn.class.joinedMsg', '已加入「{{name}}」!', { name: cls.name })
-      );
+      setMessage(t('learn.class.joinedMsg', '已加入「{{name}}」!', { name: cls.name }));
       const r = await lmsApi.listClasses();
       setClasses(r.joined);
+      onJoined?.();
     } catch (err) {
       setMessage(
         err instanceof CloudApiError && err.status === 404
           ? t('learn.class.unknownCode', '找不到這個班級代碼,請跟老師確認。')
-          : t('learn.class.joinFailed', '加入失敗,請稍後再試。')
+          : t('learn.class.joinFailed', '加入失敗,請稍後再試。'),
       );
     } finally {
       setBusy(false);
@@ -89,6 +96,347 @@ const JoinClassWidget: React.FC = () => {
   );
 };
 
+function assignmentQuestions(quiz: LmsAssignment['quiz']): LmsAssignmentQuestion[] {
+  if (Array.isArray(quiz)) return quiz;
+  if (quiz && typeof quiz === 'object' && 'questions' in quiz) {
+    const questions = (quiz as { questions?: unknown }).questions;
+    return Array.isArray(questions) ? (questions as LmsAssignmentQuestion[]) : [];
+  }
+  return [];
+}
+
+function assignmentDate(timestamp: number | null | undefined): string | null {
+  if (!timestamp) return null;
+  const millis = timestamp > 10_000_000_000 ? timestamp : timestamp * 1000;
+  const date = new Date(millis);
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString();
+}
+
+function assignmentStatusLabel(
+  status: string | undefined,
+  t: (key: string, fallback: string) => string,
+): string {
+  switch (status) {
+    case 'graded':
+      return t('learn.assignment.statusGraded', '已評分 / Graded');
+    case 'submitted':
+      return t('learn.assignment.statusSubmitted', '已繳交 / Submitted');
+    case 'late':
+      return t('learn.assignment.statusLate', '逾期 / Late');
+    case 'in_progress':
+      return t('learn.assignment.statusDraft', '草稿 / Draft');
+    default:
+      return t('learn.assignment.statusAssigned', '待完成 / Assigned');
+  }
+}
+
+interface AssignmentCardProps {
+  assignment: LmsAssignment;
+  onUpdated: (submission: LmsSubmission) => void;
+}
+
+/** One student-facing assignment. It deliberately keeps the submit action
+ * behind an explicit button and can attach the current .vlx workspace. */
+const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }) => {
+  const { t } = useTranslation();
+  const localize = useLocalizedHref();
+  const recordSubmission = useLearnStore((s) => s.recordAssignmentSubmission);
+  const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState<LmsAssignment>(assignment);
+  const [content, setContent] = useState(assignment.submission?.content ?? '');
+  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [attachProject, setAttachProject] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState<LmsSubmission | null>(
+    assignment.submission ?? null,
+  );
+
+  const questions = assignmentQuestions(detail.quiz);
+  const allAnswered = questions.every((q) => answers[q.id] !== undefined);
+  const effectiveSubmission = submitted ?? detail.submission;
+  const due = assignmentDate(detail.due_at);
+
+  useEffect(() => {
+    setDetail(assignment);
+    if (assignment.submission) setSubmitted(assignment.submission);
+  }, [assignment]);
+
+  const openDetail = async () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    setError(null);
+    setOpen(true);
+    try {
+      const next = await lmsApi.getAssignment(assignment.id);
+      setDetail(next);
+      if (next.submission) {
+        setSubmitted(next.submission);
+        setContent(next.submission.content ?? '');
+      }
+    } catch {
+      // The list response is already sufficient to work offline or while a
+      // self-hosted instance is upgrading; keep showing it when detail fails.
+    }
+  };
+
+  const submit = async () => {
+    if (busy || (questions.length > 0 && !allAnswered)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await lmsApi.submitAssignment(assignment.id, {
+        answers: questions.length ? questions.map((q) => answers[q.id] ?? -1) : undefined,
+        content: content.trim() || undefined,
+        project_data: attachProject ? buildVlxPayload() : undefined,
+        submit: true,
+      });
+      setSubmitted(result.submission);
+      setDetail((current) => ({ ...current, submission: result.submission }));
+      recordSubmission(assignment.id, result.submission);
+      onUpdated(result.submission);
+    } catch (err) {
+      setError(
+        err instanceof CloudApiError
+          ? err.message
+          : t('learn.assignment.submitFailed', '繳交失敗,請稍後再試。 / Submission failed.'),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <article className="learn-assignment-card">
+      <div className="learn-assignment-head">
+        <div>
+          <h3>{detail.title}</h3>
+          <div className="learn-assignment-meta">
+            {detail.class_name && <span>{detail.class_name}</span>}
+            <span>{assignmentStatusLabel(effectiveSubmission?.status ?? detail.status, t)}</span>
+            {due && (
+              <span>
+                {t('learn.assignment.due', '截止 / Due')}: {due}
+              </span>
+            )}
+          </div>
+        </div>
+        {effectiveSubmission?.score !== null && effectiveSubmission?.score !== undefined && (
+          <span className="learn-assignment-score">
+            {effectiveSubmission.score}/{effectiveSubmission.max_score ?? detail.max_score}
+          </span>
+        )}
+      </div>
+
+      {detail.description && <p className="learn-assignment-description">{detail.description}</p>}
+      <button className="learn-assignment-toggle" onClick={openDetail} aria-expanded={open}>
+        {open
+          ? t('learn.assignment.hide', '收起作業 / Hide assignment')
+          : t('learn.assignment.open', '查看作業 / View assignment')}
+      </button>
+
+      {open && (
+        <div className="learn-assignment-body">
+          {detail.instructions && (
+            <div className="learn-assignment-instructions">{detail.instructions}</div>
+          )}
+
+          {detail.lesson_id && (
+            <Link
+              className="learn-assignment-lesson-link"
+              to={localize(localizeLessonHref(detail.lesson_id))}
+            >
+              📘 {t('learn.assignment.openLesson', '開啟相關課程 / Open lesson')}
+            </Link>
+          )}
+
+          {questions.length > 0 && (
+            <div className="learn-assignment-questions">
+              <h4>{t('learn.assignment.questions', '作業題目 / Questions')}</h4>
+              {questions.map((question, index) => (
+                <fieldset key={question.id} className="learn-assignment-question">
+                  <legend>
+                    {index + 1}. {question.question}
+                  </legend>
+                  {question.options.map((option, optionIndex) => (
+                    <label key={optionIndex}>
+                      <input
+                        type="radio"
+                        name={`${assignment.id}-${question.id}`}
+                        checked={answers[question.id] === optionIndex}
+                        onChange={() =>
+                          setAnswers((current) => ({ ...current, [question.id]: optionIndex }))
+                        }
+                      />
+                      <span>{option}</span>
+                    </label>
+                  ))}
+                </fieldset>
+              ))}
+            </div>
+          )}
+
+          <label className="learn-assignment-content-label">
+            <span>{t('learn.assignment.response', '文字回覆 / Written response')}</span>
+            <textarea
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              rows={4}
+              placeholder={t(
+                'learn.assignment.responsePlaceholder',
+                '寫下你的觀察、答案或測試結果… / Describe your work…',
+              )}
+            />
+          </label>
+
+          <label className="learn-assignment-attach">
+            <input
+              type="checkbox"
+              checked={attachProject}
+              onChange={(event) => setAttachProject(event.target.checked)}
+            />
+            <span>
+              {t(
+                'learn.assignment.attachProject',
+                '附加目前工作區 (.vlx) / Attach current workspace',
+              )}
+            </span>
+          </label>
+
+          {effectiveSubmission?.feedback && (
+            <div className="learn-assignment-feedback">
+              <strong>{t('learn.assignment.feedback', '老師回饋 / Feedback')}</strong>
+              <p>{effectiveSubmission.feedback}</p>
+            </div>
+          )}
+          {error && (
+            <p className="learn-assignment-error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="learn-assignment-actions">
+            <button
+              className="learn-assignment-submit"
+              onClick={submit}
+              disabled={busy || (questions.length > 0 && !allAnswered)}
+            >
+              {busy
+                ? t('learn.assignment.submitting', '評分中… / Submitting…')
+                : t('learn.assignment.submit', '繳交並自動評分 / Submit & auto-grade')}
+            </button>
+            {questions.length > 0 && !allAnswered && (
+              <span className="learn-assignment-hint">
+                {t('learn.assignment.answerAll', '請先回答所有題目 / Answer all questions first')}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </article>
+  );
+};
+
+// Assignment lesson ids are canonical course/lesson keys. Keep malformed or
+// teacher-authored ids harmless: those simply return the course landing page.
+function localizeLessonHref(lessonId: string): string {
+  const parts = lessonId.split('/');
+  return parts.length === 2 ? `/learn/${parts[0]}/${parts[1]}` : '/learn';
+}
+
+const AssignmentSection: React.FC<{ refreshKey: number }> = ({ refreshKey }) => {
+  const { t } = useTranslation();
+  const user = useCloudStore((s) => s.user);
+  const [assignments, setAssignments] = useState<LmsAssignment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!user) {
+      setAssignments([]);
+      return;
+    }
+    setLoading(true);
+    setError(false);
+    try {
+      const response = await lmsApi.listAssignments();
+      setAssignments(
+        response.assignments.map((assignment) => ({
+          ...assignment,
+          // The server is authoritative. Assignment ids can outlive a
+          // browser session, so never overlay another account's local cache.
+          submission: assignment.submission ?? null,
+        })),
+      );
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh, refreshKey]);
+
+  if (!user) return null;
+
+  return (
+    <section className="learn-assignments" aria-labelledby="learn-assignments-title">
+      <div className="learn-assignments-title-row">
+        <div>
+          <h2 id="learn-assignments-title">
+            📚 {t('learn.assignment.title', '我的作業 / My assignments')}
+          </h2>
+          <p>
+            {t(
+              'learn.assignment.subtitle',
+              '老師發布的作業會出現在這裡,提交後立即看到自動評分。 / Published class work appears here with instant grading.',
+            )}
+          </p>
+        </div>
+        <button
+          className="learn-assignment-refresh"
+          onClick={() => void refresh()}
+          disabled={loading}
+        >
+          {loading ? '…' : t('learn.assignment.refresh', '重新整理 / Refresh')}
+        </button>
+      </div>
+      {error && (
+        <p className="learn-assignment-error" role="alert">
+          {t(
+            'learn.assignment.loadFailed',
+            '作業載入失敗,請稍後再試。 / Could not load assignments.',
+          )}
+        </p>
+      )}
+      {!loading && !error && assignments.length === 0 && (
+        <p className="learn-assignment-empty">
+          {t(
+            'learn.assignment.empty',
+            '目前沒有待完成的作業。加入班級後,老師發布的作業會顯示在這裡。 / No assignments yet. Join a class to receive work.',
+          )}
+        </p>
+      )}
+      <div className="learn-assignment-list">
+        {assignments.map((assignment) => (
+          <AssignmentCard
+            key={assignment.id}
+            assignment={assignment}
+            onUpdated={(submission) =>
+              setAssignments((current) =>
+                current.map((item) => (item.id === assignment.id ? { ...item, submission } : item)),
+              )
+            }
+          />
+        ))}
+      </div>
+    </section>
+  );
+};
+
 export const LearnPage: React.FC = () => {
   const { t } = useTranslation();
   const localize = useLocalizedHref();
@@ -96,12 +444,13 @@ export const LearnPage: React.FC = () => {
   const setAuthModalOpen = useCloudStore((s) => s.setAuthModalOpen);
   const done = useLearnStore((s) => s.done);
   const quizBest = useLearnStore((s) => s.quizBest);
+  const [assignmentRefresh, setAssignmentRefresh] = useState(0);
 
   useSEO({
     title: t('learn.seoTitle', '課程 — AI物聯網實驗室'),
     description: t(
       'learn.seoDescription',
-      'Arduino 入門與 ESP32 物聯網互動課程:原理解說、一鍵載入電路範例、動手挑戰與選擇題測驗。'
+      'Arduino 入門與 ESP32 物聯網互動課程:原理解說、一鍵載入電路範例、動手挑戰與選擇題測驗。',
     ),
     url: '/learn',
   });
@@ -114,7 +463,7 @@ export const LearnPage: React.FC = () => {
         <p className="learn-subtitle">
           {t(
             'learn.subtitle',
-            '每一課都能直接在瀏覽器裡動手做:讀原理、開範例電路、完成挑戰,再用小測驗確認自己學會了。'
+            '每一課都能直接在瀏覽器裡動手做:讀原理、開範例電路、完成挑戰,再用小測驗確認自己學會了。',
           )}
         </p>
 
@@ -122,7 +471,7 @@ export const LearnPage: React.FC = () => {
           <div className="learn-signin-hint">
             {t(
               'learn.signinHint',
-              '進度會先存在這台電腦。登入後可跨裝置同步,老師也能在班級報表看到你的進度。'
+              '進度會先存在這台電腦。登入後可跨裝置同步,老師也能在班級報表看到你的進度。',
             )}{' '}
             <button onClick={() => setAuthModalOpen(true)}>
               {t('learn.signinCta', '登入 / 註冊')}
@@ -130,7 +479,9 @@ export const LearnPage: React.FC = () => {
           </div>
         )}
 
-        <JoinClassWidget />
+        <JoinClassWidget onJoined={() => setAssignmentRefresh((value) => value + 1)} />
+
+        <AssignmentSection refreshKey={assignmentRefresh} />
 
         {COURSES.map((course) => {
           const keys = courseLessonKeys(course);

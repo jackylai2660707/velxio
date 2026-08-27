@@ -228,6 +228,50 @@
   padding: 0;
 }
 
+/* ── Classroom assignment reminder ───────────────────────── */
+
+.lesson-assignment-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 28px;
+  padding: 14px 16px;
+  border: 1px solid rgba(88, 166, 255, 0.34);
+  border-radius: 11px;
+  background: rgba(0, 113, 227, 0.09);
+}
+
+.lesson-assignment-banner strong {
+  color: #e6edf3;
+  font-size: 14px;
+}
+
+.lesson-assignment-banner p {
+  margin: 4px 0 0;
+  color: #9aa4b2;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.lesson-assignment-banner a {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: #fff;
+  background: #0071e3;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (max-width: 600px) {
+  .lesson-assignment-banner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 /* Footer / nav */
 
 .lesson-footer {

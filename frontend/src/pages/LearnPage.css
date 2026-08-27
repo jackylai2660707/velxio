@@ -121,6 +121,274 @@
   color: #58a6ff;
 }
 
+/* ── Student assignments ────────────────────────────────── */
+
+.learn-assignments {
+  margin: 0 0 30px;
+  padding: 22px;
+  border: 1px solid rgba(88, 166, 255, 0.28);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(0, 113, 227, 0.1), rgba(0, 200, 150, 0.04));
+}
+
+.learn-assignments-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.learn-assignments-title-row h2 {
+  margin: 0 0 5px;
+  font-size: 21px;
+}
+
+.learn-assignments-title-row p {
+  margin: 0;
+  color: #9aa4b2;
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+
+.learn-assignment-refresh,
+.learn-assignment-toggle,
+.learn-assignment-submit {
+  border: 1px solid rgba(88, 166, 255, 0.42);
+  border-radius: 8px;
+  color: #dbeafe;
+  background: rgba(88, 166, 255, 0.12);
+  font-weight: 700;
+  padding: 8px 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.learn-assignment-refresh:disabled,
+.learn-assignment-submit:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.learn-assignment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.learn-assignment-card {
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(13, 17, 23, 0.54);
+}
+
+.learn-assignment-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.learn-assignment-head h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.learn-assignment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  color: #8b949e;
+  font-size: 12px;
+}
+
+.learn-assignment-meta span + span::before {
+  content: '·';
+  margin-right: 9px;
+  color: #6e7681;
+}
+
+.learn-assignment-score {
+  flex-shrink: 0;
+  color: #56d4a0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.learn-assignment-description {
+  margin: 10px 0 12px;
+  color: #c9d1d9;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.learn-assignment-toggle {
+  font-size: 12.5px;
+}
+
+.learn-assignment-body {
+  margin-top: 16px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.learn-assignment-instructions {
+  margin-bottom: 14px;
+  color: #c9d1d9;
+  font-size: 14px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.learn-assignment-lesson-link {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: #58a6ff;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.learn-assignment-questions h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.learn-assignment-question {
+  min-width: 0;
+  margin: 0 0 12px;
+  padding: 10px 12px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 9px;
+}
+
+.learn-assignment-question legend {
+  max-width: 100%;
+  padding: 0 4px;
+  color: #e6edf3;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.learn-assignment-question label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 2px;
+  color: #c9d1d9;
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.learn-assignment-question input,
+.learn-assignment-attach input {
+  accent-color: #0a84ff;
+  margin-top: 3px;
+}
+
+.learn-assignment-content-label {
+  display: block;
+  margin-top: 14px;
+  color: #c9d1d9;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.learn-assignment-content-label textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 7px;
+  padding: 10px 12px;
+  resize: vertical;
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  border-radius: 8px;
+  outline: none;
+  color: #e6edf3;
+  background: rgba(0, 0, 0, 0.3);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.learn-assignment-content-label textarea:focus {
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.18);
+}
+
+.learn-assignment-attach {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 11px 0;
+  color: #9aa4b2;
+  font-size: 12.5px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.learn-assignment-feedback {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-left: 3px solid #56d4a0;
+  border-radius: 0 8px 8px 0;
+  color: #c9d1d9;
+  background: rgba(0, 200, 150, 0.08);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.learn-assignment-feedback p {
+  margin: 4px 0 0;
+}
+
+.learn-assignment-error {
+  margin: 10px 0;
+  color: #ff7b72;
+  font-size: 13px;
+}
+
+.learn-assignment-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 13px;
+}
+
+.learn-assignment-submit {
+  border: none;
+  background: linear-gradient(90deg, #0071e3, #0a84ff);
+  color: #fff;
+}
+
+.learn-assignment-hint {
+  color: #8b949e;
+  font-size: 12px;
+}
+
+.learn-assignment-empty {
+  margin: 0;
+  color: #9aa4b2;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+@media (max-width: 600px) {
+  .learn-assignments {
+    padding: 16px;
+  }
+
+  .learn-assignments-title-row {
+    display: block;
+  }
+
+  .learn-assignment-refresh {
+    margin-top: 11px;
+  }
+}
+
 /* ── Course cards ─────────────────────────────────────────── */
 
 .learn-course-card {
@@ -216,7 +484,9 @@
   text-decoration: none;
   color: #e6edf3;
   border: 1px solid transparent;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .learn-lesson-row:hover {

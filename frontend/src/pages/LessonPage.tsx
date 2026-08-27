@@ -8,6 +8,7 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Link, Navigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppHeader } from '../components/layout/AppHeader';
 import { useLocalizedHref } from '../i18n/useLocalizedNavigate';
@@ -16,7 +17,62 @@ import { getLesson } from '../learn/courses';
 import { lessonKey } from '../learn/types';
 import { useLearnStore } from '../learn/useLearnStore';
 import { QuizBlock } from '../components/learn/QuizBlock';
+import { lmsApi, type LmsAssignment } from '../cloud/cloudApi';
+import { useCloudStore } from '../cloud/useCloudStore';
 import './LessonPage.css';
+
+const LessonAssignmentBanner: React.FC<{ lessonId: string }> = ({ lessonId }) => {
+  const { t } = useTranslation();
+  const localize = useLocalizedHref();
+  const user = useCloudStore((s) => s.user);
+  const [assignments, setAssignments] = useState<LmsAssignment[]>([]);
+
+  useEffect(() => {
+    if (!user) {
+      setAssignments([]);
+      return;
+    }
+    let cancelled = false;
+    lmsApi
+      .listAssignments()
+      .then((response) => {
+        if (!cancelled) {
+          setAssignments(
+            response.assignments.filter((assignment) => assignment.lesson_id === lessonId),
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setAssignments([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonId, user]);
+
+  if (!user || assignments.length === 0) return null;
+  return (
+    <aside className="lesson-assignment-banner">
+      <div>
+        <strong>
+          📚{' '}
+          {t('learn.assignment.lessonBanner', '本課有 {{n}} 份作業 / {{n}} assignment(s)', {
+            n: assignments.length,
+          })}
+        </strong>
+        <p>
+          {t(
+            'learn.assignment.lessonBannerHint',
+            '完成課程後,到「我的作業」查看說明並繳交。 / After the lesson, open My assignments to submit.',
+          )}
+        </p>
+      </div>
+      <Link to={localize('/learn#learn-assignments')}>
+        {t('learn.assignment.viewAssignments', '查看作業 / View assignments')}
+      </Link>
+    </aside>
+  );
+};
 
 export const LessonPage: React.FC = () => {
   const { t } = useTranslation();
@@ -88,10 +144,7 @@ export const LessonPage: React.FC = () => {
           </div>
 
           {lesson.exampleId && (
-            <Link
-              to={localize(`/example/${lesson.exampleId}`)}
-              className="lesson-open-example"
-            >
+            <Link to={localize(`/example/${lesson.exampleId}`)} className="lesson-open-example">
               ⚡ {t('learn.openExample', '開啟本課電路範例')}
             </Link>
           )}
@@ -100,9 +153,7 @@ export const LessonPage: React.FC = () => {
             <section key={i} className="lesson-section">
               {section.heading && <h2>{section.heading}</h2>}
               <div className="lesson-markdown">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {section.markdown}
-                </ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{section.markdown}</ReactMarkdown>
               </div>
             </section>
           ))}
@@ -111,12 +162,12 @@ export const LessonPage: React.FC = () => {
             <section className="lesson-challenge">
               <h2>🚀 {t('learn.challenge', '動手挑戰')}</h2>
               <div className="lesson-markdown">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {lesson.challenge}
-                </ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{lesson.challenge}</ReactMarkdown>
               </div>
             </section>
           )}
+
+          <LessonAssignmentBanner lessonId={key} />
 
           <QuizBlock lessonKey={key} questions={lesson.quiz} />
 
@@ -125,9 +176,7 @@ export const LessonPage: React.FC = () => {
               className={'lesson-done-btn' + (isDone ? ' lesson-done-btn-active' : '')}
               onClick={() => (isDone ? resetLesson(key) : markDone(key))}
             >
-              {isDone
-                ? '✓ ' + t('learn.done', '已完成')
-                : t('learn.markDone', '完成本課')}
+              {isDone ? '✓ ' + t('learn.done', '已完成') : t('learn.markDone', '完成本課')}
             </button>
             <div className="lesson-nav">
               {prev && (

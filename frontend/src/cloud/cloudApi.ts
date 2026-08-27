@@ -36,11 +36,7 @@ export function setToken(token: string | null): void {
   }
 }
 
-async function request<T>(
-  method: string,
-  path: string,
-  body?: unknown,
-): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const token = getToken();
@@ -241,6 +237,110 @@ export interface LmsClassReport {
   members: LmsClassReportMember[];
 }
 
+/** A question published as part of a teacher assignment.  The server never
+ * sends the answer key to students; `answer` is therefore intentionally
+ * optional even though the built-in lesson quiz type requires it. */
+export interface LmsAssignmentQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  points?: number;
+  explanation?: string;
+}
+
+export type LmsAssignmentType = 'quiz' | 'project' | 'reflection' | 'mixed' | string;
+
+export type LmsAssignmentStatus =
+  | 'assigned'
+  | 'in_progress'
+  | 'submitted'
+  | 'graded'
+  | 'late'
+  | string;
+
+export interface LmsSubmission {
+  id: string;
+  assignment_id?: string;
+  status: LmsAssignmentStatus;
+  score: number | null;
+  max_score: number;
+  feedback: string | null;
+  submitted_at: number | null;
+  graded_at?: number | null;
+  attempt_no?: number;
+  content?: string;
+  answers?: unknown[];
+}
+
+export interface LmsAssignment {
+  id: string;
+  class_id: string;
+  class_name?: string;
+  title: string;
+  description?: string;
+  instructions?: string;
+  lesson_id?: string | null;
+  assignment_type: LmsAssignmentType;
+  /** Assignment quiz questions. Answer keys are stripped for students. */
+  quiz?: LmsAssignmentQuestion[] | { questions?: LmsAssignmentQuestion[] } | null;
+  project_template?: Record<string, unknown> | string | null;
+  due_at?: number | null;
+  max_score: number;
+  auto_grade: boolean;
+  status?: string;
+  published_at?: number | null;
+  created_at: number;
+  updated_at?: number;
+  submission?: LmsSubmission | null;
+  /** Teacher dashboard aggregates; omitted for student-scoped responses. */
+  submission_count?: number;
+  graded_count?: number;
+  average_score?: number | null;
+  rubric?: string | null;
+}
+
+export interface LmsAssignmentSubmission {
+  id: string;
+  assignment_id: string;
+  student_id: string;
+  student_name: string;
+  student_email: string;
+  submitted?: boolean;
+  submitted_at: string | number | null;
+  status: LmsAssignmentStatus;
+  score: number | null;
+  auto_score?: number | null;
+  feedback: string | null;
+}
+
+export interface LmsAssignmentCreate {
+  title: string;
+  description?: string;
+  instructions?: string;
+  lesson_id?: string;
+  project_template?: Record<string, unknown> | string;
+  assignment_type?: LmsAssignmentType;
+  due_at?: string;
+  max_score?: number;
+  auto_grade?: boolean;
+  rubric?: string;
+}
+
+export interface LmsAssignmentSubmitPayload {
+  answers?: unknown[];
+  content?: string;
+  /** A .vlx-compatible project snapshot when the student attaches work. */
+  project_data?: VlxPayload | Record<string, unknown>;
+  files?: Record<string, string>;
+  /** False saves a draft; true creates a final submission. */
+  submit?: boolean;
+}
+
+export interface LmsAssignmentSubmitResult {
+  submission: LmsSubmission;
+  auto_graded: boolean;
+}
+
 export const lmsApi = {
   listClasses: () =>
     request<{ teaching: LmsClassTeaching[]; joined: LmsClassJoined[] }>('GET', '/lms/classes'),
@@ -263,6 +363,38 @@ export const lmsApi = {
       total,
       answers,
     }),
+  /** Published assignments for all classes the current student joined. */
+  listAssignments: (classId?: string) =>
+    request<{ assignments: LmsAssignment[] }>(
+      'GET',
+      classId ? `/lms/classes/${encodeURIComponent(classId)}/assignments` : '/lms/assignments',
+    ),
+  createAssignment: (classId: string, payload: LmsAssignmentCreate) =>
+    request<LmsAssignment>(
+      'POST',
+      `/lms/classes/${encodeURIComponent(classId)}/assignments`,
+      payload,
+    ),
+  publishAssignment: (assignmentId: string) =>
+    request<LmsAssignment>('POST', `/lms/assignments/${encodeURIComponent(assignmentId)}/publish`),
+  listAssignmentSubmissions: (assignmentId: string) =>
+    request<{ submissions: LmsAssignmentSubmission[] }>(
+      'GET',
+      `/lms/assignments/${encodeURIComponent(assignmentId)}/submissions`,
+    ),
+  getAssignment: (assignmentId: string) =>
+    request<LmsAssignment>('GET', `/lms/assignments/${encodeURIComponent(assignmentId)}`),
+  submitAssignment: (assignmentId: string, payload: LmsAssignmentSubmitPayload) =>
+    request<LmsAssignmentSubmitResult>(
+      'POST',
+      `/lms/assignments/${encodeURIComponent(assignmentId)}/submissions`,
+      payload,
+    ),
+  getAssignmentSubmission: (assignmentId: string) =>
+    request<{ submission: LmsSubmission | null }>(
+      'GET',
+      `/lms/assignments/${encodeURIComponent(assignmentId)}/submission`,
+    ),
 };
 
 export const chatApi = {

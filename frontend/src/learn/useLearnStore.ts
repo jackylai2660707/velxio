@@ -7,7 +7,7 @@
  */
 
 import { create } from 'zustand';
-import { lmsApi, type LmsQuizBest } from '../cloud/cloudApi';
+import { lmsApi, type LmsQuizBest, type LmsSubmission } from '../cloud/cloudApi';
 import { useCloudStore } from '../cloud/useCloudStore';
 
 const STORAGE_KEY = 'ailab-learn-progress-v1';
@@ -15,16 +15,22 @@ const STORAGE_KEY = 'ailab-learn-progress-v1';
 interface PersistedState {
   done: Record<string, true>;
   quizBest: Record<string, LmsQuizBest>;
+  /** Last known assignment result, kept locally for instant UI updates. */
+  assignmentSubmissions: Record<string, LmsSubmission>;
 }
 
 function loadPersisted(): PersistedState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { done: {}, quizBest: {} };
+    if (!raw) return { done: {}, quizBest: {}, assignmentSubmissions: {} };
     const j = JSON.parse(raw) as Partial<PersistedState>;
-    return { done: j.done ?? {}, quizBest: j.quizBest ?? {} };
+    return {
+      done: j.done ?? {},
+      quizBest: j.quizBest ?? {},
+      assignmentSubmissions: j.assignmentSubmissions ?? {},
+    };
   } catch {
-    return { done: {}, quizBest: {} };
+    return { done: {}, quizBest: {}, assignmentSubmissions: {} };
   }
 }
 
@@ -32,7 +38,11 @@ function persist(state: PersistedState): void {
   try {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ done: state.done, quizBest: state.quizBest })
+      JSON.stringify({
+        done: state.done,
+        quizBest: state.quizBest,
+        assignmentSubmissions: state.assignmentSubmissions,
+      }),
     );
   } catch {
     /* private mode */
@@ -46,12 +56,9 @@ interface LearnState extends PersistedState {
   markDone: (lessonKey: string) => void;
   resetLesson: (lessonKey: string) => void;
   /** Record a finished quiz locally (keeps the best score) + server. */
-  submitQuiz: (
-    lessonKey: string,
-    score: number,
-    total: number,
-    answers: number[]
-  ) => void;
+  submitQuiz: (lessonKey: string, score: number, total: number, answers: number[]) => void;
+  /** Keep the latest submission in local state while the server is synced. */
+  recordAssignmentSubmission: (assignmentId: string, submission: LmsSubmission) => void;
   /** Two-way merge with /api/lms after sign-in. */
   syncWithServer: () => Promise<void>;
   /** Completed-lesson count among the given keys. */
@@ -65,7 +72,11 @@ export const useLearnStore = create<LearnState>((set, get) => ({
   markDone: (key) => {
     const done = { ...get().done, [key]: true as const };
     set({ done });
-    persist({ done, quizBest: get().quizBest });
+    persist({
+      done,
+      quizBest: get().quizBest,
+      assignmentSubmissions: get().assignmentSubmissions,
+    });
     if (useCloudStore.getState().user) {
       void lmsApi.setProgress(key, 'done').catch(() => {});
     }
@@ -75,7 +86,11 @@ export const useLearnStore = create<LearnState>((set, get) => ({
     const done = { ...get().done };
     delete done[key];
     set({ done });
-    persist({ done, quizBest: get().quizBest });
+    persist({
+      done,
+      quizBest: get().quizBest,
+      assignmentSubmissions: get().assignmentSubmissions,
+    });
     if (useCloudStore.getState().user) {
       void lmsApi.setProgress(key, 'reset').catch(() => {});
     }
@@ -92,10 +107,27 @@ export const useLearnStore = create<LearnState>((set, get) => ({
       },
     };
     set({ quizBest });
-    persist({ done: get().done, quizBest });
+    persist({
+      done: get().done,
+      quizBest,
+      assignmentSubmissions: get().assignmentSubmissions,
+    });
     if (useCloudStore.getState().user) {
       void lmsApi.submitQuiz(key, score, total, answers).catch(() => {});
     }
+  },
+
+  recordAssignmentSubmission: (assignmentId, submission) => {
+    const assignmentSubmissions = {
+      ...get().assignmentSubmissions,
+      [assignmentId]: submission,
+    };
+    set({ assignmentSubmissions });
+    persist({
+      done: get().done,
+      quizBest: get().quizBest,
+      assignmentSubmissions,
+    });
   },
 
   syncWithServer: async () => {
@@ -109,7 +141,7 @@ export const useLearnStore = create<LearnState>((set, get) => ({
       await Promise.all(
         Object.keys(local.done)
           .filter((k) => !serverDone.has(k))
-          .map((k) => lmsApi.setProgress(k, 'done').catch(() => {}))
+          .map((k) => lmsApi.setProgress(k, 'done').catch(() => {})),
       );
 
       // Merge down: union of done, best-of quiz records.
@@ -127,7 +159,26 @@ export const useLearnStore = create<LearnState>((set, get) => ({
           : v;
       }
       set({ done, quizBest, synced: true });
-      persist({ done, quizBest });
+      persist({
+        done,
+        quizBest,
+        assignmentSubmissions: get().assignmentSubmissions,
+      });
+
+      // Assignment state is independent from lesson progress. A missing or
+      // unavailable assignment endpoint must never prevent normal progress
+      // sync from completing while an instance is being upgraded.
+      try {
+        const { assignments } = await lmsApi.listAssignments();
+        const assignmentSubmissions = { ...get().assignmentSubmissions };
+        for (const assignment of assignments) {
+          if (assignment.submission) assignmentSubmissions[assignment.id] = assignment.submission;
+        }
+        set({ assignmentSubmissions });
+        persist({ done, quizBest, assignmentSubmissions });
+      } catch {
+        /* optional endpoint */
+      }
     } catch {
       /* offline / server down — local state remains authoritative */
     }

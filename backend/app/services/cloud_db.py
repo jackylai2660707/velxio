@@ -44,6 +44,12 @@ MAX_CHAT_BYTES = 1_500_000
 MAX_CLASSES_PER_TEACHER = 20
 MAX_MEMBERS_PER_CLASS = 100
 MAX_QUIZ_ANSWERS_BYTES = 20_000
+# Assignment payloads are deliberately bounded.  The LMS stores the small
+# project/quiz manifest needed for classroom work, while large source files
+# remain in the student's cloud project record.
+MAX_ASSIGNMENT_BYTES = 250_000
+MAX_SUBMISSION_BYTES = 2_000_000
+MAX_ASSIGNMENTS_PER_CLASS = 500
 
 # AI weekly token allowance (per user, resets Monday 00:00 UTC). Applies
 # only when a request is served with the SERVER's upstream API key — users
@@ -158,6 +164,51 @@ def init_db() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_quiz_user_lesson
                 ON quiz_attempts(user_id, lesson_id, created_at DESC);
+            CREATE TABLE IF NOT EXISTS assignments (
+                id TEXT PRIMARY KEY,
+                class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+                teacher_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                instructions TEXT NOT NULL DEFAULT '',
+                lesson_id TEXT,
+                assignment_type TEXT NOT NULL DEFAULT 'project',
+                project_template TEXT,
+                quiz TEXT,
+                rubric TEXT,
+                due_at REAL,
+                max_score REAL NOT NULL DEFAULT 100,
+                auto_grade INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'draft',
+                published_at REAL,
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_assignments_class
+                ON assignments(class_id, status, due_at, created_at DESC);
+            CREATE TABLE IF NOT EXISTS assignment_submissions (
+                id TEXT PRIMARY KEY,
+                assignment_id TEXT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+                student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                content TEXT NOT NULL DEFAULT '',
+                answers TEXT,
+                project_data TEXT,
+                files TEXT,
+                status TEXT NOT NULL DEFAULT 'draft',
+                score REAL,
+                feedback TEXT NOT NULL DEFAULT '',
+                submitted_at REAL,
+                graded_at REAL,
+                grader_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+                attempt_no INTEGER NOT NULL DEFAULT 1,
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL,
+                UNIQUE (assignment_id, student_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_assignment_submissions_assignment
+                ON assignment_submissions(assignment_id, status, submitted_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_assignment_submissions_student
+                ON assignment_submissions(student_id, updated_at DESC);
             CREATE TABLE IF NOT EXISTS ai_usage (
                 user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 week_start TEXT NOT NULL,
@@ -845,3 +896,503 @@ def get_quiz_best(user_id: str) -> dict[str, dict[str, Any]]:
         }
         for r in rows
     }
+
+
+# ── LMS: assignments & submissions ────────────────────────────────────────
+
+
+def _json_load(value: Any, default: Any = None) -> Any:
+    """Decode a nullable JSON column without allowing a damaged row to take
+    down the whole classroom dashboard."""
+    if value is None:
+        return default
+    if isinstance(value, (dict, list, int, float, bool)):
+        return value
+    try:
+        return json.loads(value)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return default
+
+
+def _json_payload(value: Any, *, default: Any = None) -> str | None:
+    if value is None:
+        return None
+    try:
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    except (TypeError, ValueError):
+        if default is not None:
+            return json.dumps(default, ensure_ascii=False, separators=(",", ":"))
+        raise ValueError("invalid JSON payload")
+
+
+def _assignment_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[str, Any]:
+    keys = set(row.keys())
+    out: dict[str, Any] = {
+        "id": row["id"],
+        "class_id": row["class_id"],
+        "teacher_id": row["teacher_id"],
+        "class_name": row["class_name"] if "class_name" in keys else None,
+        "title": row["title"],
+        "description": row["description"],
+        "instructions": row["instructions"],
+        "lesson_id": row["lesson_id"],
+        "assignment_type": row["assignment_type"],
+        "project_template": _json_load(row["project_template"]),
+        "due_at": row["due_at"],
+        "max_score": row["max_score"],
+        "auto_grade": bool(row["auto_grade"]),
+        "status": row["status"],
+        "published_at": row["published_at"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+        "submission_count": row["submission_count"] if "submission_count" in keys else 0,
+        "graded_count": row["graded_count"] if "graded_count" in keys else 0,
+        "average_score": row["average_score"] if "average_score" in keys else None,
+    }
+    # Quiz questions are useful to students, but answer keys are stripped by
+    # the HTTP route before this object leaves the server.  Keep the manifest
+    # available here so student clients can render a quiz; rubric remains a
+    # teacher-only field.
+    out["quiz"] = _json_load(row["quiz"]) if "quiz" in keys else None
+    if include_private:
+        out["rubric"] = _json_load(row["rubric"]) if "rubric" in keys else None
+    return out
+
+
+def _submission_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[str, Any]:
+    keys = set(row.keys())
+    out: dict[str, Any] = {
+        "id": row["id"],
+        "assignment_id": row["assignment_id"],
+        "student_id": row["student_id"],
+        "student_name": row["student_name"] if "student_name" in keys else None,
+        "student_email": row["student_email"] if "student_email" in keys else None,
+        "content": row["content"],
+        "answers": _json_load(row["answers"]),
+        "project_data": _json_load(row["project_data"]),
+        "files": _json_load(row["files"]),
+        "status": row["status"],
+        "submitted": row["status"] in ("submitted", "graded", "returned"),
+        "score": row["score"],
+        # ``grader_id`` is NULL for deterministic quiz grading.  Exposing the
+        # alias lets the teacher dashboard distinguish automatic and manual
+        # marks without leaking any answer key.
+        "auto_score": row["score"] if row["grader_id"] is None and row["status"] == "graded" else None,
+        "max_score": row["max_score"] if "max_score" in keys else None,
+        "due_at": row["due_at"] if "due_at" in keys else None,
+        "is_late": bool(
+            row["submitted_at"] is not None
+            and row["due_at"] is not None
+            and row["submitted_at"] > row["due_at"]
+        ) if "due_at" in keys else False,
+        "feedback": row["feedback"],
+        "submitted_at": row["submitted_at"],
+        "graded_at": row["graded_at"],
+        "grader_id": row["grader_id"],
+        "attempt_no": row["attempt_no"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+    if not include_private:
+        out.pop("grader_id", None)
+    return out
+
+
+def _assignment_select() -> str:
+    return (
+        "SELECT a.*, c.name AS class_name, "
+        "(SELECT COUNT(*) FROM assignment_submissions s0 WHERE s0.assignment_id = a.id "
+        " AND s0.status IN ('submitted', 'graded', 'returned')) AS submission_count, "
+        "(SELECT COUNT(*) FROM assignment_submissions s1 WHERE s1.assignment_id = a.id "
+        " AND s1.status IN ('graded', 'returned')) AS graded_count, "
+        "(SELECT AVG(s2.score) FROM assignment_submissions s2 WHERE s2.assignment_id = a.id "
+        " AND s2.score IS NOT NULL) AS average_score "
+        "FROM assignments a JOIN classes c ON c.id = a.class_id "
+    )
+
+
+def class_owned_by(user_id: str, class_id: str) -> bool:
+    with _connect() as conn:
+        return conn.execute(
+            "SELECT 1 FROM classes WHERE id = ? AND teacher_id = ?", (class_id, user_id)
+        ).fetchone() is not None
+
+
+def class_member(user_id: str, class_id: str) -> bool:
+    with _connect() as conn:
+        return conn.execute(
+            "SELECT 1 FROM class_members WHERE class_id = ? AND user_id = ?",
+            (class_id, user_id),
+        ).fetchone() is not None
+
+
+def create_assignment(
+    teacher_id: str,
+    class_id: str,
+    *,
+    title: str,
+    description: str = "",
+    instructions: str = "",
+    lesson_id: str | None = None,
+    assignment_type: str = "project",
+    project_template: Any = None,
+    quiz: Any = None,
+    rubric: Any = None,
+    due_at: float | None = None,
+    max_score: float = 100,
+    auto_grade: bool = False,
+    status: str = "draft",
+) -> dict[str, Any] | None:
+    """Create an assignment owned by ``teacher_id``. None means unknown or
+    non-owned class, or the per-class assignment quota was reached."""
+    payloads = [_json_payload(project_template), _json_payload(quiz), _json_payload(rubric)]
+    if sum(len(p.encode("utf-8")) for p in payloads if p is not None) > MAX_ASSIGNMENT_BYTES:
+        raise ValueError("assignment too large")
+    with _connect() as conn:
+        cls = conn.execute(
+            "SELECT id, name FROM classes WHERE id = ? AND teacher_id = ?",
+            (class_id, teacher_id),
+        ).fetchone()
+        if not cls:
+            return None
+        count = conn.execute(
+            "SELECT COUNT(*) FROM assignments WHERE class_id = ?", (class_id,)
+        ).fetchone()[0]
+        if count >= MAX_ASSIGNMENTS_PER_CLASS:
+            return None
+        aid = uuid.uuid4().hex
+        now = time.time()
+        published_at = now if status == "published" else None
+        conn.execute(
+            "INSERT INTO assignments (id, class_id, teacher_id, title, description, instructions, "
+            "lesson_id, assignment_type, project_template, quiz, rubric, due_at, max_score, "
+            "auto_grade, status, published_at, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                aid,
+                class_id,
+                teacher_id,
+                title,
+                description,
+                instructions,
+                lesson_id,
+                assignment_type,
+                payloads[0],
+                payloads[1],
+                payloads[2],
+                due_at,
+                float(max_score),
+                1 if auto_grade else 0,
+                status,
+                published_at,
+                now,
+                now,
+            ),
+        )
+        row = conn.execute(_assignment_select() + "WHERE a.id = ?", (aid,)).fetchone()
+    return _assignment_dict(row) if row else None
+
+
+def get_assignment(assignment_id: str, *, include_private: bool = True) -> dict[str, Any] | None:
+    with _connect() as conn:
+        row = conn.execute(_assignment_select() + "WHERE a.id = ?", (assignment_id,)).fetchone()
+    return _assignment_dict(row, include_private=include_private) if row else None
+
+
+def get_assignment_for_user(
+    assignment_id: str, user_id: str, *, role: str = "student", include_private: bool = False
+) -> dict[str, Any] | None:
+    """Return an assignment only when the caller owns its class or is a
+    member. Students cannot discover unpublished assignments."""
+    with _connect() as conn:
+        row = conn.execute(
+            _assignment_select()
+            + "WHERE a.id = ? AND ("
+            "a.teacher_id = ? OR (? = 'admin') OR "
+            "(a.status = 'published' AND EXISTS (SELECT 1 FROM class_members m "
+            " WHERE m.class_id = a.class_id AND m.user_id = ?)) )",
+            (assignment_id, user_id, role, user_id),
+        ).fetchone()
+    if not row:
+        return None
+    return _assignment_dict(row, include_private=include_private or role in ("teacher", "admin"))
+
+
+def list_assignments(
+    user_id: str,
+    *,
+    role: str = "student",
+    class_id: str | None = None,
+    include_private: bool = False,
+) -> list[dict[str, Any]]:
+    """List assignments visible to a user. Teachers see drafts in classes
+    they own; students see published assignments in classes they joined."""
+    params: list[Any] = []
+    where: list[str] = []
+    if role in ("teacher", "admin"):
+        if role == "admin":
+            where.append("1 = 1")
+        else:
+            where.append("a.teacher_id = ?")
+            params.append(user_id)
+    else:
+        where.append(
+            "a.status = 'published' AND EXISTS (SELECT 1 FROM class_members m "
+            "WHERE m.class_id = a.class_id AND m.user_id = ?)"
+        )
+        params.append(user_id)
+    if class_id:
+        where.append("a.class_id = ?")
+        params.append(class_id)
+    sql = _assignment_select() + "WHERE " + " AND ".join(where) + " ORDER BY " \
+        "CASE WHEN a.due_at IS NULL THEN 1 ELSE 0 END, a.due_at, a.created_at DESC"
+    with _connect() as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return [_assignment_dict(r, include_private=include_private or role in ("teacher", "admin")) for r in rows]
+
+
+def update_assignment(teacher_id: str, assignment_id: str, patch: dict[str, Any]) -> dict[str, Any] | None:
+    allowed = {
+        "title", "description", "instructions", "lesson_id", "assignment_type",
+        "project_template", "quiz", "rubric", "due_at", "max_score", "auto_grade", "status",
+    }
+    updates = {k: v for k, v in patch.items() if k in allowed}
+    if not updates:
+        return get_assignment(assignment_id)
+    payloads = {k: _json_payload(updates[k]) for k in ("project_template", "quiz", "rubric") if k in updates}
+    if sum(len((p or "").encode("utf-8")) for p in payloads.values()) > MAX_ASSIGNMENT_BYTES:
+        raise ValueError("assignment too large")
+    if "auto_grade" in updates:
+        updates["auto_grade"] = 1 if updates["auto_grade"] else 0
+    if "max_score" in updates:
+        updates["max_score"] = float(updates["max_score"])
+    updates.update(payloads)
+    if "status" in updates and updates["status"] not in ("draft", "published", "archived"):
+        raise ValueError("invalid assignment status")
+    now = time.time()
+    assignments = list(updates.items())
+    sets = ", ".join(f"{key} = ?" for key, _ in assignments) + ", updated_at = ?"
+    args = [value for _, value in assignments] + [now, assignment_id, teacher_id]
+    with _connect() as conn:
+        cur = conn.execute(
+            f"UPDATE assignments SET {sets} WHERE id = ? AND teacher_id = ?", args
+        )
+        if cur.rowcount == 0:
+            return None
+        if updates.get("status") == "published":
+            conn.execute(
+                "UPDATE assignments SET published_at = COALESCE(published_at, ?) WHERE id = ?",
+                (now, assignment_id),
+            )
+        elif updates.get("status") == "draft":
+            conn.execute("UPDATE assignments SET published_at = NULL WHERE id = ?", (assignment_id,))
+        row = conn.execute(_assignment_select() + "WHERE a.id = ?", (assignment_id,)).fetchone()
+    return _assignment_dict(row) if row else None
+
+
+def set_assignment_status(teacher_id: str, assignment_id: str, status: str) -> dict[str, Any] | None:
+    return update_assignment(teacher_id, assignment_id, {"status": status})
+
+
+def delete_assignment(teacher_id: str, assignment_id: str) -> bool:
+    with _connect() as conn:
+        cur = conn.execute(
+            "DELETE FROM assignments WHERE id = ? AND teacher_id = ?", (assignment_id, teacher_id)
+        )
+    return cur.rowcount > 0
+
+
+def _submission_select() -> str:
+    return (
+        "SELECT s.*, u.name AS student_name, u.email AS student_email, "
+        "a.max_score AS max_score, a.due_at AS due_at "
+        "FROM assignment_submissions s "
+        "JOIN users u ON u.id = s.student_id "
+        "JOIN assignments a ON a.id = s.assignment_id "
+    )
+
+
+def save_submission(
+    assignment_id: str,
+    student_id: str,
+    *,
+    content: str = "",
+    answers: Any = None,
+    project_data: Any = None,
+    files: Any = None,
+    submit: bool = True,
+) -> tuple[dict[str, Any] | None, bool]:
+    """Create or replace the student's submission. Returns (submission,
+    created). The unique assignment/student key keeps retries idempotent."""
+    answer_payload = _json_payload(answers)
+    project_payload = _json_payload(project_data)
+    files_payload = _json_payload(files)
+    total_bytes = len(content.encode("utf-8")) + sum(
+        len(p.encode("utf-8")) for p in (answer_payload, project_payload, files_payload) if p is not None
+    )
+    if total_bytes > MAX_SUBMISSION_BYTES:
+        raise ValueError("submission too large")
+    now = time.time()
+    status = "submitted" if submit else "draft"
+    submitted_at = now if submit else None
+    with _connect() as conn:
+        assignment = conn.execute(
+            "SELECT id, class_id, status FROM assignments WHERE id = ?", (assignment_id,)
+        ).fetchone()
+        if not assignment:
+            return None, False
+        member = conn.execute(
+            "SELECT 1 FROM class_members WHERE class_id = ? AND user_id = ?",
+            (assignment["class_id"], student_id),
+        ).fetchone()
+        if not member or assignment["status"] != "published":
+            return None, False
+        old = conn.execute(
+            "SELECT id, attempt_no FROM assignment_submissions WHERE assignment_id = ? AND student_id = ?",
+            (assignment_id, student_id),
+        ).fetchone()
+        if old:
+            attempt_no = int(old["attempt_no"]) + (1 if submit else 0)
+            conn.execute(
+                "UPDATE assignment_submissions SET content = ?, answers = ?, project_data = ?, files = ?, "
+                "status = ?, submitted_at = CASE WHEN ? THEN ? ELSE submitted_at END, "
+                "score = CASE WHEN ? THEN NULL ELSE score END, "
+                "feedback = CASE WHEN ? THEN '' ELSE feedback END, "
+                "graded_at = CASE WHEN ? THEN NULL ELSE graded_at END, grader_id = CASE WHEN ? THEN NULL ELSE grader_id END, "
+                "attempt_no = ?, updated_at = ? WHERE id = ?",
+                (
+                    content,
+                    answer_payload,
+                    project_payload,
+                    files_payload,
+                    status,
+                    1 if submit else 0,
+                    submitted_at,
+                    1 if submit else 0,
+                    1 if submit else 0,
+                    1 if submit else 0,
+                    1 if submit else 0,
+                    attempt_no,
+                    now,
+                    old["id"],
+                ),
+            )
+            sid = old["id"]
+            created = False
+        else:
+            sid = uuid.uuid4().hex
+            attempt_no = 1
+            conn.execute(
+                "INSERT INTO assignment_submissions (id, assignment_id, student_id, content, answers, "
+                "project_data, files, status, submitted_at, attempt_no, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    sid,
+                    assignment_id,
+                    student_id,
+                    content,
+                    answer_payload,
+                    project_payload,
+                    files_payload,
+                    status,
+                    submitted_at,
+                    attempt_no,
+                    now,
+                    now,
+                ),
+            )
+            created = True
+        row = conn.execute(_submission_select() + "WHERE s.id = ?", (sid,)).fetchone()
+    return (_submission_dict(row) if row else None), created
+
+
+def get_submission(
+    assignment_id: str, *, student_id: str | None = None, submission_id: str | None = None
+) -> dict[str, Any] | None:
+    where = ["s.assignment_id = ?"]
+    args: list[Any] = [assignment_id]
+    if student_id:
+        where.append("s.student_id = ?")
+        args.append(student_id)
+    if submission_id:
+        where.append("s.id = ?")
+        args.append(submission_id)
+    with _connect() as conn:
+        row = conn.execute(_submission_select() + "WHERE " + " AND ".join(where), args).fetchone()
+    return _submission_dict(row) if row else None
+
+
+def list_submissions(assignment_id: str, *, status: str | None = None) -> list[dict[str, Any]]:
+    where = ["s.assignment_id = ?"]
+    args: list[Any] = [assignment_id]
+    if status:
+        where.append("s.status = ?")
+        args.append(status)
+    with _connect() as conn:
+        rows = conn.execute(
+            _submission_select() + "WHERE " + " AND ".join(where) + " ORDER BY s.updated_at DESC", args
+        ).fetchall()
+    return [_submission_dict(r) for r in rows]
+
+
+def grade_submission(
+    submission_id: str,
+    grader_id: str,
+    *,
+    score: float | None = None,
+    feedback: str = "",
+    status: str = "graded",
+) -> dict[str, Any] | None:
+    if status not in ("graded", "returned", "submitted"):
+        raise ValueError("invalid submission status")
+    now = time.time()
+    with _connect() as conn:
+        row = conn.execute(
+            _submission_select()
+            + "WHERE s.id = ? AND EXISTS (SELECT 1 FROM assignments a2 WHERE a2.id = s.assignment_id "
+            "AND a2.teacher_id = ?)",
+            (submission_id, grader_id),
+        ).fetchone()
+        if not row:
+            return None
+        max_score = float(row["max_score"])
+        if score is not None and (score < 0 or score > max_score):
+            raise ValueError("score out of range")
+        conn.execute(
+            "UPDATE assignment_submissions SET score = ?, feedback = ?, status = ?, graded_at = ?, "
+            "grader_id = ?, updated_at = ? WHERE id = ?",
+            (
+                float(score) if score is not None else None,
+                feedback,
+                status,
+                now if status in ("graded", "returned") else None,
+                grader_id if status in ("graded", "returned") else None,
+                now,
+                submission_id,
+            ),
+        )
+        updated = conn.execute(_submission_select() + "WHERE s.id = ?", (submission_id,)).fetchone()
+    return _submission_dict(updated) if updated else None
+
+
+def auto_grade_submission(
+    submission_id: str, *, score: float, feedback: str = ""
+) -> dict[str, Any] | None:
+    """Persist a score generated by the server's deterministic quiz grader.
+    This deliberately does not accept a caller identity: the route only
+    invokes it immediately after proving the student owns a published
+    assignment with ``auto_grade`` enabled."""
+    now = time.time()
+    with _connect() as conn:
+        row = conn.execute(_submission_select() + "WHERE s.id = ?", (submission_id,)).fetchone()
+        if not row:
+            return None
+        max_score = float(row["max_score"])
+        bounded = max(0.0, min(float(score), max_score))
+        conn.execute(
+            "UPDATE assignment_submissions SET score = ?, feedback = ?, status = 'graded', "
+            "graded_at = ?, grader_id = NULL, updated_at = ? WHERE id = ?",
+            (bounded, feedback, now, now, submission_id),
+        )
+        updated = conn.execute(_submission_select() + "WHERE s.id = ?", (submission_id,)).fetchone()
+    return _submission_dict(updated) if updated else None
