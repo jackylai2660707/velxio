@@ -1,25 +1,5 @@
 /// <reference types="vite/client" />
 
-// Optional commercial overlay modules. OSS builds resolve these aliases to
-// local no-op stubs; declarations keep the base project type-checkable when
-// the private overlay is absent.
-declare module '@pro/data/proExamples' {
-  export const proExamples: any[];
-}
-declare module '@pro/pages/marketing' {
-  import type React from 'react';
-  export const MARKETING_ROUTE_COMPONENTS: Record<string, React.FC>;
-}
-declare module '@pro/i18n/register' {
-  export function registerProI18n(): void;
-}
-declare module '@pro/index' {
-  export function mountPro(): void;
-}
-declare module '@pro/desktop_index' {
-  export function mountProDesktop(): void;
-}
-
 // Mark this declaration file as an external module so the React augmentation
 // below merges with (rather than replaces) React's normal exports.
 import 'react';
