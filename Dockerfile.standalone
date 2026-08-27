@@ -67,6 +67,8 @@ RUN cd /qemu \
       f="${base}.so" ; \
       if [ -f "$f" ]; then \
         echo "Using local $f ($(stat -c%s "$f") bytes)" ; \
+      elif [ "$f" = "esp32s3_rev0_rom.bin" ] && [ -z "${VELXIO_LICENSE_KEY}" ] && [ -z "${QEMU_RELEASE_URL}" ]; then \
+        echo "Skipping optional $f (no licensed QEMU asset source)" ; \
       elif [ -n "${QEMU_RELEASE_URL}" ]; then \
         echo "Downloading ${base}-${TARGETARCH}.so → $f (legacy URL) ..." ; \
         curl -fSL -o "$f" "${QEMU_RELEASE_URL}/${base}-${TARGETARCH}.so" ; \
