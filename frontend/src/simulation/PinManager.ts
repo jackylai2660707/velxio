@@ -193,9 +193,19 @@ export class PinManager {
    * IO_MUX / pad config): 0 = none, 1 = pull-up, 2 = pull-down. The SPICE
    * collector reads this back via `getPinPull` to stamp a weak resistor.
    */
+  /** Fired on pull-state TRANSITIONS (not repeats). Simulators use it to
+   * seed the pin input to the pull's resting level the moment the firmware
+   * enables it — closing the boot window where INPUT_PULLUP read LOW until
+   * the first SPICE solve (~400 ms): 8/8 setup() reads plus the first two
+   * loop() passes returned 0 in the deterministic repro, which is exactly
+   * the phantom emergency-stop latch of the 2026-07 audit. */
+  onPullChange: ((pin: number, pull: 0 | 1 | 2) => void) | null = null;
+
   setPinPull(pin: number, pull: 0 | 1 | 2): void {
+    const prev = this.pinPulls.get(pin) ?? 0;
     if (pull === 0) this.pinPulls.delete(pin);
     else this.pinPulls.set(pin, pull);
+    if (prev !== pull) this.onPullChange?.(pin, pull);
   }
 
   /** Internal pull config for a pin: 0 = none, 1 = pull-up, 2 = pull-down. */
@@ -276,6 +286,20 @@ export class PinManager {
 
   getPwmValue(pin: number): number {
     return this.pwmValues.get(pin) ?? 0;
+  }
+
+  /** Last known PWM carrier frequency per pin, in Hz. Written by the LEDC
+   *  duty handler when the engine reports it; 0 = never reported. Kept as a
+   *  side table rather than a new callback parameter so the many existing
+   *  two- and three-arg PWM listeners stay untouched. */
+  private pwmFreqs: Map<number, number> = new Map();
+
+  setPwmFreq(pin: number, freqHz: number): void {
+    this.pwmFreqs.set(pin, freqHz);
+  }
+
+  getPwmFreq(pin: number): number {
+    return this.pwmFreqs.get(pin) ?? 0;
   }
 
   // ── Analog voltage API ───────────────────────────────────────────────────

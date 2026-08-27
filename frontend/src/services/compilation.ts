@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { getApiBase } from '../lib/apiBase';
 import type { ESP32BoardOptions, SpiffsFile } from '../types/boardOptions';
+import { implicitBoardOptions } from '../types/boardOptions';
 
 export interface SketchFile {
   name: string;
@@ -20,6 +21,20 @@ export interface CompileExtras {
   // Sent as the ESP-IDF resolution SCOPE; null/omitted = legacy scan-all.
   // Ignored by the backend for non-ESP32 (arduino-cli) boards.
   libraries?: string[] | null;
+  // Pure ESP-IDF mode (issue #139): 'espidf' compiles the files as a pure
+  // ESP-IDF project (user app_main, no arduino-esp32 component). Omitted /
+  // undefined = classic Arduino sketch compile. ESP32 boards only.
+  language?: 'espidf';
+  // Who triggered the compile — 'agent' when the AI assistant's tool did.
+  // Threads through to backend metrics; omitted = manual user action.
+  initiatedBy?: 'agent';
+  // The editor's BoardKind — analytics only. Distinct boards can share one
+  // FQBN (Pimoroni RP2350 boards all compile as rpipico2); the kind is the
+  // only identifier that tells them apart in the metrics.
+  boardKind?: string;
+  // Gallery example the workspace was loaded from — analytics only
+  // ("which examples get compiled most"). Null/omitted outside examples.
+  exampleId?: string | null;
 }
 
 export interface CompileResult {
@@ -32,6 +47,11 @@ export interface CompileResult {
   stderr: string;
   error?: string;
   core_install_log?: string;
+  /** P2.4 — the manifest is missing libraries the build really used. */
+  manifest_incomplete?: boolean;
+  /** { header: [candidate library display names] } — single-candidate
+   * entries are safe to auto-declare (see utils/libraryManifest.ts). */
+  manifest_suggested_libraries?: Record<string, string[]> | null;
 }
 
 interface CompileStartResponse {
@@ -49,12 +69,15 @@ interface CompileStatusResponse {
 
 /**
  * Live progress callback — called on every poll while state ∈ {pending,
- * running}. `stdout` is the full live cmake + ninja output captured so far
- * (cap of ~256 KB on the server side, tail kept). Caller can compute a
- * delta against the previous call if it wants to append-only render.
+ * running}, plus one final call with state 'done' carrying the complete
+ * buffer (the lines that landed between the last running-poll and job
+ * completion would otherwise never be delivered). `stdout` is the full live
+ * cmake + ninja output captured so far (cap of ~256 KB on the server side,
+ * tail kept). Caller can compute a delta against the previous call if it
+ * wants to append-only render.
  */
 export type CompileProgress = (info: {
-  state: 'pending' | 'running';
+  state: 'pending' | 'running' | 'done';
   stdout: string;
   elapsedSeconds: number;
 }) => void;
@@ -95,12 +118,26 @@ export async function compileCode(
   // Translate camelCase frontend keys to snake_case backend keys. Backend
   // only inspects these fields for esp32:* FQBNs — other boards pass them
   // through unread.
-  const board_options = extras?.boardOptions ? { ...extras.boardOptions } : null;
+  // A project that never opened the Board Options modal still has to build for
+  // the module it is running on: ask the board what it ships with. Null for
+  // every board that declares nothing, which is all of the OSS ones.
+  const board_options = extras?.boardOptions
+    ? { ...extras.boardOptions }
+    : extras?.boardKind
+      ? implicitBoardOptions(extras.boardKind as never)
+      : null;
   const spiffs_files = extras?.spiffsFiles?.length
     ? extras.spiffsFiles.map((f) => ({ name: f.name, content_b64: f.contentB64 }))
     : null;
   // P2.3 — library manifest (resolution scope). null = legacy scan-all.
   const libraries = extras?.libraries && extras.libraries.length ? extras.libraries : null;
+  // Custom WiFi access points (overlay feature): when the project carries its
+  // own AP parts, their SSIDs ride along and the backend's SSID rewriter
+  // stands down — the sketch connects to the network the user actually wrote.
+  // OSS builds have no provider installed → null → legacy rewrite.
+  const customWifiSsids =
+    (window as { __velxio_custom_wifi_ssids__?: () => string[] | null })
+      .__velxio_custom_wifi_ssids__?.() ?? null;
 
   let jobId: string;
   try {
@@ -112,7 +149,12 @@ export async function compileCode(
         project_id: projectId ?? null,
         board_options,
         spiffs_files,
+        board_kind: extras?.boardKind ?? null,
+        example_id: extras?.exampleId ?? null,
         libraries,
+        language: extras?.language ?? null,
+        initiated_by: extras?.initiatedBy ?? null,
+        custom_wifi_ssids: customWifiSsids,
       },
       { withCredentials: true, timeout: 30000 },
     );
@@ -163,6 +205,15 @@ export async function compileCode(
     if (status.state === 'done' && status.result) {
       const elapsed = Math.round((Date.now() - startedAt) / 1000);
       console.log(`[compile] job ${jobId} done in ${elapsed}s`);
+      // Final flush: the buffer grew between the last running-poll and
+      // completion (esptool + binary-size lines usually live there).
+      if (onProgress) {
+        try {
+          onProgress({ state: 'done', stdout: status.stdout || '', elapsedSeconds: elapsed });
+        } catch (err) {
+          console.warn('[compile] onProgress threw:', err);
+        }
+      }
       return status.result;
     }
 

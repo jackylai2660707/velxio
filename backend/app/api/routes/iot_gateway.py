@@ -10,6 +10,7 @@ URL pattern:
     /api/gateway/{client_id}/{path}
     →  http://127.0.0.1:{hostfwd_port}/{path}
 """
+import asyncio
 import json
 import logging
 
@@ -66,20 +67,46 @@ async def gateway_proxy(client_id: str, path: str, request: Request) -> Response
             media_type='application/json',
         )
 
-    # ── ESP32: the server runs in QEMU, reachable via slirp hostfwd. ──
-    inst = esp_lib_manager.get_instance(client_id)
-    if inst and inst.wifi_enabled and inst.wifi_hostfwd_port != 0:
-        return await _proxy_esp32(inst, path, request)
+    # Registration races the sketch printing its URL: the in-browser engines
+    # dial their net bridge only on 'got_ip', which lands at the same moment
+    # "Server started at: ..." appears in the serial monitor — a fast click
+    # reaches here before the bridge exists. Poll briefly before giving up.
+    for attempt in range(5):
+        if attempt:
+            await asyncio.sleep(0.25)
 
-    # ── Pico W (and any other overlay-provided board): the server runs in the
-    #    browser-side lwIP, reachable only by the overlay proxying TCP into the
-    #    chip over the WS bridge. OSS has no resolver -> falls through to 404. ──
-    overlay_resp = await dispatch_gateway_proxy(client_id, path, request)
-    if overlay_resp is not None:
-        return overlay_resp
+        # ── ESP32: the server runs in QEMU, reachable via slirp hostfwd. ──
+        inst = esp_lib_manager.get_instance(client_id)
+        if inst and inst.wifi_enabled and inst.wifi_hostfwd_port != 0:
+            return await _proxy_esp32(inst, path, request)
 
+        # ── Pico W (and any other overlay-provided board): the server runs in
+        #    the browser-side lwIP, reachable only by the overlay proxying TCP
+        #    into the chip over the WS bridge. OSS has no resolver -> None. ──
+        overlay_resp = await dispatch_gateway_proxy(client_id, path, request)
+        if overlay_resp is not None:
+            return overlay_resp
+
+    # Wording matters here. The old text said "make sure your sketch connected
+    # to WiFi", which reads as an accusation to the one sketch that most often
+    # lands on this branch: a captive-portal / provisioning sketch that called
+    # WiFi.softAP() and deliberately did NOT join a network. Such a board is
+    # the access point, so it never gets a DHCP lease, never reaches 'got_ip',
+    # and never registers the bridge this proxy looks up — there is nothing to
+    # reach and nothing the user did wrong. Name that case first.
     return Response(
-        content='{"error":"No WiFi-enabled board found for this client. Make sure your sketch connected to WiFi and started a server on port 80."}',
+        content=json.dumps({
+            'error': 'no_reachable_board',
+            'message': (
+                'Nothing is registered for this client, so there is no server '
+                'to reach. If your sketch calls WiFi.softAP(), that is why: '
+                'the simulator can reach a board that JOINED a network, not a '
+                'board that created one. Join a simulated network instead '
+                '(WiFi.begin("Velxio-GUEST") — open, no password) and start '
+                'your server on port 80. If the sketch does join a network, '
+                'wait for it to print its IP before opening the gateway.'
+            ),
+        }),
         status_code=404,
         media_type='application/json',
     )

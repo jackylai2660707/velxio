@@ -26,7 +26,31 @@ def make_compiler() -> ESPIDFCompiler:
     comp.idf_path = ''
     comp.arduino_path = ''
     comp.has_arduino = False
+    # The v5 half of the per-compile IDF selection. A bare __new__ object
+    # skips __init__, so anything reached through _idf_root / _arduino_path_for
+    # has to be declared here or the call dies on AttributeError.
+    comp.idf5_path = ''
+    comp.arduino5_path = ''
+    comp.has_arduino5 = False
     return comp
+
+
+def merged_has(component_root: Path, *rel_suffixes: str) -> bool:
+    """True when every suffix exists somewhere under the merged component.
+
+    The component's internal layout is a build-system detail that changed with
+    VELXIO_PER_LIB_ROOTS (each library now keeps its own subtree). These tests
+    care that a file WAS merged, not where — the exported include roots are
+    asserted directly in test_espidf_include_roots.py.
+    """
+    found = {
+        str(p.relative_to(component_root)).replace('\\', '/')
+        for p in component_root.rglob('*') if p.is_file()
+    }
+    return all(
+        any(f == suffix or f.endswith('/' + suffix) for f in found)
+        for suffix in rel_suffixes
+    )
 
 
 def make_library(libs_dir: Path, lib_name: str, headers: list[str],
@@ -277,7 +301,7 @@ class TestResolveLibraryComponents(unittest.TestCase):
         """Adafruit_GFX.h directly in sketch → copied into user_libs_all."""
         self._resolve(['Adafruit_GFX.h'])
         self.assertTrue(
-            (self.user_libs / 'user_libs_all' / 'Adafruit_GFX.h').exists(),
+            merged_has(self.user_libs / 'user_libs_all', 'Adafruit_GFX.h'),
             'Adafruit_GFX.h not copied into user_libs_all — will not be on include path',
         )
 
@@ -285,25 +309,25 @@ class TestResolveLibraryComponents(unittest.TestCase):
         """SSD1306 sketch: both GFX and SSD1306 files must be in user_libs_all."""
         self._resolve(['Wire.h', 'Adafruit_GFX.h', 'Adafruit_SSD1306.h'])
         all_dir = self.user_libs / 'user_libs_all'
-        self.assertTrue((all_dir / 'Adafruit_GFX.h').exists(),
+        self.assertTrue(merged_has(all_dir, 'Adafruit_GFX.h'),
                         'Adafruit_GFX.h missing — SSD1306.cpp will fail to compile')
-        self.assertTrue((all_dir / 'Adafruit_SSD1306.h').exists(),
+        self.assertTrue(merged_has(all_dir, 'Adafruit_SSD1306.h'),
                         'Adafruit_SSD1306.h missing')
-        self.assertTrue((all_dir / 'Adafruit_GFX.cpp').exists())
-        self.assertTrue((all_dir / 'Adafruit_SSD1306.cpp').exists())
+        self.assertTrue(merged_has(all_dir, 'Adafruit_GFX.cpp'))
+        self.assertTrue(merged_has(all_dir, 'Adafruit_SSD1306.cpp'))
 
     def test_wire_files_not_in_merged_component(self):
         """Wire is a core esp32 lib — must NOT be copied into user_libs_all."""
         self._resolve(['Wire.h', 'Adafruit_SSD1306.h'])
         all_dir = self.user_libs / 'user_libs_all'
-        self.assertFalse((all_dir / 'Wire.h').exists(),
+        self.assertFalse(merged_has(all_dir, 'Wire.h'),
                          'Wire.h was incorrectly copied — it is already in arduino-esp32')
 
     def test_transitive_gfx_discovered_via_ssd1306(self):
         """When sketch only includes SSD1306, GFX is discovered transitively."""
         self._resolve(['Adafruit_SSD1306.h'])
         self.assertTrue(
-            (self.user_libs / 'user_libs_all' / 'Adafruit_GFX.h').exists(),
+            merged_has(self.user_libs / 'user_libs_all', 'Adafruit_GFX.h'),
             'Transitive Adafruit_GFX.h not discovered — SSD1306.h includes it',
         )
 
@@ -449,3 +473,129 @@ if __name__ == '__main__':
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     sys.exit(0 if result.wasSuccessful() else 1)
+
+
+class TestDetectExternalIncludesQuotedForm(unittest.TestCase):
+    """Both include forms must reach the library resolver.
+
+    Arduino treats `#include "Lib.h"` and `#include <Lib.h>` alike for
+    libraries, and vendors' own examples use the quoted form — M5Stack's
+    Cardputer examples open with `#include "M5Cardputer.h"`. Scanning only the
+    angled form meant those sketches never reached the resolver and died on
+    `fatal error: M5Cardputer.h: No such file`, while the same sketch with angle
+    brackets built fine.
+    """
+
+    def setUp(self):
+        self.comp = make_compiler()
+
+    def test_angled_include_is_detected(self):
+        self.assertIn('M5Cardputer.h',
+                      self.comp._detect_external_includes('#include <M5Cardputer.h>'))
+
+    def test_quoted_include_is_detected(self):
+        self.assertIn('M5Cardputer.h',
+                      self.comp._detect_external_includes('#include "M5Cardputer.h"'))
+
+    def test_both_forms_in_one_sketch(self):
+        code = '#include "M5Cardputer.h"\n#include <M5GFX.h>\n'
+        found = self.comp._detect_external_includes(code)
+        self.assertIn('M5Cardputer.h', found)
+        self.assertIn('M5GFX.h', found)
+
+    def test_a_projects_own_header_is_not_a_library(self):
+        code = '#include "Common.h"\n#include "M5Cardputer.h"\n'
+        found = self.comp._detect_external_includes(code, {'Common.h', 'sketch.ino'})
+        self.assertNotIn('Common.h', found)
+        self.assertIn('M5Cardputer.h', found)
+
+    def test_idf_internal_headers_are_still_skipped(self):
+        code = '#include "freertos/FreeRTOS.h"\n#include "esp_wifi.h"\n'
+        self.assertEqual(self.comp._detect_external_includes(code), [])
+
+    def test_spacing_variants(self):
+        for code in ('#include"M5Cardputer.h"', '#  include   "M5Cardputer.h"'):
+            with self.subTest(code=code):
+                self.assertIn('M5Cardputer.h',
+                              self.comp._detect_external_includes(code))
+
+
+# ── Test: header-only libraries (ArduinoJson) ────────────────────────────────
+
+class TestHeaderOnlyLibrary(unittest.TestCase):
+    """
+    A library with no .c/.cpp of its own must still produce a CMakeLists.txt
+    ESP-IDF can configure.
+
+    With no SRCS, idf_component_register() builds the component as an INTERFACE
+    library, and target_compile_definitions(... PRIVATE ...) on an INTERFACE
+    target is a hard CMake error:
+
+        target_compile_definitions may only set INTERFACE properties on
+        INTERFACE targets
+
+    That killed the configure step outright, so installing ArduinoJson broke
+    every ESP32 build in the project — reported as "ArduinoJson can't be found
+    even after it has been installed" (issue #124), because the user only ever
+    saw the build fail. A library carrying its own .cpp was unaffected, which is
+    why LiquidCrystal_I2C (#257) looked fine.
+    """
+
+    def setUp(self):
+        self.comp = make_compiler()
+        self.tmp = tempfile.mkdtemp()
+        self.arduino_libs = Path(self.tmp) / 'arduino_libs'
+        self.esp32_libs = Path(self.tmp) / 'esp32_libs'
+        self.user_libs = Path(self.tmp) / 'user_libs'
+        for d in (self.arduino_libs, self.esp32_libs, self.user_libs):
+            d.mkdir()
+        # ArduinoJson ships headers only, under src/.
+        make_library(self.arduino_libs, 'ArduinoJson',
+                     headers=['ArduinoJson.h'], sources=[], use_src_subdir=True)
+        # A conventional library, for the contrast case.
+        make_library(self.arduino_libs, 'LiquidCrystal_I2C',
+                     headers=['LiquidCrystal_I2C.h'],
+                     sources=['LiquidCrystal_I2C.cpp'])
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def _cmake_for(self, headers: list[str]) -> str:
+        names, _ = self.comp._resolve_library_components(
+            headers, self.arduino_libs, self.esp32_libs, 'arduino-esp32', self.user_libs
+        )
+        self.assertEqual(names, ['user_libs_all'])
+        return (self.user_libs / 'user_libs_all' / 'CMakeLists.txt').read_text(encoding='utf-8')
+
+    def test_header_only_library_emits_no_private_scope(self):
+        cmake = self._cmake_for(['ArduinoJson.h'])
+        self.assertNotIn('SRCS', cmake, 'header-only component must register with no SRCS')
+        self.assertNotIn(
+            'PRIVATE', cmake,
+            'PRIVATE on a source-less (INTERFACE) component is a CMake configure error',
+        )
+
+    def test_header_only_library_still_exposes_its_header(self):
+        cmake = self._cmake_for(['ArduinoJson.h'])
+        self.assertIn('idf_component_register', cmake)
+        # The library's src/ layout is preserved, and its include ROOT (the
+        # `src` dir, wherever the layout puts it) must be exported for the
+        # sketch's #include <ArduinoJson.h> to resolve.
+        merged = self.user_libs / 'user_libs_all'
+        self.assertTrue(
+            merged_has(merged, 'src/ArduinoJson.h'),
+            'ArduinoJson.h not copied — the sketch would fail on "No such file"',
+        )
+        self.assertRegex(cmake, r'INCLUDE_DIRS "\." "(?:[^"]+/)?src"')
+
+    def test_library_with_sources_keeps_the_progmem_definitions(self):
+        cmake = self._cmake_for(['LiquidCrystal_I2C.h'])
+        self.assertIn('SRCS', cmake)
+        self.assertIn('target_compile_definitions(${COMPONENT_LIB} PRIVATE', cmake)
+        self.assertIn('memcpy_P=memcpy', cmake)
+
+    def test_mixed_libraries_keep_the_definitions(self):
+        """One library with sources is enough to make the component compile code."""
+        cmake = self._cmake_for(['ArduinoJson.h', 'LiquidCrystal_I2C.h'])
+        self.assertIn('SRCS', cmake)
+        self.assertIn('PRIVATE', cmake)

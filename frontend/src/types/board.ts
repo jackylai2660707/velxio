@@ -1,3 +1,5 @@
+import { getProBoard } from '../lib/proBoardRegistry';
+
 export type BoardKind =
   | 'arduino-uno'
   | 'arduino-nano'
@@ -30,13 +32,26 @@ export type BoardKind =
   | 'stm32-netduino2' // Netduino 2 (F205, Cortex-M3), QEMU (serial until F205 GPIO wired)
   | 'attiny85'; // AVR ATtiny85, browser emulation (avr8js)
 
-export type LanguageMode = 'arduino' | 'micropython';
+export type LanguageMode = 'arduino' | 'micropython' | 'espidf';
 
-/** True for every Raspberry Pi backed by the QEMU bridge (Zero, 1, 2, 3, 4, 5).
+/** Extra QEMU-Linux board kinds registered at runtime by a private overlay
+ *  (proBoardRegistry defs with `piFamily: true`). They route through the same
+ *  backend qemu bridge, VFS panel and terminal UX as the Raspberry Pi family. */
+const PI_FAMILY_EXTRA_KINDS = new Set<string>();
+
+export function registerPiFamilyKind(kind: string): void {
+  PI_FAMILY_EXTRA_KINDS.add(kind);
+}
+
+/** True for every Raspberry Pi backed by the QEMU bridge (Zero, 1, 2, 3, 4, 5)
+ *  and any overlay-registered QEMU-Linux board (registerPiFamilyKind).
  *  Excludes the Pico boards (RP2040, browser emulation). */
 export function isPiBoardKind(kind: BoardKind | string): boolean {
-  return typeof kind === 'string' && kind.startsWith('raspberry-pi-')
-    && kind !== 'raspberry-pi-pico';
+  if (typeof kind !== 'string') return false;
+  return (
+    (kind.startsWith('raspberry-pi-') && kind !== 'raspberry-pi-pico') ||
+    PI_FAMILY_EXTRA_KINDS.has(kind)
+  );
 }
 
 /** True for STM32 boards backed by the QEMU bridge (libqemu-arm via
@@ -63,10 +78,35 @@ export const BOARD_SUPPORTS_MICROPYTHON = new Set<BoardKind>([
   'aitewinrobot-esp32c3-supermini',
 ]);
 
+/** Boards that can run pure ESP-IDF projects (app_main entry point, IDF
+ *  APIs only — no Arduino core). The backend compiles them through the same
+ *  ESP-IDF toolchain it already uses for ESP32 Arduino sketches, just
+ *  without the arduino-esp32 component. ESP32 family only (issue #139). */
+export const BOARD_SUPPORTS_ESPIDF = new Set<BoardKind>([
+  // ESP32 Xtensa (QEMU bridge)
+  'esp32',
+  'esp32-devkit-c-v4',
+  'esp32-cam',
+  'wemos-lolin32-lite',
+  // ESP32-S3 Xtensa (QEMU bridge)
+  'esp32-s3',
+  'xiao-esp32-s3',
+  'arduino-nano-esp32',
+  // ESP32-C3 RISC-V (QEMU bridge)
+  'esp32-c3',
+  'xiao-esp32-c3',
+  'aitewinrobot-esp32c3-supermini',
+]);
+
 export interface WifiStatus {
   status: string; // 'initializing' | 'connected' | 'got_ip' | 'disconnected'
   ssid?: string;
   ip?: string;
+  /** True when the board's network stack lives in THIS browser tab (in-browser
+   *  JS engine). The IoT gateway must then open in the in-app iframe: a new
+   *  tab backgrounds this one, the emulation gets timer-throttled, and the
+   *  in-chip HTTP server can't answer. Unset = server runs backend-side. */
+  inBrowser?: boolean;
 }
 
 export interface BleStatus {
@@ -89,12 +129,28 @@ export interface BoardInstance {
   // the bridge sees the boot-complete marker, and drives the "Booting…" overlay
   // and gates file uploads. Undefined/false for non-Pi boards and pre-boot.
   piBooted?: boolean;
+  /** QEMU-Linux boards only. Which engine this board is running on (or ran
+   *  last): 'instant' = in-browser Python, 'linux' = the QEMU guest. Drives
+   *  the mode chip and the terminal panel (interactive shell only exists in
+   *  Linux mode). Undefined until the first run. */
+  engineMode?: 'instant' | 'linux';
+  /** User override for the engine, persisted with the project. Set by the
+   *  mode chip or by turning on the Linux terminal; wins over the detector
+   *  so a project doesn't silently change behaviour between runs. */
+  enginePinned?: 'instant' | 'linux';
   compiledProgram: string | null; // hex for AVR/RP2040, null for Pi (runs Python)
+  /**
+   * Fingerprint of the sources (+ build options) `compiledProgram` was built
+   * from — see utils/sourceFingerprint.ts. Lets the UI tell a build that
+   * matches the code on screen from a stale one (the Flash dialog warns
+   * and rebuilds). Undefined for builds recorded before this field existed.
+   */
+  compiledSourceHash?: string | null;
   serialOutput: string;
   serialBaudRate: number;
   serialMonitorOpen: boolean;
   activeFileGroupId: string;
-  languageMode: LanguageMode; // 'arduino' (default) or 'micropython'
+  languageMode: LanguageMode; // 'arduino' (default), 'micropython' or 'espidf'
   hasWifi?: boolean; // set by compiler — true when sketch uses WiFi
   wifiStatus?: WifiStatus;
   bleStatus?: BleStatus;
@@ -104,12 +160,57 @@ export interface BoardInstance {
   // Types live in `./boardOptions` to avoid a circular import.
   boardOptions?: import('./boardOptions').ESP32BoardOptions;
   spiffsFiles?: import('./boardOptions').SpiffsFile[];
+  /** User uploads for a board's BUILT-IN microSD slot (a ProBoardDef with
+   *  builtInSdCsPin, e.g. the XIAO ESP32S3 Sense). Same shape the
+   *  microsd-card component persists in properties.sdFiles, and consumed the
+   *  same way: merged into buildProjectSdImage on Run, overriding same-named
+   *  project files. Undefined for boards without a slot. */
+  sdFiles?: Array<{ name: string; contentB64: string }>;
   // P2.4 — this board's declared library manifest (its velxio.json). The ESP32
   // compile scope: each board resolves ONLY its own declared libraries, so two
   // boards in the same project can use different (even conflicting) libraries
   // without clashing. Undefined for pre-feature boards (-> legacy scan-all).
   libraries?: string[];
 }
+
+/**
+ * Is this string a board kind Velxio can actually put on a canvas?
+ *
+ * BOARD_KIND_LABELS is exhaustive over the OSS union by construction (the
+ * compiler enforces the Record), and the overlay's kinds live in the pro
+ * registry, so the two together are the whole space. Callers that receive a
+ * kind from OUTSIDE the app — an imported project file, a URL, a saved
+ * document — need this: importing a diagram used to answer 'arduino-uno' for
+ * anything it did not recognise, and the user got an Uno with no explanation
+ * (issue #268).
+ */
+export function isKnownBoardKind(kind: string): kind is BoardKind {
+  // hasOwnProperty, not `in`: `in` walks the prototype chain, so 'toString',
+  // 'constructor' and '__proto__' would all pass — and the strings reaching
+  // here come from files people send each other.
+  return (
+    Object.prototype.hasOwnProperty.call(BOARD_KIND_LABELS, kind) ||
+    getProBoard(kind) !== undefined
+  );
+}
+
+/**
+ * The networks the emulated radio broadcasts — all open, no password.
+ *
+ * Both backends beacon the same four (the QEMU fork's esp32_wifi_ap.c and the
+ * in-browser engines' ACCESS_POINTS), and a station can only ever associate
+ * with one of them. Sketches COMPILED in Velxio never have to know: the
+ * compiler rewrites their SSID literal on the way to the emulator. Firmware
+ * that arrives already built does not pass through that step, so its own SSID
+ * is what it hunts for — which is why an otherwise-working binary sits there
+ * failing to connect (issue #270).
+ */
+export const EMULATED_WIFI_SSIDS = [
+  'Velxio-GUEST',
+  'PICSimLabWifi',
+  'Espressif',
+  'MasseyWifi',
+] as const;
 
 export const BOARD_KIND_LABELS: Record<BoardKind, string> = {
   'arduino-uno': 'Arduino Uno',
@@ -183,3 +284,29 @@ export const BOARD_KIND_FQBN: Record<BoardKind, string | null> = {
   'stm32-netduino2': 'STMicroelectronics:stm32:GenF2:pnum=GENERIC_F205RGTX',
   attiny85: 'ATTinyCore:avr:attinyx5:chip=85,clock=16pll',
 };
+
+/**
+ * FQBN used ONLY by the pure ESP-IDF language mode, for boards where it
+ * differs from the Arduino one — in practice, boards that have NO Arduino
+ * FQBN at all. The ESP32-C5 kits are the case: no arduino-esp32 core supports
+ * the C5 (the backend refuses that target for Arduino on purpose), but the
+ * ESP-IDF lane builds them fine and only needs the FQBN to derive its IDF
+ * target. Overlay boards fill this through ProBoardDef.espidfFqbn.
+ */
+export const BOARD_KIND_ESPIDF_FQBN: Partial<Record<BoardKind, string>> = {};
+
+/**
+ * The FQBN a compile should use for a board in a given language mode. Every
+ * compile site must go through this: reading BOARD_KIND_FQBN directly makes an
+ * Arduino-less board (FQBN null) fail with "No FQBN for board kind" even when
+ * its ESP-IDF mode is perfectly buildable.
+ */
+export function fqbnForLanguage(
+  kind: BoardKind,
+  mode: LanguageMode | undefined,
+): string | null {
+  if (mode === 'espidf' && BOARD_KIND_ESPIDF_FQBN[kind]) {
+    return BOARD_KIND_ESPIDF_FQBN[kind] as string;
+  }
+  return BOARD_KIND_FQBN[kind] ?? null;
+}

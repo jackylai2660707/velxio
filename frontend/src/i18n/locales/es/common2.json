@@ -33,11 +33,19 @@
         "dismiss": "Descartar"
       },
       "exportBom": "Exportar lista de materiales (CSV — Pro)",
-      "exportScreenshot": "Exportar esquemático como imagen (PNG — Pro)"
+      "exportScreenshot": "Exportar esquemático como imagen (PNG — Pro)",
+      "importLabel": "Importar proyecto",
+      "exportLabel": "Exportar proyecto (.zip)",
+      "exportBomLabel": "Lista de materiales (CSV)",
+      "exportScreenshotLabel": "Imagen del esquema (PNG)",
+      "shareLabel": "Compartir / Insertar",
+      "githubSyncLabel": "Sincronizar con GitHub",
+      "uploadFirmwareLabel": "Subir firmware",
+      "recordLabel": "Grabar simulación"
     },
     "fileExplorer": {
       "workspace": "ESPACIO DE TRABAJO",
-      "newWorkspace": "Nuevo espacio de trabajo (borra placas, componentes, cables y archivos)",
+      "newWorkspace": "Nuevo espacio de trabajo (elige una plantilla inicial)",
       "confirmNew": {
         "title": "¿Iniciar un nuevo espacio de trabajo?",
         "message": "Esto borra todas las placas, componentes, cables y archivos. No se puede deshacer.",
@@ -66,7 +74,11 @@
       "contextMenu": {
         "rename": "Renombrar",
         "delete": "Eliminar"
-      }
+      },
+      "lastSaved": "guardado por última vez",
+      "saving": "guardando…",
+      "saved": "guardado",
+      "saveFailed": "error al guardar"
     },
     "fileTabs": {
       "unsavedChanges": "Cambios sin guardar",
@@ -158,6 +170,14 @@
         "bodyWithWires_other": "Esto eliminará la placa del espacio de trabajo y {{count}} cables conectados. Esta acción no se puede deshacer.",
         "cancel": "Cancelar",
         "remove": "Eliminar"
+      },
+      "boardOptions": "Opciones de la placa...",
+      "flashToBoard": "Grabar en placa real",
+      "flashHint": {
+        "mpy": "Instalar MicroPython (si hace falta) y subir este proyecto a una placa real conectada por USB",
+        "mpyUnavailable": "Los proyectos MicroPython no se pueden grabar desde aquí: solo sketches de Arduino",
+        "ready": "Grabar el sketch compilado en una placa real conectada por USB",
+        "willCompile": "Compilar el sketch y grabarlo en una placa real conectada por USB"
       }
     },
     "componentPicker": {
@@ -275,6 +295,13 @@
       "close": "Cerrar",
       "empty": "Aún no hay salida de compilación. Haz clic en Compilar para empezar."
     },
+    "newProject": {
+      "title": "Comienza un proyecto nuevo",
+      "subtitle": "Elige un espacio en blanco o una placa con un ejemplo Blink listo para ejecutar. Esto reemplaza todo el contenido del espacio de trabajo actual.",
+      "blankTitle": "Proyecto en blanco",
+      "blankDesc": "Espacio vacío — añade tus propias placas y componentes",
+      "cancel": "Cancelar"
+    },
     "boardPicker": {
       "title": "Añadir placa"
     },
@@ -354,6 +381,81 @@
         "nl": "Nueva línea",
         "cr": "Retorno de carro",
         "both": "Ambos NL y CR"
+      }
+    },
+    "menu": {
+      "file": "Archivo",
+      "edit": "Edición",
+      "view": "Ver",
+      "language": "Idioma",
+      "account": "Cuenta",
+      "help": "Ayuda",
+      "newProject": "Nuevo espacio de trabajo",
+      "newFile": "Nuevo archivo",
+      "open": "Abrir proyecto…",
+      "save": "Guardar proyecto",
+      "undo": "Deshacer",
+      "redo": "Rehacer",
+      "centerView": "Centrar vista del lienzo",
+      "toggleExplorer": "Explorador de archivos",
+      "toggleConsole": "Consola de salida",
+      "toggleScope": "Osciloscopio / Analizador lógico",
+      "home": "Inicio de Velxio",
+      "about": "Acerca de Velxio",
+      "discord": "Comunidad de Discord",
+      "github": "Repositorio en GitHub",
+      "compile": "Compilar",
+      "run": "Ejecutar",
+      "hideExplorer": "Ocultar explorador de archivos",
+      "showExplorer": "Mostrar explorador de archivos"
+    },
+    "inspector": {
+      "propertiesTab": "Propiedades",
+      "datasheetTab": "Ficha técnica",
+      "examplesTitle": "Proyectos de ejemplo",
+      "productPage": "Ver producto"
+    },
+    "flash": {
+      "title": "Grabar {{board}}",
+      "close": "Cerrar",
+      "detectingPorts": "Detectando puertos serie USB...",
+      "needsDesktop": "Grabar en hardware requiere Velxio Desktop. La app web no puede acceder a los puertos serie USB locales.",
+      "noPorts": "No se detectaron puertos serie USB.",
+      "noPortsHint": "Conecta la placa a un puerto USB y pulsa Actualizar. En Linux puede que tengas que añadirte al grupo dialout:",
+      "noPortsHintLogout": "(cierra sesión y vuelve a entrar después de ejecutarlo.)",
+      "refresh": "Actualizar",
+      "refreshPorts": "Actualizar puertos",
+      "serialPort": "Puerto serie",
+      "flash": "Grabar",
+      "compileFlash": "Compilar y grabar",
+      "connectFlash": "Conectar y grabar",
+      "connectCompileFlash": "Conectar, compilar y grabar",
+      "noBuild": "Esta placa aún no tiene un programa compilado: se compilará primero y después se grabará. La salida del compilador aparece en la consola de abajo.",
+      "staleBuild": "El código cambió desde la última compilación. El sketch se recompilará antes de grabar para que la placa reciba lo que ves en el editor.",
+      "webIntro": "Graba por USB directamente desde el navegador.",
+      "webHint": "Conecta la placa por USB y pulsa el botón: el navegador te preguntará qué puerto serie usar. Cierra antes cualquier otro programa que use el puerto (monitores serie, IDEs).",
+      "mpyTwoSteps": "Este proyecto MicroPython se graba en dos pasos: primero se instala el firmware de MicroPython si la placa no lo tiene (alrededor de un minuto) y luego se suben tus archivos .py y la placa reinicia en main.py.",
+      "mpyUnavailable": "Los proyectos MicroPython no se pueden grabar en una placa real desde aquí.",
+      "compiling": "Compilando el sketch...",
+      "compilingHint": "La grabación empieza sola cuando la compilación termina bien.",
+      "flashingOn": "Grabando en {{port}}...",
+      "success": "Grabado correctamente en {{seconds}} s",
+      "compileFailed": "La compilación falló: corrige los errores de abajo y vuelve a intentarlo. {{error}}",
+      "noOutput": "(todavía sin salida)",
+      "dontUnplug": "No desconectes la placa mientras se graba.",
+      "startOver": "Empezar de nuevo",
+      "pickAnotherPort": "Elegir otro puerto",
+      "retry": "Reintentar",
+      "retryCompile": "Recompilar y grabar",
+      "cancel": "Cancelar",
+      "hide": "Ocultar",
+      "paidOnlyTitle": "Grabar placas reales forma parte de la licencia de pago de Velxio Desktop",
+      "paidOnlyBody": "Subir un sketch a una placa real conectada por USB está disponible con una licencia Personal, Commercial o Enterprise. El simulador sigue siendo gratis.",
+      "seePlans": "Ver planes",
+      "log": {
+        "compiling": "Compilando el sketch antes de grabar...",
+        "recompiling": "El código cambió desde la última compilación: recompilando antes de grabar...",
+        "compiled": "Compilación OK en {{seconds}} s. Empezando a grabar..."
       }
     }
   },

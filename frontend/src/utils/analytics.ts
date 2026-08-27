@@ -110,11 +110,37 @@ export function trackVisitDiscord(): void {
   fireEvent('visit_discord', { event_category: 'external_link' });
 }
 
+/**
+ * Fired when a user clicks a datasheet "Product page" link. Besides the GA4
+ * event, dispatches a DOM CustomEvent so an overlay build can persist the
+ * click server-side (partner attribution) without this tree knowing about it.
+ */
+export function trackProductPageClick(componentId: string, brand?: string, href?: string): void {
+  fireEvent('product_page_click', {
+    event_category: 'external_link',
+    component_type: componentId,
+    brand: brand ?? '(none)',
+  });
+  window.dispatchEvent(
+    new CustomEvent('velxio:product-page-click', {
+      detail: { componentId, brand: brand ?? null, href: href ?? null },
+    }),
+  );
+}
+
 // ── CTA / Conversion ────────────────────────────────────────────────────────
 
-/** Fired when a user clicks a CTA button on a landing/SEO page. */
+/**
+ * Fired when a user clicks a CTA button on a landing/SEO page.
+ *
+ * The originating page is sent as `cta_source`, NOT `source`: `source`
+ * (like `medium` and `campaign`) is a reserved traffic-source parameter in
+ * GA4, so every CTA click was rewriting the session's acquisition source to
+ * "landing" / "arduino-simulator" / "rpi-simulator" with medium "(not set)"
+ * — 16% of sessions landed in the Unassigned channel with no real origin.
+ */
 export function trackClickCTA(source: string, destination: string): void {
-  fireEvent('click_cta', { event_category: 'conversion', source, destination });
+  fireEvent('click_cta', { event_category: 'conversion', cta_source: source, destination });
 }
 
 // ── Library Manager ─────────────────────────────────────────────────────────

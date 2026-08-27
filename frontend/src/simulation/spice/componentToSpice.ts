@@ -14,6 +14,7 @@
 
 import type { ComponentForSpice } from './types';
 import { parseValueWithUnits } from './valueParser';
+import { isAuxRailNet } from './boardPinGroups';
 import { LM358_SUBCKT } from './models/lm358Subckt';
 import { getChipDrivenPins } from '../customChips/chipPinDrives';
 
@@ -31,7 +32,7 @@ export interface MapperContext {
   vcc: number;
 }
 
-type Mapper = (
+export type Mapper = (
   comp: ComponentForSpice,
   netLookup: NetLookup,
   ctx: MapperContext,
@@ -116,7 +117,9 @@ const MAPPERS: Record<string, Mapper> = {
     const cards: string[] = [];
     for (const { pin, voltage } of driven) {
       const net = netLookup(pin);
-      if (!net || net === '0' || net === 'vcc_rail') continue;
+      // Never stamp a chip source onto a rail — it would fight the rail's own
+      // ideal source (aux rails included).
+      if (!net || net === '0' || net === 'vcc_rail' || isAuxRailNet(net)) continue;
       const pid = String(pin).replace(/[^A-Za-z0-9_]/g, '_');
       cards.push(`V_${cid}_${pid} ${net} 0 DC ${voltage}`);
     }
@@ -645,6 +648,11 @@ const MAPPERS: Record<string, Mapper> = {
   // just 1.l/2.l) means a user can wire GND/GPIO to any leg and it behaves like
   // hardware — and wiring both a GPIO and GND to the SAME terminal is a dead
   // short, exactly as on a real button. Back-compat: 2-pin variants expose A/B.
+  // The 6mm variant is the same switch with a smaller body and the same pad
+  // names, and it is registered as a part that DEFERS to the circuit. Without
+  // a model here it deferred to nothing: on every board with spiceDrivenInputs
+  // (which is all of them) pressing it did nothing at all. Aliased below the
+  // definition so the two can never drift.
   pushbutton: (comp, netLookup) => {
     const t1l = netLookup('1.l');
     const t1r = netLookup('1.r');
@@ -1203,7 +1211,24 @@ const MAPPERS: Record<string, Mapper> = {
   // The DO (digital threshold) pin is ignored for analog simulation.
   photoresistor: (comp, netLookup) => {
     const lux = Number(comp.properties.lux ?? 500);
-    const Rdark = parseValueWithUnits(comp.properties.dark, 1_000_000);
+    // `dark` goes through the SPICE suffix convention, where M is MILLI and
+    // mega is `Meg`. A dark resistance below 1k is not a photoresistor — it
+    // is almost always "1M" written meaning 1 megaohm, which parses to
+    // 0.001 ohm and shorts AO straight to VCC. The symptom is nasty because
+    // it looks like the part works: the ADC just reads full scale forever and
+    // the lux control does nothing (every value is still a short). Clamp to
+    // the documented default and say so, rather than emitting a short.
+    const darkRaw = parseValueWithUnits(comp.properties.dark, 1_000_000);
+    let Rdark = darkRaw;
+    if (!(darkRaw >= 1_000)) {
+      Rdark = 1_000_000;
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[spice] ${comp.id}: dark resistance ${JSON.stringify(comp.properties.dark)} ` +
+          `parsed as ${darkRaw} ohm — too low for a photoresistor. SPICE reads M as ` +
+          `milli; write "1Meg" for 1 megaohm. Using 1Meg.`,
+      );
+    }
     const k = Number(comp.properties.k ?? 5);
     const Rldr = Rdark / (1 + (k * lux) / 1000);
     const vcc = netLookup('VCC');
@@ -1287,19 +1312,39 @@ MAPPERS['photoresistor-sensor'] = MAPPERS['photoresistor'];
  * Returns null if we have no mapping for this metadataId (caller should
  * skip the component gracefully — it just won't participate in the solve).
  */
+// Overlay seam: a private build registers SPICE mappers for components it
+// ships outside the OSS tree (e.g. the DFRobot Gravity analog sensors emit a
+// voltage source at AOUT). Same contract as the other pro seams — empty in a
+// pure OSS build. Consulted after the static MAPPERS so OSS mappings win.
+const proMappers: Record<string, Mapper> = {};
+
+export function registerSpiceMapper(id: string, mapper: Mapper): void {
+  proMappers[id] = mapper;
+}
+
 export function componentToSpice(
   comp: ComponentForSpice,
   netLookup: NetLookup,
   ctx: MapperContext,
 ): SpiceEmission | null {
-  const mapper = MAPPERS[comp.metadataId];
+  const mapper = MAPPERS[comp.metadataId] ?? proMappers[comp.metadataId];
   if (!mapper) return null;
   return mapper(comp, netLookup, ctx);
 }
 
+// Variants that are electrically the SAME device as an entry above: one model,
+// several catalog ids. Keep this next to MAPPERS so adding a body size or a
+// silkscreen variant is one line and cannot forget the netlist.
+const MAPPER_ALIASES: Readonly<Record<string, string>> = {
+  'pushbutton-6mm': 'pushbutton',
+};
+for (const [variant, base] of Object.entries(MAPPER_ALIASES)) {
+  MAPPERS[variant] = MAPPERS[base];
+}
+
 /** True if we have a mapping for this metadataId. */
 export function isSpiceMapped(metadataId: string): boolean {
-  return metadataId in MAPPERS;
+  return metadataId in MAPPERS || metadataId in proMappers;
 }
 
 /** All metadataIds with a SPICE mapping (for docs / UI hints). */

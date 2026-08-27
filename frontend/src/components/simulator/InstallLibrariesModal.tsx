@@ -1,6 +1,9 @@
 import React, { useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { installLibrary } from '../../services/libraryService';
+import { useSimulatorStore } from '../../store/useSimulatorStore';
+import { addLibraryToManifest } from '../../utils/libraryManifest';
 import './InstallLibrariesModal.css';
 
 interface InstallLibrariesModalProps {
@@ -98,6 +101,17 @@ export const InstallLibrariesModal: React.FC<InstallLibrariesModalProps> = ({
         const result = await installLibrary(item.spec);
         if (result.success) {
           setItemStatus(item.spec, 'done');
+          // Installing must also DECLARE: record the library in the active
+          // board's manifest so the compile scope knows about it. Without
+          // this, Wokwi-imported projects compiled via scan-all forever
+          // (2026-08 library-contamination investigation).
+          const sim = useSimulatorStore.getState();
+          const boardId = sim.activeBoardId;
+          const board = sim.boards.find((b) => b.id === boardId);
+          if (boardId && board) {
+            const next = addLibraryToManifest(board.libraries, item.spec);
+            if (next) sim.updateBoard(boardId, { libraries: next });
+          }
         } else {
           setItemStatus(item.spec, 'error', result.error || 'Install failed');
         }
@@ -116,7 +130,10 @@ export const InstallLibrariesModal: React.FC<InstallLibrariesModalProps> = ({
   const installedCount = items.filter((i) => i.status === 'done').length;
   const allDone = items.length > 0 && pendingCount === 0 && !running;
 
-  return (
+  // Portaled to <body>: the toolbar ancestor has container-type
+  // (container queries), which turns it into the containing block for
+  // position:fixed and shrank the overlay to the toolbar's box.
+  return createPortal(
     <div className="ilib-overlay" onClick={running ? undefined : onClose}>
       <div className="ilib-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
@@ -267,6 +284,7 @@ export const InstallLibrariesModal: React.FC<InstallLibrariesModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

@@ -40,6 +40,14 @@ jobs:
       - name: Announce on Discord, then commit CHANGELOG + version bump on success
         uses: actions/github-script@v7
         env:
+          # Same relay the Velxio agent uses for paid accounts: the operator's
+          # 9router combo, which balances across their provider accounts and
+          # absorbs the upstream cost. Base URL + key are secrets so nothing
+          # about the relay is published in this repo; with either unset the
+          # script falls back to calling DeepSeek directly.
+          NINEROUTER_BASE_URL: ${{ secrets.NINEROUTER_BASE_URL }}
+          NINEROUTER_API_KEY:  ${{ secrets.NINEROUTER_API_KEY }}
+          NINEROUTER_MODEL:    ${{ vars.NINEROUTER_MODEL_PAID || 'velxio-pro' }}
           DAVEAGENT_API_KEY:   ${{ secrets.DAVEAGENT_API_KEY }}
           DISCORD_BOT_TOKEN:   ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANNEL_ID:  ${{ secrets.DISCORD_CHANNEL_ID }}
@@ -59,8 +67,66 @@ jobs:
             // deepseek-v4-flash is a REASONING model: max_tokens caps the
             // reasoning trace + the visible answer TOGETHER, so a stingy budget
             // makes `content` come back empty (which once made us POST an empty
-            // Discord message). Give it generous budgets.
-            async function callDeepSeek(prompt, maxTokens, temperature = 0.3) {
+            // Discord message, and once killed the v3.0.2 announce outright).
+            // Give it generous budgets, and retry with double when the model
+            // spends the whole budget reasoning.
+            // 9router returns an OpenAI-shaped body, except some of the
+            // upstreams its combo rotates to append a literal `data: [DONE]`
+            // to the NON-streaming response. A plain res.json() throws "Extra
+            // data" on those and a perfectly good 200 looks like a broken
+            // relay (that cost the pro agent 378 fallbacks in one day before
+            // it was understood). Parse the same way app/pro's
+            // parse_openai_body does.
+            function parseOpenAiBody(text) {
+              const raw = (text || '').trim();
+              try { return JSON.parse(raw); } catch {}
+              const brace = raw.indexOf('{');
+              if (brace >= 0) {
+                const head = raw.slice(brace, raw.lastIndexOf('}') + 1);
+                try { return JSON.parse(head); } catch {}
+              }
+              let best = null;
+              for (const line of raw.split('\n')) {
+                if (!line.startsWith('data: ')) continue;
+                const chunk = line.slice(6).trim();
+                if (!chunk || chunk === '[DONE]') continue;
+                try { const obj = JSON.parse(chunk); if (obj && typeof obj === 'object') best = obj; } catch {}
+              }
+              if (best) return best;
+              throw new Error('no JSON object in the response body');
+            }
+
+            // Tier 1: the relay the agent gives paid accounts. Skipped when
+            // the operator has not configured it.
+            async function nineRouterRequest(prompt, maxTokens, temperature) {
+              const base = (process.env.NINEROUTER_BASE_URL || '').trim().replace(/\/$/, '');
+              if (!base) return null;
+              const key = (process.env.NINEROUTER_API_KEY || '').trim();
+              const model = (process.env.NINEROUTER_MODEL || 'velxio-pro').trim();
+              const headers = { 'Content-Type': 'application/json' };
+              if (key) headers['Authorization'] = `Bearer ${key}`;
+              const res = await fetch(`${base}/chat/completions`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  model,
+                  max_tokens: maxTokens,
+                  temperature,
+                  messages: [{ role: 'user', content: prompt }],
+                }),
+              });
+              const text = await res.text();
+              if (!res.ok) throw new Error(`9router ${res.status}: ${text.slice(0, 300)}`);
+              const data = parseOpenAiBody(text);
+              const choice = data.choices?.[0] ?? {};
+              console.log(
+                `9router(${model}): upstream=${data.model ?? '?'} finish_reason=${choice.finish_reason} ` +
+                `completion_tokens=${data.usage?.completion_tokens ?? '?'}`
+              );
+              return (choice.message?.content ?? '').trim();
+            }
+
+            async function deepSeekRequest(prompt, maxTokens, temperature) {
               const apiKey = process.env.DAVEAGENT_API_KEY;
               if (!apiKey) throw new Error('DAVEAGENT_API_KEY not set');
               const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -81,7 +147,37 @@ jobs:
                 throw new Error(`DeepSeek ${res.status}: ${err}`);
               }
               const data = await res.json();
-              return (data.choices?.[0]?.message?.content ?? '').trim();
+              const choice = data.choices?.[0] ?? {};
+              console.log(
+                `DeepSeek: max_tokens=${maxTokens} finish_reason=${choice.finish_reason} ` +
+                `completion_tokens=${data.usage?.completion_tokens ?? '?'}`
+              );
+              return (choice.message?.content ?? '').trim();
+            }
+
+            // 9router first (that is where paid agent traffic goes), DeepSeek
+            // direct as the fallback -- the same order routes.agent.py uses.
+            // A dead DeepSeek balance is exactly what killed the v3.0.4
+            // announce (402 Insufficient Balance, 2026-08-25), so a single
+            // provider must not be able to block a release again.
+            async function askModel(prompt, maxTokens, temperature) {
+              try {
+                const viaRelay = await nineRouterRequest(prompt, maxTokens, temperature);
+                if (viaRelay) return viaRelay;
+                if (viaRelay === '') console.log('9router returned empty content — trying DeepSeek');
+              } catch (e) {
+                console.log(`9router failed (${e.message}) — falling back to DeepSeek`);
+              }
+              return deepSeekRequest(prompt, maxTokens, temperature);
+            }
+
+            async function callDeepSeek(prompt, maxTokens, temperature = 0.3) {
+              let content = await askModel(prompt, maxTokens, temperature);
+              if (!content) {
+                console.log('Empty content — retrying once with double the token budget');
+                content = await askModel(prompt, maxTokens * 2, temperature);
+              }
+              return content;
             }
 
             // ── Version (read from release's package.json) ────────────────────
@@ -120,15 +216,27 @@ jobs:
             console.log(`Event: ${context.eventName}  PR: #${prNumber} "${prTitle}"`);
             console.log(`Range: ${baseSha.slice(0,7)}..${headSha.slice(0,7)} (${sourceBranch} → release)`);
 
-            const commits = git(
+            // Full detail (subject + BODY + author) reads best for a small
+            // release, but a 45-commit range blows the prompt up and the model
+            // burns its whole budget reasoning over it. Past the threshold,
+            // drop the bodies and send subjects only.
+            const MAX_COMMIT_CHARS = 8000;
+            const commitsFull = git(
               `log ${baseSha}..${headSha} --pretty=format:"%h||%s||%b||%an|||" --no-merges`
             ) || git(`log -50 --pretty=format:"%h||%s||%b||%an|||" --no-merges`);
             const commitLines = git(
               `log ${baseSha}..${headSha} --pretty=format:"%h %s" --no-merges`
             ) || git(`log -50 --pretty=format:"%h %s" --no-merges`);
+            const commitCount = commitLines.split('\n').filter(Boolean).length;
+            const compact = commitsFull.length > MAX_COMMIT_CHARS;
+            // Subjects alone can still be huge on a monster range — hard cap.
+            const commits = (compact ? commitLines : commitsFull).slice(0, 4 * MAX_COMMIT_CHARS);
             const changedFiles = git(`diff --name-only ${baseSha}..${headSha}`)
               .split('\n').filter(Boolean);
-            console.log(`Commits found: ${commitLines.split('\n').filter(Boolean).length}`);
+            console.log(
+              `Commits found: ${commitCount} — sending ${compact ? 'SUBJECTS ONLY' : 'full detail'} ` +
+              `(${commits.length} chars, full detail would be ${commitsFull.length})`
+            );
             console.log(`Files changed: ${changedFiles.length}`);
 
             // ──────────────────────────────────────────────────────────────────
@@ -142,7 +250,7 @@ jobs:
             PR DESCRIPTION: ${prBody}
             SOURCE BRANCH: ${sourceBranch}
 
-            GIT COMMITS (hash||subject||body||author):
+            GIT COMMITS (${compact ? 'hash subject' : 'hash||subject||body||author'}):
             ${commits}
 
             Generate a changelog entry using EXACTLY this format:
@@ -167,8 +275,11 @@ jobs:
             6. Only include sections that have real content
             7. Output ONLY the changelog entry block, nothing else`;
 
-            console.log('Generating CHANGELOG entry...');
-            const changelogEntry = await callDeepSeek(changelogPrompt, 6000, 0.3);
+            console.log(`Generating CHANGELOG entry... (prompt: ${changelogPrompt.length} chars)`);
+            // 16000 was measured to still hit finish_reason=length (all of it
+            // spent reasoning, empty content) on a 45-commit range. 32000 lands
+            // comfortably; the retry doubles to 64000, which the API accepts.
+            const changelogEntry = await callDeepSeek(changelogPrompt, 32000, 0.3);
             if (!changelogEntry) {
               core.setFailed('CHANGELOG generation returned empty content — aborting before any side effects');
               return;
@@ -189,7 +300,7 @@ jobs:
             ${changelogEntry}
 
             RECENT COMMITS (for additional context):
-            ${commitLines}
+            ${commitLines.slice(0, MAX_COMMIT_CHARS)}
 
             STYLE EXAMPLES:
 
@@ -232,7 +343,7 @@ jobs:
             - Write in English`;
 
             console.log('Generating Discord announcement...');
-            let announcement = await callDeepSeek(announcementPrompt, 4000, 0.7);
+            let announcement = await callDeepSeek(announcementPrompt, 16000, 0.7);
 
             // Limpiar markdown residual
             announcement = announcement

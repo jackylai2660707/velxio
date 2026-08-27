@@ -1,7 +1,45 @@
+# Pure ESP-IDF language mode (issue #139): the user's files are the main
+# component sources — they provide app_main() and use IDF APIs directly.
+# espidf_compiler sets VELXIO_PURE_SKETCH (and drops ARDUINO_ESP32_PATH from
+# the build env) when the frontend requests language='espidf'. As the `main`
+# component, ESP-IDF gives these sources an implicit dependency on every
+# other component in the build, so driver/, esp_wifi, esp_http_server etc.
+# resolve without an explicit REQUIRES.
+if(DEFINED ENV{VELXIO_PURE_SKETCH})
+    # No CONFIGURE_DEPENDS — see the comment on the Arduino glob below.
+    file(GLOB _user_srcs
+        "${CMAKE_CURRENT_LIST_DIR}/*.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/*.c")
+
+    idf_component_register(
+        SRCS ${_user_srcs}
+        INCLUDE_DIRS "."
+    )
+
+    # Same -Werror relaxations as the Arduino branch: IDF's defaults are
+    # ruthless for user code pasted from tutorials.
+    target_compile_options(${COMPONENT_LIB} PRIVATE
+        -Wno-error=comment
+        -Wno-error=parentheses
+        -Wno-error=sign-compare
+        -Wno-error=narrowing
+        -Wno-error=write-strings
+        -Wno-error=missing-field-initializers
+        -Wno-error=reorder
+        -Wno-error=unused-variable
+        -Wno-error=unused-but-set-variable
+        -Wno-error=format
+        -Wno-error=maybe-uninitialized
+        # uninitialized (the non-maybe flavour) fires inside the M5Stack
+        # library itself: MahonyAHRS.cpp's fast inverse square root reads the
+        # float through a long* — deliberate, thirty years old, and fatal
+        # under -Werror. Library code the user cannot edit must not stop
+        # their build.
+        -Wno-error=uninitialized)
 # If Arduino component is available, use C++ main and link Arduino.
 # The component name matches the directory basename of ARDUINO_ESP32_PATH
 # (e.g. "arduino-esp32" when cloned from GitHub).
-if(DEFINED ENV{ARDUINO_ESP32_PATH})
+elseif(DEFINED ENV{ARDUINO_ESP32_PATH})
     get_filename_component(_arduino_comp_name $ENV{ARDUINO_ESP32_PATH} NAME)
 
     # arduino-esp32 ships esp32-camera as a precompiled static lib but does
@@ -74,14 +112,16 @@ if(DEFINED ENV{ARDUINO_ESP32_PATH})
     # explicit pin number — but this default keeps the new-project flow
     # smooth.
     #
-    # SKIP on ESP32-C3 and S3 variants: their pins_arduino.h DOES define
-    # LED_BUILTIN already (as `static const uint8_t LED_BUILTIN = ...;`
+    # ONLY on the generic `esp32` variant: every other variant we build
+    # (C3/S3 on the 2.x core; C3/C6/S2/S3 on the 3.x core) defines
+    # LED_BUILTIN itself (as `static const uint8_t LED_BUILTIN = ...;`
     # plus `#define LED_BUILTIN LED_BUILTIN`). Pre-defining it from the
     # command line clashes with the self-define: the preprocessor expands
     # `static const uint8_t LED_BUILTIN = ...` to `static const uint8_t 2 = ...`
-    # which is a syntax error. Only set the fallback for the generic ESP32
-    # Xtensa variant that genuinely lacks the symbol.
-    if(NOT IDF_TARGET STREQUAL "esp32c3" AND NOT IDF_TARGET STREQUAL "esp32s3")
+    # which is a syntax error. A whitelist (instead of the old C3/S3
+    # blacklist) keeps new targets safe by default — the ESP32-C6 variant
+    # was the first to hit the blacklist gap.
+    if(IDF_TARGET STREQUAL "esp32")
         target_compile_definitions(${COMPONENT_LIB} PRIVATE
             "LED_BUILTIN=2")
     endif()
@@ -101,7 +141,21 @@ if(DEFINED ENV{ARDUINO_ESP32_PATH})
         -Wno-error=narrowing
         -Wno-error=write-strings
         -Wno-error=missing-field-initializers
-        -Wno-error=reorder)
+        -Wno-error=reorder
+        # format and maybe-uninitialized earn their place the same way: two of
+        # M5Stack's OWN published Cardputer examples fail to build without
+        # them (SSHClient on a %lu given an int, mic_wav_record on a
+        # may-be-uninitialized local). Code that ships as a vendor example
+        # must compile here, or the emulator looks broken for a sketch that
+        # is not.
+        -Wno-error=format
+        -Wno-error=maybe-uninitialized
+        # uninitialized (the non-maybe flavour) fires inside the M5Stack
+        # library itself: MahonyAHRS.cpp's fast inverse square root reads the
+        # float through a long* — deliberate, thirty years old, and fatal
+        # under -Werror. Library code the user cannot edit must not stop
+        # their build.
+        -Wno-error=uninitialized)
 else()
     # Pure ESP-IDF mode: main.c #includes sketch_translated.c
     idf_component_register(

@@ -10,8 +10,9 @@
  */
 
 import React from 'react';
+import { useSyncExternalStore } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { exampleProjects } from '../data/examples';
+import { exampleProjects, subscribeProExamples, getProExamplesVersion } from '../data/examples';
 import { AppHeader } from '../components/layout/AppHeader';
 import { ExampleThumbnail } from '../components/examples/ExampleThumbnail';
 import { useSEO } from '../utils/useSEO';
@@ -25,6 +26,7 @@ const BOARD_LABELS: Record<string, string> = {
   'arduino-mega': 'Arduino Mega',
   'raspberry-pi-pico': 'Raspberry Pi Pico (RP2040)',
   esp32: 'ESP32',
+  'esp32-s3': 'ESP32-S3',
   'esp32-c3': 'ESP32-C3',
 };
 
@@ -44,6 +46,9 @@ const DIFFICULTY_COLOR: Record<string, string> = {
 };
 
 export const ExampleDetailPage: React.FC = () => {
+  // Re-render when the pro overlay registers late examples (dynamic import).
+  useSyncExternalStore(subscribeProExamples, getProExamplesVersion, getProExamplesVersion);
+
   const { exampleId } = useParams<{ exampleId: string }>();
   const navigate = useNavigate();
 
@@ -296,7 +301,7 @@ export const ExampleDetailPage: React.FC = () => {
                 }}
               >
                 <span style={{ color: '#4fc3f7', fontWeight: 700 }}>✓</span>
-                {example.components.length > 0
+                {(example.components?.length ?? 0) > 0
                   ? `${example.components.length} interactive component${example.components.length > 1 ? 's' : ''} on the canvas`
                   : 'Interactive simulation canvas'}
               </li>

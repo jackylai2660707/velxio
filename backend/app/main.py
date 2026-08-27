@@ -136,6 +136,11 @@ app.include_router(lms.router, prefix="/api/lms", tags=["lms"])
 # Platform-operator admin: batch accounts, AI token quotas, password resets.
 app.include_router(platform_admin.router, prefix="/api/admin", tags=["admin"])
 
+# Cached product-news proxy added upstream. Browsers stay on this server;
+# offline deployments receive an empty feed.
+from app.api.routes import news
+app.include_router(news.router, prefix="/api/news", tags=["news"])
+
 # Optional pro extension. The `app.pro` package only exists in private builds
 # (overlaid at Docker build time by an external repo) — its absence in the
 # open-source image is expected and silently ignored. Anyone with private
@@ -159,4 +164,3 @@ def root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
-

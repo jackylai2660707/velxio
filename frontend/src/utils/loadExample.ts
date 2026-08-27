@@ -74,7 +74,7 @@ function seedChipProgramGroups(example: ExampleProject): {
 
   const programFileNames = new Set<string>();
   const chipGroupIds: string[] = [];
-  for (const comp of example.components) {
+  for (const comp of example.components ?? []) {
     if (stripBrandPrefix(comp.type) !== 'custom-chip') continue;
     const pf = String(
       (comp.properties as Record<string, unknown>)?.programFile ?? '',
@@ -114,6 +114,8 @@ export async function loadExample(
   // sees null as projectId during every subsequent simulator/editor change,
   // so no PUT goes out.
   useProjectStore.getState().clearCurrentProject();
+  // Analytics context: compiles/runs from this workspace stamp the example id.
+  useProjectStore.getState().setCurrentExampleId(example.id);
 
   // P2.4 — this example's declared manifest (compile scope) is assigned to each
   // board it creates at the END of this function (the boards don't exist yet).
@@ -166,7 +168,13 @@ export async function loadExample(
       const board = newBoards.find((b) => b.id === boardId);
       if (!board) return;
 
-      if (eb.code) {
+      if (eb.files?.length) {
+        // Full multi-file workspace (may carry '/' folder paths). First
+        // entry is the main/active file — the example must lead with the
+        // sketch so compile picks it up.
+        useEditorStore.getState().setActiveGroup(board.activeFileGroupId);
+        useEditorStore.getState().loadFiles(eb.files);
+      } else if (eb.code) {
         // Arduino-style boards (AVR, RP2040, ESP32, …) all need the `.ino`
         // extension so arduino-cli auto-includes <Arduino.h>. Only the Pi 3B
         // uses a different toolchain (Python via VFS or g++ for `.cpp`).
@@ -175,7 +183,32 @@ export async function loadExample(
         useEditorStore.getState().loadFiles([{ name: filename, content: eb.code }]);
       }
 
-      if (eb.vfsFiles && isPiBoardKind(eb.boardKind)) {
+      // Built-in SD slot uploads (XIAO Sense): land on the board exactly as
+      // the SD Card panel would put them, so the Run path finds them.
+      if (eb.sdFiles?.length) {
+        useSimulatorStore.getState().updateBoard(boardId, { sdFiles: eb.sdFiles });
+      }
+
+      // `vfsFiles` IS the declaration that this board's code is a guest
+      // script — no isPiBoardKind() check. That guard read the Pi-family
+      // registry, which an overlay fills at mount: a direct /example/<id>
+      // link to an overlay QEMU-Linux board (UNIHIKER M10) could load before
+      // its kind was registered, the branch was skipped, and the editor
+      // opened on the board group's Arduino blink default instead of the
+      // example's script. Only QEMU-Linux examples carry vfsFiles.
+      if (eb.vfsFiles) {
+        // Pi example scripts go into the board's REGULAR file group — they
+        // are edited in Monaco like any other board's code, and the run
+        // path uploads the group into the guest home. (The old separate
+        // VFS tree + panel + editor confused users with three file
+        // surfaces; the VFS store is still updated for back-compat with
+        // anything reading it, but the editor group is the source of truth.)
+        const groupFiles = Object.entries(eb.vfsFiles).map(([name, content]) => ({
+          name,
+          content,
+        }));
+        useEditorStore.getState().setActiveGroup(board.activeFileGroupId);
+        useEditorStore.getState().loadFiles(groupFiles);
         const vfsState = useVfsStore.getState();
         const tree = vfsState.getTree(boardId);
         for (const [nodeId, node] of Object.entries(tree)) {
@@ -201,7 +234,7 @@ export async function loadExample(
     // shows as its own section (the per-board code came from eb.code above).
     seedChipProgramGroups(example);
 
-    const componentsWithoutBoard = example.components.filter(
+    const componentsWithoutBoard = (example.components ?? []).filter(
       (comp) =>
         !comp.type.includes('arduino') &&
         !comp.type.includes('pico') &&
@@ -219,7 +252,7 @@ export async function loadExample(
     );
 
     setWires(
-      example.wires.map((wire) => ({
+      (example.wires ?? []).map((wire) => ({
         id: wire.id,
         start: { componentId: wire.start.componentId, pinName: wire.start.pinName, x: 0, y: 0 },
         end: { componentId: wire.end.componentId, pinName: wire.end.pinName, x: 0, y: 0 },
@@ -277,8 +310,11 @@ export async function loadExample(
       .getState()
       .boards.find((b) => b.id === liveBoardId);
 
-    if (example.languageMode === 'micropython' && liveBoard) {
-      setBoardLanguageMode(liveBoard.id, 'micropython');
+    if (
+      (example.languageMode === 'micropython' || example.languageMode === 'espidf') &&
+      liveBoard
+    ) {
+      setBoardLanguageMode(liveBoard.id, example.languageMode);
     }
 
     const editorStore = useEditorStore.getState();
@@ -298,7 +334,16 @@ export async function loadExample(
       if (boardOwnedFiles.length > 0) {
         editorStore.loadFiles(boardOwnedFiles);
       } else {
-        const filename = isPiBoardKind(liveBoard.boardKind) ? 'main.cpp' : 'sketch.ino';
+        // The name must match the mode the board was just switched into:
+        // MicroPython pastes main.py, ESP-IDF builds main.c — a bare `code:`
+        // example otherwise lands its Python in a file called sketch.ino.
+        const filename = isPiBoardKind(liveBoard.boardKind)
+          ? 'main.cpp'
+          : example.languageMode === 'micropython'
+            ? 'main.py'
+            : example.languageMode === 'espidf'
+              ? 'main.c'
+              : 'sketch.ino';
         editorStore.loadFiles([{ name: filename, content: example.code }]);
       }
     } else if (chipGroupIds.length > 0) {
@@ -317,7 +362,7 @@ export async function loadExample(
       editorStore.setCode(example.code);
     }
 
-    const componentsWithoutBoard = example.components.filter(
+    const componentsWithoutBoard = (example.components ?? []).filter(
       (comp) =>
         !comp.type.includes('arduino') &&
         !comp.type.includes('pico') &&
@@ -354,7 +399,7 @@ export async function loadExample(
       isBoardComponent(id) && liveActiveBoardId ? liveActiveBoardId : id;
 
     setWires(
-      example.wires.map((wire) => ({
+      (example.wires ?? []).map((wire) => ({
         id: wire.id,
         start: {
           componentId: remapBoardId(wire.start.componentId),

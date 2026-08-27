@@ -428,6 +428,45 @@ describe('verifyCircuit — wiring ERC (bad connections)', () => {
   );
 
   it(
+    '4-pin I2C SSD1306: warns when its VCC supply pin is not wired (B15b)',
+    { timeout: 30_000 },
+    async () => {
+      const input: BuildNetlistInput = {
+        components: [pwr('src', 5), { id: 'o4', metadataId: 'ssd1306-i2c-4pin', properties: {} }],
+        wires: [
+          w('w1', ['src', 'SIG'], ['o4', 'SCL']), // signal wired, VCC left floating
+          w('w2', ['o4', 'GND'], ['src', 'GND']),
+        ],
+        boards: [],
+        analysis: { kind: 'op' },
+      };
+      const result = await verifyCircuit(input);
+      const mc = result.warnings.find((x) => x.code === 'missing-connection' && x.componentId === 'o4');
+      expect(mc, JSON.stringify(result.warnings)).toBeDefined();
+    },
+  );
+
+  it(
+    '4-pin I2C SSD1306: no missing-connection when VCC and GND are wired',
+    { timeout: 30_000 },
+    async () => {
+      const input: BuildNetlistInput = {
+        components: [pwr('src', 5), { id: 'o4', metadataId: 'ssd1306-i2c-4pin', properties: {} }],
+        wires: [
+          w('w1', ['src', 'SIG'], ['o4', 'VCC']),
+          w('w2', ['o4', 'GND'], ['src', 'GND']),
+        ],
+        boards: [],
+        analysis: { kind: 'op' },
+      };
+      const result = await verifyCircuit(input);
+      expect(result.warnings.map((x) => x.code)).not.toContain('missing-connection');
+      // 5 V on the 6 V-rated VCC pin is fine.
+      expect(result.warnings.map((x) => x.code)).not.toContain('over-voltage');
+    },
+  );
+
+  it(
     'errors when a VCC pin is wired directly to a GND pin',
     { timeout: 30_000 },
     async () => {
@@ -487,6 +526,20 @@ function toInput(ex: { components: any[]; wires: any[] }): BuildNetlistInput {
   };
 }
 
+// The audit rules (2026-07) are warnings, so the errors-only assertion would
+// not catch a false positive — assert explicitly that no shipping example
+// trips them.
+const AUDIT_WARNING_CODES = new Set(['unpowered-net', 'no-return-path', 'voltage-mismatch']);
+
+function galleryFindings(result: Awaited<ReturnType<typeof verifyCircuit>>): string[] {
+  return [
+    ...result.errors.map((e) => `${e.code}(${e.componentId ?? '-'})`),
+    ...result.warnings
+      .filter((w) => AUDIT_WARNING_CODES.has(w.code))
+      .map((w) => `${w.code}(${w.componentId ?? '-'})`),
+  ];
+}
+
 describe('verifyCircuit — shipping gallery examples are clean', () => {
   it(
     'every digital example passes pre-flight verification',
@@ -494,11 +547,9 @@ describe('verifyCircuit — shipping gallery examples are clean', () => {
     async () => {
       const failures: string[] = [];
       for (const ex of digitalExamples) {
-        const result = await verifyCircuit(toInput(ex));
-        if (result.errors.length > 0) {
-          failures.push(
-            `${ex.id}: ${result.errors.map((e) => `${e.code}(${e.componentId ?? '-'})`).join(', ')}`,
-          );
+        const findings = galleryFindings(await verifyCircuit(toInput(ex)));
+        if (findings.length > 0) {
+          failures.push(`${ex.id}: ${findings.join(', ')}`);
         }
       }
       expect(failures, failures.join('\n')).toEqual([]);
@@ -511,11 +562,9 @@ describe('verifyCircuit — shipping gallery examples are clean', () => {
     async () => {
       const failures: string[] = [];
       for (const ex of analogExamples) {
-        const result = await verifyCircuit(toInput(ex));
-        if (result.errors.length > 0) {
-          failures.push(
-            `${ex.id}: ${result.errors.map((e) => `${e.code}(${e.componentId ?? '-'})`).join(', ')}`,
-          );
+        const findings = galleryFindings(await verifyCircuit(toInput(ex)));
+        if (findings.length > 0) {
+          failures.push(`${ex.id}: ${findings.join(', ')}`);
         }
       }
       expect(failures, failures.join('\n')).toEqual([]);
