@@ -70,14 +70,24 @@ def make_compiler_with_real_paths() -> ESPIDFCompiler:
     return comp
 
 
-@unittest.skipIf(
-    os.environ.get('CI') == 'true',
-    'Requires local Arduino libraries installed on Windows — skipped in CI',
+_REAL_PATHS_AVAILABLE = all((
+    ARDUINO_LIBS.is_dir(),
+    (ARDUINO_LIBS / 'Adafruit_GFX_Library' / 'Adafruit_GFX.h').is_file(),
+    (ARDUINO_LIBS / 'Adafruit_SSD1306' / 'Adafruit_SSD1306.h').is_file(),
+    ESP32_LIBS.is_dir(),
+))
+
+
+@unittest.skipUnless(
+    _REAL_PATHS_AVAILABLE,
+    'Diagnostic requires the original developer Windows Arduino/ESP32 library paths',
 )
 class TestRealPathsSSD1306(unittest.TestCase):
     """
     Uses actual library directories on this machine to reproduce the build failure.
-    Only runs locally (not in CI) because it needs real Arduino library paths.
+    Only runs on machines carrying the original developer's real library
+    paths. Other environments skip it instead of reporting infrastructure
+    absence as a product regression.
     """
 
     def setUp(self):
