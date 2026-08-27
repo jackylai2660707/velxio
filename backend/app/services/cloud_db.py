@@ -1543,6 +1543,11 @@ def get_teacher_dashboard(
                     "missing_count": 0, "late_count": 0, "average_score": None,
                     "completion_rate": 0,
                 },
+                "totals": {
+                    "classes": 0, "students": 0, "assignments": 0, "submissions": 0,
+                    "submitted": 0, "graded": 0, "missing": 0, "late": 0,
+                    "completion_rate": 0,
+                },
                 "filters": {
                     "class_ids": requested_classes, "status": sorted(statuses),
                     "q": q or "", "sort": sort_key, "order": "desc" if descending else "asc",
@@ -1777,6 +1782,19 @@ def get_teacher_dashboard(
             / len(all_rows), 2
         ) if all_rows else 0,
     }
+    totals = {
+        # ``totals`` is a compact alias consumed by the teacher web client;
+        # ``summary`` above remains the canonical, more verbose report shape.
+        "classes": summary["class_count"],
+        "students": summary["student_count"],
+        "assignments": summary["assignment_count"],
+        "submissions": summary["submission_count"],
+        "submitted": summary["submitted_count"],
+        "graded": summary["graded_count"],
+        "missing": summary["missing_count"],
+        "late": summary["late_count"],
+        "completion_rate": summary["completion_rate"],
+    }
     assignment_summary: list[dict[str, Any]] = []
     for assignment in assignment_rows:
         rows = [row for row in all_rows if row["assignment_id"] == assignment["id"]]
@@ -1803,6 +1821,7 @@ def get_teacher_dashboard(
         "submissions": result_rows,
         "total": total_rows,
         "summary": summary,
+        "totals": totals,
         "totals": {
             "students": summary["student_count"],
             "assignments": summary["assignment_count"],
