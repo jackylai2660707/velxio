@@ -244,7 +244,9 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
   const isPastDue = effectiveDeadline !== null && now + serverOffset > effectiveDeadline;
   const isNotOpen = opensAt !== null && now + serverOffset < opensAt;
   const remaining = effectiveDeadline !== null ? effectiveDeadline - (now + serverOffset) : null;
-  const timedExam = timeLimitSeconds !== null || opensAt !== null || closesAt !== null;
+  // A plain assignment with only a due date remains normal draft/final flow;
+  // exam start gate appears only when explicit exam controls are configured.
+  const timedExam = timeLimitSeconds !== null || opensAt !== null || extraNumber(extras, 'max_attempts') !== null;
   const attemptLabel = effectiveSubmission?.attempt_no
     ? t('learn.assignment.attempt', '第 {{n}} 次提交 / Attempt {{n}}', { n: effectiveSubmission.attempt_no })
     : null;
