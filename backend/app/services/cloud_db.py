@@ -50,6 +50,10 @@ MAX_QUIZ_ANSWERS_BYTES = 20_000
 MAX_ASSIGNMENT_BYTES = 250_000
 MAX_SUBMISSION_BYTES = 2_000_000
 MAX_ASSIGNMENTS_PER_CLASS = 500
+# A teacher dashboard is intentionally bounded even when a deployment has a
+# very large roster.  The API still returns ``total`` so clients can paginate
+# through the filtered rows without making an unbounded SQLite/JSON request.
+MAX_DASHBOARD_ROWS = 100_000
 
 # AI weekly token allowance (per user, resets Monday 00:00 UTC). Applies
 # only when a request is served with the SERVER's upstream API key — users
@@ -1396,3 +1400,417 @@ def auto_grade_submission(
         )
         updated = conn.execute(_submission_select() + "WHERE s.id = ?", (submission_id,)).fetchone()
     return _submission_dict(updated) if updated else None
+
+
+# ── LMS: teacher dashboard/reporting ──────────────────────────────────────
+
+
+def _split_filter_values(value: str | list[str] | tuple[str, ...] | None) -> list[str]:
+    """Return normalised comma-separated filter values.
+
+    Query parameters arrive as strings in the HTTP route, while a few callers
+    (including exports and tests) pass a list directly.  Keeping this helper in
+    the persistence layer makes all report entry points use the same semantics
+    and prevents accidental SQL interpolation of user supplied values.
+    """
+    if value is None:
+        return []
+    values: list[str] = []
+    source = value if isinstance(value, (list, tuple)) else str(value).split(",")
+    for item in source:
+        for part in (item if isinstance(item, str) else str(item)).split(","):
+            part = part.strip()
+            if part and part not in values:
+                values.append(part)
+    return values
+
+
+def _dashboard_status(row: dict[str, Any]) -> str:
+    """Derive a teacher-facing status, including roster rows with no submit."""
+    if row.get("status") in (None, "", "missing"):
+        return "missing"
+    if row.get("is_late"):
+        return "late"
+    return str(row["status"])
+
+
+def _dashboard_sort_key(name: str | None) -> str:
+    aliases = {
+        "student": "student_name",
+        "name": "student_name",
+        "score": "score",
+        "submitted": "submitted_at",
+        "submittedAt": "submitted_at",
+        "updated": "updated_at",
+        "assignment": "assignment_title",
+        "class": "class_name",
+        "deadline": "due_at",
+    }
+    return aliases.get(str(name or "updated_at"), str(name or "updated_at"))
+
+
+def get_teacher_dashboard(
+    teacher_id: str,
+    class_ids: str | list[str] | tuple[str, ...] | None = None,
+    *,
+    status: str | None = None,
+    q: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Aggregate class, roster, lesson and assignment progress for a teacher.
+
+    The existing ``/classes/{id}/report`` endpoint intentionally remains a
+    compact per-class progress response.  This report is the richer, bounded
+    view used by a teacher managing several classes: every member × assignment
+    pair is represented, including ``missing`` rows for students that have not
+    submitted yet.  ``class_ids``, ``status`` and ``q`` are applied before
+    pagination; ``rows`` and ``submissions`` are aliases to ease consumption by
+    existing dashboards.
+
+    Only classes owned by ``teacher_id`` are ever selected.  Unknown IDs are
+    ignored (rather than revealing whether another teacher owns one).
+    """
+    requested_classes = _split_filter_values(class_ids)
+    statuses = {s.casefold() for s in _split_filter_values(status)}
+    search = str(q or "").strip().casefold()
+    sort_key = _dashboard_sort_key(sort)
+    allowed_sort = {
+        "student_name", "student_email", "class_name", "assignment_title",
+        "status", "score", "submitted_at", "graded_at", "due_at", "updated_at",
+        "attempt_no",
+    }
+    if sort_key not in allowed_sort:
+        sort_key = "updated_at"
+    descending = str(order or "desc").casefold() not in ("asc", "ascending", "up")
+    try:
+        row_limit = None if limit is None else max(0, min(int(limit), MAX_DASHBOARD_ROWS))
+    except (TypeError, ValueError):
+        row_limit = 100
+    try:
+        row_offset = max(0, int(offset))
+    except (TypeError, ValueError):
+        row_offset = 0
+
+    with _connect() as conn:
+        class_where = ["c.teacher_id = ?"]
+        class_params: list[Any] = [teacher_id]
+        if requested_classes:
+            placeholders = ",".join("?" for _ in requested_classes)
+            class_where.append(f"c.id IN ({placeholders})")
+            class_params.extend(requested_classes)
+        class_rows = conn.execute(
+            "SELECT c.id, c.name, c.code, c.created_at "
+            "FROM classes c WHERE " + " AND ".join(class_where) + " ORDER BY c.created_at DESC",
+            class_params,
+        ).fetchall()
+        classes = [dict(row) for row in class_rows]
+        selected_ids = [row["id"] for row in class_rows]
+        if not selected_ids:
+            return {
+                "classes": [], "students": [], "assignments": [], "rows": [], "submissions": [],
+                "total": 0, "summary": {
+                    "class_count": 0, "student_count": 0, "assignment_count": 0,
+                    "submission_count": 0, "submitted_count": 0, "graded_count": 0,
+                    "missing_count": 0, "late_count": 0, "average_score": None,
+                    "completion_rate": 0,
+                },
+                "filters": {
+                    "class_ids": requested_classes, "status": sorted(statuses),
+                    "q": q or "", "sort": sort_key, "order": "desc" if descending else "asc",
+                },
+                "pagination": {"offset": row_offset, "limit": row_limit, "total": 0},
+            }
+
+        ids_placeholder = ",".join("?" for _ in selected_ids)
+        members = conn.execute(
+            "SELECT m.class_id, u.id, u.name, u.email, m.joined_at "
+            "FROM class_members m JOIN users u ON u.id = m.user_id "
+            f"WHERE m.class_id IN ({ids_placeholder}) ORDER BY u.name COLLATE NOCASE, u.email",
+            selected_ids,
+        ).fetchall()
+        assignments = conn.execute(
+            _assignment_select()
+            + f"WHERE a.class_id IN ({ids_placeholder}) ORDER BY a.created_at DESC",
+            selected_ids,
+        ).fetchall()
+        submissions = conn.execute(
+            _submission_select()
+            + "WHERE a.class_id IN (" + ids_placeholder + ") ORDER BY s.updated_at DESC",
+            selected_ids,
+        ).fetchall()
+
+        member_rows = [dict(row) for row in members]
+        assignment_rows = [_assignment_dict(row) for row in assignments]
+        assignment_by_id = {row["id"]: row for row in assignment_rows}
+        class_by_id = {row["id"]: row for row in classes}
+        members_by_class: dict[str, list[dict[str, Any]]] = {}
+        for member in member_rows:
+            members_by_class.setdefault(member["class_id"], []).append(member)
+
+        # One latest row exists per assignment/student in the current schema.
+        # Keep the dictionary keyed this way so the function remains compatible
+        # with databases upgraded to a submission-history table later.
+        submission_by_key: dict[tuple[str, str], dict[str, Any]] = {}
+        for row in submissions:
+            item = _submission_dict(row)
+            submission_by_key[(item["assignment_id"], item["student_id"])] = item
+
+        student_ids = sorted({member["id"] for member in member_rows})
+        progress_counts: dict[str, int] = {}
+        quiz_counts: dict[str, int] = {}
+        if student_ids:
+            student_placeholder = ",".join("?" for _ in student_ids)
+            progress_counts = {
+                row["user_id"]: int(row["count"])
+                for row in conn.execute(
+                    "SELECT user_id, COUNT(*) AS count FROM lesson_progress "
+                    f"WHERE status = 'done' AND user_id IN ({student_placeholder}) GROUP BY user_id",
+                    student_ids,
+                )
+            }
+            quiz_counts = {
+                row["user_id"]: int(row["count"])
+                for row in conn.execute(
+                    "SELECT user_id, COUNT(*) AS count FROM quiz_attempts "
+                    f"WHERE user_id IN ({student_placeholder}) GROUP BY user_id",
+                    student_ids,
+                )
+            }
+
+    # Build complete roster × assignment rows outside the DB context.  Drafts
+    # are included for teachers; students simply never receive this endpoint.
+    all_rows: list[dict[str, Any]] = []
+    for assignment in assignment_rows:
+        class_meta = class_by_id.get(assignment["class_id"], {})
+        for member in members_by_class.get(assignment["class_id"], []):
+            submission = submission_by_key.get((assignment["id"], member["id"]))
+            if submission:
+                row = dict(submission)
+            else:
+                row = {
+                    "id": None,
+                    "assignment_id": assignment["id"],
+                    "student_id": member["id"],
+                    "student_name": member["name"],
+                    "student_email": member["email"],
+                    "content": "",
+                    "answers": None,
+                    "project_data": None,
+                    "files": None,
+                    "status": "missing",
+                    "submitted": False,
+                    "score": None,
+                    "auto_score": None,
+                    "max_score": assignment["max_score"],
+                    "due_at": assignment["due_at"],
+                    "is_late": False,
+                    "feedback": "",
+                    "submitted_at": None,
+                    "graded_at": None,
+                    "grader_id": None,
+                    "attempt_no": 0,
+                    "created_at": member["joined_at"],
+                    "updated_at": member["joined_at"],
+                }
+            row.update(
+                {
+                    "class_id": assignment["class_id"],
+                    "class_name": class_meta.get("name"),
+                    "assignment_title": assignment["title"],
+                    "assignment_type": assignment["assignment_type"],
+                    "assignment_status": assignment["status"],
+                    "lesson_id": assignment["lesson_id"],
+                    "published_at": assignment["published_at"],
+                }
+            )
+            row["status"] = _dashboard_status(row)
+            if statuses and row["status"].casefold() not in statuses:
+                continue
+            if search:
+                haystack = " ".join(
+                    str(row.get(key) or "")
+                    for key in (
+                        "student_name", "student_email", "class_name", "assignment_title",
+                    )
+                ).casefold()
+                if search not in haystack:
+                    continue
+            # Omit large private payloads from a dashboard response.  Teachers
+            # can still retrieve full content through the existing submission
+            # endpoint; reports should remain fast and safe to export.
+            for private_key in ("answers", "project_data", "files", "content", "grader_id"):
+                row.pop(private_key, None)
+            all_rows.append(row)
+            if len(all_rows) >= MAX_DASHBOARD_ROWS:
+                break
+        if len(all_rows) >= MAX_DASHBOARD_ROWS:
+            break
+
+    def _sort_value(item: dict[str, Any]) -> tuple[int, Any]:
+        value = item.get(sort_key)
+        # SQLite NULL ordering is not useful in a dashboard.  Keep missing
+        # values at the end for either direction and use a stable text tie-break
+        # so pagination does not jump between requests.
+        if value is None:
+            return (1, "")
+        if isinstance(value, str):
+            return (0, value.casefold())
+        return (0, value)
+
+    all_rows.sort(key=lambda item: (_sort_value(item), str(item.get("id") or "")), reverse=descending)
+    total_rows = len(all_rows)
+    if row_limit is None:
+        page_rows = all_rows[row_offset:]
+    else:
+        page_rows = all_rows[row_offset : row_offset + row_limit]
+
+    # Per-student summary uses the filtered rows.  This makes q/status filters
+    # useful for a teacher scanning a particular assignment or late work.
+    student_summary: dict[str, dict[str, Any]] = {}
+    for member in member_rows:
+        student_summary.setdefault(
+            member["id"],
+            {
+                "id": member["id"], "name": member["name"], "email": member["email"],
+                "class_ids": [], "class_names": [], "joined_at": member["joined_at"],
+                "assignment_count": 0, "submitted_count": 0, "graded_count": 0,
+                "missing_count": 0, "late_count": 0, "average_score": None,
+                "progress_count": progress_counts.get(member["id"], 0),
+                "quiz_attempts": quiz_counts.get(member["id"], 0),
+            },
+        )
+        item = student_summary[member["id"]]
+        if member["class_id"] not in item["class_ids"]:
+            item["class_ids"].append(member["class_id"])
+            item["class_names"].append(class_by_id[member["class_id"]]["name"])
+    scores_by_student: dict[str, list[float]] = {}
+    for row in all_rows:
+        item = student_summary.get(row["student_id"])
+        if not item:
+            continue
+        item["assignment_count"] += 1
+        state = row["status"]
+        if state in ("submitted", "graded", "returned", "late"):
+            item["submitted_count"] += 1
+        if state in ("graded", "returned"):
+            item["graded_count"] += 1
+        if state == "missing":
+            item["missing_count"] += 1
+        if state == "late":
+            item["late_count"] += 1
+        if row.get("score") is not None:
+            scores_by_student.setdefault(row["student_id"], []).append(float(row["score"]))
+    for student_id, item in student_summary.items():
+        scores = scores_by_student.get(student_id, [])
+        item["average_score"] = round(sum(scores) / len(scores), 2) if scores else None
+        item["completion_rate"] = round(
+            100 * item["submitted_count"] / item["assignment_count"], 2
+        ) if item["assignment_count"] else 0
+
+    # Class-level counters are based on the same filtered rows.  Include member
+    # counts from the complete roster so a class with no matching submissions is
+    # still visible in the teacher's selector.
+    class_summary: list[dict[str, Any]] = []
+    for class_meta in classes:
+        class_rows = [row for row in all_rows if row["class_id"] == class_meta["id"]]
+        scores = [float(row["score"]) for row in class_rows if row.get("score") is not None]
+        submitted_count = sum(row["status"] in ("submitted", "graded", "returned", "late") for row in class_rows)
+        graded_count = sum(row["status"] in ("graded", "returned") for row in class_rows)
+        item = dict(class_meta)
+        item.update(
+            {
+                "member_count": len(members_by_class.get(class_meta["id"], [])),
+                "assignment_count": len({row["assignment_id"] for row in class_rows}),
+                "submission_count": submitted_count,
+                "graded_count": graded_count,
+                "missing_count": sum(row["status"] == "missing" for row in class_rows),
+                "late_count": sum(row["status"] == "late" for row in class_rows),
+                "average_score": round(sum(scores) / len(scores), 2) if scores else None,
+                "completion_rate": round(100 * submitted_count / len(class_rows), 2) if class_rows else 0,
+            }
+        )
+        class_summary.append(item)
+
+    submitted_rows = [row for row in all_rows if row["status"] != "missing"]
+    score_values = [float(row["score"]) for row in all_rows if row.get("score") is not None]
+    summary = {
+        "class_count": len(classes),
+        "student_count": len(member_rows),
+        "assignment_count": len(assignment_rows),
+        "submission_count": len(submitted_rows),
+        "submitted_count": sum(row["status"] in ("submitted", "graded", "returned", "late") for row in all_rows),
+        "graded_count": sum(row["status"] in ("graded", "returned") for row in all_rows),
+        "missing_count": sum(row["status"] == "missing" for row in all_rows),
+        "late_count": sum(row["status"] == "late" for row in all_rows),
+        "average_score": round(sum(score_values) / len(score_values), 2) if score_values else None,
+        "completion_rate": round(
+            100 * sum(row["status"] in ("submitted", "graded", "returned", "late") for row in all_rows)
+            / len(all_rows), 2
+        ) if all_rows else 0,
+    }
+    assignment_summary: list[dict[str, Any]] = []
+    for assignment in assignment_rows:
+        rows = [row for row in all_rows if row["assignment_id"] == assignment["id"]]
+        # Start from the assignment aggregate (which includes submissions not
+        # matching q/status), then expose filtered counters for the current view.
+        item = dict(assignment)
+        item.update(
+            {
+                "class_name": class_by_id.get(assignment["class_id"], {}).get("name"),
+                "filtered_submission_count": sum(row["status"] != "missing" for row in rows),
+                "filtered_graded_count": sum(row["status"] in ("graded", "returned") for row in rows),
+                "filtered_missing_count": sum(row["status"] == "missing" for row in rows),
+                "filtered_late_count": sum(row["status"] == "late" for row in rows),
+            }
+        )
+        assignment_summary.append(item)
+
+    result_rows = page_rows
+    return {
+        "classes": class_summary,
+        "students": list(student_summary.values()),
+        "assignments": assignment_summary,
+        "rows": result_rows,
+        "submissions": result_rows,
+        "total": total_rows,
+        "summary": summary,
+        "filters": {
+            "class_ids": selected_ids,
+            "status": sorted(statuses),
+            "q": q or "",
+            "sort": sort_key,
+            "order": "desc" if descending else "asc",
+        },
+        "pagination": {"offset": row_offset, "limit": row_limit, "total": total_rows},
+    }
+
+
+def get_teacher_submission_rows(
+    teacher_id: str,
+    class_ids: str | list[str] | tuple[str, ...] | None = None,
+    *,
+    status: str | None = None,
+    q: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+) -> list[dict[str, Any]]:
+    """Return unpaginated dashboard rows for CSV export.
+
+    The export deliberately reuses dashboard filtering/sorting so what a
+    teacher downloads is exactly what was visible in the report.  Payload-heavy
+    fields were already removed by ``get_teacher_dashboard``.
+    """
+    report = get_teacher_dashboard(
+        teacher_id,
+        class_ids,
+        status=status,
+        q=q,
+        sort=sort,
+        order=order,
+        limit=None,
+        offset=0,
+    )
+    return list(report.get("rows", []))

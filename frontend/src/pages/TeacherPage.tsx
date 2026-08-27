@@ -49,6 +49,19 @@ export const TeacherPage: React.FC = () => {
     max_score: '100',
     auto_grade: true,
   });
+  const [classQuery, setClassQuery] = useState('');
+  const [classSort, setClassSort] = useState<'name' | 'students' | 'recent'>('recent');
+  const [classFilter, setClassFilter] = useState<'all' | 'withStudents' | 'empty'>('all');
+  const [exportBusy, setExportBusy] = useState(false);
+  const [dashboardStudents, setDashboardStudents] = useState<Array<{
+    id: string;
+    name: string;
+    email: string;
+    class_id: string;
+    progress: number;
+    average_score: number | null;
+    status: string;
+  }>>([]);
 
   const copy = useMemo(
     () =>
@@ -90,6 +103,20 @@ export const TeacherPage: React.FC = () => {
             project: '專題實作',
             quiz: '小測驗（可自動評分）',
             reflection: '文字反思',
+            overview: '班級總覽',
+            classesCount: '個班級',
+            studentsTotal: '位學生',
+            classSearch: '搜尋班級名稱或代碼',
+            allClasses: '全部班級',
+            withStudents: '有學生',
+            emptyClasses: '尚未加入學生',
+            sortRecent: '最近建立',
+            sortName: '名稱排序',
+            sortStudents: '學生人數',
+            exportCsv: '匯出全部提交 CSV',
+            exporting: '正在匯出…',
+            exportSuccess: 'CSV 已下載',
+            exportFailed: '匯出失敗，請稍後再試',
           }
         : {
             classroom: 'Classroom control',
@@ -131,6 +158,20 @@ export const TeacherPage: React.FC = () => {
             project: 'Project build',
             quiz: 'Quiz (auto-graded)',
             reflection: 'Written reflection',
+            overview: 'Class overview',
+            classesCount: 'classes',
+            studentsTotal: 'students',
+            classSearch: 'Search class name or code',
+            allClasses: 'All classes',
+            withStudents: 'With students',
+            emptyClasses: 'No students yet',
+            sortRecent: 'Recently created',
+            sortName: 'Name',
+            sortStudents: 'Student count',
+            exportCsv: 'Export all submissions CSV',
+            exporting: 'Exporting…',
+            exportSuccess: 'CSV downloaded',
+            exportFailed: 'Export failed. Try again.',
           },
     [i18n.language],
   );
@@ -159,6 +200,26 @@ export const TeacherPage: React.FC = () => {
   useEffect(() => {
     if (isTeacher) void refresh();
   }, [isTeacher, refresh]);
+
+  useEffect(() => {
+    if (!isTeacher) return;
+    let cancelled = false;
+    void lmsApi
+      .teacherDashboard({
+        q: classQuery.trim() || undefined,
+        status: classFilter === 'empty' ? 'empty' : classFilter === 'withStudents' ? 'active' : undefined,
+        sort: classSort,
+      })
+      .then((result) => {
+        if (!cancelled) setDashboardStudents(result.students ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setDashboardStudents([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [classFilter, classQuery, classSort, isTeacher]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -300,6 +361,40 @@ export const TeacherPage: React.FC = () => {
     setTimeout(() => setCopiedCode(null), 1500);
   };
 
+  const visibleClasses = useMemo(() => {
+    const query = classQuery.trim().toLowerCase();
+    return classes
+      .filter((item) => {
+        if (classFilter === 'withStudents' && item.member_count === 0) return false;
+        if (classFilter === 'empty' && item.member_count !== 0) return false;
+        return !query || item.name.toLowerCase().includes(query) || item.code.toLowerCase().includes(query);
+      })
+      .sort((a, b) => {
+        if (classSort === 'name') return a.name.localeCompare(b.name, i18n.language);
+        if (classSort === 'students') return b.member_count - a.member_count || a.name.localeCompare(b.name, i18n.language);
+        return b.created_at - a.created_at;
+      });
+  }, [classes, classFilter, classQuery, classSort, i18n.language]);
+
+  const exportCsv = async () => {
+    if (exportBusy) return;
+    setExportBusy(true);
+    try {
+      const blob = await lmsApi.exportAssignmentsCsv();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `velxio-submissions-${new Date().toISOString().slice(0, 10)}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setAssignmentNotice(copy.exportSuccess);
+    } catch {
+      setAssignmentNotice(copy.exportFailed);
+    } finally {
+      setExportBusy(false);
+    }
+  };
+
   // ── Gates ────────────────────────────────────────────────
   if (sessionStatus !== 'signed-in') {
     return (
@@ -361,6 +456,75 @@ export const TeacherPage: React.FC = () => {
           </button>
         </div>
 
+        <section className="teacher-overview" aria-labelledby="teacher-overview-title">
+          <div>
+            <p className="teacher-eyebrow">{copy.overview}</p>
+            <h2 id="teacher-overview-title">{classes.length} {copy.classesCount}</h2>
+          </div>
+          <div className="teacher-overview-stat">
+            <strong>{classes.reduce((sum, item) => sum + item.member_count, 0)}</strong>
+            <span>{copy.studentsTotal}</span>
+          </div>
+          <button className="teacher-secondary" type="button" onClick={() => void exportCsv()} disabled={exportBusy}>
+            {exportBusy ? copy.exporting : copy.exportCsv}
+          </button>
+        </section>
+
+        {classes.length > 0 && (
+          <div className="teacher-class-tools" aria-label={copy.overview}>
+            <label className="teacher-search">
+              <span className="sr-only">{copy.classSearch}</span>
+              <input value={classQuery} onChange={(event) => setClassQuery(event.target.value)} placeholder={copy.classSearch} />
+            </label>
+            <div className="teacher-filter-pills" role="group" aria-label={copy.allClasses}>
+              {([['all', copy.allClasses], ['withStudents', copy.withStudents], ['empty', copy.emptyClasses]] as const).map(([value, label]) => (
+                <button key={value} type="button" className={classFilter === value ? 'teacher-filter-active' : ''} onClick={() => setClassFilter(value)}>{label}</button>
+              ))}
+            </div>
+            <label className="teacher-sort">
+              <span>{i18n.language.toLowerCase().startsWith('zh') ? '排序' : 'Sort'}</span>
+              <select value={classSort} onChange={(event) => setClassSort(event.target.value as typeof classSort)}>
+                <option value="recent">{copy.sortRecent}</option>
+                <option value="name">{copy.sortName}</option>
+                <option value="students">{copy.sortStudents}</option>
+              </select>
+            </label>
+          </div>
+        )}
+
+        {dashboardStudents.length > 0 && (
+          <section className="teacher-student-overview" aria-labelledby="teacher-student-overview-title">
+            <div className="teacher-section-heading">
+              <div>
+                <p className="teacher-eyebrow">{copy.overview}</p>
+                <h2 id="teacher-student-overview-title">{i18n.language.toLowerCase().startsWith('zh') ? '學生完成情況' : 'Student progress'}</h2>
+              </div>
+              <span className="teacher-muted-count">{dashboardStudents.length} {copy.studentsTotal}</span>
+            </div>
+            <div className="teacher-table-scroll">
+              <table className="teacher-student-table">
+                <thead><tr>
+                  <th>{i18n.language.toLowerCase().startsWith('zh') ? '學生' : 'Student'}</th>
+                  <th>{i18n.language.toLowerCase().startsWith('zh') ? '班級' : 'Class'}</th>
+                  <th>{i18n.language.toLowerCase().startsWith('zh') ? '課程進度' : 'Progress'}</th>
+                  <th>{i18n.language.toLowerCase().startsWith('zh') ? '平均分' : 'Average'}</th>
+                  <th>{i18n.language.toLowerCase().startsWith('zh') ? '狀態' : 'Status'}</th>
+                </tr></thead>
+                <tbody>{dashboardStudents.map((student) => {
+                  const className = classes.find((item) => item.id === student.class_id)?.name ?? '—';
+                  return <tr key={`${student.class_id}-${student.id}`}>
+                    <td><strong>{student.name}</strong><small>{student.email}</small></td>
+                    <td>{className}</td>
+                    <td><span className="teacher-progress-pill">{Number.isFinite(Number(student.progress)) ? `${Math.round(Number(student.progress))}%` : '—'}</span></td>
+                    <td>{student.average_score === null ? '—' : Math.round(student.average_score)}</td>
+                    <td><span className={`teacher-student-status teacher-student-status-${student.status}`}>{student.status}</span></td>
+                  </tr>;
+                })}</tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
         {classes.length === 0 ? (
           <p className="teacher-empty">
             {t(
@@ -370,7 +534,7 @@ export const TeacherPage: React.FC = () => {
           </p>
         ) : (
           <div className="teacher-class-list">
-            {classes.map((c) => (
+            {visibleClasses.length === 0 ? <p className="teacher-empty">{copy.emptyClasses}</p> : visibleClasses.map((c) => (
               <div
                 key={c.id}
                 className={

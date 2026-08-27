@@ -352,6 +352,19 @@ export interface LmsAssignmentSubmitResult {
 export const lmsApi = {
   listClasses: () =>
     request<{ teaching: LmsClassTeaching[]; joined: LmsClassJoined[] }>('GET', '/lms/classes'),
+  teacherDashboard: (params?: { classIds?: string[]; status?: string; sort?: string; q?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.classIds?.length) query.set('class_ids', params.classIds.join(','));
+    if (params?.status) query.set('status', params.status);
+    if (params?.sort) query.set('sort', params.sort);
+    if (params?.q) query.set('q', params.q);
+    return request<{
+      classes: LmsClassTeaching[];
+      students?: Array<{ id: string; name: string; email: string; class_id: string; progress: number; average_score: number | null; status: string }>;
+      assignments?: LmsAssignment[];
+      totals?: { students: number; assignments: number; submissions: number; completion_rate: number };
+    }>('GET', `/lms/teacher/dashboard${query.toString() ? `?${query.toString()}` : ''}`);
+  },
   createClass: (name: string) =>
     request<{ id: string; name: string; code: string }>('POST', '/lms/classes', { name }),
   deleteClass: (id: string) => request<{ ok: boolean }>('DELETE', `/lms/classes/${id}`),
@@ -390,6 +403,19 @@ export const lmsApi = {
       'GET',
       `/lms/assignments/${encodeURIComponent(assignmentId)}/submissions`,
     ),
+  /** Download teacher-scoped submissions as a CSV (optionally filtered by class). */
+  exportAssignmentsCsv: (classId?: string) => {
+    const query = classId ? `?class_id=${encodeURIComponent(classId)}` : '';
+    const token = getToken();
+    const base = getApiBase();
+    return fetch(`${base}/lms/assignments/export.csv${query}`, {
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    }).then(async (response) => {
+      if (!response.ok) throw new CloudApiError(response.status, (await response.text()) || 'Export failed');
+      return response.blob();
+    });
+  },
   getAssignment: (assignmentId: string) =>
     request<LmsAssignment>('GET', `/lms/assignments/${encodeURIComponent(assignmentId)}`),
   submitAssignment: (assignmentId: string, payload: LmsAssignmentSubmitPayload) =>

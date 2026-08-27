@@ -209,6 +209,15 @@
   color: #6e7681;
 }
 
+.learn-assignment-deadline {
+  border: 1px solid rgba(248, 81, 73, 0.42);
+  border-radius: 8px;
+  color: #ff9b95;
+  font-size: 13px;
+  margin: 12px 0;
+  padding: 9px 11px;
+}
+
 .learn-assignment-score {
   flex-shrink: 0;
   color: #56d4a0;

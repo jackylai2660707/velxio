@@ -22,11 +22,14 @@ the backend only stores per-user state, so lesson_id is an opaque string.
 
 from __future__ import annotations
 
+import csv
+import io
 from datetime import datetime, timezone
 import math
+import time
 from typing import Any
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from app.api.routes.auth import require_user
@@ -325,6 +328,73 @@ def _with_student_submission(assignment: dict[str, Any], user_id: str) -> dict[s
     return assignment
 
 
+def _query_class_ids(value: str | None) -> list[str]:
+    """Parse a comma-separated ``class_ids`` query parameter.
+
+    The dashboard keeps one compact URL for links copied between classes.  A
+    de-duplicated bounded list is passed to cloud_db, which filters unknown
+    classes without disclosing another teacher's class IDs.
+    """
+    if not value:
+        return []
+    out: list[str] = []
+    for token in str(value).split(","):
+        token = token.strip()
+        if token and token not in out:
+            out.append(token[:128])
+    return out[:100]
+
+
+def _csv_cell(value: Any) -> Any:
+    """Make exported spreadsheet cells safe from formula injection."""
+    if value is None:
+        return ""
+    text = str(value)
+    if text.startswith(("=", "+", "-", "@")):
+        return "'" + text
+    return text
+
+
+def _teacher_dashboard(
+    authorization: str | None,
+    *,
+    class_ids: str | None = None,
+    status: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    q: str | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> dict[str, Any]:
+    user = _require_teacher(authorization)
+    if status:
+        statuses = {item.strip().casefold() for item in status.split(",") if item.strip()}
+        allowed = {"missing", "submitted", "graded", "returned", "late", "draft"}
+        if statuses - allowed:
+            raise HTTPException(status_code=422, detail="Unknown dashboard status")
+    if order and str(order).casefold() not in (
+        "asc", "ascending", "desc", "descending", "up", "down"
+    ):
+        raise HTTPException(status_code=422, detail="order must be asc or desc")
+    if limit is not None and (limit < 0 or limit > cloud_db.MAX_DASHBOARD_ROWS):
+        raise HTTPException(
+            status_code=422,
+            detail=f"limit must be between 0 and {cloud_db.MAX_DASHBOARD_ROWS}",
+        )
+    if offset < 0:
+        raise HTTPException(status_code=422, detail="offset must be non-negative")
+    return cloud_db.get_teacher_dashboard(
+        user["id"],
+        _query_class_ids(class_ids),
+        status=status,
+        q=q,
+        sort=sort,
+        order=order,
+        limit=limit,
+        offset=offset,
+    )
+
+
 # ── Classes ────────────────────────────────────────────────────────────────
 
 
@@ -582,6 +652,11 @@ async def submission_save(
     assignment = cloud_db.get_assignment_for_user(assignment_id, user["id"], role="student")
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment not found")
+    # Server clock is authoritative for classroom deadlines. Draft autosaves
+    # remain allowed, but final submissions after due_at are rejected so a
+    # client cannot bypass the UI countdown by changing its local clock.
+    if req.submit and assignment.get("due_at") is not None and time.time() > float(assignment["due_at"]):
+        raise HTTPException(status_code=409, detail="Assignment deadline has passed")
     submit = req.submit
     if req.save is not None:
         submit = not req.save
@@ -669,3 +744,37 @@ async def submission_grade(
     if submission is None:
         raise HTTPException(status_code=404, detail="Submission not found")
     return {"submission": submission, **submission}
+
+
+@router.get("/teacher/dashboard")
+async def teacher_dashboard(
+    class_ids: str | None = None,
+    status: str | None = None,
+    q: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    limit: int = 1000,
+    offset: int = 0,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = _require_teacher(authorization)
+    return cloud_db.get_teacher_dashboard(user["id"], class_ids, status=status, q=q, sort=sort, order=order, limit=min(max(limit, 1), 10000), offset=max(offset, 0))
+
+
+@router.get("/teacher/export.csv")
+async def teacher_export_csv(
+    class_ids: str | None = None,
+    status: str | None = None,
+    q: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    authorization: str | None = Header(default=None),
+) -> Response:
+    user = _require_teacher(authorization)
+    rows = cloud_db.get_teacher_submission_rows(user["id"], class_ids, status=status, q=q, sort=sort, order=order)
+    out = io.StringIO(newline='')
+    writer = csv.writer(out)
+    writer.writerow(["class", "student", "email", "assignment", "status", "score", "max_score", "submitted_at", "late", "attempt_no"])
+    for row in rows:
+        writer.writerow([row.get("class_name", ""), row.get("student_name", ""), row.get("student_email", ""), row.get("assignment_title", ""), row.get("status", ""), row.get("score", ""), row.get("max_score", ""), row.get("submitted_at", ""), row.get("is_late", ""), row.get("attempt_no", "")])
+    return Response(content='\ufeff' + out.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=velxio-classroom.csv"})

@@ -112,6 +112,21 @@ function assignmentDate(timestamp: number | null | undefined): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString();
 }
 
+function assignmentDateTime(timestamp: number | null | undefined): string | null {
+  const millis = assignmentDueTime(timestamp);
+  if (millis === null) return null;
+  const date = new Date(millis);
+  return Number.isNaN(date.getTime())
+    ? null
+    : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+}
+
+function assignmentDueTime(timestamp: number | null | undefined): number | null {
+  if (!timestamp) return null;
+  const millis = timestamp > 10_000_000_000 ? timestamp : timestamp * 1000;
+  return Number.isFinite(millis) ? millis : null;
+}
+
 function assignmentStatusLabel(
   status: string | undefined,
   t: (key: string, fallback: string) => string,
@@ -149,11 +164,23 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<LmsSubmission | null>(assignment.submission ?? null);
+  const [now, setNow] = useState(() => Date.now());
 
   const questions = assignmentQuestions(detail.quiz);
   const allAnswered = questions.every((q) => answers[q.id] !== undefined);
   const effectiveSubmission = submitted ?? detail.submission;
   const due = assignmentDate(detail.due_at);
+  const dueTime = assignmentDueTime(detail.due_at);
+  const isPastDue = dueTime !== null && now > dueTime;
+  const attemptLabel = effectiveSubmission?.attempt_no
+    ? t('learn.assignment.attempt', '第 {{n}} 次提交 / Attempt {{n}}', { n: effectiveSubmission.attempt_no })
+    : null;
+
+  useEffect(() => {
+    if (!dueTime) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, [dueTime]);
 
   useEffect(() => {
     setDetail(assignment);
@@ -181,7 +208,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
   };
 
   const submit = async () => {
-    if (busy || (questions.length > 0 && !allAnswered)) return;
+    if (busy || isPastDue || (questions.length > 0 && !allAnswered)) return;
     setBusy(true);
     setError(null);
     try {
@@ -217,6 +244,12 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
             {due && (
               <span>
                 {t('learn.assignment.due', '截止 / Due')}: {due}
+              </span>
+            )}
+            {attemptLabel && <span>{attemptLabel}</span>}
+            {effectiveSubmission?.submitted_at && (
+              <span>
+                {t('learn.assignment.submittedAt', '提交 / Submitted')}: {assignmentDateTime(effectiveSubmission.submitted_at) ?? '—'}
               </span>
             )}
           </div>
@@ -309,6 +342,11 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
               <p>{effectiveSubmission.feedback}</p>
             </div>
           )}
+          {isPastDue && !effectiveSubmission && (
+            <p className="learn-assignment-deadline" role="status">
+              {t('learn.assignment.closed', '已截止，無法再提交 / Closed — submissions are no longer accepted.')}
+            </p>
+          )}
           {error && (
             <p className="learn-assignment-error" role="alert">
               {error}
@@ -318,11 +356,13 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
             <button
               className="learn-assignment-submit"
               onClick={submit}
-              disabled={busy || (questions.length > 0 && !allAnswered)}
+              disabled={busy || isPastDue || (questions.length > 0 && !allAnswered)}
             >
               {busy
                 ? t('learn.assignment.submitting', '評分中… / Submitting…')
-                : t('learn.assignment.submit', '繳交並自動評分 / Submit & auto-grade')}
+                : effectiveSubmission
+                  ? t('learn.assignment.resubmit', '修改後重新提交 / Resubmit revision')
+                  : t('learn.assignment.submit', '繳交並自動評分 / Submit & auto-grade')}
             </button>
             {questions.length > 0 && !allAnswered && (
               <span className="learn-assignment-hint">
