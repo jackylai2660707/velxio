@@ -37,6 +37,7 @@ export const TeacherPage: React.FC = () => {
       'teacher.seoDescription',
       '建立班級、發放班級代碼,即時掌握每位學生的課程進度與測驗成績。'
     ),
+    url: '/teacher',
   });
 
   const isTeacher = user?.role === 'teacher';

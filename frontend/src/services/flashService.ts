@@ -79,7 +79,9 @@ export async function* streamFlash(req: FlashRequest): AsyncGenerator<FlashEvent
     : new TextEncoder().encode(req.programData);
   fd.append(
     'program',
-    new Blob([bytes], { type: 'application/octet-stream' }),
+    // Blob's DOM typings require an ArrayBuffer-backed view; the decoder's
+    // Uint8Array may carry ArrayBufferLike (including SharedArrayBuffer).
+    new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' }),
     `program.${req.programFormat}`,
   );
 

@@ -312,6 +312,7 @@ export const BrandLandingPage: React.FC = () => {
       'brand.seoDescription',
       '為初中、高中學生與教師打造的免費開源學習平台:瀏覽器內模擬 Arduino、ESP32 等 19 種開發板,內建互動課程、選擇題測驗、班級管理與 AI 智慧助教。'
     ),
+    url: '/',
   });
 
   return (

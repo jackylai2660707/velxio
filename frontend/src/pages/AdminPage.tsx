@@ -155,7 +155,7 @@ export const AdminPage: React.FC = () => {
 
   const isAdmin = user?.role === 'admin';
 
-  useSEO({ title: '管理後台 — AI物聯網實驗室', description: '' });
+  useSEO({ title: '管理後台 — AI物聯網實驗室', description: '', url: '/admin' });
 
   const refresh = useCallback(async (q = '') => {
     const [ov, ul] = await Promise.all([adminApi.overview(), adminApi.listUsers(q)]);

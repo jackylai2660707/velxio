@@ -33,6 +33,7 @@ export const LessonPage: React.FC = () => {
       ? `${found.lesson.title} — ${found.course.title} — ${t('brand.name', 'AI物聯網實驗室')}`
       : t('learn.seoTitle', '課程 — AI物聯網實驗室'),
     description: found?.course.description ?? '',
+    url: `/learn/${courseId}/${lessonId}`,
   });
 
   if (!found) return <Navigate to={localize('/learn')} replace />;

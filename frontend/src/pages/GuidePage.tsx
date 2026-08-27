@@ -26,6 +26,7 @@ export const GuidePage: React.FC = () => {
     title: '使用說明 — AI物聯網實驗室',
     description:
       '三分鐘上手:怎麼上課、怎麼跑模擬、怎麼問 AI 助教、怎麼加入班級;教師如何建立班級與查看學生成績。',
+    url: '/guide',
   });
 
   const SECTIONS: Section[] = [

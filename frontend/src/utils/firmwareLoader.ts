@@ -197,7 +197,7 @@ export function binaryToIntelHex(data: Uint8Array): string {
 }
 
 /** Convert ArrayBuffer to base64 string. */
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
+function arrayBufferToBase64(buffer: ArrayBufferLike): string {
   const bytes = new Uint8Array(buffer);
   let binary = '';
   for (let i = 0; i < bytes.length; i++) {
@@ -210,14 +210,8 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 const AVR_BOARDS = new Set<BoardKind>(['arduino-uno', 'arduino-nano', 'arduino-mega', 'attiny85']);
 
-const RP2040_BOARDS = new Set<BoardKind>(['raspberry-pi-pico', 'pi-pico-w']);
-
 function isAvrBoard(kind: BoardKind): boolean {
   return AVR_BOARDS.has(kind);
-}
-
-function isRp2040Board(kind: BoardKind): boolean {
-  return RP2040_BOARDS.has(kind);
 }
 
 // ── Main entry point ─────────────────────────────────────────────────────────

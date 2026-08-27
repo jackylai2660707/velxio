@@ -103,6 +103,7 @@ export const LearnPage: React.FC = () => {
       'learn.seoDescription',
       'Arduino 入門與 ESP32 物聯網互動課程:原理解說、一鍵載入電路範例、動手挑戰與選擇題測驗。'
     ),
+    url: '/learn',
   });
 
   return (
