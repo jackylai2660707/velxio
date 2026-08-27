@@ -223,6 +223,7 @@ class SSD1306Core {
  */
 class VirtualSSD1306 implements I2CDevice {
   address: number;
+  private readonly element: HTMLElement;
   private readonly core = new SSD1306Core();
 
   private ctrlByte = true;
@@ -230,9 +231,10 @@ class VirtualSSD1306 implements I2CDevice {
 
   constructor(
     address: number,
-    private element: HTMLElement,
+    element: HTMLElement,
   ) {
     this.address = address;
+    this.element = element;
   }
 
   /** Expose core buffer for tests. */

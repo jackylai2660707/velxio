@@ -52,6 +52,11 @@ interface Esp32LikeSimulator {
   unregisterSensor?: (pin: number) => void;
 }
 
+// Intersect the bridge-specific surface with AnySimulator so this guard can
+// safely narrow the registry's simulator union while retaining the common
+// simulator methods required by the part registry.
+type Esp32ShimSimulator = AnySimulator & Esp32LikeSimulator;
+
 // Pin name → panel-side label. The Web Component exposes them as
 // 'GND', 'VCC', 'SCK', 'SDI', 'CS', 'DC', 'RST', 'BUSY'.
 const PIN_DC = 'DC';
@@ -71,7 +76,7 @@ function isAvr(sim: AnySimulator): sim is AVRSimulator {
   return !!s.spi && typeof s.spi.onByte === 'function';
 }
 
-function isEsp32Shim(sim: AnySimulator): sim is Esp32LikeSimulator {
+function isEsp32Shim(sim: AnySimulator): sim is Esp32ShimSimulator {
   const s = sim as Esp32LikeSimulator;
   return typeof s.getBridge === 'function' && typeof s.registerSensor === 'function';
 }
@@ -344,7 +349,10 @@ const epaperSimulation = {
       });
 
       const prev = bridge.onEpaperUpdate;
-      bridge.onEpaperUpdate = (id, frame) => {
+      bridge.onEpaperUpdate = (
+        id: string,
+        frame: { width: number; height: number; b64: string; refreshMs: number },
+      ) => {
         prev?.(id, frame);
         if (id !== componentId) return;
         const palette = b64ToBytes(frame.b64);

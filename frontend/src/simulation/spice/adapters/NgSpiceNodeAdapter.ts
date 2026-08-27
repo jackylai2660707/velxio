@@ -118,15 +118,15 @@ export class NgSpiceNodeAdapter implements SolverPort {
     this.api = {
       init: M.cwrap('ngSpice_Init', 'number', [
         'number', 'number', 'number', 'number', 'number', 'number', 'number',
-      ]),
-      command: M.cwrap('ngSpice_Command', 'number', ['string']),
-      circ: M.cwrap('ngSpice_Circ', 'number', ['number']),
-      allVecs: M.cwrap('ngSpice_AllVecs', 'number', ['string']),
-      curPlot: M.cwrap('ngSpice_CurPlot', 'string', []),
-      getVecInfo: M.cwrap('ngGet_Vec_Info', 'number', ['string']),
-      reset: M.cwrap('ngSpice_Reset', 'number', []),
-      nospiceinit: M.cwrap('ngSpice_nospiceinit', 'number', []),
-      setInputPath: M.cwrap('ngCM_Input_Path', 'number', ['string']),
+      ]) as unknown as NgSpiceApi['init'],
+      command: M.cwrap('ngSpice_Command', 'number', ['string']) as unknown as NgSpiceApi['command'],
+      circ: M.cwrap('ngSpice_Circ', 'number', ['number']) as unknown as NgSpiceApi['circ'],
+      allVecs: M.cwrap('ngSpice_AllVecs', 'number', ['string']) as unknown as NgSpiceApi['allVecs'],
+      curPlot: M.cwrap('ngSpice_CurPlot', 'string', []) as unknown as NgSpiceApi['curPlot'],
+      getVecInfo: M.cwrap('ngGet_Vec_Info', 'number', ['string']) as unknown as NgSpiceApi['getVecInfo'],
+      reset: M.cwrap('ngSpice_Reset', 'number', []) as unknown as NgSpiceApi['reset'],
+      nospiceinit: M.cwrap('ngSpice_nospiceinit', 'number', []) as unknown as NgSpiceApi['nospiceinit'],
+      setInputPath: M.cwrap('ngCM_Input_Path', 'number', ['string']) as unknown as NgSpiceApi['setInputPath'],
     };
   }
 
@@ -323,6 +323,9 @@ export class NgSpiceNodeAdapter implements SolverPort {
     if (this.api) {
       try { this.api.reset(); } catch { /* ignore */ }
     }
+    // Keep callback pointers alive for the lifetime of the emscripten
+    // singleton.  The module is cached and may be reused after dispose().
+    void this.callbackPointers;
     this.initialised = false;
     this.initPromise = null;
   }

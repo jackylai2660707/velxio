@@ -115,7 +115,6 @@ function isBoardPin(pin: number | null): pin is number {
 const pinKey = (componentId: string, pinName: string) => `${componentId}\u0000${pinName}`;
 
 type WireLike = TraceState['wires'][number];
-type WireEnd = WireLike['start'];
 type ComponentLike = TraceState['components'][number];
 
 /**
@@ -161,7 +160,6 @@ const groupIndexCache = new WeakMap<
 function groupHoles(
   state: TraceState,
   componentId: string,
-  metadataId: string,
   groupKey: string,
 ): string[] {
   const wiresRef = state.wires as unknown as object;
@@ -433,7 +431,7 @@ function collectNode(
     // that same hole, which is how the agent bridges strips).
     const group = comp && breadboardGroupKey(comp.metadataId, cur.pinName);
     if (group && comp) {
-      for (const hole of groupHoles(state, comp.id, comp.metadataId, group)) {
+      for (const hole of groupHoles(state, comp.id, group)) {
         if (!local.has(pinKey(comp.id, hole))) {
           queue.push({ componentId: comp.id, pinName: hole });
         }

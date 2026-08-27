@@ -33,7 +33,6 @@ import { useOscilloscopeStore } from '../store/useOscilloscopeStore';
 import { useProjectStore } from '../store/useProjectStore';
 import { showConfirmDialog } from '../store/useMessageDialogStore';
 import { useAutoSaveProject } from '../hooks/useAutoSaveProject';
-import type { CompilationLog } from '../utils/compilationLogger';
 import { isPiBoardKind } from '../types/board';
 import '../App.css';
 
@@ -62,6 +61,7 @@ export const EditorPage: React.FC = () => {
     title: '編輯器 — AI物聯網實驗室',
     description:
       '在瀏覽器裡撰寫、編譯並模擬 Arduino、ESP32、Raspberry Pi Pico 程式:19 種開發板、100+ 電子元件,免安裝、免硬體。',
+    url: `${window.location.origin}/editor`,
   });
 
   // Silent auto-save for the loaded project (only fires when authed AND

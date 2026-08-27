@@ -294,13 +294,15 @@ export class Esp32Bridge {
    * explicitly remaps via `Serial.setPins()`.
    */
   private uart0TxPin(): number {
+    // `esp32-c6` may be supplied by an overlay registry even though it is not
+    // part of the built-in BoardKind union. Keep that runtime mapping without
+    // widening the public board-kind type used throughout the store.
+    if ((this.boardKind as string) === 'esp32-c6') return 16;
     switch (this.boardKind) {
       case 'esp32-s3':
       case 'xiao-esp32-s3':
       case 'arduino-nano-esp32':
         return 43;
-      case 'esp32-c6':
-        return 16; // U0TXD default on the C6 (silkscreen TX on the DevKitC-1)
       case 'esp32-c3':
       case 'xiao-esp32-c3':
       case 'aitewinrobot-esp32c3-supermini':

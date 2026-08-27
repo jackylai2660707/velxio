@@ -37,7 +37,9 @@ class Max7219Element extends HTMLElement {
     return this._pixels;
   }
   set pixels(v: Uint8Array) {
-    this._pixels = v instanceof Uint8Array ? v : Uint8Array.from(v ?? []);
+    // Copy into a fresh, ArrayBuffer-backed view. Uint8Array's TS 5.9
+    // `ArrayBufferLike` generic otherwise leaks into the element state.
+    this._pixels = Uint8Array.from(v ?? []);
     this.repaint();
   }
 

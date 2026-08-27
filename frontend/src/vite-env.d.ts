@@ -1,5 +1,23 @@
 /// <reference types="vite/client" />
 
+// Mark this declaration file as an external module so the React augmentation
+// below merges with (rather than replaces) React's normal exports.
+import 'react';
+
+// React 19's automatic JSX runtime resolves intrinsic elements from the
+// `React.JSX` namespace (rather than the legacy global `JSX` namespace below).
+// Keep custom-element tags available to every TSX component, including the
+// wrappers under components/velxio-components.
+declare global {
+  namespace React {
+    namespace JSX {
+      interface IntrinsicElements {
+        [elemName: string]: any;
+      }
+    }
+  }
+}
+
 // Web Components JSX declarations
 declare namespace JSX {
   interface IntrinsicElements {

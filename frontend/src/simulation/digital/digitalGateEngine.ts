@@ -146,17 +146,19 @@ const epKey = (compId: string, pin: string) => `${compId}::${pin}`;
 class UnionFind {
   private parent = new Map<string, string>();
   find(x: string): string {
-    let r = this.parent.get(x);
-    if (r === undefined) {
+    const parent = this.parent.get(x);
+    if (parent === undefined) {
       this.parent.set(x, x);
       return x;
     }
-    while (r !== this.parent.get(r)) {
-      const gp = this.parent.get(r)!;
-      this.parent.set(r, this.parent.get(gp)!);
-      r = gp;
-    }
-    return r;
+    if (parent === x) return x;
+
+    // Recursively find and compress the path. A parent entry is always
+    // created by `find`/`union`, so this remains bounded by the union-find
+    // tree depth while keeping all intermediate values narrowed to `string`.
+    const root = this.find(parent);
+    this.parent.set(x, root);
+    return root;
   }
   union(a: string, b: string): void {
     const ra = this.find(a), rb = this.find(b);

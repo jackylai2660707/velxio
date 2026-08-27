@@ -20,7 +20,7 @@ import { UnionFind } from './unionFind';
 import { componentToSpice } from './componentToSpice';
 import { auxRailNetName, isAuxRailNet } from './boardPinGroups';
 import { isBreadboard, breadboardGroupKey } from '../../utils/breadboardNets';
-import type { BuildNetlistInput, ComponentForSpice, BoardForSpice, WireForSpice } from './types';
+import type { BuildNetlistInput, WireForSpice } from './types';
 
 /** True for any self-driven supply net: ground, the main rail, or an aux rail. */
 function isRailNet(net: string): boolean {

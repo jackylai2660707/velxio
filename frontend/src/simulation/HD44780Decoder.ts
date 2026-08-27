@@ -111,8 +111,6 @@ export class HD44780Decoder {
   private cursorOn = false;
   private cursorBlink = false;
   private cursorInc = true; // I/D bit — true = address increments after each write
-  private shiftOnEntry = false;
-  private twoLine = false;
 
   // ── 4-bit assembly state ──────────────────────────────────────────────
   private highNibble: number | null = null;
@@ -129,7 +127,6 @@ export class HD44780Decoder {
    * pairing only AFTER the controller is observed to be in 4-bit
    * mode (Function set with DL=0).
    */
-  private fourBitMode = false;
 
   constructor(geometry: HD44780Geometry) {
     this.cols = geometry.cols;
@@ -180,13 +177,10 @@ export class HD44780Decoder {
     this.cursorOn = false;
     this.cursorBlink = false;
     this.cursorInc = true;
-    this.shiftOnEntry = false;
-    this.twoLine = false;
     this.highNibble = null;
     this.highRs = false;
     this.lastEN = false;
     this.backlight = true;
-    this.fourBitMode = false;
   }
 
   /** Snapshot the current visible state — useful for tests and UI overlays. */
@@ -261,7 +255,6 @@ export class HD44780Decoder {
     }
     if ((byte & 0xfc) === 0x04) {
       this.cursorInc = (byte & 0x02) !== 0;
-      this.shiftOnEntry = (byte & 0x01) !== 0;
       return;
     }
     if ((byte & 0xf8) === 0x08) {
@@ -278,9 +271,6 @@ export class HD44780Decoder {
     }
     if ((byte & 0xe0) === 0x20) {
       // Function set: DL (bit 4), N (bit 3), F (bit 2)
-      const dl8bit = (byte & 0x10) !== 0;
-      this.fourBitMode = !dl8bit;
-      this.twoLine = (byte & 0x08) !== 0;
       return;
     }
     if ((byte & 0xc0) === 0x40) {

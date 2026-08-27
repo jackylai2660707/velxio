@@ -84,14 +84,19 @@ const IDLE_SLICE_CYCLES = CYCLES_PER_MS; // 1 ms
  * wall-clock budget, never past the next timer alarm or scheduled pin change.
  */
 export class IdleSpinDetector {
+  private readonly threshold: number;
+  private readonly maxStride: number;
+  private readonly maxLoopSpan: number;
+  private readonly maxIterInstructions: number;
+
   private prevPc = -1;
   private loopTarget = -1;
   private iters = 0;
   private gpioAtLastIter = -1;
 
   constructor(
-    private readonly threshold = 32,
-    private readonly maxStride = 256,
+    threshold = 32,
+    maxStride = 256,
     /**
      * How wide the loop body may be, in bytes of PC range, and still count as
      * an idle spin.
@@ -107,7 +112,7 @@ export class IdleSpinDetector {
      * 128 bytes is comfortably more than any busy-wait and comfortably less
      * than a bytecode dispatch.
      */
-    private readonly maxLoopSpan = 128,
+    maxLoopSpan = 128,
     /**
      * How many instructions one iteration may take and still be a busy-wait.
      *
@@ -118,8 +123,13 @@ export class IdleSpinDetector {
      * compare, branch. Twenty-four leaves room for the compare-and-branch
      * variants without admitting a VM.
      */
-    private readonly maxIterInstructions = 24,
-  ) {}
+    maxIterInstructions = 24,
+  ) {
+    this.threshold = threshold;
+    this.maxStride = maxStride;
+    this.maxLoopSpan = maxLoopSpan;
+    this.maxIterInstructions = maxIterInstructions;
+  }
 
   /** Widest PC seen since this loop started, so a big loop body can be told
    *  from a tight spin. */
@@ -856,7 +866,7 @@ export class RP2040Simulator {
     if (!baud || baud <= 0) return;
 
     const txPin = this.rp2040UartTxPin(uartIdx);
-    const dataBits = uart.bitsPerChar;
+    const dataBits = uart.wordLength ?? 8;
     const clk = (this.rp2040 as unknown as { clock?: { nanos: number } }).clock;
     const startMs = clk ? clk.nanos / 1_000_000 : 0;
     const bitMs = 1000 / baud;
@@ -1341,7 +1351,7 @@ export class RP2040Simulator {
   step(): number {
     if (!this.rp2040) return 0;
     const core = this.rp2040.core;
-    const clock = this.rp2040.clock;
+    const clock = this.rp2040.clock as unknown as SimClock;
     if (core.waiting) {
       // CPU is in WFE/WFI — advance clock to the next alarm so an
       // interrupt can wake it.  Without this, single-stepping a

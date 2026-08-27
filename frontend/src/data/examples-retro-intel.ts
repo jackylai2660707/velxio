@@ -848,6 +848,7 @@ export const retroIntelExamples: ExampleProject[] = [
       'machine.',
     category: 'circuits',
     difficulty: 'advanced',
+    code: '',
     boardFilter: 'digital',
     tags: ['retro', 'z80', 'zilog', 'galaksija', 'home-computer', 'basic', 'rom', 'ram', 'video', 'keyboard', 'multi-chip', 'bus', 'no-board', 'wasm', 'custom-chip', 'cpu'],
     components: [

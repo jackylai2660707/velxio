@@ -42,6 +42,7 @@ interface FakeSolverConfig {
 }
 
 export class FakeSolverAdapter implements SolverPort {
+  private readonly config: FakeSolverConfig;
   /** Call log — tests assert against this. */
   public calls: {
     init: number;
@@ -54,7 +55,9 @@ export class FakeSolverAdapter implements SolverPort {
   /** Hook for tests that want to react to an alter (e.g. update canned vectors). */
   public onAlter: ((name: string, dcValue: number) => void) | null = null;
 
-  constructor(private readonly config: FakeSolverConfig = {}) {}
+  constructor(config: FakeSolverConfig = {}) {
+    this.config = config;
+  }
 
   async init(): Promise<void> {
     this.calls.init++;

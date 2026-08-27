@@ -15,7 +15,7 @@ import { ComponentPickerModal } from '../ComponentPickerModal';
 import { PartInspectorDialog, type InspectorAction } from './PartInspectorDialog';
 import { CustomChipDialog } from '../customChips/CustomChipDialog';
 import { SensorControlPanel } from './SensorControlPanel';
-import { SENSOR_CONTROLS, getSensorControl } from '../../simulation/sensorControlConfig';
+import { getSensorControl } from '../../simulation/sensorControlConfig';
 import { DynamicComponent, createComponentFromMetadata } from '../DynamicComponent';
 import { InstrumentComponent } from '../components-instruments/InstrumentComponent';
 import { ComponentRegistry } from '../../services/ComponentRegistry';
@@ -211,7 +211,6 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
   useButtonKeyBindings(components);
 
   // Legacy derived values for components that still use them
-  const boardType = useSimulatorStore((s) => s.boardType);
   const boardPosition = useSimulatorStore((s) => s.boardPosition);
 
   // Wire management from store
@@ -1358,7 +1357,9 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
     boards.forEach((board) => {
       // Determine which GPIO pin drives the board's built-in LED
       let ledPin: number;
-      switch (board.boardKind) {
+      // Cast to string so legacy persisted aliases (e.g. nano-rp2040) can
+      // still select the correct built-in LED pin without widening BoardKind.
+      switch (board.boardKind as string) {
         case 'raspberry-pi-pico':
         case 'pi-pico-w':
         case 'nano-rp2040':
@@ -2497,7 +2498,8 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
       // primary way to pick pins, so the tiny overlay squares are hidden —
       // they're hard to hit with a finger anyway. Desktop shows overlays on
       // hover / while wiring only — selection alone doesn't light them up.
-      const showPinsForComponent = !dialogOpen && !isTouchDevice && (wireInProgress || isHovered);
+      const showPinsForComponent =
+        !dialogOpen && !isTouchDevice && (Boolean(wireInProgress) || isHovered);
       return (
         <React.Fragment key={component.id}>
           <div
@@ -2543,7 +2545,7 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
                 zoom={zoom}
                 wrapperOffsetX={0}
                 wrapperOffsetY={0}
-                wiring={wireInProgress}
+                wiring={Boolean(wireInProgress)}
               />
             )}
           </div>
@@ -2566,7 +2568,8 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
     // light them up (a selected breadboard lit 170 squares permanently).
     // Hidden when a dialog is open. Hidden entirely on touch — there the
     // PinPickerDialog (tap component → list of pins) replaces the overlays.
-    const showPinsForComponent = !dialogOpen && !isTouchDevice && (wireInProgress || isHovered);
+    const showPinsForComponent =
+      !dialogOpen && !isTouchDevice && (Boolean(wireInProgress) || isHovered);
 
     // Breadboards are the physical base of a circuit — everything plugs into
     // them — so they always sit at the very back: below boards (z 0), other
@@ -2670,7 +2673,7 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
               showPins={showPinsForComponent}
               zoom={zoom}
               rotation={Number(component.properties?.rotation) || 0}
-              wiring={wireInProgress}
+              wiring={Boolean(wireInProgress)}
             />
           )}
         </div>
@@ -2795,22 +2798,22 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
                 {/* Webcam stream toggle, for boards with a camera: the
                     ESP32-CAM (OV2640 over I2S0 DVP) and the XIAO ESP32S3
                     Sense (OV2640-compatible over LCD_CAM). */}
-                {(activeBoard?.boardKind === 'esp32-cam' ||
-                  activeBoard?.boardKind === 'xiao-esp32s3-sense' ||
+                {((activeBoard?.boardKind as string | undefined) === 'esp32-cam' ||
+                  (activeBoard?.boardKind as string | undefined) === 'xiao-esp32s3-sense' ||
                   (activeBoard &&
                     Boolean(getProBoard(activeBoard.boardKind)?.builtInCamera))) && (
                   <CameraToggle
-                    boardId={activeBoard.id}
+                    boardId={activeBoard!.id}
                     // The S3 esp32-camera build allocates width*height/5 bytes
                     // for a QVGA JPEG frame (15360) and stops copying at
                     // fb_size - one 1 KiB DMA half-buffer: frames must stay
                     // under ~14336 or the EOI marker is truncated (NO-EOI).
                     // Overlay boards declare their cap on builtInCamera.
                     maxFrameBytes={
-                      activeBoard.boardKind === 'xiao-esp32s3-sense'
+                      (activeBoard!.boardKind as string) === 'xiao-esp32s3-sense'
                         ? 14000
                         : ((cam) => (typeof cam === 'object' ? cam.maxFrameBytes : undefined))(
-                            getProBoard(activeBoard.boardKind)?.builtInCamera,
+                            getProBoard(activeBoard!.boardKind)?.builtInCamera,
                           )
                     }
                   />
@@ -3232,7 +3235,8 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
               // Suppressed while a dialog is open. Hidden entirely on touch
               // since the PinPickerDialog (tap board to open list) replaces
               // the overlays — fingers can't reliably hit a 12px pin anyway.
-              const showPins = !dialogOpen && !isTouchDevice && (wireInProgress || isHovered);
+              const showPins =
+                !dialogOpen && !isTouchDevice && (Boolean(wireInProgress) || isHovered);
               return (
                 <BoardOnCanvas
                   key={board.id}
@@ -3240,7 +3244,7 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
                   running={running}
                   isActive={isActive}
                   showPins={showPins}
-                  wiring={wireInProgress}
+                  wiring={Boolean(wireInProgress)}
                   led13={Boolean(boardLedStates[board.id])}
                   onMouseEnter={() => setHoveredBoardId(board.id)}
                   onMouseLeave={() =>

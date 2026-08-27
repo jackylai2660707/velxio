@@ -65,7 +65,7 @@ import {
   updateWires as icUpdateWires,
   setInterconnectRuntime,
 } from '../simulation/Interconnect';
-import { SENSOR_CONTROLS, getSensorControl } from '../simulation/sensorControlConfig';
+import { getSensorControl } from '../simulation/sensorControlConfig';
 import { SINGLE_WIRE_SENSOR_MODELS } from '../simulation/sensorModels';
 import { traceBoardGpio } from '../simulation/PinTrace';
 import { dispatchSensorUpdate } from '../simulation/SensorUpdateRegistry';
@@ -892,10 +892,19 @@ class Stm32BridgeShim {
 }
 
 // ── Runtime Maps (outside Zustand — not serialisable) ─────────────────────
-const simulatorMap = new Map<
-  string,
-  AVRSimulator | RP2040Simulator | RiscVSimulator | Esp32C3Simulator | Esp32BridgeShim | Stm32BridgeShim
->();
+// Keep the map broad enough for overlay-provided simulators, while exposing a
+// stable common-simulator return type to consumers that need the standard
+// setPinState/isRunning/pinManager surface. Pro simulators are intentionally
+// discovered through `isProBoardSimulator` at their call sites.
+type ManagedSimulator =
+  | AVRSimulator
+  | RP2040Simulator
+  | RiscVSimulator
+  | Esp32C3Simulator
+  | Esp32BridgeShim
+  | Stm32BridgeShim;
+type StoredSimulator = ManagedSimulator | ProBoardSimulator;
+const simulatorMap = new Map<string, StoredSimulator>();
 const pinManagerMap = new Map<string, PinManager>();
 // Per-board ESP32 GPIO Matrix mirror.  Populated for boards whose kind
 // is an ESP32 variant (others don't have a GPIO Matrix in the same
@@ -908,7 +917,8 @@ const esp32BridgeMap = new Map<string, Esp32Bridge>();
 // STM32 bridge — created lazily, only when isStm32BoardKind(boardKind).
 const stm32BridgeMap = new Map<string, Stm32Bridge>();
 
-export const getBoardSimulator = (id: string) => simulatorMap.get(id);
+export const getBoardSimulator = (id: string): ManagedSimulator | undefined =>
+  simulatorMap.get(id) as ManagedSimulator | undefined;
 export const getBoardPinManager = (id: string) => pinManagerMap.get(id);
 export const getBoardBridge = (id: string) => bridgeMap.get(id);
 
@@ -1099,7 +1109,9 @@ interface SimulatorState {
     | RP2040Simulator
     | RiscVSimulator
     | Esp32C3Simulator
+    | ProBoardSimulator
     | Esp32BridgeShim
+    | Stm32BridgeShim
     | null;
   /** @deprecated use getBoardPinManager(activeBoardId) */
   pinManager: PinManager;
@@ -1708,7 +1720,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         return {
           boards: [...s.boards, newBoard],
           activeBoardId: nextActive,
-          simulator: simulatorMap.get(nextActive) ?? s.simulator,
+          simulator: nextActive ? simulatorMap.get(nextActive) ?? s.simulator : s.simulator,
         };
       });
       // Create the editor file group for this board. A board that ships its
@@ -3275,7 +3287,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
     setWires: (wires) =>
       set((state) => ({
         // Ensure every wire has waypoints (backwards-compatible with saved projects)
-        wires: wires.map((w) => ({ waypoints: [], ...w })),
+        wires: wires.map((w) => ({ ...w, waypoints: w.waypoints ?? [] })),
         // Bulk replacement clears history for the same reason as setComponents.
         history: [],
         historyIndex: -1,
@@ -3827,7 +3839,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           esp32Bridge.sendSerialBytes(Array.from(new TextEncoder().encode(text)));
         }
       } else {
-        getBoardSimulator(boardId)?.serialWrite(text);
+        (getBoardSimulator(boardId) as { serialWrite?: (value: string) => void } | undefined)
+          ?.serialWrite?.(text);
       }
     },
 
@@ -3863,7 +3876,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           esp32Bridge.sendSerialBytes(Array.from(new TextEncoder().encode(text)));
         }
       } else {
-        getBoardSimulator(boardId)?.serialWrite(text);
+        (getBoardSimulator(boardId) as { serialWrite?: (value: string) => void } | undefined)
+          ?.serialWrite?.(text);
       }
     },
 

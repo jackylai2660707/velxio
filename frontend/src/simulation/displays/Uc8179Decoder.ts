@@ -130,7 +130,7 @@ export class Uc8179Decoder {
     // 8 px, MSB = leftmost. bit=1 -> white(1), bit=0 -> black(0).
     const w = this.width;
     const cy = this.cy;
-    if (cy >= 0 && cy < this.height) {
+    if (cy >= 0 && cy <= this.winY1 && cy < this.height) {
       const base = cy * w;
       for (let k = 0; k < 8; k++) {
         const x = this.cx + k;

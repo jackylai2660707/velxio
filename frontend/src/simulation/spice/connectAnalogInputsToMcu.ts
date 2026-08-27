@@ -186,7 +186,13 @@ export function connectAnalogInputsToMcu(): () => void {
         if (v == null) continue;
         const clamped = Math.max(0, Math.min(vMax, v));
         const gpioPin = gpioForBoardPin(board.boardKind, pinName, channel);
-        if (gpioPin >= 0) setAdcVoltage(sim, gpioPin, clamped);
+        if (gpioPin >= 0) {
+          setAdcVoltage(
+            sim as unknown as Parameters<typeof setAdcVoltage>[0],
+            gpioPin,
+            clamped,
+          );
+        }
       }
     }
   }

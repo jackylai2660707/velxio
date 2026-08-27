@@ -19,7 +19,6 @@
 
 import {
   PANEL_CONFIGS,
-  DEFAULT_PANEL_KIND,
   getPanelConfig,
   type EPaperPanelConfig,
 } from '../../simulation/displays/EPaperPanels';

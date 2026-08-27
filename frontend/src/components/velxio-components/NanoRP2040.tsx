@@ -23,7 +23,6 @@ export const NanoRP2040 = ({
   }, [ledBuiltIn]);
 
   return (
-    // @ts-expect-error -- wokwi-nano-rp2040-connect is a custom element not in base JSX types
     <wokwi-nano-rp2040-connect
       id={id}
       ref={ref}
