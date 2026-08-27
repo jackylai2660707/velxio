@@ -1475,6 +1475,18 @@ def get_teacher_dashboard(
     """
     requested_classes = _split_filter_values(class_ids)
     statuses = {s.casefold() for s in _split_filter_values(status)}
+    # Keep report filters forward-compatible with richer grading states used
+    # by newer clients.  The current storage has draft/submitted/graded/
+    # returned plus the derived missing/late states; these aliases map onto
+    # the closest persisted state instead of making a harmless filter fail.
+    if "not_started" in statuses:
+        statuses.add("missing")
+    if "in_progress" in statuses:
+        statuses.add("draft")
+    if "grading" in statuses:
+        statuses.add("submitted")
+    if "expired" in statuses:
+        statuses.add("late")
     search = str(q or "").strip().casefold()
     sort_key = _dashboard_sort_key(sort)
     allowed_sort = {

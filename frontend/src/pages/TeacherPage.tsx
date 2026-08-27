@@ -57,10 +57,13 @@ export const TeacherPage: React.FC = () => {
     id: string;
     name: string;
     email: string;
-    class_id: string;
-    progress: number;
+    class_ids?: string[];
+    class_names?: string[];
+    completion_rate?: number;
     average_score: number | null;
-    status: string;
+    late_count?: number;
+    submitted_count?: number;
+    assignment_count?: number;
   }>>([]);
 
   const copy = useMemo(
@@ -207,8 +210,6 @@ export const TeacherPage: React.FC = () => {
     void lmsApi
       .teacherDashboard({
         q: classQuery.trim() || undefined,
-        status: classFilter === 'empty' ? 'empty' : classFilter === 'withStudents' ? 'active' : undefined,
-        sort: classSort,
       })
       .then((result) => {
         if (!cancelled) setDashboardStudents(result.students ?? []);
@@ -511,13 +512,15 @@ export const TeacherPage: React.FC = () => {
                   <th>{i18n.language.toLowerCase().startsWith('zh') ? '狀態' : 'Status'}</th>
                 </tr></thead>
                 <tbody>{dashboardStudents.map((student) => {
-                  const className = classes.find((item) => item.id === student.class_id)?.name ?? '—';
-                  return <tr key={`${student.class_id}-${student.id}`}>
+                  const className = student.class_names?.join(', ') || '—';
+                  const completion = student.completion_rate;
+                  const status = student.late_count ? 'late' : completion === 100 ? 'complete' : 'in_progress';
+                  return <tr key={`${student.class_ids?.join('-') ?? 'class'}-${student.id}`}>
                     <td><strong>{student.name}</strong><small>{student.email}</small></td>
                     <td>{className}</td>
-                    <td><span className="teacher-progress-pill">{Number.isFinite(Number(student.progress)) ? `${Math.round(Number(student.progress))}%` : '—'}</span></td>
+                    <td><span className="teacher-progress-pill">{Number.isFinite(Number(completion)) ? `${Math.round(Number(completion))}%` : '—'}</span></td>
                     <td>{student.average_score === null ? '—' : Math.round(student.average_score)}</td>
-                    <td><span className={`teacher-student-status teacher-student-status-${student.status}`}>{student.status}</span></td>
+                    <td><span className={`teacher-student-status teacher-student-status-${status}`}>{status === 'complete' ? (i18n.language.toLowerCase().startsWith('zh') ? '已完成' : 'Complete') : status === 'late' ? (i18n.language.toLowerCase().startsWith('zh') ? '有逾期' : 'Late') : (i18n.language.toLowerCase().startsWith('zh') ? '進行中' : 'In progress')}</span></td>
                   </tr>;
                 })}</tbody>
               </table>

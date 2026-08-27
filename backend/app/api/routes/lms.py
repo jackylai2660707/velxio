@@ -37,6 +37,11 @@ from app.services import cloud_db
 
 router = APIRouter()
 
+_DASHBOARD_STATUSES = {
+    "missing", "not_started", "in_progress", "submitted", "graded", "returned",
+    "late", "grading", "expired", "draft",
+}
+
 
 class ClassCreate(BaseModel):
     name: str
@@ -369,7 +374,7 @@ def _teacher_dashboard(
     user = _require_teacher(authorization)
     if status:
         statuses = {item.strip().casefold() for item in status.split(",") if item.strip()}
-        allowed = {"missing", "submitted", "graded", "returned", "late", "draft"}
+        allowed = _DASHBOARD_STATUSES
         if statuses - allowed:
             raise HTTPException(status_code=422, detail="Unknown dashboard status")
     if order and str(order).casefold() not in (
@@ -410,7 +415,7 @@ def _teacher_export_csv(
     selected = class_ids if class_ids is not None else class_id
     if status:
         statuses = {item.strip().casefold() for item in status.split(",") if item.strip()}
-        allowed = {"missing", "submitted", "graded", "returned", "late", "draft"}
+        allowed = _DASHBOARD_STATUSES
         if statuses - allowed:
             raise HTTPException(status_code=422, detail="Unknown dashboard status")
     if order and str(order).casefold() not in (
@@ -545,27 +550,6 @@ async def teacher_export_csv(
 
 @router.get("/reports/export.csv")
 async def teacher_reports_export_csv(
-    class_ids: str | None = None,
-    class_id: str | None = None,
-    status: str | None = None,
-    sort: str | None = None,
-    order: str | None = None,
-    q: str | None = None,
-    authorization: str | None = Header(default=None),
-) -> Response:
-    return _teacher_export_csv(
-        authorization,
-        class_ids=class_ids,
-        class_id=class_id,
-        status=status,
-        sort=sort,
-        order=order,
-        q=q,
-    )
-
-
-@router.get("/assignments/export.csv")
-async def assignments_export_csv(
     class_ids: str | None = None,
     class_id: str | None = None,
     status: str | None = None,
@@ -933,37 +917,3 @@ async def submission_grade(
     if submission is None:
         raise HTTPException(status_code=404, detail="Submission not found")
     return {"submission": submission, **submission}
-
-
-@router.get("/teacher/dashboard")
-async def teacher_dashboard(
-    class_ids: str | None = None,
-    status: str | None = None,
-    q: str | None = None,
-    sort: str | None = None,
-    order: str | None = None,
-    limit: int = 1000,
-    offset: int = 0,
-    authorization: str | None = Header(default=None),
-) -> dict:
-    user = _require_teacher(authorization)
-    return cloud_db.get_teacher_dashboard(user["id"], class_ids, status=status, q=q, sort=sort, order=order, limit=min(max(limit, 1), 10000), offset=max(offset, 0))
-
-
-@router.get("/teacher/export.csv")
-async def teacher_export_csv(
-    class_ids: str | None = None,
-    status: str | None = None,
-    q: str | None = None,
-    sort: str | None = None,
-    order: str | None = None,
-    authorization: str | None = Header(default=None),
-) -> Response:
-    user = _require_teacher(authorization)
-    rows = cloud_db.get_teacher_submission_rows(user["id"], class_ids, status=status, q=q, sort=sort, order=order)
-    out = io.StringIO(newline='')
-    writer = csv.writer(out)
-    writer.writerow(["class", "student", "email", "assignment", "status", "score", "max_score", "submitted_at", "late", "attempt_no"])
-    for row in rows:
-        writer.writerow([row.get("class_name", ""), row.get("student_name", ""), row.get("student_email", ""), row.get("assignment_title", ""), row.get("status", ""), row.get("score", ""), row.get("max_score", ""), row.get("submitted_at", ""), row.get("is_late", ""), row.get("attempt_no", "")])
-    return Response(content='\ufeff' + out.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=velxio-classroom.csv"})

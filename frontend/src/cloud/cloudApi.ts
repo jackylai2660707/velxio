@@ -360,7 +360,7 @@ export const lmsApi = {
     if (params?.q) query.set('q', params.q);
     return request<{
       classes: LmsClassTeaching[];
-      students?: Array<{ id: string; name: string; email: string; class_id: string; progress: number; average_score: number | null; status: string }>;
+      students?: Array<{ id: string; name: string; email: string; class_ids?: string[]; class_names?: string[]; completion_rate?: number; average_score: number | null; late_count?: number; submitted_count?: number; assignment_count?: number }>;
       assignments?: LmsAssignment[];
       totals?: { students: number; assignments: number; submissions: number; completion_rate: number };
     }>('GET', `/lms/teacher/dashboard${query.toString() ? `?${query.toString()}` : ''}`);
@@ -405,10 +405,10 @@ export const lmsApi = {
     ),
   /** Download teacher-scoped submissions as a CSV (optionally filtered by class). */
   exportAssignmentsCsv: (classId?: string) => {
-    const query = classId ? `?class_id=${encodeURIComponent(classId)}` : '';
+    const query = classId ? `?class_ids=${encodeURIComponent(classId)}` : '';
     const token = getToken();
     const base = getApiBase();
-    return fetch(`${base}/lms/assignments/export.csv${query}`, {
+    return fetch(`${base}/lms/teacher/export.csv${query}`, {
       credentials: 'include',
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     }).then(async (response) => {
