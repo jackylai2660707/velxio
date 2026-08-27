@@ -142,11 +142,15 @@ app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
 from app.api.routes import auth as cloud_auth
 from app.api.routes import cloud
 from app.api.routes import lms
+from app.api.routes import grading as lms_grading
 from app.api.routes import admin as platform_admin
 app.include_router(cloud_auth.router, prefix="/api/auth", tags=["cloud-auth"])
 app.include_router(cloud.router, prefix="/api/cloud", tags=["cloud-storage"])
 # 「AI物聯網實驗室」learning management: classes, lesson progress, quizzes.
 app.include_router(lms.router, prefix="/api/lms", tags=["lms"])
+# AI rubric grading is a separate router so deployments can disable/restrict
+# this provider-facing surface without changing deterministic LMS endpoints.
+app.include_router(lms_grading.router, prefix="/api/lms", tags=["lms-ai-grading"])
 # Platform-operator admin: batch accounts, AI token quotas, password resets.
 app.include_router(platform_admin.router, prefix="/api/admin", tags=["admin"])
 

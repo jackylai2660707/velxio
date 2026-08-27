@@ -127,6 +127,63 @@ function assignmentDueTime(timestamp: number | null | undefined): number | null 
   return Number.isFinite(millis) ? millis : null;
 }
 
+/** Newer classroom servers add timed-attempt metadata without changing the
+ * basic assignment response.  Keep old self-hosted servers usable while the
+ * UI progressively adopts those fields. */
+type AssignmentExtras = Record<string, unknown>;
+
+interface AssignmentAttempt extends LmsSubmission {
+  started_at?: number | null;
+  expires_at?: number | null;
+  saved_at?: number | null;
+  grade_status?: string | null;
+  ai_grade_status?: string | null;
+  rubric_feedback?: string | null;
+}
+
+interface AttemptApi {
+  getAttempts?: (assignmentId: string) => Promise<{ attempts: AssignmentAttempt[]; server_time?: number }>;
+  startAttempt?: (assignmentId: string) => Promise<{ attempt: AssignmentAttempt; server_time?: number }>;
+  saveAttempt?: (
+    attemptId: string,
+    payload: { answers?: unknown[]; content?: string; project_data?: ReturnType<typeof buildVlxPayload> },
+  ) => Promise<{ attempt: AssignmentAttempt; server_time?: number }>;
+  submitAttempt?: (
+    attemptId: string,
+    payload: { answers?: unknown[]; content?: string; project_data?: ReturnType<typeof buildVlxPayload> },
+  ) => Promise<{ submission: AssignmentAttempt; server_time?: number }>;
+}
+
+function asMillis(value: unknown): number | null {
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null;
+  return value > 10_000_000_000 ? value : value * 1000;
+}
+
+function extraNumber(source: unknown, key: string): number | null {
+  if (!source || typeof source !== 'object') return null;
+  return asMillis((source as AssignmentExtras)[key]);
+}
+
+function extraSeconds(source: unknown, key: string): number | null {
+  if (!source || typeof source !== 'object') return null;
+  const value = (source as AssignmentExtras)[key];
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function formatTimeRemaining(millis: number): string {
+  const seconds = Math.max(0, Math.ceil(millis / 1000));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainder = seconds % 60;
+  return hours > 0
+    ? `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`
+    : `${minutes.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
+}
+
 function assignmentStatusLabel(
   status: string | undefined,
   t: (key: string, fallback: string) => string,
@@ -164,28 +221,56 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<LmsSubmission | null>(assignment.submission ?? null);
+  const [attempts, setAttempts] = useState<AssignmentAttempt[]>([]);
+  const [activeAttempt, setActiveAttempt] = useState<AssignmentAttempt | null>(null);
+  const [draftBusy, setDraftBusy] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
+  const [serverOffset, setServerOffset] = useState(0);
   const [now, setNow] = useState(() => Date.now());
 
   const questions = assignmentQuestions(detail.quiz);
   const allAnswered = questions.every((q) => answers[q.id] !== undefined);
   const effectiveSubmission = submitted ?? detail.submission;
+  const extras = detail as unknown as AssignmentExtras;
+  const attemptApi = lmsApi as typeof lmsApi & AttemptApi;
   const due = assignmentDate(detail.due_at);
   const dueTime = assignmentDueTime(detail.due_at);
-  const isPastDue = dueTime !== null && now > dueTime;
+  const opensAt = extraNumber(extras, 'opens_at');
+  const closesAt = extraNumber(extras, 'closes_at') ?? dueTime;
+  const durationMinutes = extraSeconds(extras, 'duration_minutes');
+  const timeLimitSeconds = extraSeconds(extras, 'time_limit_seconds') ?? (durationMinutes !== null ? durationMinutes * 60 : null);
+  const expiresAt = activeAttempt?.expires_at ? asMillis(activeAttempt.expires_at) : null;
+  const effectiveDeadline = [closesAt, expiresAt].filter((value): value is number => value !== null).sort()[0] ?? null;
+  const isPastDue = effectiveDeadline !== null && now + serverOffset > effectiveDeadline;
+  const isNotOpen = opensAt !== null && now + serverOffset < opensAt;
+  const remaining = effectiveDeadline !== null ? effectiveDeadline - (now + serverOffset) : null;
+  const timedExam = timeLimitSeconds !== null || opensAt !== null || closesAt !== null;
   const attemptLabel = effectiveSubmission?.attempt_no
     ? t('learn.assignment.attempt', '第 {{n}} 次提交 / Attempt {{n}}', { n: effectiveSubmission.attempt_no })
     : null;
 
   useEffect(() => {
-    if (!dueTime) return;
-    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    if (!effectiveDeadline && !opensAt) return;
+    const timer = window.setInterval(() => setNow(Date.now()), activeAttempt ? 1000 : 30_000);
     return () => window.clearInterval(timer);
-  }, [dueTime]);
+  }, [activeAttempt, effectiveDeadline, opensAt]);
 
   useEffect(() => {
     setDetail(assignment);
     if (assignment.submission) setSubmitted(assignment.submission);
+    setActiveAttempt(null);
+    setAttempts([]);
   }, [assignment]);
+
+  useEffect(() => {
+    const values = effectiveSubmission?.answers;
+    if (!Array.isArray(values)) return;
+    const restored: Record<string, number> = {};
+    questions.forEach((question, index) => {
+      if (typeof values[index] === 'number') restored[question.id] = values[index] as number;
+    });
+    setAnswers(restored);
+  }, [effectiveSubmission]);
 
   const openDetail = async () => {
     if (open) {
@@ -197,9 +282,19 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
     try {
       const next = await lmsApi.getAssignment(assignment.id);
       setDetail(next);
+      const detailServerTime = extraNumber(next, 'server_time');
+      if (detailServerTime !== null) setServerOffset(detailServerTime - Date.now());
       if (next.submission) {
         setSubmitted(next.submission);
         setContent(next.submission.content ?? '');
+      }
+      if (attemptApi.getAttempts) {
+        const history = await attemptApi.getAttempts(assignment.id);
+        setAttempts(history.attempts ?? []);
+        const historyServerTime = asMillis(history.server_time);
+        if (historyServerTime !== null) setServerOffset(historyServerTime - Date.now());
+        const draft = (history.attempts ?? []).find((attempt) => attempt.status === 'in_progress');
+        if (draft) setActiveAttempt(draft);
       }
     } catch {
       // The list response is already sufficient to work offline or while a
@@ -207,21 +302,75 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
     }
   };
 
-  const submit = async () => {
-    if (busy || isPastDue || (questions.length > 0 && !allAnswered)) return;
+  const startExam = async () => {
+    if (busy || isPastDue || isNotOpen || activeAttempt) return;
+    if (!attemptApi.startAttempt) {
+      setError(t('learn.assignment.examUpgrade', 'Timed attempts require the latest classroom server. / 需要更新課堂伺服器才能開始計時考試。'));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const result = await lmsApi.submitAssignment(assignment.id, {
+      const result = await attemptApi.startAttempt(assignment.id);
+      setActiveAttempt(result.attempt);
+      setAttempts((current) => [...current, result.attempt]);
+      const startServerTime = asMillis(result.server_time);
+      if (startServerTime !== null) setServerOffset(startServerTime - Date.now());
+      setOpen(true);
+    } catch (err) {
+      setError(err instanceof CloudApiError ? err.message : t('learn.assignment.startFailed', '無法開始考試 / Could not start exam.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveDraft = async () => {
+    if (draftBusy || isPastDue || (timedExam && !activeAttempt)) return;
+    setDraftBusy(true);
+    setError(null);
+    try {
+      const payload = {
         answers: questions.length ? questions.map((q) => answers[q.id] ?? -1) : undefined,
         content: content.trim() || undefined,
         project_data: attachProject ? buildVlxPayload() : undefined,
-        submit: true,
-      });
-      setSubmitted(result.submission);
-      setDetail((current) => ({ ...current, submission: result.submission }));
-      recordSubmission(assignment.id, result.submission);
-      onUpdated(result.submission);
+      };
+      if (activeAttempt && attemptApi.saveAttempt) {
+        const result = await attemptApi.saveAttempt(activeAttempt.id, payload);
+        setActiveAttempt(result.attempt);
+        setAttempts((current) => current.map((item) => (item.id === result.attempt.id ? result.attempt : item)));
+      } else {
+        const result = await lmsApi.submitAssignment(assignment.id, { ...payload, submit: false });
+        setSubmitted(result.submission);
+        recordSubmission(assignment.id, result.submission);
+      }
+      setDraftSavedAt(Date.now());
+    } catch (err) {
+      setError(err instanceof CloudApiError ? err.message : t('learn.assignment.draftFailed', '草稿儲存失敗 / Draft could not be saved.'));
+    } finally {
+      setDraftBusy(false);
+    }
+  };
+
+  const submit = async () => {
+    if (busy || isPastDue || isNotOpen || (timedExam && !activeAttempt) || (questions.length > 0 && !allAnswered)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const payload = {
+        answers: questions.length ? questions.map((q) => answers[q.id] ?? -1) : undefined,
+        content: content.trim() || undefined,
+        project_data: attachProject ? buildVlxPayload() : undefined,
+      };
+      const result = activeAttempt && attemptApi.submitAttempt
+        ? await attemptApi.submitAttempt(activeAttempt.id, payload)
+        : await lmsApi.submitAssignment(assignment.id, { ...payload, submit: true });
+      const submission = result.submission as AssignmentAttempt;
+      setSubmitted(submission);
+      setDetail((current) => ({ ...current, submission }));
+      setAttempts((current) => current.map((item) => (item.id === submission.id ? submission : item)));
+      setActiveAttempt(null);
+      recordSubmission(assignment.id, submission);
+      onUpdated(submission);
     } catch (err) {
       setError(
         err instanceof CloudApiError
@@ -252,6 +401,11 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
                 {t('learn.assignment.submittedAt', '提交 / Submitted')}: {assignmentDateTime(effectiveSubmission.submitted_at) ?? '—'}
               </span>
             )}
+            {remaining !== null && remaining > 0 && !isPastDue && (
+              <span className={remaining < 5 * 60 * 1000 ? 'learn-assignment-time is-urgent' : 'learn-assignment-time'} role="timer" aria-live="polite">
+                {t('learn.assignment.timeLeft', '剩餘 / Remaining')}: {formatTimeRemaining(remaining)}
+              </span>
+            )}
           </div>
         </div>
         {effectiveSubmission?.score !== null && effectiveSubmission?.score !== undefined && (
@@ -262,6 +416,27 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
       </div>
 
       {detail.description && <p className="learn-assignment-description">{detail.description}</p>}
+      {timedExam && (
+        <div className="learn-assignment-window" role="status">
+          <span>
+            {isNotOpen
+              ? t('learn.assignment.opensAt', '考試尚未開始 / Opens')
+              : isPastDue
+                ? t('learn.assignment.closed', '已截止，無法再提交 / Closed — submissions are no longer accepted.')
+                : activeAttempt
+                  ? t('learn.assignment.examActive', '計時中，請在期限前提交 / Exam in progress — submit before time runs out.')
+                  : t('learn.assignment.examTimed', '這是一場計時考試 / Timed assessment')}
+          </span>
+          {timeLimitSeconds !== null && !activeAttempt && !isPastDue && !isNotOpen && (
+            <span>{t('learn.assignment.duration', '限時 / Duration')}: {Math.ceil(timeLimitSeconds / 60)} min</span>
+          )}
+          {!activeAttempt && !isPastDue && !isNotOpen && (
+            <button className="learn-assignment-start" type="button" onClick={() => void startExam()} disabled={busy}>
+              {busy ? t('learn.assignment.starting', '開始中… / Starting…') : t('learn.assignment.start', '開始考試 / Start exam')}
+            </button>
+          )}
+        </div>
+      )}
       <button className="learn-assignment-toggle" onClick={openDetail} aria-expanded={open}>
         {open
           ? t('learn.assignment.hide', '收起作業 / Hide assignment')
@@ -272,6 +447,12 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
         <div className="learn-assignment-body">
           {detail.instructions && (
             <div className="learn-assignment-instructions">{detail.instructions}</div>
+          )}
+          {detail.rubric && (
+            <details className="learn-assignment-rubric">
+              <summary>{t('learn.assignment.rubric', '評分標準 / Rubric')}</summary>
+              <p>{detail.rubric}</p>
+            </details>
           )}
 
           {detail.lesson_id && (
@@ -342,6 +523,29 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
               <p>{effectiveSubmission.feedback}</p>
             </div>
           )}
+          {(effectiveSubmission as AssignmentAttempt | null)?.ai_grade_status && (
+            <div className="learn-assignment-ai-status" role="status">
+              <strong>{t('learn.assignment.aiStatus', 'AI 評分狀態 / AI grading')}</strong>
+              <span>{(effectiveSubmission as AssignmentAttempt).ai_grade_status}</span>
+            </div>
+          )}
+          {attempts.length > 0 && (
+            <details className="learn-assignment-history">
+              <summary>{t('learn.assignment.history', '提交紀錄 / Submission history')} ({attempts.length})</summary>
+              <ol>
+                {attempts.map((attempt, index) => (
+                  <li key={attempt.id}>
+                    <span>#{attempt.attempt_no ?? index + 1}</span>
+                    <span>{assignmentStatusLabel(attempt.status, t)}</span>
+                    <time dateTime={attempt.submitted_at ? new Date(assignmentDueTime(attempt.submitted_at) ?? 0).toISOString() : undefined}>
+                      {attempt.submitted_at ? assignmentDateTime(attempt.submitted_at) : t('learn.assignment.notSubmitted', '未提交 / Not submitted')}
+                    </time>
+                    {attempt.score !== null && <strong>{attempt.score}/{attempt.max_score}</strong>}
+                  </li>
+                ))}
+              </ol>
+            </details>
+          )}
           {isPastDue && !effectiveSubmission && (
             <p className="learn-assignment-deadline" role="status">
               {t('learn.assignment.closed', '已截止，無法再提交 / Closed — submissions are no longer accepted.')}
@@ -354,9 +558,17 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
           )}
           <div className="learn-assignment-actions">
             <button
+              className="learn-assignment-draft"
+              type="button"
+              onClick={() => void saveDraft()}
+              disabled={draftBusy || busy || isPastDue || (timedExam && !activeAttempt)}
+            >
+              {draftBusy ? t('learn.assignment.savingDraft', '儲存中… / Saving…') : t('learn.assignment.saveDraft', '儲存草稿 / Save draft')}
+            </button>
+            <button
               className="learn-assignment-submit"
               onClick={submit}
-              disabled={busy || isPastDue || (questions.length > 0 && !allAnswered)}
+              disabled={busy || isPastDue || isNotOpen || (timedExam && !activeAttempt) || (questions.length > 0 && !allAnswered)}
             >
               {busy
                 ? t('learn.assignment.submitting', '評分中… / Submitting…')
@@ -364,6 +576,11 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
                   ? t('learn.assignment.resubmit', '修改後重新提交 / Resubmit revision')
                   : t('learn.assignment.submit', '繳交並自動評分 / Submit & auto-grade')}
             </button>
+            {draftSavedAt && (
+              <span className="learn-assignment-draft-saved" role="status">
+                {t('learn.assignment.draftSaved', '草稿已儲存 / Draft saved')} · {assignmentDateTime(draftSavedAt) ?? '—'}
+              </span>
+            )}
             {questions.length > 0 && !allAnswered && (
               <span className="learn-assignment-hint">
                 {t('learn.assignment.answerAll', '請先回答所有題目 / Answer all questions first')}

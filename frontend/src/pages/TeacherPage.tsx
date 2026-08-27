@@ -18,6 +18,12 @@ import {
 } from '../cloud/cloudApi';
 import { COURSES, getLesson } from '../learn/courses';
 import { lessonKey } from '../learn/types';
+import { SubmissionGrader } from '../components/teacher/SubmissionGrader';
+import {
+  ExamBuilder,
+  type ExamQuestionDraft,
+  type ExamSettingsDraft,
+} from '../components/teacher/ExamBuilder';
 import './TeacherPage.css';
 
 export const TeacherPage: React.FC = () => {
@@ -48,7 +54,13 @@ export const TeacherPage: React.FC = () => {
     due_at: '',
     max_score: '100',
     auto_grade: true,
+    opens_at: '',
+    duration_minutes: '',
+    attempts_allowed: '',
+    allow_late: false,
+    show_score_immediately: true,
   });
+  const [examQuestions, setExamQuestions] = useState<ExamQuestionDraft[]>([]);
   const [classQuery, setClassQuery] = useState('');
   const [classSort, setClassSort] = useState<'name' | 'students' | 'recent'>('recent');
   const [classFilter, setClassFilter] = useState<'all' | 'withStudents' | 'empty'>('all');
@@ -104,7 +116,7 @@ export const TeacherPage: React.FC = () => {
             allLessons: '不連結特定課程',
             assignmentType: '專題實作',
             project: '專題實作',
-            quiz: '小測驗（可自動評分）',
+            quiz: '考試 / 小測驗（可自動評分）',
             reflection: '文字反思',
             overview: '班級總覽',
             classesCount: '個班級',
@@ -120,6 +132,9 @@ export const TeacherPage: React.FC = () => {
             exporting: '正在匯出…',
             exportSuccess: 'CSV 已下載',
             exportFailed: '匯出失敗，請稍後再試',
+            window: '開放',
+            duration: '限時',
+            attempts: '最多提交',
           }
         : {
             classroom: 'Classroom control',
@@ -159,7 +174,7 @@ export const TeacherPage: React.FC = () => {
             allLessons: 'No linked lesson',
             assignmentType: 'Project build',
             project: 'Project build',
-            quiz: 'Quiz (auto-graded)',
+            quiz: 'Exam / quiz (auto-graded)',
             reflection: 'Written reflection',
             overview: 'Class overview',
             classesCount: 'classes',
@@ -175,6 +190,9 @@ export const TeacherPage: React.FC = () => {
             exporting: 'Exporting…',
             exportSuccess: 'CSV downloaded',
             exportFailed: 'Export failed. Try again.',
+            window: 'Opens',
+            duration: 'Time limit',
+            attempts: 'Max submissions',
           },
     [i18n.language],
   );
@@ -245,7 +263,7 @@ export const TeacherPage: React.FC = () => {
 
   const createAssignment = async (publishImmediately = false) => {
     if (!selectedId || !assignmentForm.title.trim() || assignmentBusy) return;
-    if (assignmentForm.assignment_type === 'quiz' && !assignmentForm.lesson_id) {
+    if (assignmentForm.assignment_type === 'quiz' && !assignmentForm.lesson_id && examQuestions.length === 0) {
       setAssignmentNotice(i18n.language.toLowerCase().startsWith('zh')
         ? '小測驗需要連結一課，系統才可以自動評分。'
         : 'A quiz must link to a lesson so it has questions to auto-grade.');
@@ -256,10 +274,19 @@ export const TeacherPage: React.FC = () => {
     try {
       const [courseId, lessonId] = assignmentForm.lesson_id.split('/');
       const linkedLesson = courseId && lessonId ? getLesson(courseId, lessonId) : null;
-      const quiz =
-        assignmentForm.assignment_type === 'quiz' && linkedLesson
-          ? linkedLesson.lesson.quiz
-          : undefined;
+      const quiz = assignmentForm.assignment_type === 'quiz'
+        ? examQuestions.length > 0
+          ? examQuestions.map((question) => ({
+              id: question.id,
+              type: question.type,
+              question: question.question.trim(),
+              options: question.options,
+              answer: question.answer,
+              points: question.points,
+              rubric: question.rubric.trim() || undefined,
+            }))
+          : linkedLesson?.lesson.quiz
+        : undefined;
       const created = await lmsApi.createAssignment(selectedId, {
         title: assignmentForm.title.trim(),
         instructions: assignmentForm.instructions.trim(),
@@ -269,6 +296,14 @@ export const TeacherPage: React.FC = () => {
         auto_grade: assignmentForm.auto_grade,
         assignment_type: assignmentForm.assignment_type,
         quiz,
+        rubric: examQuestions.length > 0
+          ? JSON.stringify(examQuestions.map((question) => ({ id: question.id, points: question.points, rubric: question.rubric })))
+          : undefined,
+        opens_at: assignmentForm.opens_at ? new Date(assignmentForm.opens_at).toISOString() : undefined,
+        duration_minutes: assignmentForm.duration_minutes ? Math.max(1, Number(assignmentForm.duration_minutes)) : undefined,
+        attempts_allowed: assignmentForm.attempts_allowed ? Math.max(1, Number(assignmentForm.attempts_allowed)) : undefined,
+        allow_late: assignmentForm.allow_late,
+        show_score_immediately: assignmentForm.show_score_immediately,
       });
       const assignment = publishImmediately ? await lmsApi.publishAssignment(created.id) : created;
       setAssignments((current) => [assignment, ...current]);
@@ -280,7 +315,13 @@ export const TeacherPage: React.FC = () => {
         due_at: '',
         max_score: '100',
         auto_grade: true,
+        opens_at: '',
+        duration_minutes: '',
+        attempts_allowed: '',
+        allow_late: false,
+        show_score_immediately: true,
       });
+      setExamQuestions([]);
       setOpenComposer(false);
       setAssignmentNotice(publishImmediately ? copy.publishedNotice : copy.draftNotice);
     } finally {
@@ -313,6 +354,19 @@ export const TeacherPage: React.FC = () => {
     } finally {
       setSubmissionsLoading(false);
     }
+  };
+
+  const gradeSubmission = async (
+    submissionId: string,
+    payload: { score: number | null; feedback: string; status: 'graded' | 'returned' },
+  ) => {
+    const api = lmsApi as typeof lmsApi & {
+      gradeSubmission?: (id: string, value: typeof payload) => Promise<{ submission: LmsAssignmentSubmission }>;
+    };
+    if (!api.gradeSubmission) return;
+    const result = await api.gradeSubmission(submissionId, payload);
+    setSubmissions((current) => current.map((item) => item.id === submissionId ? result.submission : item));
+    setAssignments((current) => current.map((item) => item.id === selectedAssignment?.id ? { ...item } : item));
   };
 
   const formatDate = (value: string | number | null | undefined) => {
@@ -725,18 +779,35 @@ export const TeacherPage: React.FC = () => {
                   />
                   <span>{copy.automatic}</span>
                 </label>
+                {assignmentForm.assignment_type === 'quiz' && (
+                  <ExamBuilder
+                    language={i18n.language}
+                    questions={examQuestions}
+                    onQuestionsChange={setExamQuestions}
+                    settings={{
+                      opens_at: assignmentForm.opens_at,
+                      duration_minutes: assignmentForm.duration_minutes,
+                      attempts_allowed: assignmentForm.attempts_allowed,
+                      allow_late: assignmentForm.allow_late,
+                      show_score_immediately: assignmentForm.show_score_immediately,
+                    }}
+                    onSettingsChange={(settings: ExamSettingsDraft) =>
+                      setAssignmentForm((current) => ({ ...current, ...settings }))
+                    }
+                  />
+                )}
                 <div className="teacher-composer-actions">
                   <button
                     type="submit"
                     className="teacher-secondary"
-                    disabled={assignmentBusy || !assignmentForm.title.trim() || (assignmentForm.assignment_type === 'quiz' && !assignmentForm.lesson_id)}
+                    disabled={assignmentBusy || !assignmentForm.title.trim() || (assignmentForm.assignment_type === 'quiz' && !assignmentForm.lesson_id && examQuestions.length === 0)}
                   >
                     {copy.saveDraft}
                   </button>
                   <button
                     type="button"
                     className="teacher-primary"
-                    disabled={assignmentBusy || !assignmentForm.title.trim() || (assignmentForm.assignment_type === 'quiz' && !assignmentForm.lesson_id)}
+                    disabled={assignmentBusy || !assignmentForm.title.trim() || (assignmentForm.assignment_type === 'quiz' && !assignmentForm.lesson_id && examQuestions.length === 0)}
                     onClick={() => void createAssignment(true)}
                   >
                     {copy.publish}
@@ -763,6 +834,13 @@ export const TeacherPage: React.FC = () => {
                     </div>
                     <h3>{assignment.title}</h3>
                     {assignment.instructions && <p>{assignment.instructions}</p>}
+                    {(assignment.opens_at || assignment.duration_minutes || assignment.attempts_allowed) && (
+                      <p className="teacher-assignment-timing">
+                        {assignment.opens_at && `${copy.window}: ${formatDate(assignment.opens_at)}`}
+                        {assignment.duration_minutes && ` · ${copy.duration}: ${assignment.duration_minutes} min`}
+                        {assignment.attempts_allowed && ` · ${copy.attempts}: ${assignment.attempts_allowed}`}
+                      </p>
+                    )}
                     <dl className="teacher-assignment-metrics">
                       <div>
                         <dt>{copy.submissions}</dt>
@@ -888,60 +966,8 @@ export const TeacherPage: React.FC = () => {
             role="presentation"
             onMouseDown={() => setSelectedAssignment(null)}
           >
-            <section
-              className="teacher-submission-dialog"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="submission-dialog-title"
-              onMouseDown={(event) => event.stopPropagation()}
-            >
-              <div className="teacher-section-heading">
-                <div>
-                  <p className="teacher-eyebrow">{copy.collection}</p>
-                  <h2 id="submission-dialog-title">{selectedAssignment.title}</h2>
-                </div>
-                <button className="teacher-text-button" onClick={() => setSelectedAssignment(null)}>
-                  {copy.close}
-                </button>
-              </div>
-              {submissionsLoading ? (
-                <p className="teacher-empty">Loading submissions…</p>
-              ) : submissions.length === 0 ? (
-                <p className="teacher-empty">{copy.noSubmissions}</p>
-              ) : (
-                <div className="teacher-submission-list">
-                  {submissions.map((submission) => {
-                    const isSubmitted =
-                      submission.submitted ??
-                      ['submitted', 'graded', 'returned'].includes(submission.status);
-                    const autoScore =
-                      submission.auto_score ??
-                      (selectedAssignment.auto_grade ? submission.score : null);
-                    return (
-                      <article className="teacher-submission-row" key={submission.id}>
-                        <div>
-                          <strong>{submission.student_name}</strong>
-                          <span>{submission.student_email}</span>
-                        </div>
-                        <div>
-                          <span>{isSubmitted ? copy.submitted : copy.notSubmitted}</span>
-                          <small>
-                            {submission.submitted_at ? formatDate(submission.submitted_at) : '—'}
-                          </small>
-                        </div>
-                        <div>
-                          <span>{copy.autoScored}</span>
-                          <strong>{autoScore ?? '—'}</strong>
-                        </div>
-                        <div>
-                          <span>{copy.manualScore}</span>
-                          <strong>{submission.score ?? '—'}</strong>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              )}
+            <section className="teacher-submission-dialog" role="dialog" aria-modal="true" aria-labelledby="submission-dialog-title" onMouseDown={(event) => event.stopPropagation()}>
+              <SubmissionGrader assignment={selectedAssignment} submissions={submissions} loading={submissionsLoading} language={i18n.language} onClose={() => setSelectedAssignment(null)} onGrade={gradeSubmission} loadAttempts={async (submissionId) => (await lmsApi.listSubmissionAttempts(submissionId)).attempts} />
             </section>
           </div>
         )}

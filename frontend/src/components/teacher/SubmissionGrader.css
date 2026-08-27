@@ -1,0 +1,45 @@
+.submission-grader {
+  background: linear-gradient(145deg, rgba(21, 33, 47, 0.98), rgba(11, 17, 25, 0.98));
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  border-radius: 18px;
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.35);
+  margin-top: 22px;
+  padding: 20px;
+}
+
+.submission-grader__header { align-items: flex-start; display: flex; gap: 16px; justify-content: space-between; }
+.submission-grader__header h3 { font-size: 20px; margin: 2px 0 0; }
+.submission-grader__eyebrow { color: #7dd3fc; font-size: 11px; font-weight: 800; letter-spacing: .12em; margin: 0; text-transform: uppercase; }
+.submission-grader__close { background: transparent; border: 1px solid rgba(255,255,255,.18); border-radius: 9px; color: #dbe8f5; cursor: pointer; min-height: 44px; padding: 8px 13px; }
+.submission-grader__close:focus-visible, .submission-grader__filters button:focus-visible { outline: 3px solid rgba(125,211,252,.65); outline-offset: 2px; }
+.submission-grader__filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 8px; }
+.submission-grader__filters button { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.14); border-radius: 999px; color: #b8c3d1; cursor: pointer; font: inherit; min-height: 40px; padding: 8px 12px; text-transform: capitalize; }
+.submission-grader__filters button.is-active { background: rgba(56,189,248,.16); border-color: #38bdf8; color: #e0f7ff; }
+.submission-grader__search { display: block; margin-top: 16px; }
+.submission-grader__search input { background: rgba(5,10,17,.72); border: 1px solid rgba(255,255,255,.16); border-radius: 9px; box-sizing: border-box; color: #edf5ff; font: inherit; min-height: 44px; padding: 9px 12px; width: 100%; }
+.submission-grader__search input:focus { border-color: #38bdf8; outline: 3px solid rgba(56,189,248,.22); }
+.submission-grader__list { border-top: 1px solid rgba(255,255,255,.1); margin-top: 14px; }
+.submission-grader__row { border-bottom: 1px solid rgba(255,255,255,.1); display: grid; gap: 12px; grid-template-columns: minmax(150px,1.4fr) auto minmax(100px,.6fr) minmax(180px,1.6fr); padding: 16px 0; }
+.submission-grader__student { display: grid; gap: 3px; }
+.submission-grader__student span, .submission-grader__student small { color: #9aa4b2; font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+.submission-grader__badge { align-self: start; background: rgba(255,255,255,.08); border-radius: 999px; color: #b8c3d1; font-size: 11px; font-weight: 800; padding: 5px 8px; white-space: nowrap; }
+.submission-grader__badge--graded { background: rgba(63,185,80,.15); color: #7ee787; }
+.submission-grader__badge--returned { background: rgba(210,153,34,.17); color: #f2cc60; }
+.submission-grader__score { align-items: end; display: flex; gap: 5px; }
+.submission-grader__score label, .submission-grader__feedback { color: #9aa4b2; display: grid; font-size: 11px; gap: 5px; }
+.submission-grader__score input, .submission-grader__feedback textarea { background: rgba(5,10,17,.72); border: 1px solid rgba(255,255,255,.15); border-radius: 8px; box-sizing: border-box; color: #f0f6fc; font: inherit; min-height: 40px; padding: 7px 9px; width: 100%; }
+.submission-grader__score span { color: #8f9dac; font-size: 12px; padding-bottom: 10px; white-space: nowrap; }
+.submission-grader__feedback textarea { min-height: 58px; resize: vertical; }
+.submission-grader__actions { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 1 / -1; }
+.submission-grader__actions button { background: rgba(56,189,248,.13); border: 1px solid rgba(56,189,248,.38); border-radius: 8px; color: #dff7ff; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; min-height: 40px; padding: 7px 11px; }
+.submission-grader__actions button:disabled { cursor: not-allowed; opacity: .5; }
+.submission-grader__actions .is-return { background: rgba(210,153,34,.12); border-color: rgba(210,153,34,.38); color: #f2cc60; }
+.submission-grader__actions .is-history { background: transparent; border-color: rgba(255,255,255,.17); color: #b8c3d1; }
+.submission-grader__history { background: rgba(0,0,0,.2); border-radius: 10px; display: grid; gap: 7px; grid-column: 1 / -1; padding: 11px; }
+.submission-grader__history strong { font-size: 12px; }
+.submission-grader__history div { color: #aebdca; display: flex; font-size: 12px; gap: 18px; }
+.submission-grader__history p { color: #8f9dac; font-size: 12px; margin: 0; }
+.submission-grader__empty { color: #9aa4b2; line-height: 1.7; margin: 18px 0 2px; }
+
+@media (max-width: 760px) { .submission-grader__row { grid-template-columns: 1fr 1fr; } .submission-grader__student, .submission-grader__feedback { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .submission-grader { border-radius: 14px; padding: 16px; } .submission-grader__score { grid-column: 1 / -1; max-width: 220px; } }

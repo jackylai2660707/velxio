@@ -26,7 +26,6 @@ import csv
 import io
 from datetime import datetime, timezone
 import math
-import time
 from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Response
@@ -78,6 +77,13 @@ class AssignmentCreate(BaseModel):
     quiz: Any = None
     rubric: Any = None
     due_at: float | str | None = None
+    opens_at: float | str | None = None
+    closes_at: float | str | None = None
+    # Seconds per student attempt; null/0 disables the timer.
+    time_limit: int | float | str | None = Field(default=None, ge=0)
+    # 0 means unlimited retries.  Positive values cap final submissions.
+    max_attempts: int | str | None = Field(default=0, ge=0)
+    late_policy: str = "reject"
     max_score: float = Field(default=100, gt=0, le=10000)
     auto_grade: bool = False
     status: str | None = None
@@ -94,6 +100,11 @@ class AssignmentUpdate(BaseModel):
     quiz: Any = None
     rubric: Any = None
     due_at: float | str | None = None
+    opens_at: float | str | None = None
+    closes_at: float | str | None = None
+    time_limit: int | float | str | None = Field(default=None, ge=0)
+    max_attempts: int | str | None = Field(default=None, ge=0)
+    late_policy: str | None = None
     max_score: float | None = Field(default=None, gt=0, le=10000)
     auto_grade: bool | None = None
     status: str | None = None
@@ -157,6 +168,58 @@ def _parse_due_at(value: float | str | None) -> float | None:
     return out
 
 
+def _parse_window_time(value: float | str | None, field: str) -> float | None:
+    """Parse an assignment window boundary using the server's UTC epoch.
+
+    ``due_at`` historically accepted both seconds and ISO-8601 strings; the
+    new ``opens_at``/``closes_at`` fields intentionally share that contract.
+    Keeping one parser prevents clients from accidentally mixing milliseconds
+    and seconds and gives consistent 422 responses.
+    """
+    try:
+        out = _parse_due_at(value)
+    except HTTPException as exc:
+        raise HTTPException(status_code=exc.status_code, detail=f"{field} must be a timestamp or ISO date")
+    return out
+
+
+def _parse_nonnegative_int(value: Any, field: str, *, maximum: int = 31_536_000) -> int:
+    if value is None or value == "":
+        return 0
+    if isinstance(value, bool):
+        raise HTTPException(status_code=422, detail=f"{field} must be a non-negative integer")
+    try:
+        number = float(value)
+        if not math.isfinite(number) or number < 0 or number != int(number):
+            raise ValueError
+        out = int(number)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail=f"{field} must be a non-negative integer")
+    if out > maximum:
+        raise HTTPException(status_code=422, detail=f"{field} is too large")
+    return out
+
+
+_LATE_POLICY_ALIASES = {
+    "deny": "reject",
+    "closed": "reject",
+    "accept": "allow",
+    "accepted": "allow",
+    "allow_late": "allow",
+    "mark": "flag",
+    "mark_late": "flag",
+    "penalize": "flag",
+}
+
+
+def _parse_late_policy(value: str | None) -> str:
+    policy = str(value or "reject").strip().casefold()
+    policy = _LATE_POLICY_ALIASES.get(policy, policy)
+    if policy not in ("reject", "allow", "flag"):
+        raise HTTPException(status_code=422, detail="late_policy must be reject|allow|flag")
+    return policy
+
+
 _ASSIGNMENT_TYPES = {
     "project", "code", "text", "quiz", "reflection", "mixed", "circuit", "design",
 }
@@ -182,6 +245,23 @@ def _assignment_payload(req: AssignmentCreate) -> dict[str, Any]:
     status = (req.status or ("published" if req.publish else "draft")).strip().lower()
     if status not in _ASSIGNMENT_STATUSES:
         raise HTTPException(status_code=422, detail="status must be draft|published|archived")
+    due_at = _parse_window_time(req.due_at, "due_at")
+    opens_at = _parse_window_time(req.opens_at, "opens_at")
+    closes_at = _parse_window_time(req.closes_at, "closes_at")
+    # ``due_at`` is a backwards-compatible close boundary.  Explicit
+    # ``closes_at`` wins when both are present; otherwise mirror the legacy
+    # value so old clients and CSV exports continue to work.
+    if closes_at is None:
+        closes_at = due_at
+    if due_at is None:
+        due_at = closes_at
+    if opens_at is not None and closes_at is not None and opens_at > closes_at:
+        raise HTTPException(status_code=422, detail="opens_at must be before closes_at")
+    try:
+        time_limit = _parse_nonnegative_int(req.time_limit, "time_limit") if req.time_limit is not None else None
+        max_attempts = _parse_nonnegative_int(req.max_attempts, "max_attempts")
+    except HTTPException:
+        raise
     return {
         "title": title,
         "description": req.description.strip()[:20_000],
@@ -191,7 +271,12 @@ def _assignment_payload(req: AssignmentCreate) -> dict[str, Any]:
         "project_template": req.project_template,
         "quiz": req.quiz,
         "rubric": req.rubric,
-        "due_at": _parse_due_at(req.due_at),
+        "due_at": due_at,
+        "opens_at": opens_at,
+        "closes_at": closes_at,
+        "time_limit": time_limit,
+        "max_attempts": max_attempts,
+        "late_policy": _parse_late_policy(req.late_policy),
         "max_score": float(req.max_score),
         "auto_grade": bool(req.auto_grade),
         "status": status,
@@ -210,7 +295,23 @@ def _assignment_patch(req: AssignmentUpdate) -> dict[str, Any]:
     if "assignment_type" in raw:
         raw["assignment_type"] = _normalise_assignment_type(raw["assignment_type"])
     if "due_at" in raw:
-        raw["due_at"] = _parse_due_at(raw["due_at"])
+        raw["due_at"] = _parse_window_time(raw["due_at"], "due_at")
+    if "opens_at" in raw:
+        raw["opens_at"] = _parse_window_time(raw["opens_at"], "opens_at")
+    if "closes_at" in raw:
+        raw["closes_at"] = _parse_window_time(raw["closes_at"], "closes_at")
+    # Mirror a one-sided close patch into the legacy field.  If both are sent,
+    # the explicit ``closes_at`` value is authoritative.
+    if "closes_at" in raw:
+        raw["due_at"] = raw["closes_at"]
+    elif "due_at" in raw:
+        raw["closes_at"] = raw["due_at"]
+    if "time_limit" in raw:
+        raw["time_limit"] = _parse_nonnegative_int(raw["time_limit"], "time_limit") if raw["time_limit"] is not None else None
+    if "max_attempts" in raw:
+        raw["max_attempts"] = _parse_nonnegative_int(raw["max_attempts"], "max_attempts")
+    if "late_policy" in raw:
+        raw["late_policy"] = _parse_late_policy(raw["late_policy"])
     if "status" in raw:
         raw["status"] = str(raw["status"]).strip().lower()
         if raw["status"] not in _ASSIGNMENT_STATUSES:
@@ -327,6 +428,9 @@ def _auto_grade_quiz(quiz: Any, submitted: Any, max_score: float) -> tuple[float
 def _with_student_submission(assignment: dict[str, Any], user_id: str) -> dict[str, Any]:
     assignment = dict(assignment)
     assignment["submission"] = cloud_db.get_submission(assignment["id"], student_id=user_id)
+    assignment["submission_attempts"] = cloud_db.list_submission_attempts(
+        assignment["id"], student_id=user_id, include_private=False
+    )
     assignment["quiz"] = _strip_quiz_answers(assignment.get("quiz"))
     assignment.pop("rubric", None)
     assignment.pop("teacher_id", None)
@@ -437,7 +541,8 @@ def _teacher_export_csv(
             "class_id", "class_name", "assignment_id", "assignment_title",
             "assignment_type", "assignment_status", "lesson_id", "student_id",
             "student_name", "student_email", "status", "attempt_no", "submitted",
-            "submitted_at", "graded_at", "is_late", "score", "max_score", "feedback",
+            "attempt_count", "submitted_at", "graded_at", "is_late", "score", "max_score", "feedback",
+            "opens_at", "closes_at", "time_limit", "max_attempts", "late_policy",
         ]
     )
     for row in rows:
@@ -456,12 +561,18 @@ def _teacher_export_csv(
                 _csv_cell(row.get("status")),
                 _csv_cell(row.get("attempt_no")),
                 _csv_cell(row.get("submitted")),
+                _csv_cell(row.get("attempt_count")),
                 _csv_cell(row.get("submitted_at")),
                 _csv_cell(row.get("graded_at")),
                 _csv_cell(row.get("is_late")),
                 _csv_cell(row.get("score")),
                 _csv_cell(row.get("max_score")),
                 _csv_cell(row.get("feedback")),
+                _csv_cell(row.get("opens_at")),
+                _csv_cell(row.get("closes_at")),
+                _csv_cell(row.get("time_limit")),
+                _csv_cell(row.get("max_attempts")),
+                _csv_cell(row.get("late_policy")),
             ]
         )
     # Excel and Numbers recognise the BOM and preserve Traditional Chinese
@@ -833,10 +944,6 @@ async def submission_save(
         if req.status not in ("draft", "submitted"):
             raise HTTPException(status_code=422, detail="status must be draft|submitted")
         submit = req.status == "submitted"
-    # Server clock is authoritative for final submissions. Draft autosaves
-    # remain allowed, while the client countdown is only a convenience.
-    if submit and assignment.get("due_at") is not None and time.time() > float(assignment["due_at"]):
-        raise HTTPException(status_code=409, detail="Assignment deadline has passed")
     answers = req.answers if req.answers is not None else req.answer
     try:
         submission, _created = cloud_db.save_submission(
@@ -848,6 +955,8 @@ async def submission_save(
             files=req.files,
             submit=submit,
         )
+    except cloud_db.SubmissionPolicyError as exc:
+        raise HTTPException(status_code=409, detail={"code": exc.reason, "message": str(exc)})
     except ValueError as exc:
         raise HTTPException(status_code=413, detail=str(exc))
     if submission is None:
@@ -876,10 +985,29 @@ async def submission_get(
     return {"submission": cloud_db.get_submission(assignment_id, student_id=user["id"])}
 
 
+@router.get("/assignments/{assignment_id}/submission/attempts")
+@router.get("/assignments/{assignment_id}/submission/history")
+async def submission_attempts_student(
+    assignment_id: str, authorization: str | None = Header(default=None)
+) -> dict[str, Any]:
+    """Return the signed-in student's append-only submission history."""
+    user = require_user(authorization)
+    if user.get("role") != "student":
+        raise HTTPException(status_code=403, detail="Student account required")
+    assignment = cloud_db.get_assignment_for_user(assignment_id, user["id"], role="student")
+    if assignment is None:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    rows = cloud_db.list_submission_attempts(
+        assignment_id, student_id=user["id"], include_private=False
+    )
+    return {"assignment": assignment, "attempts": rows, "history": rows}
+
+
 @router.get("/assignments/{assignment_id}/submissions")
 async def submissions_list(
     assignment_id: str,
     status: str | None = None,
+    history: bool = False,
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = _require_teacher(authorization)
@@ -890,7 +1018,56 @@ async def submissions_list(
         raise HTTPException(status_code=404, detail="Assignment not found")
     if status and status not in ("draft", "submitted", "graded", "returned"):
         raise HTTPException(status_code=422, detail="Unknown submission status")
-    return {"assignment": assignment, "submissions": cloud_db.list_submissions(assignment_id, status=status)}
+    submissions = cloud_db.list_submissions(assignment_id, status=status)
+    out: dict[str, Any] = {"assignment": assignment, "submissions": submissions}
+    if history:
+        attempts = cloud_db.list_submission_attempts(assignment_id, include_private=True)
+        out["attempts"] = attempts
+        out["history"] = attempts
+    return out
+
+
+@router.get("/assignments/{assignment_id}/submissions/{submission_id}/attempts")
+@router.get("/assignments/{assignment_id}/submissions/{submission_id}/history")
+async def submission_attempts_teacher(
+    assignment_id: str,
+    submission_id: str,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Teacher-only history view for one student's current submission row."""
+    user = _require_teacher(authorization)
+    assignment = cloud_db.get_assignment_for_user(
+        assignment_id, user["id"], role=user.get("role", "teacher"), include_private=True
+    )
+    if assignment is None:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    current = cloud_db.get_submission(assignment_id, submission_id=submission_id)
+    if current is None:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    rows = cloud_db.list_submission_attempts(
+        assignment_id, submission_id=submission_id, include_private=True
+    )
+    return {"assignment": assignment, "submission": current, "attempts": rows, "history": rows}
+
+
+@router.get("/submissions/{submission_id}/attempts")
+async def submission_attempts(
+    submission_id: str, authorization: str | None = Header(default=None)
+) -> dict:
+    """Teacher-only immutable history for one student's submission."""
+    user = _require_teacher(authorization)
+    submission = cloud_db.get_submission("", submission_id=submission_id)
+    if submission is None:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    assignment = cloud_db.get_assignment_for_user(
+        submission["assignment_id"], user["id"], role=user.get("role", "teacher"), include_private=True
+    )
+    if assignment is None:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    attempts = cloud_db.list_submission_attempts(
+        submission["assignment_id"], submission_id=submission_id, include_private=True
+    )
+    return {"attempts": attempts}
 
 
 @router.patch("/submissions/{submission_id}/grade")

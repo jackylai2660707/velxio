@@ -244,8 +244,11 @@ export interface LmsAssignmentQuestion {
   id: string;
   question: string;
   options: string[];
+  type?: 'single' | 'multiple' | 'true_false' | 'short' | 'long' | 'code' | 'circuit' | string;
+  answer?: number | number[] | string;
   points?: number;
   explanation?: string;
+  rubric?: string;
 }
 
 export type LmsAssignmentType = 'quiz' | 'project' | 'reflection' | 'mixed' | string;
@@ -297,6 +300,11 @@ export interface LmsAssignment {
   graded_count?: number;
   average_score?: number | null;
   rubric?: string | null;
+  opens_at?: string | number | null;
+  duration_minutes?: number | null;
+  attempts_allowed?: number | null;
+  allow_late?: boolean;
+  show_score_immediately?: boolean;
 }
 
 export interface LmsAssignmentSubmission {
@@ -325,13 +333,21 @@ export interface LmsAssignmentCreate {
     id: string;
     question: string;
     options: string[];
-    answer: number;
+    answer: number | number[] | string;
+    type?: string;
+    points?: number;
     explanation?: string;
+    rubric?: string;
   }>;
   due_at?: string;
   max_score?: number;
   auto_grade?: boolean;
   rubric?: string;
+  opens_at?: string;
+  duration_minutes?: number;
+  attempts_allowed?: number;
+  allow_late?: boolean;
+  show_score_immediately?: boolean;
 }
 
 export interface LmsAssignmentSubmitPayload {
@@ -402,6 +418,21 @@ export const lmsApi = {
     request<{ submissions: LmsAssignmentSubmission[] }>(
       'GET',
       `/lms/assignments/${encodeURIComponent(assignmentId)}/submissions`,
+    ),
+  /** A teacher can either finalise a mark or return work for revision. */
+  gradeSubmission: (
+    submissionId: string,
+    payload: { score: number | null; feedback: string; status: 'graded' | 'returned' },
+  ) =>
+    request<{ submission: LmsAssignmentSubmission }>(
+      'PATCH',
+      `/lms/submissions/${encodeURIComponent(submissionId)}/grade`,
+      payload,
+    ),
+  listSubmissionAttempts: (submissionId: string) =>
+    request<{ attempts: LmsAssignmentSubmission[] }>(
+      'GET',
+      `/lms/submissions/${encodeURIComponent(submissionId)}/attempts`,
     ),
   /** Download teacher-scoped submissions as a CSV (optionally filtered by class). */
   exportAssignmentsCsv: (classId?: string) => {

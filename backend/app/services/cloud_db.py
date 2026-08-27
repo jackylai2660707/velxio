@@ -181,6 +181,19 @@ def init_db() -> None:
                 quiz TEXT,
                 rubric TEXT,
                 due_at REAL,
+                -- ``due_at`` is retained for clients from the first LMS
+                -- release.  New clients should use the explicit window
+                -- fields below; ``closes_at`` is kept in sync on writes.
+                opens_at REAL,
+                closes_at REAL,
+                -- Duration in seconds for each student's attempt.  NULL (or
+                -- zero) means no per-attempt timer.
+                time_limit INTEGER,
+                -- Number of final submissions allowed.  Zero means
+                -- unlimited, preserving the original assignment behaviour.
+                max_attempts INTEGER NOT NULL DEFAULT 0,
+                -- reject (default), allow, or flag late final submissions.
+                late_policy TEXT NOT NULL DEFAULT 'reject',
                 max_score REAL NOT NULL DEFAULT 100,
                 auto_grade INTEGER NOT NULL DEFAULT 0,
                 status TEXT NOT NULL DEFAULT 'draft',
@@ -205,6 +218,9 @@ def init_db() -> None:
                 graded_at REAL,
                 grader_id TEXT REFERENCES users(id) ON DELETE SET NULL,
                 attempt_no INTEGER NOT NULL DEFAULT 1,
+                -- Set when the student first saves/submits.  Used as the
+                -- origin for an assignment ``time_limit`` countdown.
+                started_at REAL,
                 created_at REAL NOT NULL,
                 updated_at REAL NOT NULL,
                 UNIQUE (assignment_id, student_id)
@@ -213,6 +229,34 @@ def init_db() -> None:
                 ON assignment_submissions(assignment_id, status, submitted_at DESC);
             CREATE INDEX IF NOT EXISTS idx_assignment_submissions_student
                 ON assignment_submissions(student_id, updated_at DESC);
+            -- Immutable snapshots for every final submission.  The mutable
+            -- assignment_submissions row remains the latest/working copy for
+            -- backwards compatibility, while this table is the audit trail
+            -- used for retries, grading history, and exports.
+            CREATE TABLE IF NOT EXISTS assignment_submission_attempts (
+                id TEXT PRIMARY KEY,
+                assignment_id TEXT NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+                submission_id TEXT NOT NULL REFERENCES assignment_submissions(id) ON DELETE CASCADE,
+                student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                attempt_no INTEGER NOT NULL,
+                content TEXT NOT NULL DEFAULT '',
+                answers TEXT,
+                project_data TEXT,
+                files TEXT,
+                status TEXT NOT NULL DEFAULT 'submitted',
+                score REAL,
+                feedback TEXT NOT NULL DEFAULT '',
+                submitted_at REAL NOT NULL,
+                graded_at REAL,
+                grader_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+                is_late INTEGER NOT NULL DEFAULT 0,
+                created_at REAL NOT NULL,
+                UNIQUE (assignment_id, student_id, attempt_no)
+            );
+            CREATE INDEX IF NOT EXISTS idx_submission_attempts_submission
+                ON assignment_submission_attempts(submission_id, attempt_no DESC);
+            CREATE INDEX IF NOT EXISTS idx_submission_attempts_assignment
+                ON assignment_submission_attempts(assignment_id, submitted_at DESC);
             CREATE TABLE IF NOT EXISTS ai_usage (
                 user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 week_start TEXT NOT NULL,
@@ -235,6 +279,95 @@ def init_db() -> None:
         if "weekly_token_limit" not in cols:
             # NULL = use DEFAULT_WEEKLY_TOKEN_LIMIT; admin can override per user.
             conn.execute("ALTER TABLE users ADD COLUMN weekly_token_limit INTEGER")
+
+        # Assignment scheduling/attempt migrations.  SQLite cannot add a
+        # column with a non-constant expression, so each nullable/simple
+        # default is added explicitly and legacy ``due_at`` rows are copied to
+        # ``closes_at`` below.  ``init_db`` is intentionally idempotent because
+        # deployments run it on every process start.
+        assignment_cols = {r["name"] for r in conn.execute("PRAGMA table_info(assignments)")}
+        assignment_migrations = {
+            "opens_at": "ALTER TABLE assignments ADD COLUMN opens_at REAL",
+            "closes_at": "ALTER TABLE assignments ADD COLUMN closes_at REAL",
+            "time_limit": "ALTER TABLE assignments ADD COLUMN time_limit INTEGER",
+            "max_attempts": "ALTER TABLE assignments ADD COLUMN max_attempts INTEGER NOT NULL DEFAULT 0",
+            "late_policy": "ALTER TABLE assignments ADD COLUMN late_policy TEXT NOT NULL DEFAULT 'reject'",
+        }
+        for name, statement in assignment_migrations.items():
+            if name not in assignment_cols:
+                conn.execute(statement)
+        # Existing assignments used ``due_at`` as a hard deadline.  Preserve
+        # that behaviour by treating it as the closing boundary and keep the
+        # legacy column populated for old clients.
+        conn.execute(
+            "UPDATE assignments SET closes_at = due_at "
+            "WHERE closes_at IS NULL AND due_at IS NOT NULL"
+        )
+        conn.execute(
+            "UPDATE assignments SET due_at = closes_at "
+            "WHERE due_at IS NULL AND closes_at IS NOT NULL"
+        )
+
+        submission_cols = {
+            r["name"] for r in conn.execute("PRAGMA table_info(assignment_submissions)")
+        }
+        if "started_at" not in submission_cols:
+            conn.execute("ALTER TABLE assignment_submissions ADD COLUMN started_at REAL")
+
+        # Databases created before the attempts table existed are backfilled
+        # once.  Only rows with a final submission timestamp become attempts;
+        # a still-editable draft has no attempt yet.  ``INSERT OR IGNORE``
+        # makes this safe on repeated startup and lets an administrator recover
+        # after an interrupted migration.
+        attempt_rows = conn.execute(
+            "SELECT id, assignment_id, student_id, attempt_no, content, answers, "
+            "project_data, files, status, score, feedback, submitted_at, graded_at, "
+            "grader_id, created_at FROM assignment_submissions "
+            "WHERE submitted_at IS NOT NULL AND status IN ('submitted','graded','returned')"
+        ).fetchall()
+        for row in attempt_rows:
+            attempt_no = max(1, int(row["attempt_no"] or 1))
+            attempt_id = f"legacy-{row['id']}-{attempt_no}"
+            # A deterministic id avoids duplicate history rows when startup
+            # runs more than once while preserving old submission identity.
+            assignment = conn.execute(
+                "SELECT due_at, closes_at FROM assignments WHERE id = ?",
+                (row["assignment_id"],),
+            ).fetchone()
+            closing = (
+                assignment["closes_at"] if assignment and assignment["closes_at"] is not None
+                else assignment["due_at"] if assignment else None
+            )
+            late = bool(
+                row["submitted_at"] is not None
+                and closing is not None
+                and float(row["submitted_at"]) > float(closing)
+            )
+            conn.execute(
+                "INSERT OR IGNORE INTO assignment_submission_attempts "
+                "(id, assignment_id, submission_id, student_id, attempt_no, content, answers, "
+                "project_data, files, status, score, feedback, submitted_at, graded_at, grader_id, "
+                "is_late, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" ,
+                (
+                    attempt_id,
+                    row["assignment_id"],
+                    row["id"],
+                    row["student_id"],
+                    attempt_no,
+                    row["content"],
+                    row["answers"],
+                    row["project_data"],
+                    row["files"],
+                    row["status"],
+                    row["score"],
+                    row["feedback"],
+                    row["submitted_at"],
+                    row["graded_at"],
+                    row["grader_id"],
+                    1 if late else 0,
+                    row["created_at"],
+                ),
+            )
 
 
 def _secret_key() -> bytes:
@@ -905,6 +1038,47 @@ def get_quiz_best(user_id: str) -> dict[str, dict[str, Any]]:
 # ── LMS: assignments & submissions ────────────────────────────────────────
 
 
+class SubmissionPolicyError(ValueError):
+    """A student action rejected by an assignment's schedule/policy.
+
+    Routes translate this into HTTP 409 (rather than treating it as an
+    oversized payload).  ``reason`` is a stable machine-readable value while
+    ``str(exc)`` remains suitable for a Traditional Chinese/English UI.
+    """
+
+    def __init__(self, reason: str, message: str | None = None) -> None:
+        self.reason = reason
+        super().__init__(message or reason)
+
+
+_LATE_POLICIES = {"reject", "allow", "flag"}
+
+
+def _effective_closes_at(row: sqlite3.Row | dict[str, Any]) -> float | None:
+    """Return the closing boundary, accepting legacy rows/fixtures."""
+    keys = row.keys() if hasattr(row, "keys") else row
+    closes = row["closes_at"] if "closes_at" in keys else None
+    if closes is not None:
+        return float(closes)
+    due = row["due_at"] if "due_at" in keys else None
+    return float(due) if due is not None else None
+
+
+def _effective_late_policy(value: Any) -> str:
+    policy = str(value or "reject").strip().casefold()
+    aliases = {
+        "deny": "reject",
+        "closed": "reject",
+        "accept": "allow",
+        "accepted": "allow",
+        "allow_late": "allow",
+        "mark": "flag",
+        "mark_late": "flag",
+        "penalize": "flag",
+    }
+    return aliases.get(policy, policy) if policy in _LATE_POLICIES or policy in aliases else "reject"
+
+
 def _json_load(value: Any, default: Any = None) -> Any:
     """Decode a nullable JSON column without allowing a damaged row to take
     down the whole classroom dashboard."""
@@ -931,6 +1105,18 @@ def _json_payload(value: Any, *, default: Any = None) -> str | None:
 
 def _assignment_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[str, Any]:
     keys = set(row.keys())
+    closes_at = _effective_closes_at(row)
+    opens_at = row["opens_at"] if "opens_at" in keys else None
+    time_limit = row["time_limit"] if "time_limit" in keys else None
+    max_attempts = row["max_attempts"] if "max_attempts" in keys else 0
+    late_policy = _effective_late_policy(row["late_policy"] if "late_policy" in keys else "reject")
+    now = time.time()
+    if opens_at is not None and now < float(opens_at):
+        window_status = "upcoming"
+    elif closes_at is not None and now > float(closes_at):
+        window_status = "closed"
+    else:
+        window_status = "open"
     out: dict[str, Any] = {
         "id": row["id"],
         "class_id": row["class_id"],
@@ -942,7 +1128,15 @@ def _assignment_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[
         "lesson_id": row["lesson_id"],
         "assignment_type": row["assignment_type"],
         "project_template": _json_load(row["project_template"]),
-        "due_at": row["due_at"],
+        # Keep the legacy key in responses.  For new assignments it mirrors
+        # ``closes_at``; old rows continue to work unchanged.
+        "due_at": row["due_at"] if "due_at" in keys else closes_at,
+        "opens_at": float(opens_at) if opens_at is not None else None,
+        "closes_at": closes_at,
+        "time_limit": int(time_limit) if time_limit is not None else None,
+        "max_attempts": max(0, int(max_attempts or 0)),
+        "late_policy": late_policy,
+        "window_status": window_status,
         "max_score": row["max_score"],
         "auto_grade": bool(row["auto_grade"]),
         "status": row["status"],
@@ -965,6 +1159,15 @@ def _assignment_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[
 
 def _submission_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[str, Any]:
     keys = set(row.keys())
+    closes_at = _effective_closes_at(row)
+    submitted_at = row["submitted_at"]
+    started_at = row["started_at"] if "started_at" in keys else None
+    time_limit = row["time_limit"] if "time_limit" in keys else None
+    is_late = bool(
+        submitted_at is not None
+        and closes_at is not None
+        and float(submitted_at) > float(closes_at)
+    )
     out: dict[str, Any] = {
         "id": row["id"],
         "assignment_id": row["assignment_id"],
@@ -983,17 +1186,25 @@ def _submission_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[
         # marks without leaking any answer key.
         "auto_score": row["score"] if row["grader_id"] is None and row["status"] == "graded" else None,
         "max_score": row["max_score"] if "max_score" in keys else None,
-        "due_at": row["due_at"] if "due_at" in keys else None,
-        "is_late": bool(
-            row["submitted_at"] is not None
-            and row["due_at"] is not None
-            and row["submitted_at"] > row["due_at"]
-        ) if "due_at" in keys else False,
+        "due_at": row["due_at"] if "due_at" in keys else closes_at,
+        "opens_at": row["opens_at"] if "opens_at" in keys else None,
+        "closes_at": closes_at,
+        "time_limit": int(time_limit) if time_limit is not None else None,
+        "max_attempts": max(0, int(row["max_attempts"] or 0)) if "max_attempts" in keys else 0,
+        "late_policy": _effective_late_policy(row["late_policy"] if "late_policy" in keys else "reject"),
+        "is_late": is_late,
+        "time_remaining": (
+            max(0, int(float(started_at) + int(time_limit) - time.time()))
+            if started_at is not None and time_limit is not None and int(time_limit) > 0
+            else None
+        ),
         "feedback": row["feedback"],
-        "submitted_at": row["submitted_at"],
+        "submitted_at": submitted_at,
         "graded_at": row["graded_at"],
         "grader_id": row["grader_id"],
         "attempt_no": row["attempt_no"],
+        "attempt_count": int(row["attempt_count"]) if "attempt_count" in keys and row["attempt_count"] is not None else int(row["attempt_no"] or 0),
+        "started_at": started_at,
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
@@ -1043,6 +1254,11 @@ def create_assignment(
     quiz: Any = None,
     rubric: Any = None,
     due_at: float | None = None,
+    opens_at: float | None = None,
+    closes_at: float | None = None,
+    time_limit: int | None = None,
+    max_attempts: int = 0,
+    late_policy: str = "reject",
     max_score: float = 100,
     auto_grade: bool = False,
     status: str = "draft",
@@ -1052,6 +1268,28 @@ def create_assignment(
     payloads = [_json_payload(project_template), _json_payload(quiz), _json_payload(rubric)]
     if sum(len(p.encode("utf-8")) for p in payloads if p is not None) > MAX_ASSIGNMENT_BYTES:
         raise ValueError("assignment too large")
+    # ``due_at`` is the old spelling for a hard close.  On writes, make both
+    # columns agree so old and new clients observe the same deadline.
+    if closes_at is None and due_at is not None:
+        closes_at = float(due_at)
+    if due_at is None and closes_at is not None:
+        due_at = float(closes_at)
+    if opens_at is not None:
+        opens_at = float(opens_at)
+    if closes_at is not None:
+        closes_at = float(closes_at)
+    if opens_at is not None and closes_at is not None and opens_at > closes_at:
+        raise ValueError("opens_at must be before closes_at")
+    if time_limit is not None:
+        time_limit = int(time_limit)
+        if time_limit < 0:
+            raise ValueError("time_limit must be non-negative")
+    max_attempts = int(max_attempts or 0)
+    if max_attempts < 0:
+        raise ValueError("max_attempts must be non-negative")
+    late_policy = _effective_late_policy(late_policy)
+    if late_policy not in _LATE_POLICIES:
+        raise ValueError("invalid late_policy")
     with _connect() as conn:
         cls = conn.execute(
             "SELECT id, name FROM classes WHERE id = ? AND teacher_id = ?",
@@ -1069,9 +1307,10 @@ def create_assignment(
         published_at = now if status == "published" else None
         conn.execute(
             "INSERT INTO assignments (id, class_id, teacher_id, title, description, instructions, "
-            "lesson_id, assignment_type, project_template, quiz, rubric, due_at, max_score, "
-            "auto_grade, status, published_at, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "lesson_id, assignment_type, project_template, quiz, rubric, due_at, opens_at, "
+            "closes_at, time_limit, max_attempts, late_policy, max_score, auto_grade, status, "
+            "published_at, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 aid,
                 class_id,
@@ -1085,6 +1324,11 @@ def create_assignment(
                 payloads[1],
                 payloads[2],
                 due_at,
+                opens_at,
+                closes_at,
+                time_limit,
+                max_attempts,
+                late_policy,
                 float(max_score),
                 1 if auto_grade else 0,
                 status,
@@ -1149,7 +1393,8 @@ def list_assignments(
         where.append("a.class_id = ?")
         params.append(class_id)
     sql = _assignment_select() + "WHERE " + " AND ".join(where) + " ORDER BY " \
-        "CASE WHEN a.due_at IS NULL THEN 1 ELSE 0 END, a.due_at, a.created_at DESC"
+        "CASE WHEN COALESCE(a.closes_at, a.due_at) IS NULL THEN 1 ELSE 0 END, " \
+        "COALESCE(a.closes_at, a.due_at), a.created_at DESC"
     with _connect() as conn:
         rows = conn.execute(sql, params).fetchall()
     return [_assignment_dict(r, include_private=include_private or role in ("teacher", "admin")) for r in rows]
@@ -1158,7 +1403,8 @@ def list_assignments(
 def update_assignment(teacher_id: str, assignment_id: str, patch: dict[str, Any]) -> dict[str, Any] | None:
     allowed = {
         "title", "description", "instructions", "lesson_id", "assignment_type",
-        "project_template", "quiz", "rubric", "due_at", "max_score", "auto_grade", "status",
+        "project_template", "quiz", "rubric", "due_at", "opens_at", "closes_at",
+        "time_limit", "max_attempts", "late_policy", "max_score", "auto_grade", "status",
     }
     updates = {k: v for k, v in patch.items() if k in allowed}
     if not updates:
@@ -1170,6 +1416,43 @@ def update_assignment(teacher_id: str, assignment_id: str, patch: dict[str, Any]
         updates["auto_grade"] = 1 if updates["auto_grade"] else 0
     if "max_score" in updates:
         updates["max_score"] = float(updates["max_score"])
+    # Keep legacy ``due_at`` and explicit ``closes_at`` in sync.  A patch with
+    # both fields gives precedence to the explicit close boundary.
+    if "closes_at" in updates:
+        updates["closes_at"] = float(updates["closes_at"]) if updates["closes_at"] is not None else None
+        updates["due_at"] = updates["closes_at"]
+    elif "due_at" in updates:
+        updates["due_at"] = float(updates["due_at"]) if updates["due_at"] is not None else None
+        updates["closes_at"] = updates["due_at"]
+    if "opens_at" in updates:
+        updates["opens_at"] = float(updates["opens_at"]) if updates["opens_at"] is not None else None
+    if "time_limit" in updates:
+        updates["time_limit"] = int(updates["time_limit"]) if updates["time_limit"] is not None else None
+        if updates["time_limit"] is not None and updates["time_limit"] < 0:
+            raise ValueError("time_limit must be non-negative")
+    if "max_attempts" in updates:
+        updates["max_attempts"] = int(updates["max_attempts"] or 0)
+        if updates["max_attempts"] < 0:
+            raise ValueError("max_attempts must be non-negative")
+    if "late_policy" in updates:
+        updates["late_policy"] = _effective_late_policy(updates["late_policy"])
+        if updates["late_policy"] not in _LATE_POLICIES:
+            raise ValueError("invalid late_policy")
+    # Validate the resulting window, including the value already persisted
+    # when only one side of the range is patched.
+    if "opens_at" in updates or "closes_at" in updates:
+        with _connect() as conn:
+            current_window = conn.execute(
+                "SELECT opens_at, closes_at, due_at FROM assignments WHERE id = ? AND teacher_id = ?",
+                (assignment_id, teacher_id),
+            ).fetchone()
+        if current_window:
+            opens = updates.get("opens_at", current_window["opens_at"])
+            closes = updates.get("closes_at", current_window["closes_at"])
+            if closes is None:
+                closes = current_window["due_at"] if "closes_at" not in updates else None
+            if opens is not None and closes is not None and float(opens) > float(closes):
+                raise ValueError("opens_at must be before closes_at")
     updates.update(payloads)
     if "status" in updates and updates["status"] not in ("draft", "published", "archived"):
         raise ValueError("invalid assignment status")
@@ -1209,7 +1492,12 @@ def delete_assignment(teacher_id: str, assignment_id: str) -> bool:
 def _submission_select() -> str:
     return (
         "SELECT s.*, u.name AS student_name, u.email AS student_email, "
-        "a.max_score AS max_score, a.due_at AS due_at "
+        "a.max_score AS max_score, a.due_at AS due_at, "
+        "a.opens_at AS opens_at, a.closes_at AS closes_at, "
+        "a.time_limit AS time_limit, a.max_attempts AS max_attempts, "
+        "a.late_policy AS late_policy, "
+        "(SELECT COUNT(*) FROM assignment_submission_attempts h "
+        " WHERE h.submission_id = s.id) AS attempt_count "
         "FROM assignment_submissions s "
         "JOIN users u ON u.id = s.student_id "
         "JOIN assignments a ON a.id = s.assignment_id "
@@ -1226,8 +1514,15 @@ def save_submission(
     files: Any = None,
     submit: bool = True,
 ) -> tuple[dict[str, Any] | None, bool]:
-    """Create or replace the student's submission. Returns (submission,
-    created). The unique assignment/student key keeps retries idempotent."""
+    """Save a working copy or append a final submission attempt.
+
+    ``assignment_submissions`` is retained as the student's current working
+    row for backwards-compatible clients.  Every ``submit=True`` call also
+    appends an immutable snapshot to ``assignment_submission_attempts``.  A
+    draft autosave never consumes an attempt and may continue after the close
+    boundary; final submissions are checked against the server clock,
+    per-attempt timer, and ``max_attempts``.
+    """
     answer_payload = _json_payload(answers)
     project_payload = _json_payload(project_data)
     files_payload = _json_payload(files)
@@ -1241,7 +1536,9 @@ def save_submission(
     submitted_at = now if submit else None
     with _connect() as conn:
         assignment = conn.execute(
-            "SELECT id, class_id, status FROM assignments WHERE id = ?", (assignment_id,)
+            "SELECT id, class_id, status, due_at, opens_at, closes_at, time_limit, "
+            "max_attempts, late_policy FROM assignments WHERE id = ?",
+            (assignment_id,),
         ).fetchone()
         if not assignment:
             return None, False
@@ -1252,18 +1549,54 @@ def save_submission(
         if not member or assignment["status"] != "published":
             return None, False
         old = conn.execute(
-            "SELECT id, attempt_no FROM assignment_submissions WHERE assignment_id = ? AND student_id = ?",
+            "SELECT * FROM assignment_submissions WHERE assignment_id = ? AND student_id = ?",
             (assignment_id, student_id),
         ).fetchone()
+        # Existing rows from pre-history databases may have no snapshot yet;
+        # count the append-only table as the source of truth for retries.
+        attempt_count = int(
+            conn.execute(
+                "SELECT COUNT(*) FROM assignment_submission_attempts "
+                "WHERE assignment_id = ? AND student_id = ?",
+                (assignment_id, student_id),
+            ).fetchone()[0]
+        )
+        if submit:
+            opens_at = assignment["opens_at"]
+            closes_at = _effective_closes_at(assignment)
+            if opens_at is not None and now < float(opens_at):
+                raise SubmissionPolicyError("not_open", "Assignment is not open yet")
+            if old and old["started_at"] is not None and assignment["time_limit"]:
+                elapsed = now - float(old["started_at"])
+                if elapsed > max(0, int(assignment["time_limit"])):
+                    raise SubmissionPolicyError("time_limit", "Assignment time limit has expired")
+            late = bool(closes_at is not None and now > float(closes_at))
+            late_policy = _effective_late_policy(assignment["late_policy"])
+            if late and late_policy == "reject":
+                raise SubmissionPolicyError("deadline", "Assignment deadline has passed")
+            max_attempts = max(0, int(assignment["max_attempts"] or 0))
+            if max_attempts and attempt_count >= max_attempts:
+                raise SubmissionPolicyError("max_attempts", "Maximum submission attempts reached")
+            attempt_no = attempt_count + 1
+        else:
+            # Draft rows intentionally report attempt_no=0 until the first
+            # final submission.  Legacy rows retain their persisted number.
+            attempt_no = attempt_count if attempt_count else (int(old["attempt_no"] or 0) if old else 0)
+
         if old:
-            attempt_no = int(old["attempt_no"]) + (1 if submit else 0)
+            sid = old["id"]
+            started_at = old["started_at"] if old["started_at"] is not None else now
+            # A draft edit preserves the last final score/timestamp so the
+            # student can compare before deciding whether to resubmit.  A
+            # final submission starts a fresh grading state.
             conn.execute(
                 "UPDATE assignment_submissions SET content = ?, answers = ?, project_data = ?, files = ?, "
                 "status = ?, submitted_at = CASE WHEN ? THEN ? ELSE submitted_at END, "
                 "score = CASE WHEN ? THEN NULL ELSE score END, "
                 "feedback = CASE WHEN ? THEN '' ELSE feedback END, "
-                "graded_at = CASE WHEN ? THEN NULL ELSE graded_at END, grader_id = CASE WHEN ? THEN NULL ELSE grader_id END, "
-                "attempt_no = ?, updated_at = ? WHERE id = ?",
+                "graded_at = CASE WHEN ? THEN NULL ELSE graded_at END, "
+                "grader_id = CASE WHEN ? THEN NULL ELSE grader_id END, "
+                "attempt_no = ?, started_at = ?, updated_at = ? WHERE id = ?",
                 (
                     content,
                     answer_payload,
@@ -1277,19 +1610,19 @@ def save_submission(
                     1 if submit else 0,
                     1 if submit else 0,
                     attempt_no,
+                    started_at,
                     now,
-                    old["id"],
+                    sid,
                 ),
             )
-            sid = old["id"]
             created = False
         else:
             sid = uuid.uuid4().hex
-            attempt_no = 1
+            started_at = now
             conn.execute(
                 "INSERT INTO assignment_submissions (id, assignment_id, student_id, content, answers, "
-                "project_data, files, status, submitted_at, attempt_no, created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "project_data, files, status, submitted_at, attempt_no, started_at, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     sid,
                     assignment_id,
@@ -1301,20 +1634,51 @@ def save_submission(
                     status,
                     submitted_at,
                     attempt_no,
+                    started_at,
                     now,
                     now,
                 ),
             )
             created = True
+
+        if submit:
+            # ``late`` is calculated from the server timestamp and persisted
+            # on the immutable attempt so a future deadline edit cannot alter
+            # the historical record.
+            attempt_id = uuid.uuid4().hex
+            conn.execute(
+                "INSERT INTO assignment_submission_attempts "
+                "(id, assignment_id, submission_id, student_id, attempt_no, content, answers, "
+                "project_data, files, status, submitted_at, is_late, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    attempt_id,
+                    assignment_id,
+                    sid,
+                    student_id,
+                    attempt_no,
+                    content,
+                    answer_payload,
+                    project_payload,
+                    files_payload,
+                    status,
+                    submitted_at,
+                    1 if late else 0,
+                    now,
+                ),
+            )
         row = conn.execute(_submission_select() + "WHERE s.id = ?", (sid,)).fetchone()
     return (_submission_dict(row) if row else None), created
 
 
 def get_submission(
-    assignment_id: str, *, student_id: str | None = None, submission_id: str | None = None
+    assignment_id: str | None = None, *, student_id: str | None = None, submission_id: str | None = None
 ) -> dict[str, Any] | None:
-    where = ["s.assignment_id = ?"]
-    args: list[Any] = [assignment_id]
+    where: list[str] = []
+    args: list[Any] = []
+    if assignment_id:
+        where.append("s.assignment_id = ?")
+        args.append(assignment_id)
     if student_id:
         where.append("s.student_id = ?")
         args.append(student_id)
@@ -1324,6 +1688,91 @@ def get_submission(
     with _connect() as conn:
         row = conn.execute(_submission_select() + "WHERE " + " AND ".join(where), args).fetchone()
     return _submission_dict(row) if row else None
+
+
+def _attempt_select() -> str:
+    return (
+        "SELECT h.*, u.name AS student_name, u.email AS student_email, "
+        "a.max_score AS max_score, a.due_at AS due_at, a.opens_at AS opens_at, "
+        "a.closes_at AS closes_at, a.time_limit AS time_limit, "
+        "a.max_attempts AS max_attempts, a.late_policy AS late_policy "
+        "FROM assignment_submission_attempts h "
+        "JOIN users u ON u.id = h.student_id "
+        "JOIN assignments a ON a.id = h.assignment_id "
+    )
+
+
+def _attempt_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[str, Any]:
+    keys = set(row.keys())
+    submitted_at = row["submitted_at"]
+    closes_at = _effective_closes_at(row)
+    persisted_late = bool(row["is_late"]) if "is_late" in keys else False
+    out = {
+        "id": row["id"],
+        "attempt_id": row["id"],
+        "assignment_id": row["assignment_id"],
+        "submission_id": row["submission_id"],
+        "student_id": row["student_id"],
+        "student_name": row["student_name"] if "student_name" in keys else None,
+        "student_email": row["student_email"] if "student_email" in keys else None,
+        "attempt_no": int(row["attempt_no"]),
+        "content": row["content"],
+        "answers": _json_load(row["answers"]),
+        "project_data": _json_load(row["project_data"]),
+        "files": _json_load(row["files"]),
+        "status": row["status"],
+        "submitted": True,
+        "score": row["score"],
+        "max_score": row["max_score"] if "max_score" in keys else None,
+        "feedback": row["feedback"],
+        "submitted_at": submitted_at,
+        "graded_at": row["graded_at"],
+        "grader_id": row["grader_id"],
+        "is_late": persisted_late or bool(
+            submitted_at is not None
+            and closes_at is not None
+            and float(submitted_at) > float(closes_at)
+        ),
+        "created_at": row["created_at"],
+    }
+    if not include_private:
+        out.pop("grader_id", None)
+    return out
+
+
+def list_submission_attempts(
+    assignment_id: str,
+    *,
+    student_id: str | None = None,
+    submission_id: str | None = None,
+    include_private: bool = True,
+) -> list[dict[str, Any]]:
+    """Return immutable final-submission snapshots oldest-first.
+
+    The assignment/student filters are intentionally explicit so a caller can
+    ask for one learner's history without exposing another learner's records.
+    Authorization remains the responsibility of the HTTP route, matching
+    ``get_submission``/``list_submissions`` semantics.
+    """
+    where = ["h.assignment_id = ?"]
+    args: list[Any] = [assignment_id]
+    if student_id:
+        where.append("h.student_id = ?")
+        args.append(student_id)
+    if submission_id:
+        where.append("h.submission_id = ?")
+        args.append(submission_id)
+    with _connect() as conn:
+        rows = conn.execute(
+            _attempt_select() + "WHERE " + " AND ".join(where)
+            + " ORDER BY h.attempt_no ASC, h.created_at ASC",
+            args,
+        ).fetchall()
+    return [_attempt_dict(row, include_private=include_private) for row in rows]
+
+
+# Descriptive alias used by report/export callers.
+list_submission_history = list_submission_attempts
 
 
 def list_submissions(assignment_id: str, *, status: str | None = None) -> list[dict[str, Any]]:
@@ -1375,6 +1824,27 @@ def grade_submission(
                 submission_id,
             ),
         )
+        # Mirror grading metadata onto the immutable attempt snapshot.  The
+        # submitted payload itself is never changed, so teachers retain the
+        # exact version that was graded even after a later retry.
+        latest_attempt = conn.execute(
+            "SELECT id FROM assignment_submission_attempts "
+            "WHERE submission_id = ? ORDER BY attempt_no DESC LIMIT 1",
+            (submission_id,),
+        ).fetchone()
+        if latest_attempt:
+            conn.execute(
+                "UPDATE assignment_submission_attempts SET score = ?, feedback = ?, status = ?, "
+                "graded_at = ?, grader_id = ? WHERE id = ?",
+                (
+                    float(score) if score is not None else None,
+                    feedback,
+                    status,
+                    now if status in ("graded", "returned") else None,
+                    grader_id if status in ("graded", "returned") else None,
+                    latest_attempt["id"],
+                ),
+            )
         updated = conn.execute(_submission_select() + "WHERE s.id = ?", (submission_id,)).fetchone()
     return _submission_dict(updated) if updated else None
 
@@ -1398,6 +1868,17 @@ def auto_grade_submission(
             "graded_at = ?, grader_id = NULL, updated_at = ? WHERE id = ?",
             (bounded, feedback, now, now, submission_id),
         )
+        latest_attempt = conn.execute(
+            "SELECT id FROM assignment_submission_attempts "
+            "WHERE submission_id = ? ORDER BY attempt_no DESC LIMIT 1",
+            (submission_id,),
+        ).fetchone()
+        if latest_attempt:
+            conn.execute(
+                "UPDATE assignment_submission_attempts SET score = ?, feedback = ?, status = 'graded', "
+                "graded_at = ?, grader_id = NULL WHERE id = ?",
+                (bounded, feedback, now, latest_attempt["id"]),
+            )
         updated = conn.execute(_submission_select() + "WHERE s.id = ?", (submission_id,)).fetchone()
     return _submission_dict(updated) if updated else None
 
@@ -1459,6 +1940,9 @@ def _dashboard_sort_key(name: str | None) -> str:
         "assignment": "assignment_title",
         "class": "class_name",
         "deadline": "due_at",
+        "opens": "opens_at",
+        "closes": "closes_at",
+        "attempts": "attempt_no",
     }
     return aliases.get(str(name or "updated_at"), str(name or "updated_at"))
 
@@ -1505,8 +1989,8 @@ def get_teacher_dashboard(
     sort_key = _dashboard_sort_key(sort)
     allowed_sort = {
         "student_name", "student_email", "class_name", "assignment_title",
-        "status", "score", "submitted_at", "graded_at", "due_at", "updated_at",
-        "attempt_no",
+        "status", "score", "submitted_at", "graded_at", "due_at", "opens_at",
+        "closes_at", "updated_at", "attempt_no",
     }
     if sort_key not in allowed_sort:
         sort_key = "updated_at"
@@ -1637,6 +2121,11 @@ def get_teacher_dashboard(
                     "auto_score": None,
                     "max_score": assignment["max_score"],
                     "due_at": assignment["due_at"],
+                    "opens_at": assignment.get("opens_at"),
+                    "closes_at": assignment.get("closes_at"),
+                    "time_limit": assignment.get("time_limit"),
+                    "max_attempts": assignment.get("max_attempts", 0),
+                    "late_policy": assignment.get("late_policy", "reject"),
                     "is_late": False,
                     "feedback": "",
                     "submitted_at": None,

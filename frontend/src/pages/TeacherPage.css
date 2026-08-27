@@ -360,6 +360,7 @@
 .teacher-due { color: #9aa4b2; font-size: 12px; text-align: right; }
 .teacher-assignment-card h3 { font-size: 18px; margin: 16px 0 8px; }
 .teacher-assignment-card > p { color: #b7c1ce; font-size: 14px; line-height: 1.55; margin: 0 0 16px; white-space: pre-wrap; }
+.teacher-assignment-card > .teacher-assignment-timing { color: #9fdfff; font-size: 12px; margin: -5px 0 14px; }
 
 .teacher-assignment-metrics { border-top: 1px solid rgba(255,255,255,0.1); display: grid; grid-template-columns: repeat(3, 1fr); margin: auto 0 12px; padding-top: 13px; }
 .teacher-assignment-metrics div { min-width: 0; }

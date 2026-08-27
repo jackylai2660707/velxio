@@ -1,0 +1,42 @@
+.exam-builder {
+  background: linear-gradient(135deg, rgba(7, 28, 43, .86), rgba(14, 20, 30, .9));
+  border: 1px solid rgba(91, 192, 235, .28);
+  border-radius: 14px;
+  display: grid;
+  gap: 18px;
+  grid-column: 1 / -1;
+  padding: 18px;
+}
+.exam-builder-heading { align-items: flex-start; display: flex; gap: 18px; justify-content: space-between; }
+.exam-builder-heading h3 { font-size: 18px; margin: 3px 0 5px; }
+.exam-builder-heading p { color: #a9b8c6; font-size: 13px; line-height: 1.55; margin: 0; max-width: 670px; }
+.exam-builder-kicker { color: #78d5ff !important; font-size: 10px !important; font-weight: 800; letter-spacing: .14em; }
+.exam-builder-add, .exam-question-topline button, .exam-option-add { background: rgba(120,213,255,.11); border: 1px solid rgba(120,213,255,.35); border-radius: 8px; color: #d9f4ff; cursor: pointer; font: inherit; font-size: 13px; font-weight: 700; min-height: 40px; padding: 8px 12px; }
+.exam-builder-add:hover, .exam-question-topline button:hover, .exam-option-add:hover { background: rgba(120,213,255,.2); }
+.exam-builder-timing { background: rgba(0,0,0,.17); border: 1px solid rgba(255,255,255,.1); border-radius: 11px; display: grid; gap: 12px; padding: 14px; }
+.exam-builder-timing > strong { color: #d9f4ff; font-size: 14px; }
+.exam-builder-timing-grid { display: grid; gap: 11px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.exam-builder label { color: #bbc9d5; display: grid; font-size: 12px; font-weight: 700; gap: 6px; }
+.exam-builder input, .exam-builder textarea, .exam-builder select { background: rgba(2, 8, 14, .64); border: 1px solid rgba(255,255,255,.18); border-radius: 8px; box-sizing: border-box; color: #f2f8fc; font: inherit; font-weight: 400; min-height: 42px; padding: 8px 10px; width: 100%; }
+.exam-builder textarea { resize: vertical; }
+.exam-builder input:focus, .exam-builder textarea:focus, .exam-builder select:focus { border-color: #78d5ff; outline: 3px solid rgba(120,213,255,.18); }
+.exam-builder-toggles { display: flex; flex-wrap: wrap; gap: 12px 20px; }
+.exam-builder-toggles label { align-items: center; display: flex; font-weight: 500; }
+.exam-builder-toggles input { accent-color: #5bc0eb; min-height: 18px; width: 18px; }
+.exam-builder-empty { border: 1px dashed rgba(255,255,255,.2); border-radius: 10px; color: #a9b8c6; line-height: 1.55; margin: 0; padding: 16px; }
+.exam-builder-list { display: grid; gap: 14px; list-style: none; margin: 0; padding: 0; }
+.exam-question-card { background: rgba(4,11,18,.42); border: 1px solid rgba(255,255,255,.13); border-radius: 11px; display: grid; gap: 12px; padding: 15px; }
+.exam-question-topline { align-items: center; color: #8cdcff; display: flex; font-size: 12px; font-weight: 800; justify-content: space-between; letter-spacing: .04em; }
+.exam-question-topline > div { display: flex; gap: 7px; }
+.exam-question-topline button { min-height: 36px; padding: 6px 9px; }
+.exam-question-topline .exam-question-danger { border-color: rgba(248,81,73,.45); color: #ffaaa5; }
+.exam-question-meta { display: grid; gap: 12px; grid-template-columns: 1fr 130px; }
+.exam-options { display: grid; gap: 8px; }
+.exam-options-title { color: #bbc9d5; font-size: 12px; font-weight: 700; }
+.exam-option-row { align-items: center; display: grid !important; gap: 8px; grid-template-columns: 20px minmax(0, 1fr) auto; }
+.exam-option-row > input[type='checkbox'], .exam-option-row > input[type='radio'] { accent-color: #5bc0eb; min-height: 18px; padding: 0; width: 18px; }
+.exam-option-row button { background: transparent; border: 0; color: #ffaaa5; cursor: pointer; font-size: 20px; min-height: 32px; width: 32px; }
+.exam-option-add { justify-self: start; min-height: 36px; }
+.exam-rubric textarea, .exam-answer-text textarea { border-color: rgba(120,213,255,.23); }
+@media (max-width: 680px) { .exam-builder { padding: 14px; } .exam-builder-heading { align-items: stretch; flex-direction: column; } .exam-builder-add { width: 100%; } .exam-builder-timing-grid, .exam-question-meta { grid-template-columns: 1fr; } .exam-question-topline { align-items: flex-start; gap: 10px; flex-direction: column; } }
+@media (prefers-reduced-motion: reduce) { .exam-builder *, .exam-builder *::before, .exam-builder *::after { scroll-behavior: auto !important; transition: none !important; } }
