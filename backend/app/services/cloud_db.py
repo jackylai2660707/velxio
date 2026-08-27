@@ -194,6 +194,8 @@ def init_db() -> None:
                 max_attempts INTEGER NOT NULL DEFAULT 0,
                 -- reject (default), allow, or flag late final submissions.
                 late_policy TEXT NOT NULL DEFAULT 'reject',
+                -- Whether students may see an automatic score immediately.
+                show_score_immediately INTEGER NOT NULL DEFAULT 1,
                 max_score REAL NOT NULL DEFAULT 100,
                 auto_grade INTEGER NOT NULL DEFAULT 0,
                 status TEXT NOT NULL DEFAULT 'draft',
@@ -292,6 +294,7 @@ def init_db() -> None:
             "time_limit": "ALTER TABLE assignments ADD COLUMN time_limit INTEGER",
             "max_attempts": "ALTER TABLE assignments ADD COLUMN max_attempts INTEGER NOT NULL DEFAULT 0",
             "late_policy": "ALTER TABLE assignments ADD COLUMN late_policy TEXT NOT NULL DEFAULT 'reject'",
+            "show_score_immediately": "ALTER TABLE assignments ADD COLUMN show_score_immediately INTEGER NOT NULL DEFAULT 1",
         }
         for name, statement in assignment_migrations.items():
             if name not in assignment_cols:
@@ -1110,6 +1113,7 @@ def _assignment_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[
     time_limit = row["time_limit"] if "time_limit" in keys else None
     max_attempts = row["max_attempts"] if "max_attempts" in keys else 0
     late_policy = _effective_late_policy(row["late_policy"] if "late_policy" in keys else "reject")
+    show_score = row["show_score_immediately"] if "show_score_immediately" in keys else 1
     now = time.time()
     if opens_at is not None and now < float(opens_at):
         window_status = "upcoming"
@@ -1136,6 +1140,7 @@ def _assignment_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[
         "time_limit": int(time_limit) if time_limit is not None else None,
         "max_attempts": max(0, int(max_attempts or 0)),
         "late_policy": late_policy,
+        "show_score_immediately": bool(show_score),
         "window_status": window_status,
         "max_score": row["max_score"],
         "auto_grade": bool(row["auto_grade"]),
@@ -1192,6 +1197,7 @@ def _submission_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[
         "time_limit": int(time_limit) if time_limit is not None else None,
         "max_attempts": max(0, int(row["max_attempts"] or 0)) if "max_attempts" in keys else 0,
         "late_policy": _effective_late_policy(row["late_policy"] if "late_policy" in keys else "reject"),
+        "show_score_immediately": bool(row["show_score_immediately"]) if "show_score_immediately" in keys else True,
         "is_late": is_late,
         "time_remaining": (
             max(0, int(float(started_at) + int(time_limit) - time.time()))
@@ -1259,6 +1265,7 @@ def create_assignment(
     time_limit: int | None = None,
     max_attempts: int = 0,
     late_policy: str = "reject",
+    show_score_immediately: bool = True,
     max_score: float = 100,
     auto_grade: bool = False,
     status: str = "draft",
@@ -1309,8 +1316,8 @@ def create_assignment(
             "INSERT INTO assignments (id, class_id, teacher_id, title, description, instructions, "
             "lesson_id, assignment_type, project_template, quiz, rubric, due_at, opens_at, "
             "closes_at, time_limit, max_attempts, late_policy, max_score, auto_grade, status, "
-            "published_at, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "show_score_immediately, published_at, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 aid,
                 class_id,
@@ -1332,6 +1339,7 @@ def create_assignment(
                 float(max_score),
                 1 if auto_grade else 0,
                 status,
+                1 if show_score_immediately else 0,
                 published_at,
                 now,
                 now,
@@ -1566,7 +1574,11 @@ def save_submission(
             closes_at = _effective_closes_at(assignment)
             if opens_at is not None and now < float(opens_at):
                 raise SubmissionPolicyError("not_open", "Assignment is not open yet")
-            if old and old["started_at"] is not None and assignment["time_limit"]:
+            # A timer belongs to the currently open draft attempt.  Once a
+            # final attempt has been submitted, a later retry starts its own
+            # clock through ``start_submission_attempt``; do not accidentally
+            # charge the student for idle time between two submissions.
+            if old and old["status"] == "draft" and old["started_at"] is not None and assignment["time_limit"]:
                 elapsed = now - float(old["started_at"])
                 if elapsed > max(0, int(assignment["time_limit"])):
                     raise SubmissionPolicyError("time_limit", "Assignment time limit has expired")
@@ -1585,7 +1597,11 @@ def save_submission(
 
         if old:
             sid = old["id"]
-            started_at = old["started_at"] if old["started_at"] is not None else now
+            started_at = (
+                old["started_at"]
+                if old["started_at"] is not None and (submit or old["status"] == "draft")
+                else now
+            )
             # A draft edit preserves the last final score/timestamp so the
             # student can compare before deciding whether to resubmit.  A
             # final submission starts a fresh grading state.
@@ -1669,6 +1685,135 @@ def save_submission(
             )
         row = conn.execute(_submission_select() + "WHERE s.id = ?", (sid,)).fetchone()
     return (_submission_dict(row) if row else None), created
+
+
+def _submission_attempt_view(submission: dict[str, Any], *, status: str = "in_progress") -> dict[str, Any]:
+    """Adapt the mutable current row to the timed-attempt API shape."""
+    attempt = dict(submission)
+    attempt["status"] = status
+    attempt["started_at"] = submission.get("started_at")
+    started = submission.get("started_at")
+    limit = submission.get("time_limit")
+    attempt["expires_at"] = (
+        float(started) + int(limit)
+        if started is not None and limit is not None and int(limit) > 0
+        else None
+    )
+    attempt["saved_at"] = submission.get("updated_at")
+    return attempt
+
+
+def start_submission_attempt(
+    assignment_id: str,
+    student_id: str,
+) -> dict[str, Any] | None:
+    """Start or resume a timed draft attempt.
+
+    Returns ``None`` for an unknown/unpublished/non-member assignment and
+    raises :class:`SubmissionPolicyError` for a schedule/attempt-policy
+    rejection.  Starting a retry keeps the previous final payload as a
+    revision baseline while resetting ``started_at``; the immutable history
+    remains untouched until the final submit call.
+    """
+    now = time.time()
+    with _connect() as conn:
+        assignment = conn.execute(
+            "SELECT id, class_id, status, due_at, opens_at, closes_at, time_limit, "
+            "max_attempts, late_policy FROM assignments WHERE id = ?",
+            (assignment_id,),
+        ).fetchone()
+        if not assignment:
+            return None
+        member = conn.execute(
+            "SELECT 1 FROM class_members WHERE class_id = ? AND user_id = ?",
+            (assignment["class_id"], student_id),
+        ).fetchone()
+        if not member or assignment["status"] != "published":
+            return None
+        opens_at = assignment["opens_at"]
+        closes_at = _effective_closes_at(assignment)
+        if opens_at is not None and now < float(opens_at):
+            raise SubmissionPolicyError("not_open", "Assignment is not open yet")
+        late = bool(closes_at is not None and now > float(closes_at))
+        if late and _effective_late_policy(assignment["late_policy"]) == "reject":
+            raise SubmissionPolicyError("deadline", "Assignment deadline has passed")
+        attempt_count = int(
+            conn.execute(
+                "SELECT COUNT(*) FROM assignment_submission_attempts "
+                "WHERE assignment_id = ? AND student_id = ?",
+                (assignment_id, student_id),
+            ).fetchone()[0]
+        )
+        max_attempts = max(0, int(assignment["max_attempts"] or 0))
+        old = conn.execute(
+            "SELECT * FROM assignment_submissions WHERE assignment_id = ? AND student_id = ?",
+            (assignment_id, student_id),
+        ).fetchone()
+        if old and old["status"] == "draft":
+            # Resume an interrupted browser session without resetting its
+            # timer.  A stale timed draft is rejected before it can be saved.
+            if old["started_at"] is not None and assignment["time_limit"]:
+                if now - float(old["started_at"]) > int(assignment["time_limit"]):
+                    raise SubmissionPolicyError("time_limit", "Assignment time limit has expired")
+            sid = old["id"]
+        else:
+            if max_attempts and attempt_count >= max_attempts:
+                raise SubmissionPolicyError("max_attempts", "Maximum submission attempts reached")
+            if old:
+                sid = old["id"]
+                # Keep the latest final answer as a revision baseline.  The
+                # final row remains in immutable history and its score is
+                # retained until the replacement is submitted.
+                conn.execute(
+                    "UPDATE assignment_submissions SET status = 'draft', started_at = ?, updated_at = ? "
+                    "WHERE id = ?",
+                    (now, now, sid),
+                )
+            else:
+                sid = uuid.uuid4().hex
+                conn.execute(
+                    "INSERT INTO assignment_submissions "
+                    "(id, assignment_id, student_id, content, answers, project_data, files, status, "
+                    "submitted_at, attempt_no, started_at, created_at, updated_at) "
+                    "VALUES (?, ?, ?, '', NULL, NULL, NULL, 'draft', NULL, ?, ?, ?, ?)",
+                    (sid, assignment_id, student_id, attempt_count, now, now, now),
+                )
+        row = conn.execute(_submission_select() + "WHERE s.id = ?", (sid,)).fetchone()
+    return _submission_attempt_view(_submission_dict(row), status="in_progress") if row else None
+
+
+def save_submission_attempt(
+    attempt_id: str,
+    student_id: str,
+    *,
+    content: str = "",
+    answers: Any = None,
+    project_data: Any = None,
+    files: Any = None,
+    submit: bool = False,
+) -> tuple[dict[str, Any] | None, bool]:
+    """Save/submit a draft identified by its attempt id.
+
+    Attempt ids are the opaque mutable submission ids returned by
+    :func:`start_submission_attempt`; ownership and assignment membership are
+    rechecked by :func:`save_submission` on every call.
+    """
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT assignment_id, student_id FROM assignment_submissions WHERE id = ?",
+            (attempt_id,),
+        ).fetchone()
+    if not row or row["student_id"] != student_id:
+        return None, False
+    return save_submission(
+        row["assignment_id"],
+        student_id,
+        content=content,
+        answers=answers,
+        project_data=project_data,
+        files=files,
+        submit=submit,
+    )
 
 
 def get_submission(

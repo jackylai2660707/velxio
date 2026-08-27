@@ -48,6 +48,10 @@ _ALLOWED_ASSIGNMENT_TYPES = {
     "mixed",
     "circuit",
     "design",
+    # Custom exam manifests are stored as ``quiz`` for compatibility with the
+    # lesson quiz editor.  ``is_deterministic_quiz`` distinguishes these from
+    # ordinary answer-key-only quizzes before the route chooses a grader.
+    "quiz",
 }
 
 
@@ -196,7 +200,9 @@ def normalize_rubric(rubric: Any, max_score: float) -> dict[str, Any] | None:
         raw_id = raw.get("id", raw.get("key", raw.get("name", index + 1)))
         criterion_id = str(raw_id).strip()[:100]
         name = str(raw.get("name", raw.get("title", criterion_id))).strip()[:200]
-        description = str(raw.get("description", raw.get("criteria", ""))).strip()[:5_000]
+        description = str(
+            raw.get("description", raw.get("rubric", raw.get("criteria", "")))
+        ).strip()[:5_000]
         if not criterion_id or criterion_id in used_ids or not name:
             return None
         points_value = raw.get("points", raw.get("max_score"))
@@ -221,11 +227,18 @@ def normalize_rubric(rubric: Any, max_score: float) -> dict[str, Any] | None:
                 "max_score": round(points, 4),
             }
         )
-    # A small authoring tolerance handles decimal rounding but prevents a
-    # model from grading against a scale that does not match the assignment.
+    # Question builders often use per-question points (e.g. 10 + 10 + 10)
+    # while the assignment is displayed out of 100.  Preserve those relative
+    # weights by scaling to the assignment's official max score.  A rubric
+    # with no usable points was rejected above; a non-matching total is not a
+    # reason to make an otherwise valid exam impossible to publish.
     criteria_total = sum(float(item["max_score"]) for item in criteria)
-    if criteria_total <= 0 or abs(criteria_total - total_max) > max(0.01, total_max * 0.02):
+    if criteria_total <= 0:
         return None
+    if abs(criteria_total - total_max) > max(0.01, total_max * 0.02):
+        scale = total_max / criteria_total
+        for item in criteria:
+            item["max_score"] = round(float(item["max_score"]) * scale, 4)
     return {
         "max_score": round(total_max, 4),
         "criteria": criteria,
@@ -262,6 +275,38 @@ def _submission_evidence(submission: Mapping[str, Any]) -> dict[str, Any]:
         "project_data": _json_bytes(submission.get("project_data"), MAX_PROMPT_BYTES),
         "files": _json_bytes(submission.get("files"), MAX_PROMPT_BYTES // 2),
     }
+
+
+def is_deterministic_quiz(quiz: Any) -> bool:
+    """Return whether every question can be graded by the answer-key grader.
+
+    A custom exam may contain a mixture of choice and open/code/circuit
+    questions while retaining ``assignment_type='quiz'``.  Such a manifest
+    must go through the rubric grader; only complete answer-key choice quizzes
+    should use the deterministic path.
+    """
+
+    if isinstance(quiz, str):
+        try:
+            quiz = json.loads(quiz)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return False
+    questions = quiz.get("questions") if isinstance(quiz, dict) else quiz
+    if not isinstance(questions, list) or not questions:
+        return False
+    choice_types = {"single", "multiple", "true_false", "choice", "mcq"}
+    for question in questions:
+        if not isinstance(question, dict):
+            return False
+        kind = str(question.get("type", "single")).strip().lower()
+        if kind not in choice_types:
+            return False
+        answer_keys = {str(key).lower() for key in question}
+        if not answer_keys.intersection(
+            {"answer", "correct_answer", "correctanswer", "correct", "answer_index", "answerindex", "solution", "expected", "expected_answer"}
+        ):
+            return False
+    return True
 
 
 def _prompt_messages(
@@ -579,5 +624,6 @@ __all__ = [
     "GradeResult",
     "MIN_CONFIDENCE",
     "grade_submission",
+    "is_deterministic_quiz",
     "normalize_rubric",
 ]

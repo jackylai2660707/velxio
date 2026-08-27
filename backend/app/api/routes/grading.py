@@ -80,10 +80,10 @@ def _record_usage(user_id: str, result: dict[str, Any]) -> None:
 async def _grade(
     assignment: dict[str, Any], submission: dict[str, Any], actor: dict[str, Any]
 ) -> dict[str, Any]:
-    if assignment.get("assignment_type") == "quiz":
+    if assignment.get("assignment_type") == "quiz" and ai_grading.is_deterministic_quiz(assignment.get("quiz")):
         raise HTTPException(
             status_code=409,
-            detail="Quiz assignments use deterministic grading",
+            detail="This answer-key quiz uses deterministic grading",
         )
     if not assignment.get("auto_grade"):
         raise HTTPException(

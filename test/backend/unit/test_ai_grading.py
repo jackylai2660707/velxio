@@ -39,8 +39,10 @@ def test_normalize_rubric_accepts_list_and_aliases():
     assert sum(item["max_score"] for item in result["criteria"]) == 100
 
 
-def test_normalize_rubric_rejects_mismatched_total():
-    assert ai_grading.normalize_rubric([{"id": "one", "name": "One", "points": 5}], 100) is None
+def test_normalize_rubric_scales_question_points_to_assignment_total():
+    result = ai_grading.normalize_rubric([{"id": "one", "name": "One", "points": 5}], 100)
+    assert result is not None
+    assert result["criteria"][0]["max_score"] == 100
 
 
 @pytest.mark.asyncio

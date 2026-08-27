@@ -273,6 +273,32 @@ export interface LmsSubmission {
   attempt_no?: number;
   content?: string;
   answers?: unknown;
+  started_at?: number | null;
+  expires_at?: number | null;
+  saved_at?: number | null;
+  attempt_count?: number;
+  is_late?: boolean;
+  opens_at?: number | null;
+  closes_at?: number | null;
+  time_limit?: number | null;
+  max_attempts?: number;
+  late_policy?: 'reject' | 'allow' | 'flag' | string;
+}
+
+/** Immutable snapshot of one final assignment submission.  Timed exams also
+ * expose the current mutable draft using this shape with status
+ * ``in_progress``. */
+export interface LmsSubmissionAttempt extends LmsSubmission {
+  id: string;
+  assignment_id: string;
+  student_id: string;
+  student_name: string;
+  student_email: string;
+  attempt_id?: string;
+  submission_id?: string;
+  attempt_no: number;
+  created_at?: number;
+  graded_at?: number | null;
 }
 
 export interface LmsAssignment {
@@ -301,6 +327,11 @@ export interface LmsAssignment {
   average_score?: number | null;
   rubric?: string | null;
   opens_at?: string | number | null;
+  closes_at?: string | number | null;
+  time_limit?: number | null;
+  max_attempts?: number | null;
+  late_policy?: 'reject' | 'allow' | 'flag' | string;
+  window_status?: 'upcoming' | 'open' | 'closed' | string;
   duration_minutes?: number | null;
   attempts_allowed?: number | null;
   allow_late?: boolean;
@@ -344,6 +375,10 @@ export interface LmsAssignmentCreate {
   auto_grade?: boolean;
   rubric?: string;
   opens_at?: string;
+  closes_at?: string;
+  time_limit?: number;
+  max_attempts?: number;
+  late_policy?: 'reject' | 'allow' | 'flag' | string;
   duration_minutes?: number;
   attempts_allowed?: number;
   allow_late?: boolean;
@@ -363,6 +398,13 @@ export interface LmsAssignmentSubmitPayload {
 export interface LmsAssignmentSubmitResult {
   submission: LmsSubmission;
   auto_graded: boolean;
+}
+
+export interface LmsAttemptPayload {
+  answers?: unknown;
+  content?: string;
+  project_data?: VlxPayload | Record<string, unknown>;
+  files?: Record<string, string>;
 }
 
 export const lmsApi = {
@@ -430,7 +472,7 @@ export const lmsApi = {
       payload,
     ),
   listSubmissionAttempts: (submissionId: string) =>
-    request<{ attempts: LmsAssignmentSubmission[] }>(
+    request<{ attempts: LmsSubmissionAttempt[] }>(
       'GET',
       `/lms/submissions/${encodeURIComponent(submissionId)}/attempts`,
     ),
@@ -459,6 +501,32 @@ export const lmsApi = {
     request<{ submission: LmsSubmission | null }>(
       'GET',
       `/lms/assignments/${encodeURIComponent(assignmentId)}/submission`,
+    ),
+  /** Student attempt history, including an in-progress timed draft. */
+  getAttempts: (assignmentId: string) =>
+    request<{ attempts: LmsSubmissionAttempt[]; history?: LmsSubmissionAttempt[]; server_time?: number }>(
+      'GET',
+      `/lms/assignments/${encodeURIComponent(assignmentId)}/attempts`,
+    ),
+  /** Start or resume the student's current timed attempt. */
+  startAttempt: (assignmentId: string) =>
+    request<{ attempt: LmsSubmissionAttempt; server_time?: number }>(
+      'POST',
+      `/lms/assignments/${encodeURIComponent(assignmentId)}/attempts`,
+    ),
+  /** Autosave the student's current attempt without consuming a retry. */
+  saveAttempt: (attemptId: string, payload: LmsAttemptPayload) =>
+    request<{ attempt: LmsSubmissionAttempt; server_time?: number }>(
+      'PATCH',
+      `/lms/attempts/${encodeURIComponent(attemptId)}`,
+      payload,
+    ),
+  /** Finalise a timed attempt and create an immutable history snapshot. */
+  submitAttempt: (attemptId: string, payload: LmsAttemptPayload) =>
+    request<{ submission: LmsSubmissionAttempt; server_time?: number }>(
+      'POST',
+      `/lms/attempts/${encodeURIComponent(attemptId)}/submit`,
+      payload,
     ),
 };
 

@@ -26,6 +26,7 @@ import csv
 import io
 from datetime import datetime, timezone
 import math
+import time
 from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Response
@@ -968,15 +969,32 @@ async def submission_save(
             score, feedback = result
             submission = cloud_db.auto_grade_submission(submission["id"], score=score, feedback=feedback)
             auto_graded = submission is not None
-    elif submit and assignment.get("auto_grade") and assignment.get("assignment_type") != "quiz":
-        # Rubric/AI grading runs server-side after final submit. Provider
-        # failures become a persisted needs_review result and never reject a
-        # valid student submission.
+        # A custom exam can still use the quiz manifest shape but contain
+        # short-answer, code, or circuit questions without an answer key. In
+        # that case the deterministic grader returns None and AI rubric
+        # grading must take over.
+        else:
+            try:
+                from app.api.routes import grading as grading_routes
+                graded = await grading_routes._grade(assignment, submission or {}, user)
+                submission = graded.get("submission") or submission
+                auto_graded = graded.get("ai_grade", {}).get("status") == "graded"
+            except Exception:
+                auto_graded = False
+    elif submit and assignment.get("auto_grade"):
+        # Rubric/AI grading runs server-side after final submit for projects
+        # and custom (open/code/circuit) exams. A pure answer-key quiz keeps
+        # the deterministic grader above; custom quiz manifests are routed to
+        # AI by ``is_deterministic_quiz`` in the grading service.
         try:
-            from app.api.routes.grading import _grade
-            graded = await _grade(assignment, submission or {}, user)
-            submission = graded.get("submission") or submission
-            auto_graded = graded.get("ai_grade", {}).get("status") == "graded"
+            from app.api.routes import grading as grading_routes
+            from app.services import ai_grading
+            if assignment.get("assignment_type") == "quiz" and ai_grading.is_deterministic_quiz(assignment.get("quiz")):
+                pass
+            else:
+                graded = await grading_routes._grade(assignment, submission or {}, user)
+                submission = graded.get("submission") or submission
+                auto_graded = graded.get("ai_grade", {}).get("status") == "graded"
         except Exception:
             auto_graded = False
     return {"submission": submission, **(submission or {}), "auto_graded": auto_graded}
@@ -1011,7 +1029,120 @@ async def submission_attempts_student(
     rows = cloud_db.list_submission_attempts(
         assignment_id, student_id=user["id"], include_private=False
     )
+    # Include the current mutable draft so a browser can resume a timed exam;
+    # immutable history contains only final submissions.
+    current = cloud_db.get_submission(assignment_id, student_id=user["id"])
+    if current and current.get("status") == "draft":
+        draft = cloud_db._submission_attempt_view(current, status="in_progress")
+        rows = [draft, *rows]
     return {"assignment": assignment, "attempts": rows, "history": rows}
+
+
+@router.get("/assignments/{assignment_id}/attempts")
+async def attempts_list_student(
+    assignment_id: str, authorization: str | None = Header(default=None)
+) -> dict[str, Any]:
+    """Timed-attempt compatible alias used by the student workspace."""
+    return await submission_attempts_student(assignment_id, authorization)
+
+
+@router.post("/assignments/{assignment_id}/attempts")
+async def attempt_start_student(
+    assignment_id: str, authorization: str | None = Header(default=None)
+) -> dict[str, Any]:
+    user = require_user(authorization)
+    if user.get("role") != "student":
+        raise HTTPException(status_code=403, detail="Student account required")
+    # Assignment lookup also enforces published visibility and class
+    # membership without leaking whether another class owns this id.
+    if cloud_db.get_assignment_for_user(assignment_id, user["id"], role="student") is None:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    try:
+        attempt = cloud_db.start_submission_attempt(assignment_id, user["id"])
+    except cloud_db.SubmissionPolicyError as exc:
+        raise HTTPException(status_code=409, detail={"code": exc.reason, "message": str(exc)})
+    if attempt is None:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    return {"attempt": attempt, "server_time": time.time()}
+
+
+class AttemptSave(BaseModel):
+    answers: Any = None
+    content: str = ""
+    project_data: Any = None
+    files: Any = None
+
+
+def _attempt_owner(assignment_attempt_id: str, user_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    current = cloud_db.get_submission("", submission_id=assignment_attempt_id)
+    if current is None or current.get("student_id") != user_id:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+    assignment = cloud_db.get_assignment_for_user(
+        current["assignment_id"], user_id, role="student"
+    )
+    if assignment is None:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+    return assignment, current
+
+
+@router.patch("/attempts/{attempt_id}")
+@router.put("/attempts/{attempt_id}")
+async def attempt_save_student(
+    attempt_id: str,
+    req: AttemptSave,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    user = require_user(authorization)
+    if user.get("role") != "student":
+        raise HTTPException(status_code=403, detail="Student account required")
+    assignment, current = _attempt_owner(attempt_id, user["id"])
+    if current.get("status") != "draft":
+        raise HTTPException(status_code=409, detail="Attempt is no longer editable")
+    try:
+        submission, _created = cloud_db.save_submission_attempt(
+            attempt_id,
+            user["id"],
+            content=req.content[:100_000],
+            answers=req.answers,
+            project_data=req.project_data,
+            files=req.files,
+            submit=False,
+        )
+    except cloud_db.SubmissionPolicyError as exc:
+        raise HTTPException(status_code=409, detail={"code": exc.reason, "message": str(exc)})
+    except ValueError as exc:
+        raise HTTPException(status_code=413, detail=str(exc))
+    if submission is None:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+    return {"attempt": cloud_db._submission_attempt_view(submission, status="in_progress"), "server_time": time.time()}
+
+
+@router.post("/attempts/{attempt_id}/submit")
+async def attempt_submit_student(
+    attempt_id: str,
+    req: AttemptSave,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    user = require_user(authorization)
+    if user.get("role") != "student":
+        raise HTTPException(status_code=403, detail="Student account required")
+    assignment, current = _attempt_owner(attempt_id, user["id"])
+    if current.get("status") != "draft":
+        raise HTTPException(status_code=409, detail="Attempt is no longer editable")
+    # Reuse the canonical submission path so deterministic quizzes and future
+    # AI rubric grading have identical behaviour for timed and untimed work.
+    result = await submission_save(
+        assignment["id"],
+        SubmissionCreate(
+            answers=req.answers,
+            content=req.content,
+            project_data=req.project_data,
+            files=req.files,
+            submit=True,
+        ),
+        authorization,
+    )
+    return {**result, "server_time": time.time()}
 
 
 @router.get("/assignments/{assignment_id}/submissions")
