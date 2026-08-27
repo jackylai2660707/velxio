@@ -14,8 +14,9 @@ import { describe, it, expect } from 'vitest';
 import { buildInputFromStore } from '../simulation/spice/storeAdapter';
 import { solveInput } from './helpers/solveInput';
 import { buildNetlist } from '../simulation/spice/NetlistBuilder';
+import type { StoreSnapshot } from '../simulation/spice/storeAdapter';
 
-function rectifierSnapshot() {
+function rectifierSnapshot(): StoreSnapshot {
   return {
     components: [
       {
@@ -26,6 +27,8 @@ function rectifierSnapshot() {
       { id: 'd1', metadataId: 'diode-1n4007', properties: {} },
       { id: 'rl', metadataId: 'resistor', properties: { value: '1000' } },
     ],
+    // These tests exercise logical connectivity only; endpoint geometry and
+    // presentation metadata are irrelevant to the SPICE adapter.
     wires: [
       {
         id: 'w1',
@@ -52,7 +55,7 @@ function rectifierSnapshot() {
         start: { componentId: 'd1', pinName: 'C' },
         end: { componentId: 'arduino-uno', pinName: 'A0' },
       },
-    ],
+    ] as unknown as StoreSnapshot['wires'],
     boards: [
       {
         id: 'arduino-uno',
@@ -138,7 +141,7 @@ describe('half-wave rectifier — end-to-end pipeline', () => {
           start: { componentId: 'led', pinName: 'C' },
           end: { componentId: 'arduino-uno', pinName: 'GND' },
         },
-      ],
+      ] as unknown as StoreSnapshot['wires'],
       boards: [
         {
           id: 'arduino-uno',

@@ -452,7 +452,7 @@ describe('useEditorStore — ESP32 file groups', () => {
   });
 
   it('createFileGroup for esp32 creates sketch.ino (not script.py)', () => {
-    const { createFileGroup, fileGroups } = useEditorStore.getState();
+    const { createFileGroup } = useEditorStore.getState();
     createFileGroup('group-esp32');
     const groups = useEditorStore.getState().fileGroups;
     expect(groups['group-esp32']).toBeDefined();

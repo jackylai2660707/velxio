@@ -54,6 +54,8 @@ export class AVRTestHarness {
       new AVRTimer(this.cpu, timer1Config),
       new AVRTimer(this.cpu, timer2Config),
     ];
+    // Keep timer instances alive for the duration of the harness program.
+    void this.timers;
   }
 
   runCycles(n: number): void {

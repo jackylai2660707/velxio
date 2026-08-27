@@ -28,8 +28,9 @@
  * and writes ADCH/ADCL into r20/r21. By polling ADCH across simulated time,
  * we can prove whether the rectified waveform is reaching the MCU.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { buildInputFromStore } from '../simulation/spice/storeAdapter';
+import type { StoreSnapshot } from '../simulation/spice/storeAdapter';
 import { buildNetlist } from '../simulation/spice/NetlistBuilder';
 import { solveInput } from './helpers/solveInput';
 import { runNetlist } from './helpers/testSolver';
@@ -39,7 +40,7 @@ import { AVRTestHarness, adcReadProgram } from './helpers/avrTestHarness';
 // ── Snapshot mirroring examples-circuits.ts:403 ("Half-Wave Rectifier") ──
 // The shape is what loadExample.ts produces via
 //   metadataId: comp.type.replace('wokwi-', '')
-function rectifierSnapshot() {
+function rectifierSnapshot(): StoreSnapshot {
   return {
     components: [
       {
@@ -76,7 +77,7 @@ function rectifierSnapshot() {
         start: { componentId: 'd1', pinName: 'C' },
         end: { componentId: 'arduino-uno', pinName: 'A0' },
       },
-    ],
+    ] as unknown as StoreSnapshot['wires'],
     boards: [
       {
         id: 'arduino-uno',

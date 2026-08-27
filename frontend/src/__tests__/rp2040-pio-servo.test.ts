@@ -29,13 +29,10 @@ function minimalBinary(sizeKb = 1): string {
 
 // PIO register offsets (within the PIO peripheral, after stripping base address)
 const CTRL = 0x00;
-const FSTAT = 0x04;
 const INSTR_MEM0 = 0x48;
 const SM0_CLKDIV = 0xc8;
 const SM0_EXECCTRL = 0xcc;
-const SM0_SHIFTCTRL = 0xd0;
 const SM0_PINCTRL = 0xdc;
-const TXF0 = 0x10;
 
 // PIO instruction encoding helpers
 function pioNop(): number {
@@ -44,16 +41,10 @@ function pioNop(): number {
   return 0xa042;
 }
 
-function pioSetPins(value: number, count: number = 1): number {
+function pioSetPins(value: number): number {
   // SET pins, value: 111 00000 000 00 <value:5>
   // Encoding: 0xe000 | (0 << 5) | value
   return 0xe000 | (value & 0x1f);
-}
-
-function pioPull(noblock: boolean): number {
-  // PULL block/noblock: 100 0 0 <noblock:1> 0 0 0 00 00000
-  // Encoding: 0x8080 | (noblock ? 0x20 : 0)
-  return 0x8080 | (noblock ? 0x20 : 0);
 }
 
 describe('RP2040 PIO → GPIO chain', () => {

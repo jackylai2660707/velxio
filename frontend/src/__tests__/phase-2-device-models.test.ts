@@ -10,14 +10,14 @@
  */
 import { describe, it, expect } from 'vitest';
 import { componentToSpice } from '../simulation/spice/componentToSpice';
-import type { PlacedComponent } from '../simulation/spice/types';
+import type { ComponentForSpice } from '../simulation/spice/types';
 
 function netLookupStub(_pin: string): string {
   return 'net_dummy';
 }
 
 function emit(metadataId: string, properties: Record<string, unknown> = {}): string[] {
-  const comp: PlacedComponent = { id: 't1', metadataId, properties };
+  const comp: ComponentForSpice = { id: 't1', metadataId, properties };
   const result = componentToSpice(comp, netLookupStub, { vcc: 5 });
   if (!result) throw new Error(`no emission for ${metadataId}`);
   return Array.from(result.modelsUsed);
@@ -77,7 +77,7 @@ describe('Phase 2.1 — MOSFETs use VDMOS 3-terminal syntax', () => {
     ['mosfet-irf540', 'MIRF540'],
     ['mosfet-irf9540', 'MIRF9540'],
   ])('%s emits a VDMOS .model and a 3-terminal Mxxx card', (id, modelName) => {
-    const comp: PlacedComponent = { id: 'q1', metadataId: id, properties: {} };
+    const comp: ComponentForSpice = { id: 'q1', metadataId: id, properties: {} };
     const result = componentToSpice(comp, netLookupStub, { vcc: 5 });
     if (!result) throw new Error(`no emission for ${id}`);
     const m = Array.from(result.modelsUsed).find((s) => s.includes(modelName));
@@ -94,7 +94,7 @@ describe('Phase 2.1 — MOSFETs use VDMOS 3-terminal syntax', () => {
   });
 
   it('mosfet-fqp27p06 still on Level=1 (no upstream VDMOS model yet)', () => {
-    const comp: PlacedComponent = { id: 'q1', metadataId: 'mosfet-fqp27p06', properties: {} };
+    const comp: ComponentForSpice = { id: 'q1', metadataId: 'mosfet-fqp27p06', properties: {} };
     const result = componentToSpice(comp, netLookupStub, { vcc: 5 });
     if (!result) throw new Error('no emission for mosfet-fqp27p06');
     const m = Array.from(result.modelsUsed).find((s) => s.includes('MFQP27P06'));

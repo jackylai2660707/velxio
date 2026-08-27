@@ -6,7 +6,7 @@
  * bridge and open its WebSocket — when it silently did not, the user got
  * no guest, no error, and a toolbar still showing Stop.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 // The bridge opens a real WebSocket; capture the instances instead.
 const opened: string[] = [];
@@ -21,7 +21,9 @@ class FakeSocket {
   onerror: (() => void) | null = null;
   onmessage: ((e: { data: string }) => void) | null = null;
   sent: string[] = [];
-  constructor(public url: string) {
+  url: string;
+  constructor(url: string) {
+    this.url = url;
     opened.push(url);
   }
   send(d: string) {

@@ -158,6 +158,7 @@ function setupTwoPicosWithSerial1Crossover(): { picoA: string; picoB: string } {
       end: { componentId: picoB, pinName: 'GND', x: 0, y: 0 },
       color: 'black',
       signalType: 'power-gnd' as const,
+      waypoints: [],
     },
     {
       id: 'w-a-tx-to-b-rx',
@@ -165,6 +166,7 @@ function setupTwoPicosWithSerial1Crossover(): { picoA: string; picoB: string } {
       end: { componentId: picoB, pinName: 'GP1', x: 0, y: 0 },   // B.UART0.RX
       color: 'green',
       signalType: 'digital' as const,
+      waypoints: [],
     },
     {
       id: 'w-b-tx-to-a-rx',
@@ -172,6 +174,7 @@ function setupTwoPicosWithSerial1Crossover(): { picoA: string; picoB: string } {
       end: { componentId: picoA, pinName: 'GP1', x: 0, y: 0 },   // A.UART0.RX
       color: 'yellow',
       signalType: 'digital' as const,
+      waypoints: [],
     },
   ];
   useSimulatorStore.setState({ wires });

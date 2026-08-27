@@ -313,7 +313,7 @@ describe('Servo — RP2040 timing-based measurement', () => {
   const logic = () => PartSimulationRegistry.get('servo')!;
 
   it('uses onPinChangeWithTime when simulator is RP2040Simulator instance', () => {
-    const rp = new RP2040Simulator() as any;
+    const rp = new RP2040Simulator(new PinManager()) as any;
     const el = makeElement();
     logic().attachEvents!(el, rp as any, pinMap({ PWM: 15 }), 'servo-rp2040');
 
@@ -731,4 +731,3 @@ describe('LEDC polling — data format', () => {
     expect(emitted[1]).toEqual({ ch: 0, duty: 12.0 });
   });
 });
-

@@ -15,7 +15,7 @@
  * end-to-end scheduler against a real rp2040js core running a hand-assembled
  * busy-wait loop — no compiled firmware fixture required.
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { RP2040 } from 'rp2040js';
 import { RP2040Simulator, IdleSpinDetector } from '../simulation/RP2040Simulator';
 import { PinManager } from '../simulation/PinManager';

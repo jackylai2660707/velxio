@@ -45,7 +45,7 @@ import { join } from 'path';
 
 import { avrInstruction } from 'avr8js';
 import { AVRSimulator } from '../simulation/AVRSimulator';
-import { PinManager } from '../simulation/PinManager';
+import { PinManager, type PwmCallback } from '../simulation/PinManager';
 
 // ─── RAF stubs ─────────────────────────────────────────────────────────────────
 // Depth-limited: calls cb once synchronously, prevents re-entrancy loops.
@@ -118,6 +118,7 @@ describe('ATtiny85 — lifecycle', () => {
   it('loads a valid HEX without throwing', () => {
     expect(() => sim.loadHex(EMPTY_HEX)).not.toThrow();
     expect(() => sim.loadHex(TINY85_BLINK_HEX)).not.toThrow();
+    expect(() => sim.loadHex(TINY85_PWM_HEX)).not.toThrow();
   });
 
   it('start() transitions to running state', () => {
@@ -317,10 +318,10 @@ describe('ATtiny85 — PWM monitoring', () => {
     const sim = new AVRSimulator(pm, 'tiny85');
     sim.loadHex(EMPTY_HEX);
 
-    const cbs: Record<number, ReturnType<typeof vi.fn>> = {};
+    const cbs: Record<number, PwmCallback> = {};
     const uniquePins = [...new Set(TINY85_PWM_MAP.map((m) => m.pin))];
     uniquePins.forEach((pin) => {
-      cbs[pin] = vi.fn();
+      cbs[pin] = vi.fn<PwmCallback>();
       pm.onPwmChange(pin, cbs[pin]);
     });
 

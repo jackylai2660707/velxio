@@ -68,7 +68,7 @@ describe('readVoltmeter with .tran timeWaveforms', () => {
       // Build the same Union-Find-based net lookup the store uses so readVoltmeter
       // can find the probed nets. signal-generator's GND is the canonical ground.
       const netLookup = buildPinNetLookup(
-        wires.map((w) => ({ id: w.id, start: w.start, end: w.end })),
+        wires,
         [{ componentId: 'sg1', pinName: 'GND' }],
         [],
       );
@@ -155,7 +155,7 @@ describe('readVoltmeter with .tran timeWaveforms', () => {
     expect(solve.timeWaveforms).toBeUndefined();
 
     const netLookup = buildPinNetLookup(
-      wires.map((w) => ({ id: w.id, start: w.start, end: w.end })),
+      wires,
       [{ componentId: 'uno', pinName: 'GND' }],
       [{ componentId: 'uno', pinName: '5V' }],
     );

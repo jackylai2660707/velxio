@@ -101,9 +101,10 @@ function buildCoverage(): Coverage {
   const byBoardsArray = new Map<BoardKind, string[]>();
   for (const ex of ALL_EXAMPLES) {
     if (ex.boardType) {
-      const list = byBoardType.get(ex.boardType) ?? [];
+      const kind = ex.boardType as BoardKind;
+      const list = byBoardType.get(kind) ?? [];
       list.push(ex.id);
-      byBoardType.set(ex.boardType, list);
+      byBoardType.set(kind, list);
     }
     if (ex.boards && ex.boards.length > 0) {
       for (const b of ex.boards) {

@@ -181,7 +181,7 @@ describe('useEditorStore — file groups', () => {
   });
 
   it('createFileGroup creates a new group with a .ino file for Arduino', () => {
-    const { createFileGroup, fileGroups } = useEditorStore.getState();
+    const { createFileGroup } = useEditorStore.getState();
     createFileGroup('group-arduino-uno-2');
     const updated = useEditorStore.getState().fileGroups;
     expect(updated['group-arduino-uno-2']).toBeDefined();

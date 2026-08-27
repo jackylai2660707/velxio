@@ -28,7 +28,7 @@
  * board pins driven by sketches and runtime state we don't replay
  * here — values are pre-deployment sanity, not behavioural locks.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'vitest';
 import { analogExamples } from '../data/examples-analog';
 import { digitalExamples } from '../data/examples-digital';
 import { exampleToBuildNetlistInput } from '../utils/exampleToBuildNetlistInput';

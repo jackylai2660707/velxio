@@ -58,7 +58,7 @@ beforeAll(() => {
   try {
     execSync(`bash "${BUILD_SH}"`, { stdio: 'pipe' });
   } catch (err: unknown) {
-    buildError = String((err as NodeJS.ErrnoException).stderr ?? err);
+    buildError = String((err as { stderr?: unknown }).stderr ?? err);
     if (!existsSync(BIN_PATH)) return; // binary missing AND build failed
     // Binary exists from a previous build — use it but warn
     console.warn('[esp32c3-blink] Build script failed; using existing binary.\n' + buildError);

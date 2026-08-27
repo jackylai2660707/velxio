@@ -16,7 +16,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { PartSimulationRegistry } from '../simulation/parts/PartSimulationRegistry';
+import { PartSimulationRegistry as RawPartSimulationRegistry } from '../simulation/parts/PartSimulationRegistry';
 import { useElectricalStore } from '../store/useElectricalStore';
 
 // Side-effect imports — register all parts
@@ -24,6 +24,24 @@ import '../simulation/parts/BasicParts';
 import '../simulation/parts/ComplexParts';
 import '../simulation/parts/ChipParts';
 import '../simulation/parts/SensorParts';
+
+// These tests intentionally exercise the legacy three-argument attachEvents
+// invocation.  Keep that runtime contract while describing the optional
+// component ID used by newer handlers in the test-local registry view.
+type TestPartLogic = {
+  onPinStateChange?: (...args: unknown[]) => void;
+  attachEvents: (
+    element: HTMLElement,
+    simulator: unknown,
+    getArduinoPinHelper: (componentPinName: string) => number | null,
+    componentId?: string,
+    getPinResolver?: unknown,
+  ) => () => void;
+};
+
+const PartSimulationRegistry = RawPartSimulationRegistry as unknown as {
+  get(metadataId: string): TestPartLogic | undefined;
+};
 
 // ─── RAF depth-limited mock ───────────────────────────────────────────────────
 // Calls the callback once synchronously but prevents re-entrancy so that

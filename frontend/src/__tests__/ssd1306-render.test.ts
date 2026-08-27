@@ -95,7 +95,7 @@ describe('SSD1306 — ImageData rendering (syncElement fix)', () => {
   it('creates a VirtualSSD1306 device at address 0x3C', () => {
     const el = makeOLEDElement();
     const sim = makeSim();
-    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null);
+    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null, 'ssd1306-test');
     expect(sim.addI2CDevice).toHaveBeenCalledOnce();
     expect(sim._devices[0].address).toBe(0x3c);
   });
@@ -103,7 +103,7 @@ describe('SSD1306 — ImageData rendering (syncElement fix)', () => {
   it('calls element.redraw() after a STOP', () => {
     const el = makeOLEDElement();
     const sim = makeSim();
-    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null);
+    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null, 'ssd1306-test');
     const device = sim._devices[0];
 
     // Simple data write — fill first byte
@@ -115,7 +115,7 @@ describe('SSD1306 — ImageData rendering (syncElement fix)', () => {
   it('renders a fully-lit column 0 of page 0 (0xFF → top 8 pixels lit)', () => {
     const el = makeOLEDElement();
     const sim = makeSim();
-    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null);
+    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null, 'ssd1306-test');
     const device = sim._devices[0];
 
     // Set horizontal addressing, col 0–127, page 0–7
@@ -149,7 +149,7 @@ describe('SSD1306 — ImageData rendering (syncElement fix)', () => {
   it('renders an unlit pixel as black (RGB = 0)', () => {
     const el = makeOLEDElement();
     const sim = makeSim();
-    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null);
+    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null, 'ssd1306-test');
     const device = sim._devices[0];
 
     sendCommandStream(device, [0x20, 0x00, 0x21, 0x00, 0x7f, 0x22, 0x00, 0x07]);
@@ -172,7 +172,7 @@ describe('SSD1306 — ImageData rendering (syncElement fix)', () => {
   it('page addressing (Tiny4kOLED): 0xB0+page / 0x00-0x1F col, no 0x20, cursor persists across data streams', () => {
     const el = makeOLEDElement();
     const sim = makeSim();
-    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null);
+    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null, 'ssd1306-test');
     const device = sim._devices[0];
 
     // Page-addressing setCursor: page 1, column 8 (col high nibble = 0x10,
@@ -202,7 +202,7 @@ describe('SSD1306 — ImageData rendering (syncElement fix)', () => {
   it('fills all 1024 GDDRAM bytes via horizontal addressing', () => {
     const el = makeOLEDElement();
     const sim = makeSim();
-    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null);
+    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null, 'ssd1306-test');
     const device = sim._devices[0];
 
     sendCommandStream(device, [0x20, 0x00, 0x21, 0x00, 0x7f, 0x22, 0x00, 0x07]);
@@ -236,7 +236,7 @@ describe('SSD1306 — ImageData rendering (syncElement fix)', () => {
     } as unknown as HTMLElement;
 
     const sim = makeSim();
-    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null);
+    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null, 'ssd1306-test');
     const device = sim._devices[0];
 
     expect(() => sendDataStream(device, [0xff])).not.toThrow();
@@ -245,7 +245,7 @@ describe('SSD1306 — ImageData rendering (syncElement fix)', () => {
   it('Adafruit SSD1306 init sequence: processes multi-byte commands without crashing', () => {
     const el = makeOLEDElement();
     const sim = makeSim();
-    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null);
+    PartSimulationRegistry.get('ssd1306')!.attachEvents!(el, sim as any, () => null, 'ssd1306-test');
     const device = sim._devices[0];
 
     // Minimal Adafruit init (from Adafruit_SSD1306.cpp begin())

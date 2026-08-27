@@ -71,7 +71,7 @@ describe('ky-040 — attachEvents', () => {
     const sim = makeSimulator();
     const element = makeElement();
 
-    logic.attachEvents!(element, sim as any, pinMap({ CLK: 2, DT: 3, SW: 4 }));
+    logic.attachEvents!(element, sim as any, pinMap({ CLK: 2, DT: 3, SW: 4 }), 'test-component');
 
     // All three pins should have been set HIGH on init
     expect(sim.setPinState).toHaveBeenCalledWith(4, true); // SW HIGH
@@ -84,10 +84,10 @@ describe('ky-040 — attachEvents', () => {
     const sim = makeSimulator();
     const element = makeElement();
 
-    logic.attachEvents!(element, sim as any, pinMap({ CLK: 2, DT: 3, SW: 4 }));
+    logic.attachEvents!(element, sim as any, pinMap({ CLK: 2, DT: 3, SW: 4 }), 'test-component');
 
     const events = (element.addEventListener as ReturnType<typeof vi.fn>).mock.calls.map(
-      ([event]: [string]) => event,
+      (call) => call[0] as string,
     );
     expect(events).toContain('rotate-cw');
     expect(events).toContain('rotate-ccw');
@@ -107,7 +107,7 @@ describe('ky-040 — attachEvents', () => {
       },
     );
 
-    logic.attachEvents!(element, sim as any, pinMap({ CLK: 2, DT: 3, SW: 4 }));
+    logic.attachEvents!(element, sim as any, pinMap({ CLK: 2, DT: 3, SW: 4 }), 'test-component');
     sim.setPinState.mockClear();
 
     listeners['rotate-cw']?.();
@@ -130,7 +130,7 @@ describe('ky-040 — attachEvents', () => {
       },
     );
 
-    logic.attachEvents!(element, sim as any, pinMap({ CLK: 2, DT: 3, SW: 4 }));
+    logic.attachEvents!(element, sim as any, pinMap({ CLK: 2, DT: 3, SW: 4 }), 'test-component');
     sim.setPinState.mockClear();
 
     listeners['rotate-ccw']?.();
@@ -152,7 +152,7 @@ describe('ky-040 — attachEvents', () => {
       },
     );
 
-    logic.attachEvents!(element, sim as any, pinMap({ CLK: 2, DT: 3, SW: 4 }));
+    logic.attachEvents!(element, sim as any, pinMap({ CLK: 2, DT: 3, SW: 4 }), 'test-component');
     sim.setPinState.mockClear();
 
     listeners['button-press']?.();
@@ -168,7 +168,7 @@ describe('ky-040 — attachEvents', () => {
     const sim = makeSimulator();
     const element = makeElement();
 
-    const cleanup = logic.attachEvents!(element, sim as any, pinMap({ CLK: 2, DT: 3, SW: 4 }));
+    const cleanup = logic.attachEvents!(element, sim as any, pinMap({ CLK: 2, DT: 3, SW: 4 }), 'test-component');
     cleanup();
 
     expect(element.removeEventListener).toHaveBeenCalledWith('rotate-cw', expect.any(Function));
@@ -210,6 +210,7 @@ describe('biaxial-stepper — attachEvents', () => {
         'B2+': 8,
         'B2-': 9,
       }),
+      'test-component',
     );
 
     expect(sim.pinManager.onPinChange).toHaveBeenCalledTimes(8);
@@ -235,6 +236,7 @@ describe('biaxial-stepper — attachEvents', () => {
         'B2+': 8,
         'B2-': 9,
       }),
+      'test-component',
     );
 
     // Collect handlers indexed by pin number
@@ -274,6 +276,7 @@ describe('biaxial-stepper — attachEvents', () => {
         'B2+': 8,
         'B2-': 9,
       }),
+      'test-component',
     );
 
     const handlers: Record<number, (pin: number, s: boolean) => void> = {};
@@ -311,6 +314,7 @@ describe('biaxial-stepper — attachEvents', () => {
         'B2+': 8,
         'B2-': 9,
       }),
+      'test-component',
     );
 
     const handlers: Record<number, (pin: number, s: boolean) => void> = {};
@@ -335,7 +339,7 @@ describe('biaxial-stepper — attachEvents', () => {
     el.outerHandAngle = 0;
     el.innerHandAngle = 0;
 
-    logic.attachEvents!(el, sim as any, noPins);
+    logic.attachEvents!(el, sim as any, noPins, 'test-component');
 
     expect(sim.pinManager.onPinChange).not.toHaveBeenCalled();
   });

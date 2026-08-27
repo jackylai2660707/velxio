@@ -12,7 +12,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AVRSimulator } from '../simulation/AVRSimulator';
-import { PinManager } from '../simulation/PinManager';
+import { PinManager, type PwmCallback } from '../simulation/PinManager';
 
 // ─── Mock requestAnimationFrame (not available in node) ──────────────────────
 // Depth-limited: calls cb once synchronously but prevents re-entrancy so that
@@ -186,9 +186,9 @@ describe('AVRSimulator — PWM OCR monitoring', () => {
     const sim = new AVRSimulator(pm);
     sim.loadHex(EMPTY_HEX);
 
-    const cbs: Record<number, ReturnType<typeof vi.fn>> = {};
+    const cbs: Record<number, PwmCallback> = {};
     PWM_MAP.forEach(({ pin }) => {
-      cbs[pin] = vi.fn();
+      cbs[pin] = vi.fn<PwmCallback>();
       pm.onPwmChange(pin, cbs[pin]);
     });
 

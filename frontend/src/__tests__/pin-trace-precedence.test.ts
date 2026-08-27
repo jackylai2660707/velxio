@@ -20,7 +20,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useSimulatorStore } from '../store/useSimulatorStore';
-import { traceDetailed, traceBoardGpio } from '../simulation/PinTrace';
+import { traceDetailed } from '../simulation/PinTrace';
 
 const BOARD = 'arduino-uno';
 

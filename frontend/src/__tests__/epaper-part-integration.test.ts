@@ -13,6 +13,8 @@
  * batching, and canvas painting on flush.
  */
 import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
+// jsdom is a test-only dependency without bundled TypeScript declarations here.
+// @ts-expect-error -- no @types/jsdom package is installed in this workspace.
 import { JSDOM } from 'jsdom';
 import { PartSimulationRegistry } from '../simulation/parts/PartSimulationRegistry';
 import {

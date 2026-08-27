@@ -37,8 +37,24 @@ curl -fsSL https://get.docker.com | sh
 
 ## 第 2 步:QEMU 執行庫(ESP32 模擬必需,擇一)
 
-Docker build 需要 `libqemu-xtensa.so` / `libqemu-riscv32.so` + 3 個
+Docker build 需要 `libqemu-xtensa.so` / `libqemu-riscv32.so` + 4 個
 `esp32*-rom.bin`。它們**不在 git 裡**(授權管制)。兩個取法:
+
+先從公開、固定版本的 lcgamboa 原始碼補上 ESP32-S3 ROM（fresh clone
+沒有這個 binary）：
+
+```bash
+# 在 repo root 執行（若目前在 deploy/，先 `cd ..`）
+./deploy/provision-esp32s3-rom.sh
+sha256sum prebuilt/qemu/esp32s3_rev0_rom.bin
+# b5c7090cc22efce51c1323cef31ca96fcd673a5b1d1b1017e219d393f2659913  ...
+```
+
+腳本使用固定的 lcgamboa commit URL，下載後先驗證 SHA-256，再以 atomic
+rename 寫入 `prebuilt/qemu/`；檔案已被 gitignore，不要 commit。若目的地已有
+不同內容，腳本會停止而不覆蓋（確認來源後才可用
+`ESP32_S3_ROM_FORCE=1 ./deploy/provision-esp32s3-rom.sh`）。重跑已驗證的檔案
+會直接成功（idempotent）。
 
 **方法 A(推薦,免費):** 請操作者到 https://velxio.dev/license/signup
 申請免費個人金鑰(`vlx_personal_...`),填進 `deploy/.env` 的
@@ -51,8 +67,11 @@ docker pull davidmonterocrespo/velxio:master   # 僅有 master 標籤
 id=$(docker create davidmonterocrespo/velxio:master)
 docker cp "$id":/app/lib/. prebuilt/qemu/
 docker rm "$id"
-ls prebuilt/qemu/   # 應見 2 個 .so + 3 個 .bin(此目錄已 gitignore,勿提交)
+ls prebuilt/qemu/   # 應見 2 個 .so + 4 個 .bin(此目錄已 gitignore,勿提交)
 ```
+
+若使用方法 B 的映像沒有 `esp32s3_rev0_rom.bin`，保留上面腳本下載的檔案，
+再從映像抽出其餘檔案即可。
 
 ## 第 3 步:設定並啟動
 

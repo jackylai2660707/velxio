@@ -46,7 +46,12 @@ const ESP32C3_FIXTURE_DIR = join(__dirname, 'fixtures/esp32c3-blink');
 // ── Helper: create a mock File from bytes ────────────────────────────────────
 function mockFile(name: string, content: Uint8Array | string): File {
   const buf = typeof content === 'string' ? new TextEncoder().encode(content) : content;
-  const blob = new Blob([buf]);
+  // Copy into a plain ArrayBuffer: Uint8Array's generic buffer is
+  // ArrayBufferLike (and may be SharedArrayBuffer), while BlobPart requires
+  // an ArrayBuffer-backed view under the current TypeScript DOM definitions.
+  const bytes = new ArrayBuffer(buf.byteLength);
+  new Uint8Array(bytes).set(buf);
+  const blob = new Blob([bytes]);
   return new File([blob], name);
 }
 

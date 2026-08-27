@@ -15,10 +15,28 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { PartSimulationRegistry } from '../simulation/parts/PartSimulationRegistry';
+import { PartSimulationRegistry as RawPartSimulationRegistry } from '../simulation/parts/PartSimulationRegistry';
 import { dispatchSensorUpdate } from '../simulation/SensorUpdateRegistry';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import '../simulation/parts/ProtocolParts';
+
+// These tests intentionally exercise the legacy three-argument attachEvents
+// invocation.  Keep that runtime contract while describing the optional
+// component ID used by newer handlers in the test-local registry view.
+type TestPartLogic = {
+  onPinStateChange?: (...args: unknown[]) => void;
+  attachEvents: (
+    element: HTMLElement,
+    simulator: unknown,
+    getArduinoPinHelper: (componentPinName: string) => number | null,
+    componentId?: string,
+    getPinResolver?: unknown,
+  ) => () => void;
+};
+
+const PartSimulationRegistry = RawPartSimulationRegistry as unknown as {
+  get(metadataId: string): TestPartLogic | undefined;
+};
 
 // ─── Globals ──────────────────────────────────────────────────────────────────
 

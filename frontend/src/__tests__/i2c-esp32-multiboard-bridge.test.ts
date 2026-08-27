@@ -25,7 +25,7 @@
  * `i2c-esp32-real-firmware.test.ts`.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 const busFactories = vi.hoisted(() => {
   return {
@@ -614,7 +614,6 @@ describe('Transitive proxy sync (3-board chain into ESP32)', () => {
     // Topology:  ESP32 — Uno — Pico, with the BMP280 sitting on Pico.
     // BFS in syncProxyFromPeer must walk through Uno's bus and find
     // the device on Pico, then register it as a proxy on ESP32.
-    const unoSim = getBoardSimulator(unoId) as any;
     const picoSim = getBoardSimulator(picoId) as any;
     const espSim = getBoardSimulator(espId) as any;
     const espBridge = (espSim as any).bridge ?? (espSim as any).getBridge?.();

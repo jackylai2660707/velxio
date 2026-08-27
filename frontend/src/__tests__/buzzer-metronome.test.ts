@@ -93,6 +93,7 @@ function setupBuzzer() {
     { addEventListener: vi.fn(), removeEventListener: vi.fn(), playing: false } as any,
     sim,
     (name: string) => (name === '1' ? 11 : null),
+    'buzzer-test',
   );
   return { sim, cleanup, hit: (ocr: number, simMs: number, clickMs = 25) => {
     // onset: OCR set, PWM duty > 0 at simMs

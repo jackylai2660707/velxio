@@ -19,6 +19,7 @@ import { buildNetlist } from '../simulation/spice/NetlistBuilder';
 import { exampleToBuildNetlistInput } from '../utils/exampleToBuildNetlistInput';
 import { exampleProjects } from '../data/examples';
 import { runNetlist } from './helpers/testSolver';
+import type { VectorValue } from './helpers/testSolver';
 
 const EXAMPLE_ID = 'bjt-common-emitter';
 
@@ -57,8 +58,8 @@ function rigFor(id: string) {
 }
 
 /** Numeric magnitude of a possibly-complex vector sample. */
-const mag = (v: number | { real: number; imag: number }): number =>
-  typeof v === 'number' ? v : Math.hypot(v.real, v.imag);
+const mag = (v: VectorValue): number =>
+  typeof v === 'number' ? v : Math.hypot(v.real, v.img);
 
 describe('bjt-common-emitter behaviour', () => {
   it('biases the transistor into the active region', async () => {

@@ -22,7 +22,7 @@
  * example array from its source module + uses the production
  * `exampleToBuildNetlistInput` helper.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'vitest';
 import { hundredDaysExamples } from '../data/examples-100-days';
 import { epaperExamples } from '../data/examples-displays-epaper';
 import { circuitExamples } from '../data/examples-circuits';

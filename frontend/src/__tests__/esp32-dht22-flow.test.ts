@@ -427,9 +427,10 @@ describe('Race condition fix — sensors arrive before firmware', () => {
     // The very first message should be start_esp32 with sensors included
     const firstMsg = ws.messages[0];
     expect(firstMsg.type).toBe('start_esp32');
-    expect(firstMsg.data.sensors).toHaveLength(1);
-    expect(firstMsg.data.sensors[0].sensor_type).toBe('dht22');
-    expect(firstMsg.data.sensors[0].pin).toBe(4);
+    const sensors = firstMsg.data.sensors as Array<{ sensor_type: string; pin: number }>;
+    expect(sensors).toHaveLength(1);
+    expect(sensors[0].sensor_type).toBe('dht22');
+    expect(sensors[0].pin).toBe(4);
 
     // No separate sensor_attach message should be needed at this point
     const sensorAttachMsgs = ws.messages.filter((m) => m.type === 'esp32_sensor_attach');

@@ -100,7 +100,7 @@ describe('tilt-switch — attachEvents', () => {
       },
     );
 
-    logic.attachEvents!(element, sim as any, pinMap({ OUT: 14 }));
+    logic.attachEvents!(element, sim as any, pinMap({ OUT: 14 }), 'test-component');
 
     // Should have started LOW (upright)
     expect(sim.setPinState).toHaveBeenCalledWith(14, false);
@@ -121,7 +121,7 @@ describe('tilt-switch — attachEvents', () => {
     const sim = makeSimulator();
     const element = makeElement();
 
-    const cleanup = logic.attachEvents!(element, sim as any, noPins);
+    const cleanup = logic.attachEvents!(element, sim as any, noPins, 'test-component');
     expect(cleanup).toBeDefined();
     expect(sim.setPinState).not.toHaveBeenCalled();
   });
@@ -136,7 +136,7 @@ describe('ntc-temperature-sensor — attachEvents', () => {
     const sim = makeSimulator(adc);
     const element = makeElement();
 
-    logic.attachEvents!(element, sim as any, pinMap({ OUT: 14 }));
+    logic.attachEvents!(element, sim as any, pinMap({ OUT: 14 }), 'test-component');
 
     // Pin 14 = ADC channel 0.  2.5V should be stored in channelValues[0]
     expect(adc.channelValues[0]).toBeCloseTo(2.5, 2);
@@ -148,7 +148,7 @@ describe('ntc-temperature-sensor — attachEvents', () => {
     const sim = makeSimulator(adc);
     const element = makeElement();
 
-    logic.attachEvents!(element, sim as any, noPins);
+    logic.attachEvents!(element, sim as any, noPins, 'test-component');
     // ADC should remain zeroed
     expect(adc.channelValues[0]).toBe(0);
   });
@@ -172,7 +172,7 @@ describe('ntc-temperature-sensor — attachEvents', () => {
       },
     };
 
-    logic.attachEvents!(makeElement(), sim as any, pinMap({ OUT: 34 }));
+    logic.attachEvents!(makeElement(), sim as any, pinMap({ OUT: 34 }), 'test-component');
 
     expect(injected).toHaveLength(1);
     // R_ntc(25 C) == R_pull == 10k, so OUT sits at exactly half the rail.
@@ -185,7 +185,7 @@ describe('ntc-temperature-sensor — attachEvents', () => {
     const adc = makeADC();
     const sim = makeSimulator(adc);
 
-    logic.attachEvents!(makeElement(), sim as any, pinMap({ OUT: 14 }));
+    logic.attachEvents!(makeElement(), sim as any, pinMap({ OUT: 14 }), 'test-component');
 
     expect(adc.channelValues[0]).toBeCloseTo(2.5, 2);
   });
@@ -200,7 +200,7 @@ describe('gas-sensor — attachEvents', () => {
     const sim = makeSimulator(adc);
     const el = makeElement() as any;
 
-    logic.attachEvents!(el, sim as any, pinMap({ AOUT: 14, DOUT: 7 }));
+    logic.attachEvents!(el, sim as any, pinMap({ AOUT: 14, DOUT: 7 }), 'test-component');
 
     // AOUT → ADC channel 0, baseline 1.5V
     expect(adc.channelValues[0]).toBeCloseTo(1.5, 2);
@@ -212,7 +212,7 @@ describe('gas-sensor — attachEvents', () => {
     const sim = makeSimulator();
     const el = makeElement() as any;
 
-    logic.attachEvents!(el, sim as any, pinMap({ DOUT: 7 }));
+    logic.attachEvents!(el, sim as any, pinMap({ DOUT: 7 }), 'test-component');
 
     // Should have registered a onPinChange listener for DOUT (pin 7)
     expect(sim.pinManager.onPinChange).toHaveBeenCalledWith(7, expect.any(Function));
@@ -248,7 +248,7 @@ describe('flame-sensor — attachEvents', () => {
     const sim = makeSimulator();
     const el = makeElement() as any;
 
-    logic.attachEvents!(el, sim as any, pinMap({ DOUT: 8 }));
+    logic.attachEvents!(el, sim as any, pinMap({ DOUT: 8 }), 'test-component');
 
     expect(sim.pinManager.onPinChange).toHaveBeenCalledWith(8, expect.any(Function));
 
@@ -268,7 +268,7 @@ describe('heart-beat-sensor — attachEvents', () => {
     const sim = makeSimulator();
     const element = makeElement();
 
-    logic.attachEvents!(element, sim as any, pinMap({ OUT: 14 }));
+    logic.attachEvents!(element, sim as any, pinMap({ OUT: 14 }), 'test-component');
 
     // Should start LOW
     expect(sim.setPinState).toHaveBeenCalledWith(14, false);
@@ -281,7 +281,7 @@ describe('heart-beat-sensor — attachEvents', () => {
     const sim = makeSimulator();
     const element = makeElement();
 
-    const cleanup = logic.attachEvents!(element, sim as any, pinMap({ OUT: 14 }));
+    const cleanup = logic.attachEvents!(element, sim as any, pinMap({ OUT: 14 }), 'test-component');
     cleanup();
 
     expect(clearInterval).toHaveBeenCalledWith(42); // 42 is the mock return from setInterval
@@ -292,7 +292,7 @@ describe('heart-beat-sensor — attachEvents', () => {
     const sim = makeSimulator();
     const element = makeElement();
 
-    logic.attachEvents!(element, sim as any, noPins);
+    logic.attachEvents!(element, sim as any, noPins, 'test-component');
     expect(setInterval).not.toHaveBeenCalled();
   });
 });
@@ -306,7 +306,7 @@ describe('big-sound-sensor — attachEvents', () => {
     const sim = makeSimulator(adc);
     const el = makeElement() as any;
 
-    logic.attachEvents!(el, sim as any, pinMap({ AOUT: 14 }));
+    logic.attachEvents!(el, sim as any, pinMap({ AOUT: 14 }), 'test-component');
 
     expect(adc.channelValues[0]).toBeCloseTo(2.5, 2);
     expect(el.led2).toBe(true);
@@ -317,7 +317,7 @@ describe('big-sound-sensor — attachEvents', () => {
     const sim = makeSimulator();
     const el = makeElement() as any;
 
-    logic.attachEvents!(el, sim as any, pinMap({ DOUT: 9 }));
+    logic.attachEvents!(el, sim as any, pinMap({ DOUT: 9 }), 'test-component');
 
     expect(sim.pinManager.onPinChange).toHaveBeenCalledWith(9, expect.any(Function));
     const handler = sim.pinManager.onPinChange.mock.calls[0][1];
@@ -337,7 +337,7 @@ describe('small-sound-sensor — attachEvents', () => {
     const sim = makeSimulator(adc);
     const el = makeElement() as any;
 
-    logic.attachEvents!(el, sim as any, pinMap({ AOUT: 14 }));
+    logic.attachEvents!(el, sim as any, pinMap({ AOUT: 14 }), 'test-component');
 
     expect(adc.channelValues[0]).toBeCloseTo(2.5, 2);
     expect(el.ledPower).toBe(true);
@@ -348,7 +348,7 @@ describe('small-sound-sensor — attachEvents', () => {
     const sim = makeSimulator();
     const el = makeElement() as any;
 
-    logic.attachEvents!(el, sim as any, pinMap({ DOUT: 10 }));
+    logic.attachEvents!(el, sim as any, pinMap({ DOUT: 10 }), 'test-component');
 
     const handler = sim.pinManager.onPinChange.mock.calls[0][1];
     handler(10, true);
@@ -368,10 +368,10 @@ describe('stepper-motor — attachEvents', () => {
     el.angle = 0;
 
     const pins = { 'A-': 4, 'A+': 5, 'B+': 6, 'B-': 7 };
-    logic.attachEvents!(el, sim as any, pinMap(pins));
+    logic.attachEvents!(el, sim as any, pinMap(pins), 'test-component');
 
     expect(sim.pinManager.onPinChange).toHaveBeenCalledTimes(4);
-    const registeredPins = sim.pinManager.onPinChange.mock.calls.map(([p]: [number]) => p);
+    const registeredPins = sim.pinManager.onPinChange.mock.calls.map((call) => call[0]);
     expect(registeredPins).toEqual(expect.arrayContaining([4, 5, 6, 7]));
   });
 
@@ -382,7 +382,7 @@ describe('stepper-motor — attachEvents', () => {
     el.angle = 0;
 
     const pins = { 'A-': 4, 'A+': 5, 'B+': 6, 'B-': 7 };
-    logic.attachEvents!(el, sim as any, pinMap(pins));
+    logic.attachEvents!(el, sim as any, pinMap(pins), 'test-component');
 
     // Collect handlers indexed by pin number
     const handlers: Record<number, (pin: number, s: boolean) => void> = {};
@@ -406,7 +406,7 @@ describe('stepper-motor — attachEvents', () => {
     const el = makeElement() as any;
     el.angle = 0;
 
-    logic.attachEvents!(el, sim as any, noPins);
+    logic.attachEvents!(el, sim as any, noPins, 'test-component');
 
     expect(sim.pinManager.onPinChange).not.toHaveBeenCalled();
     expect(el.angle).toBe(0);
@@ -423,7 +423,7 @@ describe('led-ring — attachEvents', () => {
     const el = makeElement() as any;
     el.setPixel = vi.fn();
 
-    logic.attachEvents!(el, sim as any, pinMap({ DIN: 6 }));
+    logic.attachEvents!(el, sim as any, pinMap({ DIN: 6 }), 'test-component');
 
     expect(sim.pinManager.onPinChange).toHaveBeenCalledWith(6, expect.any(Function));
   });
@@ -433,7 +433,7 @@ describe('led-ring — attachEvents', () => {
     const sim = makeSimulator();
     const el = makeElement() as any;
 
-    const cleanup = logic.attachEvents!(el, sim as any, noPins);
+    const cleanup = logic.attachEvents!(el, sim as any, noPins, 'test-component');
     expect(cleanup).toBeDefined();
     expect(sim.pinManager.onPinChange).not.toHaveBeenCalled();
   });
@@ -450,7 +450,7 @@ describe('neopixel-matrix — attachEvents', () => {
     el.setPixel = vi.fn();
     el.cols = 8;
 
-    logic.attachEvents!(el, sim as any, pinMap({ DIN: 6 }));
+    logic.attachEvents!(el, sim as any, pinMap({ DIN: 6 }), 'test-component');
 
     expect(sim.pinManager.onPinChange).toHaveBeenCalledWith(6, expect.any(Function));
   });

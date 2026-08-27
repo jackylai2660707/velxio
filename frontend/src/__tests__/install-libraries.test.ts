@@ -18,7 +18,7 @@
  *   handling of the library service functions.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import JSZip from 'jszip';
 
 import { parseLibrariesTxt, importFromWokwiZip } from '../utils/wokwiZip';

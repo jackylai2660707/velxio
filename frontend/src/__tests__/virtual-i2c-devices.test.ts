@@ -30,22 +30,9 @@ import {
 /** Minimal mock of AVRTWI used by I2CBusManager */
 function makeTWI() {
   const calls: string[] = [];
-  let readResult = 0xff;
-  let writeAck = true;
-  let connectAck = true;
 
   return {
     calls,
-    _setReadResult: (v: number) => {
-      readResult = v;
-    },
-    _setWriteAck: (v: boolean) => {
-      writeAck = v;
-    },
-    _setConnectAck: (v: boolean) => {
-      connectAck = v;
-    },
-
     // --- AVRTWI API ---
     set eventHandler(_: any) {
       /* set by I2CBusManager constructor */
@@ -367,39 +354,6 @@ describe('VirtualBMP280 — temperature compensation', () => {
    * BMP280 floating-point pressure compensation formula.
    * Returns pressure in Pa.
    */
-  function compensateP(
-    adcP: number,
-    adcT: number,
-    digT1 = 27504,
-    digT2 = 26435,
-    digT3 = -1000,
-    digP1 = 36477,
-    digP2 = -10685,
-    digP3 = 3024,
-    digP4 = 2855,
-    digP5 = 140,
-    digP6 = -7,
-    digP7 = 15500,
-    digP8 = -14600,
-    digP9 = 6000,
-  ): number {
-    const var1 = (((adcT >> 3) - (digT1 << 1)) * digT2) >> 11;
-    const sub = (adcT >> 4) - digT1;
-    const var2 = (((sub * sub) >> 12) * digT3) >> 14;
-    const tf = var1 + var2;
-
-    let v1 = tf / 2.0 - 64000.0;
-    let v2 = (v1 * v1 * digP6) / 32768.0;
-    v2 = v2 + v1 * digP5 * 2.0;
-    v2 = v2 / 4.0 + digP4 * 65536.0;
-    v1 = ((digP3 * v1 * v1) / 524288.0 + digP2 * v1) / 524288.0;
-    v1 = (1.0 + v1 / 32768.0) * digP1;
-    if (v1 === 0) return 0;
-    let p = 1048576.0 - adcP;
-    p = ((p - v2 / 4096.0) * 6250.0) / v1;
-    return p + ((digP9 * p * p) / 2147483648.0 + (p * digP8) / 32768.0 + digP7) / 16.0;
-  }
-
   it('default 25°C produces compensated temperature within ±0.5°C', () => {
     const dev = new VirtualBMP280();
     const { adcT } = readRawAdc(dev);

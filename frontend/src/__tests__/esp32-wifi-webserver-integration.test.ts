@@ -425,7 +425,6 @@ describe('WebServer sketch — IoT Gateway URL', () => {
   it('root path maps to ESP32 handleRoot handler', () => {
     // The sketch registers: server.on("/", handleRoot)
     // Gateway URL /api/gateway/{client_id}/ → ESP32 port 80 /
-    const clientId = 'board-1';
     const hostfwdPort = 12345;
     const espUrl = `http://127.0.0.1:${hostfwdPort}/`;
     expect(espUrl).toContain(':12345/');
@@ -439,7 +438,6 @@ describe('WebServer sketch — IoT Gateway URL', () => {
 describe('WebServer sketch — QEMU NIC configuration', () => {
   it('builds correct -nic arg for ESP32 with WiFi', () => {
     const machine = 'esp32-picsimlab';
-    const wifiEnabled = true;
     const hostfwdPort = 54321;
 
     const nicModel = machine.includes('c3') ? 'esp32c3_wifi' : 'esp32_wifi';

@@ -534,7 +534,7 @@ describe('Esp32C3Simulator — lifecycle', () => {
 
   it('double start() is a no-op (does not create duplicate loops)', () => {
     let rafCalls = 0;
-    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+    vi.stubGlobal('requestAnimationFrame', (_cb: FrameRequestCallback) => {
       rafCalls++;
       // Don't recurse
       return rafCalls;

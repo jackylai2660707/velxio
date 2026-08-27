@@ -5,7 +5,7 @@ import { BOARD_PIN_GROUPS } from '../simulation/spice/boardPinGroups';
 import { verifyCircuit } from '../simulation/verify/circuitVerifier';
 import { stripBrandPrefix, isBoardComponentType } from '../utils/exampleToBuildNetlistInput';
 import type { PinSourceState } from '../simulation/spice/types';
-import type { BoardKind } from '../store/useSimulatorStore';
+import type { BoardKind } from '../types/board';
 
 /**
  * Gallery audit: which examples would the Run button REFUSE to start?
@@ -51,8 +51,8 @@ async function runGate(example: (typeof examples)[number]) {
     }));
   const wires = (example.wires ?? []).map((w) => ({
     id: w.id,
-    start: { componentId: w.start.componentId, pinName: w.start.pinName },
-    end: { componentId: w.end.componentId, pinName: w.end.pinName },
+    start: { componentId: w.start.componentId, pinName: w.start.pinName, x: 0, y: 0 },
+    end: { componentId: w.end.componentId, pinName: w.end.pinName, x: 0, y: 0 },
     color: '#666',
     waypoints: [],
   }));

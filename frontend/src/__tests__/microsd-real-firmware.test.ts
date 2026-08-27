@@ -42,7 +42,7 @@ describe('microSD — real AVR SD.h firmware', () => {
       { name: 'hello.txt', data: new TextEncoder().encode('SD WORKS 123') },
     ]);
     const el = { sdImageData: img } as unknown as HTMLElement;
-    PartSimulationRegistry.get('microsd-card')!.attachEvents!(el, sim as any, () => null);
+    PartSimulationRegistry.get('microsd-card')!.attachEvents!(el, sim as any, () => null, 'microsd-test');
 
     let out = '';
     sim.onSerialData = (ch) => {

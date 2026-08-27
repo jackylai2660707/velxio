@@ -86,7 +86,7 @@ describe('neopixel — attachEvents', () => {
     const logic = PartSimulationRegistry.get('neopixel');
     const el = makeElement();
     const sim = makeSimulator();
-    const cleanup = logic!.attachEvents!(el, sim as any, pinMap({ DIN: 4 }));
+    const cleanup = logic!.attachEvents!(el, sim as any, pinMap({ DIN: 4 }), 'test-component');
     expect(sim.pinManager.onPinChange).toHaveBeenCalledWith(4, expect.any(Function));
     cleanup();
   });
@@ -95,7 +95,7 @@ describe('neopixel — attachEvents', () => {
     const logic = PartSimulationRegistry.get('neopixel');
     const el = makeElement();
     const sim = makeSimulator();
-    const cleanup = logic!.attachEvents!(el, sim as any, noPins);
+    const cleanup = logic!.attachEvents!(el, sim as any, noPins, 'test-component');
     expect(sim.pinManager.onPinChange).not.toHaveBeenCalled();
     expect(() => cleanup()).not.toThrow();
   });
@@ -108,7 +108,7 @@ describe('pir-motion-sensor — attachEvents', () => {
     const logic = PartSimulationRegistry.get('pir-motion-sensor');
     const el = makeElement();
     const sim = makeSimulator();
-    logic!.attachEvents!(el, sim as any, pinMap({ OUT: 7 }));
+    logic!.attachEvents!(el, sim as any, pinMap({ OUT: 7 }), 'test-component');
 
     expect(sim.setPinState).toHaveBeenCalledWith(7, false); // idle LOW
     expect(el.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
@@ -118,11 +118,11 @@ describe('pir-motion-sensor — attachEvents', () => {
     const logic = PartSimulationRegistry.get('pir-motion-sensor');
     const el = makeElement();
     const sim = makeSimulator();
-    logic!.attachEvents!(el, sim as any, pinMap({ OUT: 7 }));
+    logic!.attachEvents!(el, sim as any, pinMap({ OUT: 7 }), 'test-component');
 
     // Extract the click handler
     const clickCb = (el.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([event]: [string]) => event === 'click',
+      (call) => call[0] === 'click',
     )![1] as () => void;
     clickCb();
 
@@ -134,11 +134,11 @@ describe('pir-motion-sensor — attachEvents', () => {
     const logic = PartSimulationRegistry.get('pir-motion-sensor');
     const el = makeElement();
     const sim = makeSimulator();
-    const cleanup = logic!.attachEvents!(el, sim as any, pinMap({ OUT: 7 }));
+    const cleanup = logic!.attachEvents!(el, sim as any, pinMap({ OUT: 7 }), 'test-component');
 
     // Fire a click so the timer is started
     const clickCb = (el.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([event]: [string]) => event === 'click',
+      (call) => call[0] === 'click',
     )![1] as () => void;
     clickCb(); // starts the 3s timer
 
@@ -151,7 +151,7 @@ describe('pir-motion-sensor — attachEvents', () => {
     const logic = PartSimulationRegistry.get('pir-motion-sensor');
     const el = makeElement();
     const sim = makeSimulator();
-    const cleanup = logic!.attachEvents!(el, sim as any, noPins);
+    const cleanup = logic!.attachEvents!(el, sim as any, noPins, 'test-component');
     expect(sim.setPinState).not.toHaveBeenCalled();
     expect(() => cleanup()).not.toThrow();
   });
@@ -187,7 +187,7 @@ describe('hc-sr04 — attachEvents', () => {
     const logic = PartSimulationRegistry.get('hc-sr04');
     const el = makeElement();
     const sim = makeSimulator();
-    logic!.attachEvents!(el, sim as any, pinMap({ TRIG: 2, ECHO: 3 }));
+    logic!.attachEvents!(el, sim as any, pinMap({ TRIG: 2, ECHO: 3 }), 'test-component');
 
     expect(sim.setPinState).toHaveBeenCalledWith(3, false); // ECHO initially LOW
     expect(sim.pinManager.onPinChange).toHaveBeenCalledWith(2, expect.any(Function));
@@ -197,11 +197,11 @@ describe('hc-sr04 — attachEvents', () => {
     const logic = PartSimulationRegistry.get('hc-sr04');
     const el = makeElement();
     const sim = makeSimulator();
-    logic!.attachEvents!(el, sim as any, pinMap({ TRIG: 2, ECHO: 3 }));
+    logic!.attachEvents!(el, sim as any, pinMap({ TRIG: 2, ECHO: 3 }), 'test-component');
 
     // Extract the onPinChange callback for TRIG
     const trigCb = (sim.pinManager.onPinChange as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([pin]: [number]) => pin === 2,
+      (call) => call[0] === 2,
     )![1] as (_: number, state: boolean) => void;
 
     trigCb(2, true); // TRIG HIGH
@@ -212,7 +212,7 @@ describe('hc-sr04 — attachEvents', () => {
     const logic = PartSimulationRegistry.get('hc-sr04');
     const el = makeElement();
     const sim = makeSimulator();
-    const cleanup = logic!.attachEvents!(el, sim as any, noPins);
+    const cleanup = logic!.attachEvents!(el, sim as any, noPins, 'test-component');
     expect(sim.pinManager.onPinChange).not.toHaveBeenCalled();
     expect(() => cleanup()).not.toThrow();
   });
@@ -229,6 +229,7 @@ describe('membrane-keypad — attachEvents', () => {
       el,
       sim as any,
       pinMap({ R1: 2, R2: 3, R3: 4, R4: 5, C1: 6, C2: 7, C3: 8, C4: 9 }),
+      'test-component',
     );
 
     // 4 row pin change listeners
@@ -246,17 +247,18 @@ describe('membrane-keypad — attachEvents', () => {
       el,
       sim as any,
       pinMap({ R1: 2, R2: 3, R3: 4, R4: 5, C1: 6, C2: 7, C3: 8, C4: 9 }),
+      'test-component',
     );
 
     // Simulate key '1' press (row=0, col=0) via button-press event
     const pressHandler = (el.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([ev]: [string]) => ev === 'button-press',
+      (call) => call[0] === 'button-press',
     )![1] as (e: Event) => void;
     pressHandler(new CustomEvent('button-press', { detail: { key: '1', row: 0, column: 0 } }));
 
     // Simulate row R1 going LOW (scanned by Arduino)
     const rowCb = (sim.pinManager.onPinChange as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([pin]: [number]) => pin === 2, // R1
+      (call) => call[0] === 2, // R1
     )![1] as (_: number, state: boolean) => void;
     rowCb(2, false); // R1 LOW
 
@@ -272,11 +274,12 @@ describe('membrane-keypad — attachEvents', () => {
       el,
       sim as any,
       pinMap({ R1: 2, R2: 3, R3: 4, R4: 5, C1: 6, C2: 7, C3: 8, C4: 9 }),
+      'test-component',
     );
 
     // Scan R1 low (no keys pressed)
     const rowCb = (sim.pinManager.onPinChange as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([pin]: [number]) => pin === 2,
+      (call) => call[0] === 2,
     )![1] as (_: number, state: boolean) => void;
     rowCb(2, false); // R1 LOW
     rowCb(2, true); // R1 HIGH
@@ -293,6 +296,7 @@ describe('membrane-keypad — attachEvents', () => {
       el,
       sim as any,
       pinMap({ R1: 2, R2: 3, R3: 4, R4: 5, C1: 6, C2: 7, C3: 8, C4: 9 }),
+      'test-component',
     );
     cleanup();
     expect(el.removeEventListener).toHaveBeenCalledWith('button-press', expect.any(Function));
@@ -307,7 +311,7 @@ describe('rotary-dialer — attachEvents', () => {
     const logic = PartSimulationRegistry.get('rotary-dialer');
     const el = makeElement();
     const sim = makeSimulator();
-    logic!.attachEvents!(el, sim as any, pinMap({ DIAL: 10, PULSE: 11 }));
+    logic!.attachEvents!(el, sim as any, pinMap({ DIAL: 10, PULSE: 11 }), 'test-component');
 
     expect(sim.setPinState).toHaveBeenCalledWith(10, true);
     expect(sim.setPinState).toHaveBeenCalledWith(11, true);
@@ -317,7 +321,7 @@ describe('rotary-dialer — attachEvents', () => {
     const logic = PartSimulationRegistry.get('rotary-dialer');
     const el = makeElement();
     const sim = makeSimulator();
-    logic!.attachEvents!(el, sim as any, pinMap({ DIAL: 10, PULSE: 11 }));
+    logic!.attachEvents!(el, sim as any, pinMap({ DIAL: 10, PULSE: 11 }), 'test-component');
 
     expect(el.addEventListener).toHaveBeenCalledWith('dial-start', expect.any(Function));
     expect(el.addEventListener).toHaveBeenCalledWith('dial-end', expect.any(Function));
@@ -327,10 +331,10 @@ describe('rotary-dialer — attachEvents', () => {
     const logic = PartSimulationRegistry.get('rotary-dialer');
     const el = makeElement();
     const sim = makeSimulator();
-    logic!.attachEvents!(el, sim as any, pinMap({ DIAL: 10, PULSE: 11 }));
+    logic!.attachEvents!(el, sim as any, pinMap({ DIAL: 10, PULSE: 11 }), 'test-component');
 
     const startCb = (el.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([ev]: [string]) => ev === 'dial-start',
+      (call) => call[0] === 'dial-start',
     )![1] as () => void;
     startCb();
 
@@ -341,10 +345,10 @@ describe('rotary-dialer — attachEvents', () => {
     const logic = PartSimulationRegistry.get('rotary-dialer');
     const el = makeElement();
     const sim = makeSimulator();
-    logic!.attachEvents!(el, sim as any, pinMap({ DIAL: 10, PULSE: 11 }));
+    logic!.attachEvents!(el, sim as any, pinMap({ DIAL: 10, PULSE: 11 }), 'test-component');
 
     const endCb = (el.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([ev]: [string]) => ev === 'dial-end',
+      (call) => call[0] === 'dial-end',
     )![1] as (e: Event) => void;
     endCb(new CustomEvent('dial-end', { detail: { digit: 3 } }));
 
@@ -356,7 +360,7 @@ describe('rotary-dialer — attachEvents', () => {
     const logic = PartSimulationRegistry.get('rotary-dialer');
     const el = makeElement();
     const sim = makeSimulator();
-    const cleanup = logic!.attachEvents!(el, sim as any, noPins);
+    const cleanup = logic!.attachEvents!(el, sim as any, noPins, 'test-component');
     expect(sim.setPinState).not.toHaveBeenCalled();
     expect(() => cleanup()).not.toThrow();
   });

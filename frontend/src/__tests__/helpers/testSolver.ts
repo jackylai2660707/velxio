@@ -113,7 +113,15 @@ export async function runNetlist(netlist: string): Promise<SpiceTestResult> {
   // For .tran, find the time axis among the read vectors.
   if (analysis.kind === 'tran') {
     const tVec = result.vectors.get('time');
-    if (tVec) result.timeAxis = tVec.real;
+    if (tVec) {
+      // `SolveVector.real` may be backed by a SharedArrayBuffer in the WASM
+      // adapter (`ArrayBufferLike`), while a freshly-created typed array is
+      // parameterized with `ArrayBuffer`. Copying the samples keeps this
+      // compatibility shim assignable under TS 5.9's typed-array generics.
+      const axis = new Float64Array(tVec.real.length);
+      axis.set(tVec.real);
+      result.timeAxis = axis;
+    }
   }
 
   const find = (name: string): number => {
