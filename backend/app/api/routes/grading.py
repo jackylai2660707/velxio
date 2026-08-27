@@ -77,6 +77,33 @@ def _record_usage(user_id: str, result: dict[str, Any]) -> None:
             return
 
 
+def _student_visible_result(
+    result: dict[str, Any] | None, assignment: dict[str, Any], user: dict[str, Any]
+) -> dict[str, Any] | None:
+    """Hide marks until the teacher's release switch allows them.
+
+    ``needs_review`` status is safe to show because it contains no official
+    score. For a held result, retain only the state and a neutral explanation;
+    criterion marks, model name and token accounting remain teacher-private.
+    """
+
+    if result is None or user.get("role") != "student":
+        return result
+    if bool(assignment.get("show_score_immediately", True)):
+        return result
+    return {
+        "status": result.get("status"),
+        "score": None,
+        "suggested_score": None,
+        "confidence": None,
+        "feedback": "",
+        "criteria": [],
+        "model": None,
+        "usage_tokens": 0,
+        "error": None,
+    }
+
+
 async def _grade(
     assignment: dict[str, Any], submission: dict[str, Any], actor: dict[str, Any]
 ) -> dict[str, Any]:
@@ -113,7 +140,12 @@ async def _grade(
             score=float(result["score"]),
             feedback=str(result.get("feedback") or ""),
         ) or submission
-    return {"submission": updated_submission, "ai_grade": persisted_ai, **persisted_ai}
+    visible_ai = _student_visible_result(persisted_ai, assignment, actor)
+    return {
+        "submission": updated_submission,
+        "ai_grade": visible_ai,
+        **(visible_ai or {}),
+    }
 
 
 @router.post("/assignments/{assignment_id}/submissions/{submission_id}/ai-grade")
@@ -136,6 +168,7 @@ async def ai_grade_get(
     user = _actor(authorization)
     assignment, submission = _assignment_and_submission(assignment_id, submission_id, user)
     result = ai_grade_store.latest_result(submission_id)
+    result = _student_visible_result(result, assignment, user)
     return {"submission": submission, "ai_grade": result}
 
 

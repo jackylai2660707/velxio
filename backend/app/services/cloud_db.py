@@ -1168,6 +1168,13 @@ def _submission_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[
     submitted_at = row["submitted_at"]
     started_at = row["started_at"] if "started_at" in keys else None
     time_limit = row["time_limit"] if "time_limit" in keys else None
+    # Teachers/admins always see grades. Student responses honour the
+    # assignment's release switch, while the persisted score remains intact
+    # for later publication.
+    score_visible = include_private or bool(
+        row["show_score_immediately"] if "show_score_immediately" in keys else True
+    )
+    visible_score = row["score"] if score_visible else None
     is_late = bool(
         submitted_at is not None
         and closes_at is not None
@@ -1185,11 +1192,11 @@ def _submission_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[
         "files": _json_load(row["files"]),
         "status": row["status"],
         "submitted": row["status"] in ("submitted", "graded", "returned"),
-        "score": row["score"],
+        "score": visible_score,
         # ``grader_id`` is NULL for deterministic quiz grading.  Exposing the
         # alias lets the teacher dashboard distinguish automatic and manual
         # marks without leaking any answer key.
-        "auto_score": row["score"] if row["grader_id"] is None and row["status"] == "graded" else None,
+        "auto_score": visible_score if row["grader_id"] is None and row["status"] == "graded" else None,
         "max_score": row["max_score"] if "max_score" in keys else None,
         "due_at": row["due_at"] if "due_at" in keys else closes_at,
         "opens_at": row["opens_at"] if "opens_at" in keys else None,
@@ -1204,9 +1211,10 @@ def _submission_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[
             if started_at is not None and time_limit is not None and int(time_limit) > 0
             else None
         ),
-        "feedback": row["feedback"],
+        "feedback": row["feedback"] if score_visible else "",
         "submitted_at": submitted_at,
-        "graded_at": row["graded_at"],
+        "graded_at": row["graded_at"] if score_visible else None,
+        "score_released": score_visible,
         "grader_id": row["grader_id"],
         "attempt_no": row["attempt_no"],
         "attempt_count": int(row["attempt_count"]) if "attempt_count" in keys and row["attempt_count"] is not None else int(row["attempt_no"] or 0),
@@ -1412,7 +1420,8 @@ def update_assignment(teacher_id: str, assignment_id: str, patch: dict[str, Any]
     allowed = {
         "title", "description", "instructions", "lesson_id", "assignment_type",
         "project_template", "quiz", "rubric", "due_at", "opens_at", "closes_at",
-        "time_limit", "max_attempts", "late_policy", "max_score", "auto_grade", "status",
+        "time_limit", "max_attempts", "late_policy", "show_score_immediately", "max_score",
+        "auto_grade", "status",
     }
     updates = {k: v for k, v in patch.items() if k in allowed}
     if not updates:
@@ -1422,6 +1431,8 @@ def update_assignment(teacher_id: str, assignment_id: str, patch: dict[str, Any]
         raise ValueError("assignment too large")
     if "auto_grade" in updates:
         updates["auto_grade"] = 1 if updates["auto_grade"] else 0
+    if "show_score_immediately" in updates:
+        updates["show_score_immediately"] = 1 if updates["show_score_immediately"] else 0
     if "max_score" in updates:
         updates["max_score"] = float(updates["max_score"])
     # Keep legacy ``due_at`` and explicit ``closes_at`` in sync.  A patch with
@@ -1503,7 +1514,7 @@ def _submission_select() -> str:
         "a.max_score AS max_score, a.due_at AS due_at, "
         "a.opens_at AS opens_at, a.closes_at AS closes_at, "
         "a.time_limit AS time_limit, a.max_attempts AS max_attempts, "
-        "a.late_policy AS late_policy, "
+        "a.late_policy AS late_policy, a.show_score_immediately AS show_score_immediately, "
         "(SELECT COUNT(*) FROM assignment_submission_attempts h "
         " WHERE h.submission_id = s.id) AS attempt_count "
         "FROM assignment_submissions s "
@@ -1779,7 +1790,11 @@ def start_submission_attempt(
                     (sid, assignment_id, student_id, attempt_count, now, now, now),
                 )
         row = conn.execute(_submission_select() + "WHERE s.id = ?", (sid,)).fetchone()
-    return _submission_attempt_view(_submission_dict(row), status="in_progress") if row else None
+    return (
+        _submission_attempt_view(_submission_dict(row, include_private=False), status="in_progress")
+        if row
+        else None
+    )
 
 
 def save_submission_attempt(
@@ -1817,7 +1832,11 @@ def save_submission_attempt(
 
 
 def get_submission(
-    assignment_id: str | None = None, *, student_id: str | None = None, submission_id: str | None = None
+    assignment_id: str | None = None,
+    *,
+    student_id: str | None = None,
+    submission_id: str | None = None,
+    include_private: bool = True,
 ) -> dict[str, Any] | None:
     where: list[str] = []
     args: list[Any] = []
@@ -1832,7 +1851,7 @@ def get_submission(
         args.append(submission_id)
     with _connect() as conn:
         row = conn.execute(_submission_select() + "WHERE " + " AND ".join(where), args).fetchone()
-    return _submission_dict(row) if row else None
+    return _submission_dict(row, include_private=include_private) if row else None
 
 
 def _attempt_select() -> str:
@@ -1840,7 +1859,8 @@ def _attempt_select() -> str:
         "SELECT h.*, u.name AS student_name, u.email AS student_email, "
         "a.max_score AS max_score, a.due_at AS due_at, a.opens_at AS opens_at, "
         "a.closes_at AS closes_at, a.time_limit AS time_limit, "
-        "a.max_attempts AS max_attempts, a.late_policy AS late_policy "
+        "a.max_attempts AS max_attempts, a.late_policy AS late_policy, "
+        "a.show_score_immediately AS show_score_immediately "
         "FROM assignment_submission_attempts h "
         "JOIN users u ON u.id = h.student_id "
         "JOIN assignments a ON a.id = h.assignment_id "
@@ -1852,6 +1872,9 @@ def _attempt_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[str
     submitted_at = row["submitted_at"]
     closes_at = _effective_closes_at(row)
     persisted_late = bool(row["is_late"]) if "is_late" in keys else False
+    score_visible = include_private or bool(
+        row["show_score_immediately"] if "show_score_immediately" in keys else True
+    )
     out = {
         "id": row["id"],
         "attempt_id": row["id"],
@@ -1867,11 +1890,12 @@ def _attempt_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[str
         "files": _json_load(row["files"]),
         "status": row["status"],
         "submitted": True,
-        "score": row["score"],
+        "score": row["score"] if score_visible else None,
         "max_score": row["max_score"] if "max_score" in keys else None,
-        "feedback": row["feedback"],
+        "feedback": row["feedback"] if score_visible else "",
         "submitted_at": submitted_at,
-        "graded_at": row["graded_at"],
+        "graded_at": row["graded_at"] if score_visible else None,
+        "score_released": score_visible,
         "grader_id": row["grader_id"],
         "is_late": persisted_late or bool(
             submitted_at is not None

@@ -85,6 +85,12 @@ class AssignmentCreate(BaseModel):
     # 0 means unlimited retries.  Positive values cap final submissions.
     max_attempts: int | str | None = Field(default=0, ge=0)
     late_policy: str = "reject"
+    # Friendly aliases emitted by the teacher exam builder.  They are kept
+    # alongside the canonical seconds/count fields for older clients.
+    duration_minutes: int | float | str | None = Field(default=None, ge=0)
+    attempts_allowed: int | str | None = Field(default=None, ge=0)
+    allow_late: bool | None = None
+    show_score_immediately: bool = True
     max_score: float = Field(default=100, gt=0, le=10000)
     auto_grade: bool = False
     status: str | None = None
@@ -106,6 +112,10 @@ class AssignmentUpdate(BaseModel):
     time_limit: int | float | str | None = Field(default=None, ge=0)
     max_attempts: int | str | None = Field(default=None, ge=0)
     late_policy: str | None = None
+    duration_minutes: int | float | str | None = Field(default=None, ge=0)
+    attempts_allowed: int | str | None = Field(default=None, ge=0)
+    allow_late: bool | None = None
+    show_score_immediately: bool | None = None
     max_score: float | None = Field(default=None, gt=0, le=10000)
     auto_grade: bool | None = None
     status: str | None = None
@@ -259,8 +269,15 @@ def _assignment_payload(req: AssignmentCreate) -> dict[str, Any]:
     if opens_at is not None and closes_at is not None and opens_at > closes_at:
         raise HTTPException(status_code=422, detail="opens_at must be before closes_at")
     try:
-        time_limit = _parse_nonnegative_int(req.time_limit, "time_limit") if req.time_limit is not None else None
-        max_attempts = _parse_nonnegative_int(req.max_attempts, "max_attempts")
+        raw_time_limit: Any = req.time_limit
+        if raw_time_limit is None and req.duration_minutes is not None:
+            minutes = _parse_nonnegative_int(req.duration_minutes, "duration_minutes", maximum=525_600)
+            raw_time_limit = minutes * 60
+        time_limit = _parse_nonnegative_int(raw_time_limit, "time_limit") if raw_time_limit is not None else None
+        raw_max_attempts: Any = req.max_attempts
+        if (raw_max_attempts is None or raw_max_attempts == 0) and req.attempts_allowed is not None:
+            raw_max_attempts = req.attempts_allowed
+        max_attempts = _parse_nonnegative_int(raw_max_attempts, "max_attempts")
     except HTTPException:
         raise
     return {
@@ -277,7 +294,10 @@ def _assignment_payload(req: AssignmentCreate) -> dict[str, Any]:
         "closes_at": closes_at,
         "time_limit": time_limit,
         "max_attempts": max_attempts,
-        "late_policy": _parse_late_policy(req.late_policy),
+        "late_policy": _parse_late_policy(
+            "allow" if req.allow_late is True else "reject" if req.allow_late is False else req.late_policy
+        ),
+        "show_score_immediately": bool(req.show_score_immediately),
         "max_score": float(req.max_score),
         "auto_grade": bool(req.auto_grade),
         "status": status,
@@ -309,10 +329,24 @@ def _assignment_patch(req: AssignmentUpdate) -> dict[str, Any]:
         raw["closes_at"] = raw["due_at"]
     if "time_limit" in raw:
         raw["time_limit"] = _parse_nonnegative_int(raw["time_limit"], "time_limit") if raw["time_limit"] is not None else None
+    if "duration_minutes" in raw and "time_limit" not in raw and raw["duration_minutes"] is not None:
+        raw["time_limit"] = _parse_nonnegative_int(raw.pop("duration_minutes"), "duration_minutes", maximum=525_600) * 60
+    else:
+        raw.pop("duration_minutes", None)
     if "max_attempts" in raw:
         raw["max_attempts"] = _parse_nonnegative_int(raw["max_attempts"], "max_attempts")
+    if "attempts_allowed" in raw and "max_attempts" not in raw and raw["attempts_allowed"] is not None:
+        raw["max_attempts"] = _parse_nonnegative_int(raw.pop("attempts_allowed"), "attempts_allowed")
+    else:
+        raw.pop("attempts_allowed", None)
     if "late_policy" in raw:
         raw["late_policy"] = _parse_late_policy(raw["late_policy"])
+    if "allow_late" in raw:
+        allow_late = raw.pop("allow_late")
+        if "late_policy" not in raw and allow_late is not None:
+            raw["late_policy"] = "allow" if bool(allow_late) else "reject"
+    if "show_score_immediately" in raw and raw["show_score_immediately"] is not None:
+        raw["show_score_immediately"] = bool(raw["show_score_immediately"])
     if "status" in raw:
         raw["status"] = str(raw["status"]).strip().lower()
         if raw["status"] not in _ASSIGNMENT_STATUSES:
@@ -428,7 +462,29 @@ def _auto_grade_quiz(quiz: Any, submitted: Any, max_score: float) -> tuple[float
 
 def _with_student_submission(assignment: dict[str, Any], user_id: str) -> dict[str, Any]:
     assignment = dict(assignment)
-    assignment["submission"] = cloud_db.get_submission(assignment["id"], student_id=user_id)
+    student_submission = cloud_db.get_submission(
+        assignment["id"], student_id=user_id, include_private=False
+    )
+    # AI grading metadata lives in an append-only table. Merge only public
+    # state into student responses; score/criteria remain hidden when the
+    # teacher disabled immediate release.
+    if student_submission:
+        try:
+            from app.api.routes.grading import _student_visible_result
+            from app.services import ai_grade_store
+            ai_result = ai_grade_store.latest_result(student_submission["id"])
+            if ai_result:
+                visible = _student_visible_result(
+                    ai_result, assignment, {"id": user_id, "role": "student"}
+                )
+                student_submission["ai_grade_status"] = visible.get("status") if visible else None
+                student_submission["ai_grade"] = visible
+                if visible and visible.get("feedback"):
+                    student_submission["rubric_feedback"] = visible["feedback"]
+        except Exception:
+            # Legacy databases may not have the AI table yet.
+            pass
+    assignment["submission"] = student_submission
     assignment["submission_attempts"] = cloud_db.list_submission_attempts(
         assignment["id"], student_id=user_id, include_private=False
     )
@@ -935,7 +991,12 @@ async def submission_save(
     user = require_user(authorization)
     if user.get("role") not in ("student",):
         raise HTTPException(status_code=403, detail="Student account required")
-    assignment = cloud_db.get_assignment_for_user(assignment_id, user["id"], role="student")
+    # Keep the rubric server-side for automatic grading. It is removed by the
+    # student response serializer, but the grader needs the teacher-authored
+    # criteria while handling this request.
+    assignment = cloud_db.get_assignment_for_user(
+        assignment_id, user["id"], role="student", include_private=True
+    )
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment not found")
     submit = req.submit
@@ -963,6 +1024,7 @@ async def submission_save(
     if submission is None:
         raise HTTPException(status_code=403, detail="You are not a member of this class")
     auto_graded = False
+    ai_grade: dict[str, Any] | None = None
     if submit and assignment.get("auto_grade") and assignment.get("assignment_type") == "quiz":
         result = _auto_grade_quiz(assignment.get("quiz"), answers, float(assignment["max_score"]))
         if result is not None:
@@ -978,7 +1040,8 @@ async def submission_save(
                 from app.api.routes import grading as grading_routes
                 graded = await grading_routes._grade(assignment, submission or {}, user)
                 submission = graded.get("submission") or submission
-                auto_graded = graded.get("ai_grade", {}).get("status") == "graded"
+                ai_grade = graded.get("ai_grade")
+                auto_graded = bool(ai_grade and ai_grade.get("status") == "graded")
             except Exception:
                 auto_graded = False
     elif submit and assignment.get("auto_grade"):
@@ -994,10 +1057,32 @@ async def submission_save(
             else:
                 graded = await grading_routes._grade(assignment, submission or {}, user)
                 submission = graded.get("submission") or submission
-                auto_graded = graded.get("ai_grade", {}).get("status") == "graded"
+                ai_grade = graded.get("ai_grade")
+                auto_graded = bool(ai_grade and ai_grade.get("status") == "graded")
         except Exception:
             auto_graded = False
-    return {"submission": submission, **(submission or {}), "auto_graded": auto_graded}
+    response: dict[str, Any] = {
+        "submission": submission,
+        **(submission or {}),
+        "auto_graded": auto_graded,
+    }
+    if submission is not None and not assignment.get("show_score_immediately", True):
+        # Refresh through the student-safe projection so a just-computed
+        # automatic mark is not leaked in the submit response when the
+        # teacher configured deferred score release.
+        safe_submission = cloud_db.get_submission(
+            assignment_id, student_id=user["id"], include_private=False
+        )
+        if safe_submission is not None:
+            response["submission"] = safe_submission
+            response.update(safe_submission)
+    # Include criterion-level feedback/status even when the model requests
+    # teacher review. This lets a student see why the result is pending while
+    # keeping the official score NULL until a confident grade or teacher mark.
+    if ai_grade is not None:
+        response["ai_grade"] = ai_grade
+        response["ai_grade_status"] = ai_grade.get("status")
+    return response
 
 
 @router.get("/assignments/{assignment_id}/submission")
@@ -1011,7 +1096,23 @@ async def submission_get(
         raise HTTPException(status_code=404, detail="Assignment not found")
     if role in ("teacher", "admin"):
         raise HTTPException(status_code=400, detail="Use the submissions endpoint for teachers")
-    return {"submission": cloud_db.get_submission(assignment_id, student_id=user["id"])}
+    submission = cloud_db.get_submission(
+        assignment_id, student_id=user["id"], include_private=False
+    )
+    if submission:
+        try:
+            from app.api.routes.grading import _student_visible_result
+            from app.services import ai_grade_store
+            ai_result = ai_grade_store.latest_result(submission["id"])
+            if ai_result:
+                visible = _student_visible_result(ai_result, assignment, user)
+                submission["ai_grade_status"] = visible.get("status") if visible else None
+                submission["ai_grade"] = visible
+                if visible and visible.get("feedback"):
+                    submission["rubric_feedback"] = visible["feedback"]
+        except Exception:
+            pass
+    return {"submission": submission}
 
 
 @router.get("/assignments/{assignment_id}/submission/attempts")
@@ -1031,7 +1132,9 @@ async def submission_attempts_student(
     )
     # Include the current mutable draft so a browser can resume a timed exam;
     # immutable history contains only final submissions.
-    current = cloud_db.get_submission(assignment_id, student_id=user["id"])
+    current = cloud_db.get_submission(
+        assignment_id, student_id=user["id"], include_private=False
+    )
     if current and current.get("status") == "draft":
         draft = cloud_db._submission_attempt_view(current, status="in_progress")
         rows = [draft, *rows]
@@ -1114,7 +1217,13 @@ async def attempt_save_student(
         raise HTTPException(status_code=413, detail=str(exc))
     if submission is None:
         raise HTTPException(status_code=404, detail="Attempt not found")
-    return {"attempt": cloud_db._submission_attempt_view(submission, status="in_progress"), "server_time": time.time()}
+    safe_submission = cloud_db.get_submission(
+        assignment["id"], student_id=user["id"], include_private=False
+    ) or submission
+    return {
+        "attempt": cloud_db._submission_attempt_view(safe_submission, status="in_progress"),
+        "server_time": time.time(),
+    }
 
 
 @router.post("/attempts/{attempt_id}/submit")
