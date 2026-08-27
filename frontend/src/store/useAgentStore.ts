@@ -78,6 +78,25 @@ function persistSettings(s: AgentSettings): void {
   }
 }
 
+/**
+ * Auth headers shared by the settings-panel probes.  Unlike the streaming
+ * request (which builds its headers in AgentRunner), `/agent/models` and
+ * `/agent/test` are authenticated endpoints even when the user relies on the
+ * server-side model key.  Omitting the cloud session token here made those
+ * two buttons return 401 while normal chat still worked.
+ */
+function agentProbeHeaders(settings: AgentSettings): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (settings.apiKey) headers['x-agent-key'] = settings.apiKey;
+  try {
+    const token = localStorage.getItem('velxio-cloud-token');
+    if (token) headers.Authorization = `Bearer ${token}`;
+  } catch {
+    /* private mode / SSR */
+  }
+  return headers;
+}
+
 interface PersistedChat {
   messages: UiMessage[];
   apiMessages: ApiMessage[];
@@ -316,11 +335,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   fetchModels: async () => {
     const { settings } = get();
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (settings.apiKey) headers['x-agent-key'] = settings.apiKey;
       const resp = await fetch(`${getApiBase()}/agent/models`, {
         method: 'POST',
-        headers,
+        headers: agentProbeHeaders(settings),
         credentials: 'include',
         body: JSON.stringify({ base_url: settings.baseUrl || undefined }),
       });
@@ -338,11 +355,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   testConnection: async () => {
     const { settings } = get();
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (settings.apiKey) headers['x-agent-key'] = settings.apiKey;
       const resp = await fetch(`${getApiBase()}/agent/test`, {
         method: 'POST',
-        headers,
+        headers: agentProbeHeaders(settings),
         credentials: 'include',
         body: JSON.stringify({
           base_url: settings.baseUrl || undefined,

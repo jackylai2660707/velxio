@@ -284,12 +284,17 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'set_board_language',
     description:
-      'Switch a board between Arduino C++ ("arduino") and MicroPython ("micropython"). ' +
-      'Only RP2040 (Pico) and ESP32 boards support MicroPython. Switching replaces the board file group.',
+      'Switch a board between Arduino C++ ("arduino"), MicroPython ("micropython"), and pure ESP-IDF C/C++ ("espidf"). ' +
+      'Only RP2040 (Pico) and ESP32 boards support MicroPython; pure ESP-IDF is available on supported ESP32 boards. ' +
+      'Switching replaces the board file group. ESP-IDF projects use app_main() and ESP-IDF APIs (without Arduino).',
     input_schema: {
       type: 'object',
       properties: {
-        mode: { type: 'string', enum: ['arduino', 'micropython'], description: 'Language mode' },
+        mode: {
+          type: 'string',
+          enum: ['arduino', 'micropython', 'espidf'],
+          description: 'Language mode: arduino, micropython, or pure espidf',
+        },
         board_id: str('Board id (default: active board)'),
       },
       required: ['mode'],
@@ -668,8 +673,8 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
     case 'set_board_language': {
       const board = resolveBoard(input.board_id ? String(input.board_id) : undefined);
       const mode = String(input.mode);
-      if (mode !== 'arduino' && mode !== 'micropython') {
-        throw new ToolError(`mode must be "arduino" or "micropython"`);
+      if (mode !== 'arduino' && mode !== 'micropython' && mode !== 'espidf') {
+        throw new ToolError(`mode must be "arduino", "micropython", or "espidf"`);
       }
       sim().setBoardLanguageMode(board.id, mode);
       return `Board "${board.id}" language mode set to ${mode}. Its file group was reset — write the code files now.`;

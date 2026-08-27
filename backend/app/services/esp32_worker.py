@@ -175,14 +175,77 @@ def _log(msg: str) -> None:
 
 # QEMU machines whose SoC model instantiates a WiFi MAC. The S3 machine does
 # not (hw/xtensa/esp32s3.c never calls qemu_find_nic_info), so it must not be
-# handed a NIC — see the radio block in start().
-_WIFI_MACHINES = {'esp32-picsimlab'}
+# handed a NIC — see the radio block in start(). Keep this table explicit: a
+# substring check (for example, ``'c3' in machine``) would make an unknown or
+# future machine look network-capable and hide an unmapped-peripheral fault.
+_WIFI_CAPABILITIES: dict[str, dict[str, object]] = {
+    'esp32-picsimlab': {
+        'supported': True,
+        'nic_model': 'esp32_wifi',
+        'reason_code': None,
+        'reason': None,
+    },
+    'esp32c3-picsimlab': {
+        'supported': True,
+        'nic_model': 'esp32c3_wifi',
+        'reason_code': None,
+        'reason': None,
+    },
+    # The current lcgamboa S3 machine has no qemu_find_nic_info() call and
+    # therefore no emulated WiFi MAC/register window. Passing -nic here leaves
+    # an unconsumed netdev and WiFi.h/esp_wifi code faults on an unmapped
+    # peripheral. Keep this explicit until a QEMU build with an S3 radio is
+    # shipped and smoke-tested.
+    'esp32s3-picsimlab': {
+        'supported': False,
+        'nic_model': None,
+        'reason_code': 'machine_no_wifi_mac',
+        'reason': (
+            'esp32s3-picsimlab does not model an ESP32-S3 WiFi MAC; '
+            'the current QEMU machine has no WiFi peripheral'
+        ),
+    },
+}
+
+# Backwards-compatible set used by callers that only need to know whether a
+# machine has a radio. It intentionally excludes ESP32-S3.
+_WIFI_MACHINES = {
+    machine for machine, capability in _WIFI_CAPABILITIES.items()
+    if capability['supported']
+}
 
 
 # The classic ESP32's WiFi MAC, at its DPORT address and at the APB alias the
 # IDF driver actually uses (0x3ff73000 - DR_REG_DPORT_APB_BASE + APB_REG_BASE).
 # One page each, matching the region hw/misc/esp32_wifi.c maps.
 _WIFI_MAC_RANGES = ((0x3ff73000, 0x3ff74000), (0x60033000, 0x60034000))
+
+
+def wifi_capability(machine: str) -> dict[str, object]:
+    """Return the machine's WiFi capability as JSON-safe metadata.
+
+    ``supported`` means that this worker can attach a QEMU WiFi MAC and
+    guest-visible register window. It is deliberately independent of whether
+    the current sketch requested WiFi. Unknown machines are reported as
+    unsupported instead of guessed from their name.
+
+    The returned object is a fresh dict so callers may add request/runtime
+    fields without mutating the module-level table.
+    """
+    capability = _WIFI_CAPABILITIES.get(machine)
+    if capability is None:
+        return {
+            'machine': machine,
+            'supported': False,
+            'nic_model': None,
+            'reason_code': 'unknown_machine',
+            'reason': f'no WiFi capability metadata for QEMU machine {machine!r}',
+        }
+    return {'machine': machine, **capability}
+
+
+# Name used by service callers that prefer an explicit getter.
+get_wifi_capability = wifi_capability
 
 
 def wifi_nic_arg(machine: str, wifi_enabled: bool,
@@ -208,14 +271,13 @@ def wifi_nic_arg(machine: str, wifi_enabled: bool,
     `wifi_enabled` still gates the host forward, which exposes the GUEST's
     server to the host and so belongs to a sketch that actually serves.
     """
-    if 'c3' in machine:
-        model = 'esp32c3_wifi'
-    elif machine in _WIFI_MACHINES:
-        model = 'esp32_wifi'
-    else:
+    capability = wifi_capability(machine)
+    if not capability['supported']:
         # The S3 machine models no radio (hw/xtensa/esp32s3.c never looks for
-        # the NIC), so handing it one would leave an unconsumed netdev.
+        # the NIC), so handing it one would leave an unconsumed netdev. The
+        # structured capability above lets callers explain this accurately.
         return None
+    model = capability['nic_model']
     arg = f'user,model={model},net=192.168.4.0/24'
     if wifi_enabled and hostfwd_port:
         arg += f',hostfwd=tcp::{hostfwd_port}-192.168.4.15:80'
@@ -524,13 +586,27 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
 
     # ── WiFi NIC (slirp user-mode networking) ──────────────────────────────
     # Always present on machines that model a radio — see wifi_nic_arg().
+    # Publish the decision as a structured event as well as a log line. This
+    # matters for ESP32-S3: it is tempting for a UI/Agent to infer support from
+    # the board name, but the current S3 QEMU machine has no WiFi MAC. A
+    # consumer can now disable WiFi controls and explain the exact reason
+    # without scraping stderr.
+    _wifi_capability = wifi_capability(machine)
     nic_arg = wifi_nic_arg(machine, wifi_enabled, wifi_hostfwd_port)
+    _emit({
+        'type': 'wifi_capability',
+        **_wifi_capability,
+        'wifi_requested': bool(wifi_enabled),
+        'hostfwd_requested': bool(wifi_enabled and wifi_hostfwd_port),
+        'hostfwd_active': bool(nic_arg and wifi_enabled and wifi_hostfwd_port),
+    })
     if nic_arg:
         args_list.extend([b'-nic', nic_arg.encode()])
         _log(f'WiFi radio attached (sketch wants WiFi: {wifi_enabled}): -nic {nic_arg}')
     elif wifi_enabled:
-        _log(f'WiFi requested but machine {machine} models no radio — '
-             'the sketch will fault if it touches the MAC')
+        _log(f'WiFi unavailable on machine {machine} '
+             f'(reason_code={_wifi_capability["reason_code"]}): '
+             f'{_wifi_capability["reason"]}')
 
     argc = len(args_list)
     argv = (ctypes.c_char_p * argc)(*args_list)

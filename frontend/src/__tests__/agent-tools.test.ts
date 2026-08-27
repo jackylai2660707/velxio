@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { executeTool } from '../agent/tools';
+import { executeTool, TOOL_DEFINITIONS } from '../agent/tools';
 import { buildProjectSnapshot } from '../agent/projectSnapshot';
 import { trimHistory } from '../agent/AgentRunner';
 import registry from '../services/ComponentRegistry';
@@ -63,6 +63,32 @@ describe('agent tools — boards', () => {
     const res = await executeTool('add_board', { board_kind: 'banana-pi' });
     expect(res.isError).toBe(true);
     expect(res.result).toContain('Unknown board kind');
+  });
+
+  it('supports switching ESP32 boards to pure ESP-IDF mode', async () => {
+    const added = await executeTool('add_board', { board_kind: 'esp32' });
+    expect(added.isError).toBe(false);
+    const boardId = useSimulatorStore.getState().activeBoardId!;
+
+    const switched = await executeTool('set_board_language', {
+      board_id: boardId,
+      mode: 'espidf',
+    });
+    expect(switched.isError).toBe(false);
+    expect(useSimulatorStore.getState().boards.find((b) => b.id === boardId)?.languageMode).toBe(
+      'espidf',
+    );
+  });
+
+  it('advertises all supported language modes and rejects invalid values', async () => {
+    const definition = TOOL_DEFINITIONS.find((tool) => tool.name === 'set_board_language');
+    expect(definition?.input_schema.properties.mode).toMatchObject({
+      enum: ['arduino', 'micropython', 'espidf'],
+    });
+
+    const res = await executeTool('set_board_language', { mode: 'c' });
+    expect(res.isError).toBe(true);
+    expect(res.result).toContain('"espidf"');
   });
 });
 

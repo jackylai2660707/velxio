@@ -9,7 +9,7 @@ whole content is that this decision was wrong.
 import unittest
 from unittest.mock import patch, MagicMock
 
-from app.services.esp32_worker import wifi_nic_arg
+from app.services.esp32_worker import get_wifi_capability, wifi_capability, wifi_nic_arg
 
 
 class TestWifiNicArg(unittest.TestCase):
@@ -42,6 +42,27 @@ class TestWifiNicArg(unittest.TestCase):
         would leave an unconsumed netdev."""
         self.assertIsNone(wifi_nic_arg('esp32s3-picsimlab', wifi_enabled=True))
         self.assertIsNone(wifi_nic_arg('esp32s3-picsimlab', wifi_enabled=False))
+
+    def test_s3_capability_explains_missing_radio(self):
+        """S3 support is explicit, rather than inferred from its board name."""
+        capability = wifi_capability('esp32s3-picsimlab')
+        self.assertFalse(capability['supported'])
+        self.assertIsNone(capability['nic_model'])
+        self.assertEqual(capability['reason_code'], 'machine_no_wifi_mac')
+        self.assertIn('does not model', capability['reason'])
+
+    def test_capability_getter_returns_a_fresh_copy(self):
+        """Callers can annotate capability data without changing later calls."""
+        first = get_wifi_capability('esp32-picsimlab')
+        first['wifi_requested'] = True
+        second = get_wifi_capability('esp32-picsimlab')
+        self.assertNotIn('wifi_requested', second)
+
+    def test_unknown_machine_is_reported_unsupported(self):
+        capability = wifi_capability('future-esp32-machine')
+        self.assertFalse(capability['supported'])
+        self.assertEqual(capability['reason_code'], 'unknown_machine')
+        self.assertIsNone(wifi_nic_arg('future-esp32-machine', wifi_enabled=True))
 
     def test_hostfwd_included_when_port_set(self):
         arg = wifi_nic_arg('esp32-picsimlab', wifi_enabled=True, hostfwd_port=12345)
