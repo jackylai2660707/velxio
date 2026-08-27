@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { generateUUID } from '../utils/uuid';
+import { isPiBoardKind } from '../types/board';
+import { getProBoard } from '../lib/proBoardRegistry';
 
 export interface WorkspaceFile {
   id: string;
@@ -9,6 +11,18 @@ export interface WorkspaceFile {
 }
 
 const MAIN_ID = 'main-sketch';
+
+/** Trim, collapse slashes/backslashes, strip leading/trailing '/' and any
+ *  '.'/'..' segments — folder paths are always workspace-relative. */
+export function normalizeFolderPath(path: string): string {
+  return path
+    .trim()
+    .replace(/\\/g, '/')
+    .split('/')
+    .map((seg) => seg.trim())
+    .filter((seg) => seg && seg !== '.' && seg !== '..')
+    .join('/');
+}
 
 const DEFAULT_INO_CONTENT = `// Arduino Blink Example
 void setup() {
@@ -48,6 +62,31 @@ while True:
     state = not state
     led.value(state)
     time.sleep(1)
+`;
+
+// Pure ESP-IDF mode (issue #139): the user's own app_main(), compiled by the
+// backend's ESP-IDF toolchain WITHOUT the arduino-esp32 component. GPIO 2 is
+// the built-in LED on most ESP32 dev boards.
+const DEFAULT_ESPIDF_CONTENT = `// ESP-IDF Blink Example
+#include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "driver/gpio.h"
+
+#define LED_PIN GPIO_NUM_2
+
+void app_main(void)
+{
+    gpio_reset_pin(LED_PIN);
+    gpio_set_direction(LED_PIN, GPIO_MODE_OUTPUT);
+
+    while (1) {
+        gpio_set_level(LED_PIN, 1);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        gpio_set_level(LED_PIN, 0);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
 `;
 
 const DEFAULT_PY_CONTENT = `import RPi.GPIO as GPIO
@@ -114,6 +153,10 @@ interface EditorState {
   fontSize: number;
   viewMode: EditorViewMode;
   setViewMode: (mode: EditorViewMode) => void;
+  /** Desktop file-explorer pane visibility (used by the View menu). */
+  explorerOpen: boolean;
+  setExplorerOpen: (open: boolean) => void;
+  toggleExplorer: () => void;
 
   // ── File groups (one per board) ──────────────────────────────────────────
   /** Map of groupId → WorkspaceFile[]. Stored as plain object for Zustand. */
@@ -124,6 +167,13 @@ interface EditorState {
   activeGroupFileId: Record<string, string>;
   /** Open file IDs within each group */
   openGroupFileIds: Record<string, string[]>;
+
+  // ── Folders ──────────────────────────────────────────────────────────────
+  /** Empty folders per group; folders containing files are represented by
+   * slash-prefixed file names and need no separate entry. */
+  folderGroups: Record<string, string[]>;
+  createFolder: (path: string) => void;
+  deleteFolder: (path: string) => void;
 
   // File operations (operate on active group)
   createFile: (name: string) => string;
@@ -151,8 +201,12 @@ interface EditorState {
   addFileToGroup: (groupId: string, name: string, content: string) => string;
   /** Remove a file from a specific group (AI assistant counterpart of deleteFile). */
   deleteFileFromGroup: (groupId: string, fileId: string) => void;
-  /** Replace ALL file groups atomically (used when loading a saved project). */
-  replaceFileGroups: (groups: Record<string, { name: string; content: string }[]>) => void;
+  /** Replace ALL file groups atomically (used when loading a saved project).
+   * `folders` restores tracked empty folders from .vlx/drafts. */
+  replaceFileGroups: (
+    groups: Record<string, { name: string; content: string }[]>,
+    folders?: Record<string, string[]>,
+  ) => void;
 
   // Settings
   setTheme: (theme: 'vs-dark' | 'light') => void;
@@ -176,17 +230,67 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   fontSize: 14,
   viewMode: 'both',
   setViewMode: (mode) => set({ viewMode: mode }),
+  explorerOpen: true,
+  setExplorerOpen: (open) => set({ explorerOpen: open }),
+  toggleExplorer: () => set((s) => ({ explorerOpen: !s.explorerOpen })),
 
   // File groups — initial state has one group for the default Arduino Uno board
   fileGroups: {
     [DEFAULT_GROUP_ID]: [DEFAULT_FILE],
   },
+  folderGroups: {},
   activeGroupId: DEFAULT_GROUP_ID,
   activeGroupFileId: { [DEFAULT_GROUP_ID]: MAIN_ID },
   openGroupFileIds: { [DEFAULT_GROUP_ID]: [MAIN_ID] },
 
   codeChangedSinceLastCompile: true,
   markCompiled: () => set({ codeChangedSinceLastCompile: false }),
+
+  // ── Folder operations (operate on active group) ─────────────────────────
+
+  createFolder: (path: string) => {
+    const clean = normalizeFolderPath(path);
+    if (!clean) return;
+    set((s) => {
+      const groupId = s.activeGroupId;
+      const folders = s.folderGroups[groupId] ?? [];
+      const files = s.fileGroups[groupId] ?? [];
+      const exists =
+        folders.includes(clean) || files.some((f) => f.name.startsWith(clean + '/'));
+      if (exists) return {};
+      return { folderGroups: { ...s.folderGroups, [groupId]: [...folders, clean] } };
+    });
+  },
+
+  deleteFolder: (path: string) => {
+    const clean = normalizeFolderPath(path);
+    if (!clean) return;
+    set((s) => {
+      const groupId = s.activeGroupId;
+      const prefix = clean + '/';
+      const doomed = new Set(
+        (s.fileGroups[groupId] ?? []).filter((f) => f.name.startsWith(prefix)).map((f) => f.id),
+      );
+      const files = s.files.filter((f) => !doomed.has(f.id));
+      const openFileIds = s.openFileIds.filter((fid) => !doomed.has(fid));
+      let activeFileId = s.activeFileId;
+      if (doomed.has(activeFileId)) activeFileId = openFileIds[0] ?? files[0]?.id ?? '';
+      const groupFiles = (s.fileGroups[groupId] ?? []).filter((f) => !doomed.has(f.id));
+      const groupOpenIds = (s.openGroupFileIds[groupId] ?? []).filter((fid) => !doomed.has(fid));
+      const folders = (s.folderGroups[groupId] ?? []).filter(
+        (p) => p !== clean && !p.startsWith(prefix),
+      );
+      return {
+        files,
+        openFileIds,
+        activeFileId,
+        fileGroups: { ...s.fileGroups, [groupId]: groupFiles },
+        openGroupFileIds: { ...s.openGroupFileIds, [groupId]: groupOpenIds },
+        activeGroupFileId: { ...s.activeGroupFileId, [groupId]: activeFileId },
+        folderGroups: { ...s.folderGroups, [groupId]: folders },
+      };
+    });
+  },
 
   // ── File operations (legacy API — operate on active group) ──────────────
 
@@ -196,6 +300,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((s) => {
       const groupId = s.activeGroupId;
       const groupFiles = [...(s.fileGroups[groupId] ?? []), newFile];
+      // A file landing inside a tracked empty folder materialises it.
+      const folders = (s.folderGroups[groupId] ?? []).filter((p) => !name.startsWith(p + '/'));
       return {
         // Legacy flat list (mirrors active group)
         files: [...s.files, newFile],
@@ -208,6 +314,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           [groupId]: [...(s.openGroupFileIds[groupId] ?? []), id],
         },
         activeGroupFileId: { ...s.activeGroupFileId, [groupId]: id },
+        folderGroups: { ...s.folderGroups, [groupId]: folders },
       };
     });
     return id;
@@ -363,18 +470,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           modified: false,
         }));
       } else {
-        // Determine default file by group name convention or language mode.
-        // All Linux Pi boards (Zero/1/2/3/4/5) default to script.py; the Pico
-        // (RP2040) is browser-emulated and not a Linux Pi. Mirrors
-        // isPiBoardKind() in types/board.ts, adapted to the `group-<id>` convention.
+        // Determine default file by board kind or language mode. Test the full
+        // id first because kinds themselves can end in digits (raspberry-pi-3).
+        const boardIdPart = groupId.replace(/^group-/, '');
         const isPi =
-          groupId.includes('raspberry-pi-') && !groupId.includes('raspberry-pi-pico');
+          isPiBoardKind(boardIdPart) || isPiBoardKind(boardIdPart.replace(/-\d+$/, ''));
         const isMicroPython = languageMode === 'micropython';
         const mainId = `${groupId}-main`;
         let fileName: string;
         let content: string;
-        const isEsp32 = groupId.includes('esp32');
-        if (isMicroPython && isEsp32) {
+        const isEsp32 =
+          groupId.includes('esp32') ||
+          getProBoard(boardIdPart)?.esp32Family !== undefined ||
+          getProBoard(boardIdPart.replace(/-\d+$/, ''))?.esp32Family !== undefined;
+        if (languageMode === 'espidf') {
+          fileName = 'main.c';
+          content = DEFAULT_ESPIDF_CONTENT;
+        } else if (isMicroPython && isEsp32) {
           fileName = 'main.py';
           content = DEFAULT_ESP32_MICROPYTHON_CONTENT;
         } else if (isMicroPython) {
@@ -404,10 +516,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const { [groupId]: _removed, ...rest } = s.fileGroups;
       const { [groupId]: _a, ...restActive } = s.activeGroupFileId;
       const { [groupId]: _o, ...restOpen } = s.openGroupFileIds;
+      const { [groupId]: _f, ...restFolders } = s.folderGroups;
+      const nextActive =
+        s.activeGroupId === groupId ? Object.keys(rest)[0] ?? '' : s.activeGroupId;
       return {
         fileGroups: rest,
         activeGroupFileId: restActive,
         openGroupFileIds: restOpen,
+        folderGroups: restFolders,
+        activeGroupId: nextActive,
       };
     });
   },
@@ -491,7 +608,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
   },
 
-  replaceFileGroups: (groups) => {
+  replaceFileGroups: (groups, folders) => {
     const fileGroups: Record<string, WorkspaceFile[]> = {};
     const activeGroupFileId: Record<string, string> = {};
     const openGroupFileIds: Record<string, string[]> = {};
@@ -517,6 +634,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         activeGroupFileId,
         openGroupFileIds,
         activeGroupId,
+        folderGroups: folders ?? {},
         // Mirror legacy flat fields to the active group
         files: groupFiles,
         activeFileId: activeGroupFileId[activeGroupId] ?? '',

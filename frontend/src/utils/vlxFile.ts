@@ -30,7 +30,6 @@
  */
 
 import type { BoardInstance } from '../types/board';
-import type { Component } from '../types/component';
 import type { Wire } from '../types/wire';
 import { useEditorStore, chipFileGroupId } from '../store/useEditorStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
@@ -38,6 +37,15 @@ import { useProjectStore } from '../store/useProjectStore';
 
 const VLX_FORMAT = 'velxio-project';
 const VLX_VERSION = 1;
+
+/** Canvas component shape persisted by the simulator/export APIs. */
+interface VlxComponent {
+  id: string;
+  metadataId: string;
+  x: number;
+  y: number;
+  properties: Record<string, unknown>;
+}
 
 export interface VlxPayload {
   format: typeof VLX_FORMAT;
@@ -61,7 +69,7 @@ export interface VlxPayload {
   /** EMPTY folders per group (folders holding files exist via name prefixes).
    *  Optional — absent in projects saved before folders shipped. */
   folderGroups?: Record<string, string[]>;
-  components: Component[];
+  components: VlxComponent[];
   wires: Wire[];
   activeBoardId: string | null;
 }

@@ -20,7 +20,10 @@ export interface ComponentProperties {
 
 export interface Component {
   id: string;
-  type: ComponentType;
+  /** Canvas components use metadataId; legacy palette callers use type. */
+  metadataId?: string;
+  /** Optional legacy palette discriminator. */
+  type?: ComponentType;
   x: number;
   y: number;
   properties: ComponentProperties;
