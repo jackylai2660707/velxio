@@ -12,6 +12,10 @@
  */
 
 import { exampleProjects, type ExampleProject } from '../data/examples';
+import {
+  hardwareKnowledgeSearchText,
+  hardwareKnowledgeText,
+} from './hardwareKnowledge';
 
 /** zh phrase → english keywords also searched against the example metadata */
 // Each pattern carries BOTH Simplified and Traditional variants — students
@@ -94,8 +98,13 @@ export function searchExamplesText(query: string): string {
     .filter((s) => s.score >= 2)
     .sort((a, z) => z.score - a.score)
     .slice(0, 5);
-  if (scored.length === 0) return `No examples match "${query}".`;
-  return scored
+  const hardware = hardwareKnowledgeSearchText(query);
+  if (scored.length === 0 && !hardware) {
+    return `No examples match "${query}".`;
+  }
+  const sections: string[] = [];
+  if (scored.length > 0) {
+    sections.push(scored
     .map(({ ex }) => {
       const board = ex.boards?.map((b) => b.boardKind).join('+') ?? ex.boardType ?? 'arduino-uno';
       const comps = ex.components
@@ -104,8 +113,12 @@ export function searchExamplesText(query: string): string {
         .join(', ');
       return `- ${ex.id} — ${ex.title} [${board}, ${ex.difficulty}] components: ${comps}`;
     })
-    .join('\n')
-    .concat('\n(Call get_example with an id for full wiring + code.)');
+    .join('\n'));
+  }
+  if (hardware) {
+    sections.push(`Hardware reference recipes (use get_example with one of these ids):\n${hardware}`);
+  }
+  return sections.join('\n\n') + '\n(Call get_example with an id for full wiring + code.)';
 }
 
 const CODE_BUDGET = 5000;
@@ -115,6 +128,8 @@ const CODE_BUDGET = 5000;
 export function getExampleText(id: string): string {
   const ex = exampleProjects.find((e) => e.id === id);
   if (!ex) {
+    const hardware = hardwareKnowledgeText(id);
+    if (hardware) return hardware;
     return `No example with id "${id}". Use search_examples to find valid ids.`;
   }
   const lines: string[] = [];

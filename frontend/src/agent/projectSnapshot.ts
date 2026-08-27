@@ -8,7 +8,10 @@
  */
 
 import { useEditorStore } from '../store/useEditorStore';
-import { useSimulatorStore } from '../store/useSimulatorStore';
+import { getEsp32Bridge, useSimulatorStore } from '../store/useSimulatorStore';
+import { boardDisplayName } from '../types/board';
+import { getDefaultOptionsForKind, isEsp32Family } from '../types/boardOptions';
+import { getEsp32Capabilities } from './esp32Capabilities';
 
 const MAX_FILE_CHARS = 12_000;
 const MAX_TOTAL_CHARS = 48_000;
@@ -43,7 +46,69 @@ export function buildProjectSnapshot(): string {
         .filter(Boolean)
         .join(', ');
       lines.push(`- id="${b.id}" kind=${b.boardKind} at (${b.x}, ${b.y}) [${flags}]`);
+      if (b.name?.trim()) lines.push(`  name: ${boardDisplayName(b)}`);
       if (b.libraries?.length) lines.push(`  libraries: ${b.libraries.join(', ')}`);
+
+      // ESP32 hardware contract and live runtime state. Keep this adjacent to
+      // each board so an agent working on a multi-board project cannot confuse
+      // one chip's pins/options with another's.
+      if (isEsp32Family(b.boardKind)) {
+        const caps = getEsp32Capabilities(b.boardKind);
+        if (caps) {
+          lines.push(`  esp32: family=${caps.family}, arch=${caps.architecture}`);
+          lines.push(`  gpio: ${caps.gpio.length ? caps.gpio.join(', ') : 'not available in OSS runtime'}`);
+          if (caps.adc.length) {
+            const adc = caps.adc.map((a) => `GPIO${a.gpio}=ADC${a.unit}_CH${a.channel}`).join(', ');
+            lines.push(`  adc: ${adc}`);
+          } else {
+            lines.push('  adc: not available in OSS runtime');
+          }
+          lines.push(`  adc_notes: ${caps.adcNotes.join(' ') || 'none'}`);
+          lines.push(`  uart: ${caps.uart.join('; ') || 'not available in OSS runtime'}`);
+          lines.push(`  i2c: ${caps.i2c}`);
+          lines.push(`  spi: ${caps.spi}`);
+          lines.push(`  pwm: ${caps.pwm}`);
+          lines.push(
+            `  wifi_capability: supported=${caps.wifi.supported}, runtime=${caps.wifi.mode}; ${caps.wifi.notes.join(' ')}`,
+          );
+          lines.push(
+            `  ble_capability: supported=${caps.ble.supported}, gatt=${caps.ble.gatt}, classic_bluetooth=${caps.ble.classicBluetooth}; ${caps.ble.notes.join(' ')}`,
+          );
+          lines.push(
+            `  onboard: camera=${caps.camera}, microphone=${caps.microphone}, sd=${caps.sd}`,
+          );
+          if (caps.notes.length) lines.push(`  hardware_notes: ${caps.notes.join(' ')}`);
+        }
+
+        const options = { ...getDefaultOptionsForKind(b.boardKind), ...(b.boardOptions ?? {}) };
+        lines.push(`  board_options: ${JSON.stringify(options)}${b.boardOptions ? '' : ' (defaults)'}`);
+
+        const bridge = getEsp32Bridge(b.id);
+        lines.push(
+          `  runtime: websocket=${bridge?.connected ? 'connected' : 'disconnected'}, ` +
+            `running=${b.running}, has_wifi=${Boolean(b.hasWifi)}, ` +
+            `wifi_status=${formatStatus(b.wifiStatus)}, ble_status=${formatStatus(b.bleStatus)}`,
+        );
+        if (b.wifiStatus?.inBrowser !== undefined) {
+          lines.push(`  wifi_execution: ${b.wifiStatus.inBrowser ? 'browser-tab' : 'backend-qemu'}`);
+        }
+        if (b.spiffsFiles?.length) {
+          lines.push(
+            `  spiffs_files: ${b.spiffsFiles
+              .map((f) => `${f.name}(${typeof f.size === 'number' ? f.size : estimateB64Bytes(f.contentB64)}B)`)
+              .join(', ')}`,
+          );
+        } else {
+          lines.push('  spiffs_files: none');
+        }
+        if (b.sdFiles?.length) {
+          lines.push(
+            `  sd_files: ${b.sdFiles
+              .map((f) => `${f.name}(${estimateB64Bytes(f.contentB64)}B)`)
+              .join(', ')}`,
+          );
+        }
+      }
     }
   }
 
@@ -106,4 +171,18 @@ export function buildProjectSnapshot(): string {
   }
 
   return lines.join('\n');
+}
+
+function formatStatus(status: { status?: string; ssid?: string; ip?: string } | undefined): string {
+  if (!status) return 'not-observed';
+  const details = [status.status, status.ssid && `ssid=${status.ssid}`, status.ip && `ip=${status.ip}`].filter(Boolean);
+  return details.join(',');
+}
+
+function estimateB64Bytes(value: string | undefined): number {
+  if (!value) return 0;
+  // Base64 padding is guaranteed for files produced by the upload panel. The
+  // estimate is only informational and avoids decoding potentially large data
+  // into every project snapshot.
+  return Math.max(0, Math.floor((value.length * 3) / 4) - (value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0));
 }
