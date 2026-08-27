@@ -45,6 +45,18 @@ def test_normalize_rubric_scales_question_points_to_assignment_total():
     assert result["criteria"][0]["max_score"] == 100
 
 
+def test_custom_exam_is_not_treated_as_deterministic_quiz():
+    assert ai_grading.is_deterministic_quiz(
+        {"questions": [{"id": "q1", "type": "single", "answer": 1, "options": ["a", "b"]}]}
+    )
+    assert not ai_grading.is_deterministic_quiz(
+        {"questions": [
+            {"id": "q1", "type": "single", "answer": 1, "options": ["a", "b"]},
+            {"id": "q2", "type": "code", "points": 10},
+        ]}
+    )
+
+
 @pytest.mark.asyncio
 async def test_grade_submission_strictly_accepts_confident_json(monkeypatch):
     async def fake_request(messages):

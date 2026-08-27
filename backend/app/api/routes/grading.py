@@ -35,7 +35,11 @@ def _assignment_and_submission(
     )
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment not found")
-    submission = cloud_db.get_submission(assignment_id, submission_id=submission_id)
+    submission = cloud_db.get_submission(
+        assignment_id,
+        submission_id=submission_id,
+        include_private=role != "student",
+    )
     if submission is None:
         raise HTTPException(status_code=404, detail="Submission not found")
     if role == "student" and submission.get("student_id") != user["id"]:
@@ -90,7 +94,18 @@ def _student_visible_result(
     if result is None or user.get("role") != "student":
         return result
     if bool(assignment.get("show_score_immediately", True)):
-        return result
+        # Keep classroom feedback useful while withholding provider internals
+        # (API/configuration errors, model identity, and token accounting)
+        # from learners. Teachers always receive the full persisted result.
+        return {
+            "status": result.get("status"),
+            "score": result.get("score"),
+            "suggested_score": result.get("suggested_score"),
+            "confidence": result.get("confidence"),
+            "feedback": result.get("feedback") or "",
+            "criteria": result.get("criteria") or [],
+            "attempt_no": result.get("attempt_no"),
+        }
     return {
         "status": result.get("status"),
         "score": None,
@@ -140,6 +155,14 @@ async def _grade(
             score=float(result["score"]),
             feedback=str(result.get("feedback") or ""),
         ) or submission
+    if actor.get("role") == "student":
+        # ``auto_grade_submission`` returns the internal teacher projection;
+        # keep retry responses scoped to the student's public view.
+        updated_submission = cloud_db.get_submission(
+            str(assignment["id"]),
+            student_id=str(actor["id"]),
+            include_private=False,
+        ) or updated_submission
     visible_ai = _student_visible_result(persisted_ai, assignment, actor)
     return {
         "submission": updated_submission,
@@ -168,6 +191,11 @@ async def ai_grade_get(
     user = _actor(authorization)
     assignment, submission = _assignment_and_submission(assignment_id, submission_id, user)
     result = ai_grade_store.latest_result(submission_id)
+    if result and user.get("role") == "student" and (
+        submission.get("status") == "draft"
+        or int(result.get("attempt_no") or 0) != int(submission.get("attempt_no") or 0)
+    ):
+        result = None
     result = _student_visible_result(result, assignment, user)
     return {"submission": submission, "ai_grade": result}
 

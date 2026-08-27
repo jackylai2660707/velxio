@@ -149,6 +149,36 @@ def latest_result(submission_id: str) -> dict[str, Any] | None:
     return _row_dict(row) if row else None
 
 
+def latest_results(submission_ids: list[str] | tuple[str, ...] | set[str]) -> dict[str, dict[str, Any]]:
+    """Fetch latest AI result for many submissions with bounded SQL batches.
+
+    Teacher dashboards/CSV exports can contain tens of thousands of roster
+    rows. Avoid opening one SQLite connection per row (the old convenience
+    helper is still retained for single-submission routes).
+    """
+
+    init_store()
+    ids = list(dict.fromkeys(str(item) for item in submission_ids if item))
+    if not ids:
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    with cloud_db._connect() as conn:  # type: ignore[attr-defined]
+        for start in range(0, len(ids), 500):
+            chunk = ids[start : start + 500]
+            placeholders = ",".join("?" for _ in chunk)
+            rows = conn.execute(
+                "SELECT * FROM ai_submission_grades WHERE submission_id IN ("
+                + placeholders
+                + ") ORDER BY attempt_no DESC, updated_at DESC, created_at DESC",
+                chunk,
+            ).fetchall()
+            for row in rows:
+                sid = str(row["submission_id"])
+                if sid not in out:
+                    out[sid] = _row_dict(row)
+    return out
+
+
 def list_results(
     submission_id: str | None = None, assignment_id: str | None = None
 ) -> list[dict[str, Any]]:
@@ -170,4 +200,4 @@ def list_results(
     return [_row_dict(row) for row in rows]
 
 
-__all__ = ["init_store", "latest_result", "list_results", "save_result"]
+__all__ = ["init_store", "latest_result", "latest_results", "list_results", "save_result"]

@@ -277,6 +277,23 @@ def _submission_evidence(submission: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _has_evidence(value: Any) -> bool:
+    """Recognize meaningful answers while ignoring UI sentinel values."""
+
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, dict):
+        return any(_has_evidence(item) for item in value.values())
+    if isinstance(value, (list, tuple, set)):
+        return any(
+            item not in (None, "", -1, "-1") and _has_evidence(item)
+            for item in value
+        )
+    return True
+
+
 def is_deterministic_quiz(quiz: Any) -> bool:
     """Return whether every question can be graded by the answer-key grader.
 
@@ -490,7 +507,6 @@ async def _request_completion(
         "model": resolved.model,
         "messages": messages,
         "stream": False,
-        "temperature": 0,
         "response_format": {
             "type": "json_schema",
             "json_schema": {
@@ -523,7 +539,7 @@ async def _request_completion(
                     },
                     json=payload,
                 )
-                if response.status_code == 400 and attempt == 0:
+                if response.status_code in (400, 422) and attempt == 0:
                     continue
                 if response.status_code != 200:
                     return None, resolved.model, f"provider HTTP {response.status_code}", usage_tokens
@@ -563,15 +579,50 @@ async def grade_submission(
     max_score = _number(assignment.get("max_score"), minimum=0.0001)
     if max_score is None:
         return _needs_review("invalid assignment max_score")
-    rubric = normalize_rubric(assignment.get("rubric"), max_score)
+    rubric_source = assignment.get("rubric")
+    # Older/custom exam clients attach a rubric to each open question but do
+    # not send the top-level rubric field. Derive a conservative criterion
+    # list from that manifest so those submissions remain gradeable; a teacher
+    # supplied top-level rubric always takes precedence.
+    if rubric_source in (None, "", [], {}):
+        quiz = assignment.get("quiz")
+        if isinstance(quiz, str):
+            try:
+                quiz = json.loads(quiz)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                quiz = None
+        questions = quiz.get("questions") if isinstance(quiz, dict) else quiz
+        if isinstance(questions, list):
+            derived: list[dict[str, Any]] = []
+            for index, question in enumerate(questions):
+                if not isinstance(question, dict):
+                    continue
+                criterion_id = question.get("id", question.get("key", index + 1))
+                points = question.get("points", 1)
+                derived.append(
+                    {
+                        "id": criterion_id,
+                        "name": question.get("name", f"Question {index + 1}"),
+                        "points": points,
+                        "rubric": question.get("rubric", question.get("description", "")),
+                    }
+                )
+            if derived:
+                rubric_source = derived
+    rubric = normalize_rubric(rubric_source, max_score)
     if rubric is None:
         return _needs_review("invalid or missing rubric")
     # Empty submissions are reviewable, but don't spend provider tokens on a
     # predictable no-evidence case.
     evidence = _submission_evidence(submission)
     if not any(
-        value not in (None, "", [], {})
-        for value in (evidence.get("content"), evidence.get("answers"), evidence.get("project_data"), evidence.get("files"))
+        _has_evidence(value)
+        for value in (
+            evidence.get("content"),
+            evidence.get("answers"),
+            evidence.get("project_data"),
+            evidence.get("files"),
+        )
     ):
         return _needs_review("submission has no evidence")
     messages = _prompt_messages(assignment, rubric, submission)

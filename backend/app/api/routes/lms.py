@@ -445,18 +445,34 @@ def _auto_grade_quiz(quiz: Any, submitted: Any, max_score: float) -> tuple[float
             by_id = {str(i): value for i, value in enumerate(submitted)}
     graded = 0
     correct = 0
+    earned_points = 0.0
+    available_points = 0.0
     for index, question in enumerate(questions):
         has_key, expected = _question_answer(question)
         if not has_key:
             continue
         graded += 1
+        question_points: float | None = None
+        if isinstance(question, dict):
+            raw_points = question.get("points")
+            if not isinstance(raw_points, bool):
+                try:
+                    parsed_points = float(raw_points)
+                    if math.isfinite(parsed_points) and parsed_points > 0:
+                        question_points = parsed_points
+                except (TypeError, ValueError):
+                    pass
+        # If any question has an explicit weight, use weighted grading for
+        # all weighted questions and equal fallback points for omitted ones.
+        available_points += question_points if question_points is not None else 1.0
         qid = question.get("id", question.get("key", index)) if isinstance(question, dict) else index
         actual = by_id.get(str(qid), by_id.get(str(index)))
         if _answers_match(question, actual, expected):
             correct += 1
+            earned_points += question_points if question_points is not None else 1.0
     if graded == 0:
         return None
-    score = round(float(max_score) * correct / graded, 2)
+    score = round(float(max_score) * earned_points / available_points, 2)
     return score, f"Auto-graded: {correct}/{graded} correct"
 
 
@@ -473,6 +489,14 @@ def _with_student_submission(assignment: dict[str, Any], user_id: str) -> dict[s
             from app.api.routes.grading import _student_visible_result
             from app.services import ai_grade_store
             ai_result = ai_grade_store.latest_result(student_submission["id"])
+            # A revision starts a new attempt number. Do not show the prior
+            # attempt's mark while the student is editing that revision.
+            if ai_result and (
+                student_submission.get("status") == "draft"
+                or int(ai_result.get("attempt_no") or 0)
+                != int(student_submission.get("attempt_no") or 0)
+            ):
+                ai_result = None
             if ai_result:
                 visible = _student_visible_result(
                     ai_result, assignment, {"id": user_id, "role": "student"}
@@ -591,6 +615,19 @@ def _teacher_export_csv(
         sort=sort,
         order=order,
     )
+    ai_results: dict[str, dict[str, Any]] = {}
+    try:
+        from app.services import ai_grade_store
+        for row in rows:
+            submission_id = row.get("id")
+            if not submission_id:
+                continue
+            result = ai_grade_store.latest_result(str(submission_id))
+            if result and int(result.get("attempt_no") or 0) == int(row.get("attempt_no") or 0):
+                ai_results[str(submission_id)] = result
+    except Exception:
+        # Keep exports available while an older database is upgrading.
+        ai_results = {}
     stream = io.StringIO(newline="")
     writer = csv.writer(stream, lineterminator="\r\n")
     writer.writerow(
@@ -599,10 +636,12 @@ def _teacher_export_csv(
             "assignment_type", "assignment_status", "lesson_id", "student_id",
             "student_name", "student_email", "status", "attempt_no", "submitted",
             "attempt_count", "submitted_at", "graded_at", "is_late", "score", "max_score", "feedback",
+            "ai_grade_status", "ai_confidence", "ai_suggested_score",
             "opens_at", "closes_at", "time_limit", "max_attempts", "late_policy",
         ]
     )
     for row in rows:
+        ai_result = ai_results.get(str(row.get("id") or ""), {})
         writer.writerow(
             [
                 _csv_cell(row.get("class_id")),
@@ -625,6 +664,9 @@ def _teacher_export_csv(
                 _csv_cell(row.get("score")),
                 _csv_cell(row.get("max_score")),
                 _csv_cell(row.get("feedback")),
+                _csv_cell(ai_result.get("status")),
+                _csv_cell(ai_result.get("confidence")),
+                _csv_cell(ai_result.get("suggested_score")),
                 _csv_cell(row.get("opens_at")),
                 _csv_cell(row.get("closes_at")),
                 _csv_cell(row.get("time_limit")),
@@ -1023,10 +1065,28 @@ async def submission_save(
         raise HTTPException(status_code=413, detail=str(exc))
     if submission is None:
         raise HTTPException(status_code=403, detail="You are not a member of this class")
+    # Link classroom work back to the existing course progress model. A final
+    # submission proves the student completed the lesson's assigned practice;
+    # this keeps the teacher report's lesson completion and assignment rows in
+    # sync without trusting a browser-only progress event.
+    if submit and assignment.get("lesson_id"):
+        try:
+            cloud_db.set_progress(user["id"], str(assignment["lesson_id"]), "done")
+        except Exception:
+            # Progress bookkeeping must not reject a valid submission.
+            pass
     auto_graded = False
     ai_grade: dict[str, Any] | None = None
     if submit and assignment.get("auto_grade") and assignment.get("assignment_type") == "quiz":
-        result = _auto_grade_quiz(assignment.get("quiz"), answers, float(assignment["max_score"]))
+        # Only an all-choice answer-key quiz is deterministic. Mixed exams
+        # (choice + short/code/circuit) must send the complete evidence to the
+        # rubric grader instead of awarding points for the known subset.
+        from app.services import ai_grading
+        result = (
+            _auto_grade_quiz(assignment.get("quiz"), answers, float(assignment["max_score"]))
+            if ai_grading.is_deterministic_quiz(assignment.get("quiz"))
+            else None
+        )
         if result is not None:
             score, feedback = result
             submission = cloud_db.auto_grade_submission(submission["id"], score=score, feedback=feedback)
@@ -1061,21 +1121,18 @@ async def submission_save(
                 auto_graded = bool(ai_grade and ai_grade.get("status") == "graded")
         except Exception:
             auto_graded = False
+    # ``save_submission``/``auto_grade_submission`` return a teacher-private
+    # row by default. Always project through the student-safe serializer so a
+    # deferred result can never leak in the final-submit response.
+    if submission is not None:
+        submission = cloud_db.get_submission(
+            assignment_id, student_id=user["id"], include_private=False
+        ) or submission
     response: dict[str, Any] = {
         "submission": submission,
         **(submission or {}),
         "auto_graded": auto_graded,
     }
-    if submission is not None and not assignment.get("show_score_immediately", True):
-        # Refresh through the student-safe projection so a just-computed
-        # automatic mark is not leaked in the submit response when the
-        # teacher configured deferred score release.
-        safe_submission = cloud_db.get_submission(
-            assignment_id, student_id=user["id"], include_private=False
-        )
-        if safe_submission is not None:
-            response["submission"] = safe_submission
-            response.update(safe_submission)
     # Include criterion-level feedback/status even when the model requests
     # teacher review. This lets a student see why the result is pending while
     # keeping the official score NULL until a confident grade or teacher mark.
@@ -1104,6 +1161,12 @@ async def submission_get(
             from app.api.routes.grading import _student_visible_result
             from app.services import ai_grade_store
             ai_result = ai_grade_store.latest_result(submission["id"])
+            if ai_result and (
+                submission.get("status") == "draft"
+                or int(ai_result.get("attempt_no") or 0)
+                != int(submission.get("attempt_no") or 0)
+            ):
+                ai_result = None
             if ai_result:
                 visible = _student_visible_result(ai_result, assignment, user)
                 submission["ai_grade_status"] = visible.get("status") if visible else None
@@ -1270,6 +1333,19 @@ async def submissions_list(
     if status and status not in ("draft", "submitted", "graded", "returned"):
         raise HTTPException(status_code=422, detail="Unknown submission status")
     submissions = cloud_db.list_submissions(assignment_id, status=status)
+    # Expose the complete AI suggestion to the owning teacher (students use a
+    # redacted projection in ``_with_student_submission``). This keeps the
+    # collection view useful when a model returns ``needs_review`` without
+    # publishing an official score.
+    try:
+        from app.services import ai_grade_store
+        for item in submissions:
+            ai_result = ai_grade_store.latest_result(item["id"])
+            if ai_result and int(ai_result.get("attempt_no") or 0) == int(item.get("attempt_no") or 0):
+                item["ai_grade_status"] = ai_result.get("status")
+                item["ai_grade"] = ai_result
+    except Exception:
+        pass
     out: dict[str, Any] = {"assignment": assignment, "submissions": submissions}
     if history:
         attempts = cloud_db.list_submission_attempts(assignment_id, include_private=True)

@@ -22,6 +22,7 @@ import base64
 import hashlib
 import hmac
 import json
+import math
 import os
 import secrets
 import sqlite3
@@ -1138,8 +1139,18 @@ def _assignment_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[
         "opens_at": float(opens_at) if opens_at is not None else None,
         "closes_at": closes_at,
         "time_limit": int(time_limit) if time_limit is not None else None,
+        # Friendly aliases used by the exam builder/legacy clients. Keep the
+        # canonical seconds/count fields above as the source of truth.
+        "time_limit_seconds": int(time_limit) if time_limit is not None else None,
+        "duration_minutes": (
+            int(math.ceil(int(time_limit) / 60))
+            if time_limit is not None and int(time_limit) > 0
+            else None
+        ),
         "max_attempts": max(0, int(max_attempts or 0)),
+        "attempts_allowed": max(0, int(max_attempts or 0)) or None,
         "late_policy": late_policy,
+        "allow_late": late_policy in ("allow", "flag"),
         "show_score_immediately": bool(show_score),
         "window_status": window_status,
         "max_score": row["max_score"],
@@ -1202,8 +1213,20 @@ def _submission_dict(row: sqlite3.Row, *, include_private: bool = True) -> dict[
         "opens_at": row["opens_at"] if "opens_at" in keys else None,
         "closes_at": closes_at,
         "time_limit": int(time_limit) if time_limit is not None else None,
+        "time_limit_seconds": int(time_limit) if time_limit is not None else None,
+        "duration_minutes": (
+            int(math.ceil(int(time_limit) / 60))
+            if time_limit is not None and int(time_limit) > 0
+            else None
+        ),
         "max_attempts": max(0, int(row["max_attempts"] or 0)) if "max_attempts" in keys else 0,
+        "attempts_allowed": (
+            max(0, int(row["max_attempts"] or 0)) or None
+            if "max_attempts" in keys
+            else None
+        ),
         "late_policy": _effective_late_policy(row["late_policy"] if "late_policy" in keys else "reject"),
+        "allow_late": _effective_late_policy(row["late_policy"] if "late_policy" in keys else "reject") in ("allow", "flag"),
         "show_score_immediately": bool(row["show_score_immediately"]) if "show_score_immediately" in keys else True,
         "is_late": is_late,
         "time_remaining": (
