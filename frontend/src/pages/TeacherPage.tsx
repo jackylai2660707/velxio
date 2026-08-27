@@ -183,6 +183,12 @@ export const TeacherPage: React.FC = () => {
 
   const createAssignment = async (publishImmediately = false) => {
     if (!selectedId || !assignmentForm.title.trim() || assignmentBusy) return;
+    if (assignmentForm.assignment_type === 'quiz' && !assignmentForm.lesson_id) {
+      setAssignmentNotice(i18n.language.toLowerCase().startsWith('zh')
+        ? '小測驗需要連結一課，系統才可以自動評分。'
+        : 'A quiz must link to a lesson so it has questions to auto-grade.');
+      return;
+    }
     setAssignmentBusy(true);
     setAssignmentNotice('');
     try {
@@ -556,14 +562,14 @@ export const TeacherPage: React.FC = () => {
                   <button
                     type="submit"
                     className="teacher-secondary"
-                    disabled={assignmentBusy || !assignmentForm.title.trim()}
+                    disabled={assignmentBusy || !assignmentForm.title.trim() || (assignmentForm.assignment_type === 'quiz' && !assignmentForm.lesson_id)}
                   >
                     {copy.saveDraft}
                   </button>
                   <button
                     type="button"
                     className="teacher-primary"
-                    disabled={assignmentBusy || !assignmentForm.title.trim()}
+                    disabled={assignmentBusy || !assignmentForm.title.trim() || (assignmentForm.assignment_type === 'quiz' && !assignmentForm.lesson_id)}
                     onClick={() => void createAssignment(true)}
                   >
                     {copy.publish}
