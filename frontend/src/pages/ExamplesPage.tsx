@@ -29,7 +29,9 @@ export const ExamplesPage: React.FC = () => {
   const navigate = useNavigate();
 
   const handleLoadExample = (example: ExampleProject) => {
-    navigate(localize(`/example/${example.id}`));
+    // Cards are informational; applying an example mutates the workspace and
+    // is confirmed on the detail page.
+    navigate(localize(`/examples/${example.id}`));
   };
 
   return (

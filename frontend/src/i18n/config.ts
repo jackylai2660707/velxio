@@ -8,18 +8,10 @@
  * `scripts/translate/locales.mjs` in velxio_blog.
  */
 
-export const LOCALES = [
-  "zh-tw",
-  "en",
-  "es",
-  "pt-br",
-  "it",
-  "fr",
-  "zh-cn",
-  "de",
-  "ja",
-  "ru",
-] as const;
+// Product UI languages: Traditional Chinese and English only.
+// Keeping this list authoritative also removes unsupported locale routes and
+// prevents the language switcher from offering translations we do not maintain.
+export const LOCALES = ["zh-tw", "en"] as const;
 
 export type Locale = (typeof LOCALES)[number];
 
@@ -51,24 +43,6 @@ export const LOCALE_META: Record<Locale, LocaleMeta> = {
     dir: "ltr",
   },
   en: { htmlLang: "en", nativeName: "English", ogLocale: "en_US", dir: "ltr" },
-  es: { htmlLang: "es", nativeName: "Español", ogLocale: "es_ES", dir: "ltr" },
-  "pt-br": {
-    htmlLang: "pt-BR",
-    nativeName: "Português (BR)",
-    ogLocale: "pt_BR",
-    dir: "ltr",
-  },
-  it: { htmlLang: "it", nativeName: "Italiano", ogLocale: "it_IT", dir: "ltr" },
-  fr: { htmlLang: "fr", nativeName: "Français", ogLocale: "fr_FR", dir: "ltr" },
-  "zh-cn": {
-    htmlLang: "zh-CN",
-    nativeName: "简体中文",
-    ogLocale: "zh_CN",
-    dir: "ltr",
-  },
-  de: { htmlLang: "de", nativeName: "Deutsch", ogLocale: "de_DE", dir: "ltr" },
-  ja: { htmlLang: "ja", nativeName: "日本語", ogLocale: "ja_JP", dir: "ltr" },
-  ru: { htmlLang: "ru", nativeName: "Русский", ogLocale: "ru_RU", dir: "ltr" },
 };
 
 export function isLocale(value: unknown): value is Locale {

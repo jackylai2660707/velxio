@@ -10,7 +10,7 @@
  */
 
 import React from 'react';
-import { useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { exampleProjects, subscribeProExamples, getProExamplesVersion } from '../data/examples';
 import { AppHeader } from '../components/layout/AppHeader';
@@ -51,6 +51,7 @@ export const ExampleDetailPage: React.FC = () => {
 
   const { exampleId } = useParams<{ exampleId: string }>();
   const navigate = useNavigate();
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const example = exampleId ? exampleProjects.find((e) => e.id === exampleId) : null;
 
@@ -75,9 +76,12 @@ export const ExampleDetailPage: React.FC = () => {
 
   const handleOpen = () => {
     if (!example) return;
-    // Navigate to the live editor URL — ExampleEditorPage owns the load.
-    // Pinning the URL means the user can refresh / share the link and
-    // keep the example loaded.
+    setConfirmOpen(true);
+  };
+
+  const applyExample = () => {
+    if (!example) return;
+    setConfirmOpen(false);
     navigate(`/example/${example.id}`);
   };
 
@@ -255,6 +259,22 @@ export const ExampleDetailPage: React.FC = () => {
             {example.description}
           </p>
 
+          <section style={{ marginBottom: 32, padding: '18px 20px', background: '#202b33', border: '1px solid #314552', borderRadius: 8 }}>
+            <h2 style={{ margin: '0 0 12px', color: '#f0f6f8', fontSize: 15 }}>
+              Project brief / 專案簡介
+            </h2>
+            <p style={{ margin: '0 0 10px', color: '#c7d5da', fontSize: 14, lineHeight: 1.65 }}>
+              Learn by running a complete circuit, reading the source, and changing one part at a time.
+              <br />透過完整電路開始學習：先執行、再閱讀程式，最後一次只修改一個部分。
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10, color: '#9fb5bd', fontSize: 13 }}>
+              <div><strong style={{ color: '#69d0e8' }}>Board / 開發板</strong><br />{boardLabel}</div>
+              <div><strong style={{ color: '#69d0e8' }}>Level / 難度</strong><br />{example.difficulty}</div>
+              <div><strong style={{ color: '#69d0e8' }}>Parts / 元件</strong><br />{example.components?.length ?? 0} interactive parts / 個互動元件</div>
+              <div><strong style={{ color: '#69d0e8' }}>Practice / 練習</strong><br />Run → observe → edit / 執行 → 觀察 → 修改</div>
+            </div>
+          </section>
+
           {/* What you'll learn section */}
           <section style={{ marginBottom: 36 }}>
             <h2
@@ -376,6 +396,25 @@ export const ExampleDetailPage: React.FC = () => {
           }}
         />
       </main>
+
+      {confirmOpen && (
+        <div role="presentation" onClick={() => setConfirmOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'grid', placeItems: 'center', padding: 20, background: 'rgba(0,0,0,.72)' }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="apply-example-title" onClick={(event) => event.stopPropagation()} style={{ width: 'min(100%, 470px)', background: '#252526', border: '1px solid #46515a', borderRadius: 12, padding: 28, boxShadow: '0 24px 80px rgba(0,0,0,.5)' }}>
+            <div style={{ color: '#69d0e8', fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Apply example / 套用範例</div>
+            <h2 id="apply-example-title" style={{ color: '#f4f7f8', fontSize: 21, margin: '8px 0 12px' }}>{example.title}</h2>
+            <p style={{ color: '#c3c8cb', lineHeight: 1.65, margin: '0 0 8px' }}>
+              This will replace the current editor workspace.<br />套用後會取代目前工作區中的電路、接線與程式碼。
+            </p>
+            <p style={{ color: '#8f9ba1', fontSize: 13, margin: '0 0 22px' }}>
+              Save or export your current project first if you want to keep it. / 如需保留目前專案，請先儲存或匯出。
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button type="button" onClick={() => setConfirmOpen(false)} style={{ border: '1px solid #56616a', background: 'transparent', color: '#d8e0e3', borderRadius: 6, padding: '10px 16px', cursor: 'pointer' }}>Cancel / 取消</button>
+              <button type="button" onClick={applyExample} autoFocus style={{ border: 0, background: '#0e88a8', color: '#fff', borderRadius: 6, padding: '10px 18px', cursor: 'pointer', fontWeight: 700 }}>Apply and open / 套用並開啟</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Library install overlay used to live here — moved to
           ExampleEditorPage now that loading runs at /example/<id>. */}
