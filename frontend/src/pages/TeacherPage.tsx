@@ -93,7 +93,8 @@ export const TeacherPage: React.FC = () => {
           }
         : {
             classroom: 'Classroom control',
-            classroomHint: 'Create activities, publish to the class, and see every submission before the bell.',
+            classroomHint:
+              'Create activities, publish to the class, and see every submission before the bell.',
             assignments: 'Assignments & activities',
             createAssignment: 'Create assignment',
             assignmentTitle: 'Assignment title',
@@ -112,8 +113,10 @@ export const TeacherPage: React.FC = () => {
             average: 'Average',
             grading: 'graded',
             review: 'Review submissions',
-            noAssignments: 'No activities yet. Create the first assignment your class can finish today.',
-            noSubmissions: 'No student work yet. Once published, this activity appears on each student’s Courses page.',
+            noAssignments:
+              'No activities yet. Create the first assignment your class can finish today.',
+            noSubmissions:
+              'No student work yet. Once published, this activity appears on each student’s Courses page.',
             collection: 'Collection & grading',
             close: 'Close',
             submitted: 'Submitted',
@@ -129,14 +132,14 @@ export const TeacherPage: React.FC = () => {
             quiz: 'Quiz (auto-graded)',
             reflection: 'Written reflection',
           },
-    [i18n.language]
+    [i18n.language],
   );
 
   useSEO({
     title: t('teacher.seoTitle', '教學管理 — AI物聯網實驗室'),
     description: t(
       'teacher.seoDescription',
-      '建立班級、發放班級代碼,即時掌握每位學生的課程進度與測驗成績。'
+      '建立班級、發放班級代碼,即時掌握每位學生的課程進度與測驗成績。',
     ),
     url: '/teacher',
   });
@@ -185,9 +188,10 @@ export const TeacherPage: React.FC = () => {
     try {
       const [courseId, lessonId] = assignmentForm.lesson_id.split('/');
       const linkedLesson = courseId && lessonId ? getLesson(courseId, lessonId) : null;
-      const quiz = assignmentForm.assignment_type === 'quiz' && linkedLesson
-        ? linkedLesson.lesson.quiz
-        : undefined;
+      const quiz =
+        assignmentForm.assignment_type === 'quiz' && linkedLesson
+          ? linkedLesson.lesson.quiz
+          : undefined;
       const created = await lmsApi.createAssignment(selectedId, {
         title: assignmentForm.title.trim(),
         instructions: assignmentForm.instructions.trim(),
@@ -200,7 +204,15 @@ export const TeacherPage: React.FC = () => {
       });
       const assignment = publishImmediately ? await lmsApi.publishAssignment(created.id) : created;
       setAssignments((current) => [assignment, ...current]);
-      setAssignmentForm({ title: '', instructions: '', lesson_id: '', assignment_type: 'project', due_at: '', max_score: '100', auto_grade: true });
+      setAssignmentForm({
+        title: '',
+        instructions: '',
+        lesson_id: '',
+        assignment_type: 'project',
+        due_at: '',
+        max_score: '100',
+        auto_grade: true,
+      });
       setOpenComposer(false);
       setAssignmentNotice(publishImmediately ? copy.publishedNotice : copy.draftNotice);
     } finally {
@@ -213,7 +225,9 @@ export const TeacherPage: React.FC = () => {
     setAssignmentBusy(true);
     try {
       const published = await lmsApi.publishAssignment(assignment.id);
-      setAssignments((current) => current.map((item) => (item.id === published.id ? published : item)));
+      setAssignments((current) =>
+        current.map((item) => (item.id === published.id ? published : item)),
+      );
       setAssignmentNotice(copy.publishedNotice);
     } finally {
       setAssignmentBusy(false);
@@ -233,8 +247,18 @@ export const TeacherPage: React.FC = () => {
     }
   };
 
-  const formatDate = (value: string | number | null | undefined) =>
-    value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : copy.noDeadline;
+  const formatDate = (value: string | number | null | undefined) => {
+    if (!value) return copy.noDeadline;
+    // cloud_db stores timestamps as Unix seconds; tolerate ISO strings and
+    // millisecond epochs from imported/older records as well.
+    const dateValue = typeof value === 'number' && value < 10_000_000_000 ? value * 1000 : value;
+    const date = new Date(dateValue);
+    return Number.isNaN(date.getTime())
+      ? copy.noDeadline
+      : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
+          date,
+        );
+  };
 
   const createClass = async () => {
     if (!newName.trim() || busy) return;
@@ -250,7 +274,15 @@ export const TeacherPage: React.FC = () => {
   };
 
   const removeClass = async (id: string) => {
-    if (!window.confirm(t('teacher.deleteConfirm', '確定要刪除這個班級嗎?學生的個人進度不會消失,但班級與名單會被移除。'))) return;
+    if (
+      !window.confirm(
+        t(
+          'teacher.deleteConfirm',
+          '確定要刪除這個班級嗎?學生的個人進度不會消失,但班級與名單會被移除。',
+        ),
+      )
+    )
+      return;
     await lmsApi.deleteClass(id).catch(() => {});
     if (selectedId === id) setSelectedId(null);
     await refresh();
@@ -287,7 +319,7 @@ export const TeacherPage: React.FC = () => {
           <p>
             {t(
               'teacher.needTeacherRole',
-              '這個頁面需要教師帳號。你目前是學生身分 — 若你是老師,請用「教師」身分重新註冊一個帳號。'
+              '這個頁面需要教師帳號。你目前是學生身分 — 若你是老師,請用「教師」身分重新註冊一個帳號。',
             )}
           </p>
         </div>
@@ -314,7 +346,11 @@ export const TeacherPage: React.FC = () => {
             maxLength={40}
             onKeyDown={(e) => e.key === 'Enter' && createClass()}
           />
-          <button className="teacher-primary" onClick={createClass} disabled={busy || !newName.trim()}>
+          <button
+            className="teacher-primary"
+            onClick={createClass}
+            disabled={busy || !newName.trim()}
+          >
             {t('teacher.create', '建立班級')}
           </button>
         </div>
@@ -323,7 +359,7 @@ export const TeacherPage: React.FC = () => {
           <p className="teacher-empty">
             {t(
               'teacher.empty',
-              '還沒有班級。建立第一個班級後,把班級代碼發給學生,他們在「課程」頁輸入代碼即可加入。'
+              '還沒有班級。建立第一個班級後,把班級代碼發給學生,他們在「課程」頁輸入代碼即可加入。',
             )}
           </p>
         ) : (
@@ -331,7 +367,9 @@ export const TeacherPage: React.FC = () => {
             {classes.map((c) => (
               <div
                 key={c.id}
-                className={'teacher-class-card' + (selectedId === c.id ? ' teacher-class-selected' : '')}
+                className={
+                  'teacher-class-card' + (selectedId === c.id ? ' teacher-class-selected' : '')
+                }
                 role="button"
                 tabIndex={0}
                 aria-pressed={selectedId === c.id}
@@ -382,26 +420,70 @@ export const TeacherPage: React.FC = () => {
                 <p className="teacher-eyebrow">{copy.assignmentType}</p>
                 <h2 id="assignments-title">{copy.assignments}</h2>
               </div>
-              <button className="teacher-primary" onClick={() => setOpenComposer((value) => !value)}>
+              <button
+                className="teacher-primary"
+                onClick={() => setOpenComposer((value) => !value)}
+              >
                 {openComposer ? copy.close : copy.createAssignment}
               </button>
             </div>
 
-            {assignmentNotice && <p className="teacher-notice" role="status">{assignmentNotice}</p>}
+            {assignmentNotice && (
+              <p className="teacher-notice" role="status">
+                {assignmentNotice}
+              </p>
+            )}
 
             {openComposer && (
-              <form className="teacher-assignment-composer" onSubmit={(event) => { event.preventDefault(); void createAssignment(false); }}>
+              <form
+                className="teacher-assignment-composer"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void createAssignment(false);
+                }}
+              >
                 <label>
                   <span>{copy.assignmentTitle}</span>
-                  <input autoFocus value={assignmentForm.title} onChange={(event) => setAssignmentForm((current) => ({ ...current, title: event.target.value }))} maxLength={100} required />
+                  <input
+                    autoFocus
+                    value={assignmentForm.title}
+                    onChange={(event) =>
+                      setAssignmentForm((current) => ({ ...current, title: event.target.value }))
+                    }
+                    maxLength={100}
+                    required
+                  />
                 </label>
                 <label className="teacher-composer-wide">
                   <span>{copy.instructions}</span>
-                  <textarea value={assignmentForm.instructions} onChange={(event) => setAssignmentForm((current) => ({ ...current, instructions: event.target.value }))} rows={4} maxLength={3000} />
+                  <textarea
+                    value={assignmentForm.instructions}
+                    onChange={(event) =>
+                      setAssignmentForm((current) => ({
+                        ...current,
+                        instructions: event.target.value,
+                      }))
+                    }
+                    rows={4}
+                    maxLength={3000}
+                  />
                 </label>
                 <label>
                   <span>{copy.assignmentType}</span>
-                  <select value={assignmentForm.assignment_type} onChange={(event) => setAssignmentForm((current) => { const assignment_type = event.target.value as typeof current.assignment_type; return { ...current, assignment_type, auto_grade: assignment_type === 'quiz' }; })}>
+                  <select
+                    value={assignmentForm.assignment_type}
+                    onChange={(event) =>
+                      setAssignmentForm((current) => {
+                        const assignment_type = event.target
+                          .value as typeof current.assignment_type;
+                        return {
+                          ...current,
+                          assignment_type,
+                          auto_grade: assignment_type === 'quiz',
+                        };
+                      })
+                    }
+                  >
                     <option value="project">{copy.project}</option>
                     <option value="quiz">{copy.quiz}</option>
                     <option value="reflection">{copy.reflection}</option>
@@ -409,26 +491,83 @@ export const TeacherPage: React.FC = () => {
                 </label>
                 <label>
                   <span>{copy.lesson}</span>
-                  <select value={assignmentForm.lesson_id} onChange={(event) => setAssignmentForm((current) => ({ ...current, lesson_id: event.target.value }))}>
+                  <select
+                    value={assignmentForm.lesson_id}
+                    onChange={(event) =>
+                      setAssignmentForm((current) => ({
+                        ...current,
+                        lesson_id: event.target.value,
+                      }))
+                    }
+                  >
                     <option value="">{copy.allLessons}</option>
-                    {COURSES.flatMap((course) => course.lessons.map((lesson) => <option key={lessonKey(course.id, lesson.id)} value={lessonKey(course.id, lesson.id)}>{course.title} · {lesson.title}</option>))}
+                    {COURSES.flatMap((course) =>
+                      course.lessons.map((lesson) => (
+                        <option
+                          key={lessonKey(course.id, lesson.id)}
+                          value={lessonKey(course.id, lesson.id)}
+                        >
+                          {course.title} · {lesson.title}
+                        </option>
+                      )),
+                    )}
                   </select>
                 </label>
                 <label>
                   <span>{copy.deadline}</span>
-                  <input type="datetime-local" value={assignmentForm.due_at} onChange={(event) => setAssignmentForm((current) => ({ ...current, due_at: event.target.value }))} />
+                  <input
+                    type="datetime-local"
+                    value={assignmentForm.due_at}
+                    onChange={(event) =>
+                      setAssignmentForm((current) => ({ ...current, due_at: event.target.value }))
+                    }
+                  />
                 </label>
                 <label>
                   <span>{copy.score}</span>
-                  <input type="number" min="1" max="1000" value={assignmentForm.max_score} onChange={(event) => setAssignmentForm((current) => ({ ...current, max_score: event.target.value }))} />
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    value={assignmentForm.max_score}
+                    onChange={(event) =>
+                      setAssignmentForm((current) => ({
+                        ...current,
+                        max_score: event.target.value,
+                      }))
+                    }
+                  />
                 </label>
                 <label className="teacher-check-label">
-                  <input type="checkbox" checked={assignmentForm.auto_grade} disabled={assignmentForm.assignment_type !== 'quiz'} onChange={(event) => setAssignmentForm((current) => ({ ...current, auto_grade: event.target.checked }))} />
+                  <input
+                    type="checkbox"
+                    checked={assignmentForm.auto_grade}
+                    disabled={assignmentForm.assignment_type !== 'quiz'}
+                    onChange={(event) =>
+                      setAssignmentForm((current) => ({
+                        ...current,
+                        auto_grade: event.target.checked,
+                      }))
+                    }
+                  />
                   <span>{copy.automatic}</span>
                 </label>
                 <div className="teacher-composer-actions">
-                  <button type="submit" className="teacher-secondary" disabled={assignmentBusy || !assignmentForm.title.trim()}>{copy.saveDraft}</button>
-                  <button type="button" className="teacher-primary" disabled={assignmentBusy || !assignmentForm.title.trim()} onClick={() => void createAssignment(true)}>{copy.publish}</button>
+                  <button
+                    type="submit"
+                    className="teacher-secondary"
+                    disabled={assignmentBusy || !assignmentForm.title.trim()}
+                  >
+                    {copy.saveDraft}
+                  </button>
+                  <button
+                    type="button"
+                    className="teacher-primary"
+                    disabled={assignmentBusy || !assignmentForm.title.trim()}
+                    onClick={() => void createAssignment(true)}
+                  >
+                    {copy.publish}
+                  </button>
                 </div>
               </form>
             )}
@@ -442,19 +581,51 @@ export const TeacherPage: React.FC = () => {
                 {assignments.map((assignment) => (
                   <article key={assignment.id} className="teacher-assignment-card">
                     <div className="teacher-assignment-topline">
-                      <span className={'teacher-status teacher-status-' + assignment.status}>{assignment.status === 'published' ? copy.published : copy.draft}</span>
-                      <span className="teacher-due">{copy.due}: {formatDate(assignment.due_at)}</span>
+                      <span className={'teacher-status teacher-status-' + assignment.status}>
+                        {assignment.status === 'published' ? copy.published : copy.draft}
+                      </span>
+                      <span className="teacher-due">
+                        {copy.due}: {formatDate(assignment.due_at)}
+                      </span>
                     </div>
                     <h3>{assignment.title}</h3>
                     {assignment.instructions && <p>{assignment.instructions}</p>}
                     <dl className="teacher-assignment-metrics">
-                      <div><dt>{copy.submissions}</dt><dd>{assignment.submission_count}</dd></div>
-                      <div><dt>{copy.average}</dt><dd>{assignment.average_score === null ? '—' : `${assignment.average_score}/${assignment.max_score}`}</dd></div>
-                      <div><dt>{copy.grading}</dt><dd>{assignment.graded_count}/{assignment.submission_count}</dd></div>
+                      <div>
+                        <dt>{copy.submissions}</dt>
+                        <dd>{assignment.submission_count}</dd>
+                      </div>
+                      <div>
+                        <dt>{copy.average}</dt>
+                        <dd>
+                          {assignment.average_score === null
+                            ? '—'
+                            : `${assignment.average_score}/${assignment.max_score}`}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>{copy.grading}</dt>
+                        <dd>
+                          {assignment.graded_count}/{assignment.submission_count}
+                        </dd>
+                      </div>
                     </dl>
                     <div className="teacher-assignment-actions">
-                      {assignment.status !== 'published' && <button className="teacher-secondary" disabled={assignmentBusy} onClick={() => void publishAssignment(assignment)}>{copy.publish}</button>}
-                      <button className="teacher-text-button" onClick={() => void reviewAssignment(assignment)}>{copy.review}</button>
+                      {assignment.status !== 'published' && (
+                        <button
+                          className="teacher-secondary"
+                          disabled={assignmentBusy}
+                          onClick={() => void publishAssignment(assignment)}
+                        >
+                          {copy.publish}
+                        </button>
+                      )}
+                      <button
+                        className="teacher-text-button"
+                        onClick={() => void reviewAssignment(assignment)}
+                      >
+                        {copy.review}
+                      </button>
                     </div>
                   </article>
                 ))}
@@ -467,9 +638,7 @@ export const TeacherPage: React.FC = () => {
 
         {report && (
           <section className="teacher-report">
-            <h2>
-              {t('teacher.reportTitle', '「{{name}}」學習報表', { name: report.name })}
-            </h2>
+            <h2>{t('teacher.reportTitle', '「{{name}}」學習報表', { name: report.name })}</h2>
             {report.members.length === 0 ? (
               <p className="teacher-empty">
                 {t('teacher.noMembers', '還沒有學生加入。把代碼 {{code}} 發給學生吧!', {
@@ -499,7 +668,7 @@ export const TeacherPage: React.FC = () => {
                         {report.members.map((m) => {
                           const doneSet = new Set(m.progress);
                           const doneCount = course.lessons.filter((l) =>
-                            doneSet.has(lessonKey(course.id, l.id))
+                            doneSet.has(lessonKey(course.id, l.id)),
                           ).length;
                           return (
                             <tr key={m.id}>
@@ -541,23 +710,62 @@ export const TeacherPage: React.FC = () => {
         )}
 
         {selectedAssignment && (
-          <div className="teacher-dialog-backdrop" role="presentation" onMouseDown={() => setSelectedAssignment(null)}>
-            <section className="teacher-submission-dialog" role="dialog" aria-modal="true" aria-labelledby="submission-dialog-title" onMouseDown={(event) => event.stopPropagation()}>
+          <div
+            className="teacher-dialog-backdrop"
+            role="presentation"
+            onMouseDown={() => setSelectedAssignment(null)}
+          >
+            <section
+              className="teacher-submission-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="submission-dialog-title"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
               <div className="teacher-section-heading">
-                <div><p className="teacher-eyebrow">{copy.collection}</p><h2 id="submission-dialog-title">{selectedAssignment.title}</h2></div>
-                <button className="teacher-text-button" onClick={() => setSelectedAssignment(null)}>{copy.close}</button>
+                <div>
+                  <p className="teacher-eyebrow">{copy.collection}</p>
+                  <h2 id="submission-dialog-title">{selectedAssignment.title}</h2>
+                </div>
+                <button className="teacher-text-button" onClick={() => setSelectedAssignment(null)}>
+                  {copy.close}
+                </button>
               </div>
-              {submissionsLoading ? <p className="teacher-empty">Loading submissions…</p> : submissions.length === 0 ? <p className="teacher-empty">{copy.noSubmissions}</p> : (
+              {submissionsLoading ? (
+                <p className="teacher-empty">Loading submissions…</p>
+              ) : submissions.length === 0 ? (
+                <p className="teacher-empty">{copy.noSubmissions}</p>
+              ) : (
                 <div className="teacher-submission-list">
                   {submissions.map((submission) => {
-                    const isSubmitted = submission.submitted ?? ['submitted', 'graded', 'returned'].includes(submission.status);
-                    const autoScore = submission.auto_score ?? (selectedAssignment.auto_grade ? submission.score : null);
-                    return <article className="teacher-submission-row" key={submission.id}>
-                    <div><strong>{submission.student_name}</strong><span>{submission.student_email}</span></div>
-                    <div><span>{isSubmitted ? copy.submitted : copy.notSubmitted}</span><small>{submission.submitted_at ? formatDate(submission.submitted_at) : '—'}</small></div>
-                    <div><span>{copy.autoScored}</span><strong>{autoScore ?? '—'}</strong></div>
-                    <div><span>{copy.manualScore}</span><strong>{submission.score ?? '—'}</strong></div>
-                  </article>;
+                    const isSubmitted =
+                      submission.submitted ??
+                      ['submitted', 'graded', 'returned'].includes(submission.status);
+                    const autoScore =
+                      submission.auto_score ??
+                      (selectedAssignment.auto_grade ? submission.score : null);
+                    return (
+                      <article className="teacher-submission-row" key={submission.id}>
+                        <div>
+                          <strong>{submission.student_name}</strong>
+                          <span>{submission.student_email}</span>
+                        </div>
+                        <div>
+                          <span>{isSubmitted ? copy.submitted : copy.notSubmitted}</span>
+                          <small>
+                            {submission.submitted_at ? formatDate(submission.submitted_at) : '—'}
+                          </small>
+                        </div>
+                        <div>
+                          <span>{copy.autoScored}</span>
+                          <strong>{autoScore ?? '—'}</strong>
+                        </div>
+                        <div>
+                          <span>{copy.manualScore}</span>
+                          <strong>{submission.score ?? '—'}</strong>
+                        </div>
+                      </article>
+                    );
                   })}
                 </div>
               )}

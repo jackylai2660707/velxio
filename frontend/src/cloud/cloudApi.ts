@@ -269,7 +269,7 @@ export interface LmsSubmission {
   graded_at?: number | null;
   attempt_no?: number;
   content?: string;
-  answers?: unknown[];
+  answers?: unknown;
 }
 
 export interface LmsAssignment {
@@ -321,7 +321,13 @@ export interface LmsAssignmentCreate {
   project_template?: Record<string, unknown> | string;
   assignment_type?: LmsAssignmentType;
   /** Optional quiz manifest; answer keys stay teacher-side on the server. */
-  quiz?: Array<{ id: string; question: string; options: string[]; answer: number; explanation?: string }>;
+  quiz?: Array<{
+    id: string;
+    question: string;
+    options: string[];
+    answer: number;
+    explanation?: string;
+  }>;
   due_at?: string;
   max_score?: number;
   auto_grade?: boolean;
