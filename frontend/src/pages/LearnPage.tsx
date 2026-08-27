@@ -216,7 +216,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<LmsAssignment>(assignment);
   const [content, setContent] = useState(assignment.submission?.content ?? '');
-  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [answers, setAnswers] = useState<Record<string, number | string | number[]>>({});
   const [attachProject, setAttachProject] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -229,7 +229,10 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
   const [now, setNow] = useState(() => Date.now());
 
   const questions = assignmentQuestions(detail.quiz);
-  const allAnswered = questions.every((q) => answers[q.id] !== undefined);
+  const allAnswered = questions.every((q) => {
+    const value = answers[q.id];
+    return value !== undefined && value !== null && (typeof value !== 'string' || value.trim() !== '');
+  });
   const effectiveSubmission = submitted ?? detail.submission;
   const extras = detail as unknown as AssignmentExtras;
   const attemptApi = lmsApi as typeof lmsApi & AttemptApi;
@@ -474,7 +477,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
                   <legend>
                     {index + 1}. {question.question}
                   </legend>
-                  {question.options.map((option, optionIndex) => (
+                  {question.options.length > 0 ? question.options.map((option, optionIndex) => (
                     <label key={optionIndex}>
                       <input
                         type="radio"
@@ -486,7 +489,14 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({ assignment, onUpdated }
                       />
                       <span>{option}</span>
                     </label>
-                  ))}
+                  )) : (
+                    <textarea
+                      rows={question.type === 'long' || question.type === 'circuit' ? 5 : 3}
+                      value={String(answers[question.id] ?? '')}
+                      placeholder={question.type === 'code' ? 'Paste code…' : 'Your answer…'}
+                      onChange={(event) => setAnswers((current) => ({ ...current, [question.id]: event.target.value }))}
+                    />
+                  )}
                 </fieldset>
               ))}
             </div>
