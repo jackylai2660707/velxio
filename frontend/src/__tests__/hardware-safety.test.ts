@@ -22,6 +22,15 @@ describe('hardware safety graph checks', () => {
     expect(issues.some((i) => i.code === 'gpio-contention')).toBe(true);
   });
 
+  it('flags a 5V Arduino GPIO driving an ESP32 GPIO even without a power rail', () => {
+    const issues = analyzeHardwareSafety({
+      boards: [{ id: 'uno', boardKind: 'arduino-uno' }, { id: 'esp', boardKind: 'esp32' }],
+      components: [],
+      wires: [wire('uno', '13', 'esp', '21')],
+    });
+    expect(issues.some((i) => i.code === 'gpio-overvoltage' && i.severity === 'error')).toBe(true);
+  });
+
   it('flags HC-SR04 Echo level shifting on ESP32', () => {
     const issues = analyzeHardwareSafety({
       boards: [{ id: 'esp', boardKind: 'esp32' }],
@@ -39,4 +48,3 @@ describe('hardware safety graph checks', () => {
     expect(issues.some((i) => i.code === 'missing-common-ground')).toBe(true);
   });
 });
-

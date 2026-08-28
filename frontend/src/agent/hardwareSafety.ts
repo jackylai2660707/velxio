@@ -7,6 +7,7 @@
  */
 import { boardPinGroupFor } from '../simulation/spice/boardPinGroups';
 import { boardPinToNumber } from '../utils/boardPinMapping';
+import { resolvePinContract } from './boardPinContract';
 
 export type HardwareIssueSeverity = 'error' | 'warning';
 export type HardwareIssueCode =
@@ -55,6 +56,15 @@ function isBoardGpio(kind: string, pin: string): boolean {
   return boardPinToNumber(kind, pin) !== null && boardPinToNumber(kind, pin)! >= 0;
 }
 
+/** Return the contract's digital logic voltage when known.  Do not infer it
+ * from the board supply for Pi/overlay boards: a Raspberry Pi may expose a 5V
+ * rail while its GPIO logic remains 3.3V. */
+function boardGpioVoltage(kind: string, pin: string): number | null {
+  const contract = resolvePinContract(kind, pin);
+  if (!contract || contract.gpio === undefined) return null;
+  return contract.voltage;
+}
+
 /** Analyze obvious real-hardware hazards. False negatives are preferable to
  * inventing a fault; unresolved/unknown components are left for review. */
 export function analyzeHardwareSafety(input: HardwareSafetyInput): HardwareIssue[] {
@@ -97,6 +107,24 @@ export function analyzeHardwareSafety(input: HardwareSafetyInput): HardwareIssue
     const maxSupply = supplies.reduce((n, x) => Math.max(n, x.volts), 0);
     if (espGpio.length && maxSupply > 3.6) {
       push({ severity: 'error', code: 'gpio-overvoltage', componentIds: espGpio.map((m) => m.id), message: `ESP32 GPIO ${espGpio.map((m) => `${m.id}:${m.pin}`).join(', ')} shares a ${maxSupply.toFixed(1)} V supply net. ESP32 GPIO is 3.3 V-only; add a divider/level shifter.` });
+    }
+    // A supply rail is not required for a cross-board hazard: a 5 V Arduino
+    // GPIO can directly drive a 3.3 V ESP32 GPIO.  Resolve the source board's
+    // logic contract instead of assuming every non-ESP board is 5 V (Pi and
+    // STM32 GPIO are 3.3 V).  This check remains conservative when a board or
+    // private overlay has no published contract.
+    const highVoltageMcu = gpio.filter((member) => {
+      if (isEsp32(member.board!.boardKind)) return false;
+      const voltage = boardGpioVoltage(member.board!.boardKind, member.pin);
+      return voltage !== null && voltage > 3.6;
+    });
+    if (espGpio.length && highVoltageMcu.length) {
+      push({
+        severity: 'error',
+        code: 'gpio-overvoltage',
+        componentIds: [...espGpio, ...highVoltageMcu].map((member) => member.id),
+        message: `A 5 V-class MCU GPIO (${highVoltageMcu.map((member) => `${member.id}:${member.pin}`).join(', ')}) shares a net with ESP32 GPIO (${espGpio.map((member) => `${member.id}:${member.pin}`).join(', ')}). Add a level shifter/divider; ESP32 inputs are 3.3 V-only.`,
+      });
     }
     if (gpio.length > 1) {
       const distinct = new Set(gpio.map((m) => `${m.id}:${m.pin}`));
