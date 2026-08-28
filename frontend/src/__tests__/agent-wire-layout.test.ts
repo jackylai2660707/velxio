@@ -49,6 +49,22 @@ describe('classifyByPinName', () => {
     expect(classifyByPinName('13')).toBeNull();
     expect(classifyByPinName('A')).toBeNull(); // LED anode is not analog
   });
+
+  it('recognizes breadboard power rails as supply endpoints', () => {
+    // A breadboard's long red/blue rails are the preferred distribution
+    // points for power.  They must not fall through to the generic digital
+    // colour/type when the other endpoint is an unclassified component pin.
+    expect(classifyByPinName('tp.1')).toBe('power-vcc');
+    expect(classifyByPinName('tp.50')).toBe('power-vcc');
+    expect(classifyByPinName('bp.7')).toBe('power-vcc');
+    expect(classifyByPinName('tn.1')).toBe('power-gnd');
+    expect(classifyByPinName('tn.50')).toBe('power-gnd');
+    expect(classifyByPinName('bn.7')).toBe('power-gnd');
+    // Only canonical rail names classify; malformed names stay unknown so
+    // the caller can report them instead of silently inventing a net.
+    expect(classifyByPinName('tp')).toBeNull();
+    expect(classifyByPinName('rail.1')).toBeNull();
+  });
 });
 
 describe('classifyWire', () => {
@@ -65,6 +81,11 @@ describe('classifyWire', () => {
   it('uses pinInfo signals when available', () => {
     const pins = [{ name: 'VCC', signals: [{ type: 'power', signal: 'VCC' }] }];
     expect(classifyWire(pins, 'VCC', null, '1')).toBe('power-vcc');
+  });
+
+  it('lets a breadboard rail classify a wire without pin metadata', () => {
+    expect(classifyWire(null, 'tp.1', null, 'A')).toBe('power-vcc');
+    expect(classifyWire(null, 'bn.12', null, 'C')).toBe('power-gnd');
   });
 });
 
