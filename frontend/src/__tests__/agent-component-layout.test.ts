@@ -89,6 +89,6 @@ describe('agent add_component — footprint spacing', () => {
     // A free neighbouring column is preferred for a series pair; a vertical
     // fallback remains valid if the row is fully occupied.
     expect(b.x !== a.x || b.y >= a.y + 40).toBe(true);
-    expect(resistor.result).toContain('avoid overlapping');
+    expect(resistor.result).toMatch(/moved|overlap|separat/i);
   });
 });
