@@ -120,7 +120,7 @@ client-tool pattern):
 | `add_board` / `remove_board` / `set_active_board` | Board management |
 | `set_board_language` | Arduino C++ ↔ MicroPython |
 | `add_component` / `update_component` / `remove_component` | Canvas parts |
-| `add_wire` / `remove_wire` | Wiring (pin-validated) |
+| `add_wire` / `remove_wire` | Wiring (pin-validated; duplicate/occupied breadboard holes and unsafe direct board rail→GPIO jumpers are rejected) |
 | `write_file` / `edit_file` / `delete_file` | Firmware files (per-board group) |
 | `install_library` | arduino-cli library install + board manifest |
 | `compile` / `run_simulation` / `stop_simulation` | Build & run (toolbar bridge; compile failures carry recovery hints) |
@@ -128,6 +128,8 @@ client-tool pattern):
 | `observe_simulation` | Sample live component state over a window: LED toggles/Hz, servo sweep, buzzer duty, LCD/7-seg/OLED/MAX7219-matrix decode, pin levels, burnt parts, serial delta |
 | `interact` | Press/click buttons, set pot/switch values, drive sensor readings (`SENSOR_CONTROLS`-validated) — with a before → after output diff |
 | `check_circuit` | SPICE pre-flight verification (missing GND, LED without resistor, shorts, …) before running |
+| `check_hardware_safety` | Deterministic real-hardware graph audit (ESP32 3.3V limits, input-only/reserved pins, power loads, level shifting, GPIO contention and common ground) |
+| `lint_code_wiring` | Read-only source↔canvas check for `Wire.begin`, `SPI.begin`/CS, UART pin assignments, `Servo.attach`, DHT, analog/digital/LEDC/touch/DAC calls and MicroPython I²C; follows breadboard seating and reports unresolved or swapped pins |
 | `search_libraries` | Arduino library registry search (exact installable names) |
 | `search_examples` / `get_example` | On-demand retrieval from the ~500-project example gallery (full wiring + code) |
 | `save_version` / `list_versions` / `restore_version` | Project version history (IndexedDB; restore needs explicit user confirmation) |
