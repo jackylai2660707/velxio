@@ -154,6 +154,38 @@ describe('add_wire auto colors', () => {
     expect(result.isError).toBe(true);
     expect(result.result).toContain('seated on a breadboard');
   });
+
+  it('rejects an agent wire endpoint on an occupied breadboard hole', async () => {
+    useSimulatorStore.getState().addComponent({ id: 'breadboard-1', metadataId: 'breadboard', x: 300, y: 200, properties: {} });
+    useSimulatorStore.setState({
+      wires: [{
+        id: 'existing-jumper',
+        start: { componentId: 'breadboard-1', pinName: '1t.a', x: 0, y: 0 },
+        end: { componentId: 'arduino-uno', pinName: '12', x: 0, y: 0 },
+        waypoints: [], color: '#22c55e',
+      }],
+    } as never);
+
+    const result = await executeTool('add_wire', {
+      start_component: 'breadboard-1', start_pin: '1t.a',
+      end_component: 'arduino-uno', end_pin: '13',
+    });
+    expect(result.isError).toBe(true);
+    expect(result.result).toContain('already occupied');
+    expect(useSimulatorStore.getState().wires).toHaveLength(1);
+  });
+
+  it('rejects a visible jumper between holes in one breadboard group', async () => {
+    useSimulatorStore.getState().addComponent({ id: 'breadboard-1', metadataId: 'breadboard', x: 300, y: 200, properties: {} });
+
+    const result = await executeTool('add_wire', {
+      start_component: 'breadboard-1', start_pin: '1t.a',
+      end_component: 'breadboard-1', end_pin: '1t.b',
+    });
+    expect(result.isError).toBe(true);
+    expect(result.result).toContain('same-group short');
+    expect(useSimulatorStore.getState().wires).toHaveLength(0);
+  });
 });
 
 describe('add_component grid snap', () => {

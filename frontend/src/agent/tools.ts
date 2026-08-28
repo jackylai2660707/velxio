@@ -28,6 +28,7 @@ import { WIRE_COLORS } from '../utils/wireColors';
 import { BOARD_SIZE } from '../types/boardSizes';
 import { breadboardHoles, resolveSeatPosition } from '../utils/breadboardSnap';
 import { breadboardGroupKey, isBreadboard } from '../utils/breadboardNets';
+import { holeIsOccupied } from '../utils/breadboardOccupancy';
 import type { ToolDefinition } from './types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -164,6 +165,62 @@ function uniqueWireId(): string {
     id = `wire-ai-${++wireCounter}`;
   } while (taken.has(id));
   return id;
+}
+
+/**
+ * Breadboard endpoints are physical holes, not ordinary component pins.
+ * Keep the agent path strict even though the canvas UI can move a manually
+ * drawn endpoint to a neighbouring hole: an AI retry must never silently
+ * stack another cable on a hole or draw a jumper across an already connected
+ * terminal strip.  Invisible seating wires count as occupancy too.
+ *
+ * Duplicate detection intentionally happens before this guard in add_wire so
+ * replaying an already accepted call remains idempotent.
+ */
+function validateBreadboardWireEndpoints(
+  startComponent: string,
+  startPin: string,
+  endComponent: string,
+  endPin: string,
+): void {
+  const state = useSimulatorStore.getState();
+  const components = new Map(state.components.map((component) => [component.id, component]));
+  const endpoints = [
+    { componentId: startComponent, pinName: startPin },
+    { componentId: endComponent, pinName: endPin },
+  ];
+
+  for (const endpoint of endpoints) {
+    const component = components.get(endpoint.componentId);
+    if (!component || !isBreadboard(component.metadataId)) continue;
+    // Ignore malformed names here. The normal pin resolver below owns the
+    // canonical "unknown pin" error and remains fail-closed in the browser.
+    if (!breadboardGroupKey(component.metadataId, endpoint.pinName)) continue;
+    if (holeIsOccupied(state.wires, endpoint.componentId, endpoint.pinName)) {
+      throw new ToolError(
+        `Breadboard hole ${endpoint.componentId}:${endpoint.pinName} is already occupied. ` +
+          'Use a different free hole in the same group or remove/review the existing connection.',
+      );
+    }
+  }
+
+  // Every terminal-strip column and power rail is internally connected. A
+  // visible jumper between two holes in one group is therefore a direct
+  // same-net short and adds no useful connection. Reject it before mutating
+  // the store, including the reverse endpoint order.
+  if (startComponent === endComponent) {
+    const component = components.get(startComponent);
+    if (component && isBreadboard(component.metadataId) && startPin !== endPin) {
+      const startGroup = breadboardGroupKey(component.metadataId, startPin);
+      const endGroup = breadboardGroupKey(component.metadataId, endPin);
+      if (startGroup && startGroup === endGroup) {
+        throw new ToolError(
+          `Breadboard holes ${startComponent}:${startPin} and ${endComponent}:${endPin} ` +
+            `are already internally connected (${startGroup}); a visible wire would create a same-group short.`,
+        );
+      }
+    }
+  }
 }
 
 const tail = (s: string, n: number) => (s.length > n ? `…${s.slice(-n)}` : s);
@@ -830,6 +887,13 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
           );
         }
       }
+
+      // Unlike a hand-drawn UI wire (which can be shifted to a neighbouring
+      // hole), an agent mutation must be deterministic. Reject occupied
+      // breadboard holes and direct jumpers within one internally-connected
+      // strip/rail before any store mutation. Duplicate replay was handled
+      // above and seated component legs were handled immediately above.
+      validateBreadboardWireEndpoints(startComponent, startPin, endComponent, endPin);
 
       await settleDom();
       const warnings: string[] = [];
