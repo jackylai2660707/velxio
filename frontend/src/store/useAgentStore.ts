@@ -50,6 +50,22 @@ const MAX_PERSISTED_UI_MESSAGES = 80;
  *  store can afford to keep much more raw history than fits one request. */
 const MAX_STORED_API_MESSAGES = 200;
 
+/**
+ * Wire-side context budget.  The persistent history remains intact for the
+ * student's chat view, but each model call only needs a small recent window:
+ * the latest project snapshot is ground truth, while old tool traffic is
+ * useful only as a short audit trail.  Keeping this budget here (instead of
+ * shrinking the stored history) also makes retries and explicit history
+ * loading lossless.
+ */
+const MAX_WIRE_HISTORY_MESSAGES = 12;
+const MAX_WIRE_CURRENT_TURN_MESSAGES = 16;
+const MAX_WIRE_TEXT_CHARS = 2_400;
+const MAX_WIRE_SAFETY_TEXT_CHARS = 5_200;
+const MAX_WIRE_RECENT_TEXT_CHARS = 6_000;
+const SAFETY_FACT_RE = /hardware safety|circuit errors?|overcurrent|short(?:ed| circuit)?|voltage|gpio|pin(?:s| assignment)?/i;
+const PROJECT_SNAPSHOT_RE = /(?:^|\n)BOARDS:\s*[\s\S]*\nCOMPONENTS:\s*[\s\S]*\nWIRES:\s*[\s\S]*\nFILES:/;
+
 let uiIdCounter = 0;
 const nextUiId = () => `agent-msg-${++uiIdCounter}`;
 
@@ -184,6 +200,129 @@ function loadChat(): PersistedChat {
   return { messages: [], apiMessages: [], uiIdCounter: 0 };
 }
 
+function isRealUserTurn(message: ApiMessage): boolean {
+  return message.role === 'user' && message.content[0]?.type === 'text';
+}
+
+function isProjectSnapshotResult(block: ApiMessage['content'][number]): boolean {
+  return block.type === 'tool_result' && PROJECT_SNAPSHOT_RE.test(block.content);
+}
+
+/** Keep the beginning (scope/diagnostic heading) and end (latest detail) of
+ * an old text block.  Never apply this to the current project snapshot: the
+ * latest user turn is deliberately kept byte-for-byte intact. */
+function shortenContextText(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  const head = Math.max(1_000, Math.floor(maxChars * 0.62));
+  const tail = Math.max(300, maxChars - head);
+  return `${text.slice(0, head)}\n… [older context trimmed] …\n${text.slice(-tail)}`;
+}
+
+/** Trim only historical prose/results.  Thinking signatures and tool-use
+ * inputs stay untouched because providers require those blocks to replay
+ * exactly; tool-result pairing is therefore always wire-valid. */
+function shortenHistoricalMessage(message: ApiMessage, recent: boolean): ApiMessage {
+  const blocks = message.content.map((block) => {
+    if (block.type === 'text') {
+      const safety = SAFETY_FACT_RE.test(block.text);
+      const limit = safety
+        ? MAX_WIRE_SAFETY_TEXT_CHARS
+        : recent
+          ? MAX_WIRE_RECENT_TEXT_CHARS
+          : MAX_WIRE_TEXT_CHARS;
+      return block.text.length > limit ? { ...block, text: shortenContextText(block.text, limit) } : block;
+    }
+    if (block.type === 'tool_result') {
+      const safety = SAFETY_FACT_RE.test(block.content);
+      const limit = safety
+        ? MAX_WIRE_SAFETY_TEXT_CHARS
+        : recent
+          ? MAX_WIRE_RECENT_TEXT_CHARS
+          : MAX_WIRE_TEXT_CHARS;
+      return block.content.length > limit ? { ...block, content: shortenContextText(block.content, limit) } : block;
+    }
+    return block;
+  });
+  return blocks.some((block, index) => block !== message.content[index])
+    ? { ...message, content: blocks }
+    : message;
+}
+
+/**
+ * Build a bounded, wire-only history.  `defaultTransformContext` first drops
+ * stale project snapshots and trims at complete user-turn boundaries.  This
+ * second pass handles the one case that boundary trimming cannot solve: a
+ * single long tool run has one real user turn followed by dozens of
+ * assistant/tool-result pairs.  We retain the latest pairs and the current
+ * snapshot, so the model can continue safely without paying for the whole
+ * transcript on every iteration.
+ */
+function buildWireContext(messages: ApiMessage[]): ApiMessage[] {
+  const transformed = defaultTransformContext(messages);
+  let latestUserIndex = -1;
+  for (let i = transformed.length - 1; i >= 0; i--) {
+    if (isRealUserTurn(transformed[i])) {
+      latestUserIndex = i;
+      break;
+    }
+  }
+  if (latestUserIndex < 0) return transformed;
+
+  // Keep a small, complete history before the current turn.  trimHistory
+  // inserts a structural summary whenever it drops anything, preserving old
+  // user intent without replaying stale project snapshots.
+  const prefix = trimHistory(transformed.slice(0, latestUserIndex), MAX_WIRE_HISTORY_MESSAGES);
+  const latestUser = transformed[latestUserIndex];
+  const currentTail = transformed.slice(latestUserIndex + 1);
+  let keptTail = currentTail;
+  if (currentTail.length > MAX_WIRE_CURRENT_TURN_MESSAGES) {
+    const floor = currentTail.length - MAX_WIRE_CURRENT_TURN_MESSAGES;
+    // Start on an assistant message so no tool_use/tool_result pair is split.
+    let boundary = currentTail.findIndex((message, index) => index >= floor && message.role === 'assistant');
+    if (boundary < 0) {
+      boundary = currentTail
+        .map((message, index) => (message.role === 'assistant' && index < floor ? index : -1))
+        .reduce((last, index) => Math.max(last, index), -1);
+    }
+    keptTail = currentTail.slice(boundary >= 0 ? boundary : 0);
+  }
+
+  const history = [...prefix, latestUser, ...keptTail];
+  // `get_project` can return the same large snapshot that is injected into a
+  // user turn. Keep only its newest result; replaying older snapshots wastes
+  // tokens and can make the model trust stale wiring after a mutation. The
+  // newest result stays complete because it may be the only post-mutation
+  // state available during a long tool run.
+  let latestProjectResult = -1;
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].content.some(isProjectSnapshotResult)) {
+      latestProjectResult = i;
+      break;
+    }
+  }
+  // Prefix prose/results can contain large compile logs or example payloads;
+  // retain concise diagnostics while leaving the current turn untouched.
+  const prefixLength = prefix.length;
+  return history.map((message, index) => {
+    // The latest user message contains the full live <project_state>; never
+    // shorten it.  Current-turn tool results are still capped, with a larger
+    // limit than old history so fresh diagnostics remain actionable.
+    if (index === prefixLength) return message;
+    if (latestProjectResult >= 0 && index < latestProjectResult && message.content.some(isProjectSnapshotResult)) {
+      const content = message.content.map((block) =>
+        isProjectSnapshotResult(block)
+          ? {
+              ...block,
+              content: '(older get_project snapshot omitted — see the latest project state result)',
+            }
+          : block,
+      );
+      return { ...message, content };
+    }
+    return shortenHistoricalMessage(message, index > prefixLength);
+  });
+}
+
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 function schedulePersistChat(get: () => AgentState): void {
   if (persistTimer) clearTimeout(persistTimer);
@@ -236,9 +375,10 @@ function tryCaptureCheckpoint(msgId: string, label: string): TurnCheckpoint | nu
 
 /** Assemble a full API user turn: fresh <project_state> snapshot + optional
  *  example hint + the user's text. Used for the initial send AND for
- *  steering messages promoted to follow-up turns. */
-function buildUserTurnMessage(text: string): ApiMessage {
-  const exampleHint = buildExampleHint(text);
+ *  steering messages promoted to follow-up turns. Follow-ups omit the hint:
+ *  it is reference material, not new state, and repeating it burns tokens. */
+function buildUserTurnMessage(text: string, includeExampleHint = true): ApiMessage {
+  const exampleHint = includeExampleHint ? buildExampleHint(text) : '';
   const scope = useAgentStore.getState().workspaceScope;
   return {
     role: 'user',
@@ -660,10 +800,19 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       // and replace them in the stored history. Fails silently — the wire
       // transform's structural trim remains the floor.
       let base = repairedBase;
-      if (shouldCompact(base, state.lastPromptTokens, state.settings.contextLimitTokens)) {
+      // Include the new turn in the decision: its fresh project snapshot is
+      // usually the largest payload, and checking only the previous history
+      // delayed compaction by one send.
+      if (shouldCompact([...base, userMsg], state.lastPromptTokens, state.settings.contextLimitTokens)) {
         onEvent({ type: 'compaction_start' });
-        const compacted = await compactHistory(base, state.settings);
-        const ok = compacted !== base;
+        // Apply the same bounded wire context before paying for an LLM
+        // summary. This keeps the summarizer request bounded too (especially
+        // after a long single-turn tool run).
+        const compactInput = buildWireContext(base);
+        const compacted = await compactHistory(compactInput, state.settings);
+        // Wire-only trimming is ephemeral; keep the student's persistent
+        // history lossless unless an actual summary replaced old turns.
+        const ok = compacted !== compactInput;
         if (ok && get().generation === generation) {
           base = compacted;
           set({ apiMessages: compacted, lastPromptTokens: 0 });
@@ -678,8 +827,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         onEvent,
         {
           steering,
-          buildFollowUpTurn: buildUserTurnMessage,
-          transformContext: defaultTransformContext,
+          // A follow-up still receives a fresh snapshot, but not another copy
+          // of the same gallery reference hint.
+          buildFollowUpTurn: (followUpText) => buildUserTurnMessage(followUpText, false),
+          transformContext: buildWireContext,
         },
       );
       void error; // surfaced on the bubble by the reducer (run_end event)

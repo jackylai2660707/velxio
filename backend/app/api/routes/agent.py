@@ -472,25 +472,29 @@ async def _stream_events(
         yield emit({"type": "content_block_stop", "index": 0})
     for tc_index in sorted(open_tool_indexes):
         yield emit({"type": "content_block_stop", "index": 1 + tc_index})
+    # Always emit usage so the browser can compact based on prompt size even
+    # when an OpenAI-compatible provider omits usage metadata.
     if usage:
-        yield emit(
-            {
-                "type": "velxio_usage",
-                "prompt_tokens": usage.get("prompt_tokens", 0),
-                "completion_tokens": usage.get("completion_tokens", 0),
-            }
+        prompt_tokens = int(usage.get("prompt_tokens") or 0)
+        completion_tokens = int(usage.get("completion_tokens") or 0)
+    else:
+        prompt_chars = (
+            len(req.system)
+            + len(json.dumps(req.messages, ensure_ascii=False))
+            + len(json.dumps(req.tools, ensure_ascii=False))
         )
+        prompt_tokens = max(1, prompt_chars // 4)
+        completion_tokens = max(1, emitted_chars // 4)
+    yield emit(
+        {
+            "type": "velxio_usage",
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+        }
+    )
     if usage_out is not None:
-        if usage:
-            usage_out["prompt_tokens"] = int(usage.get("prompt_tokens") or 0)
-            usage_out["completion_tokens"] = int(usage.get("completion_tokens") or 0)
-        else:
-            # Upstream sent no usage chunk — estimate at ~4 chars/token so
-            # quota accounting still moves (never free just because the
-            # provider omitted the numbers).
-            prompt_chars = len(req.system) + len(json.dumps(req.messages, ensure_ascii=False))
-            usage_out["prompt_tokens"] = max(1, prompt_chars // 4)
-            usage_out["completion_tokens"] = max(1, emitted_chars // 4)
+        usage_out["prompt_tokens"] = prompt_tokens
+        usage_out["completion_tokens"] = completion_tokens
     yield emit(
         {
             "type": "message_delta",

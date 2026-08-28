@@ -657,7 +657,7 @@ export async function runTurn(
  * tool_use / tool_result pair) by only cutting at messages that are real
  * user turns (role=user whose first block is text).
  */
-export function trimHistory(history: ApiMessage[], maxMessages = 36): ApiMessage[] {
+export function trimHistory(history: ApiMessage[], maxMessages = 24): ApiMessage[] {
   if (history.length <= maxMessages) return history;
   const overflow = history.length - maxMessages;
   // find the first real user-turn boundary at or after `overflow`

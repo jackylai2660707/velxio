@@ -18,13 +18,18 @@
 import { streamText, trimHistory, type AgentSettings } from './AgentRunner';
 import type { ApiMessage } from './types';
 
-export const DEFAULT_CONTEXT_LIMIT_TOKENS = 100_000;
+// Classroom workloads rarely need a 100k rolling transcript because the
+// current circuit/code snapshot is injected afresh every turn. Compact early
+// to reduce quota usage while keeping the two most recent user turns intact.
+export const DEFAULT_CONTEXT_LIMIT_TOKENS = 32_000;
 /** Compact when the last prompt grew past this fraction of the limit. */
-const COMPACT_THRESHOLD = 0.75;
+const COMPACT_THRESHOLD = 0.6;
 /** Real user turns kept verbatim (with their tool traffic) after compaction. */
 const KEEP_RECENT_USER_TURNS = 2;
 
 const SNAPSHOT_RE = /<project_state>[\s\S]*?<\/project_state>\s*/g;
+const REFERENCE_RE = /<reference_example>[\s\S]*?<\/reference_example>\s*/g;
+const SCOPE_RE = /<workspace_scope>[\s\S]*?<\/workspace_scope>\s*/g;
 
 function isRealUserTurn(m: ApiMessage): boolean {
   return m.role === 'user' && m.content[0]?.type === 'text';
@@ -52,12 +57,15 @@ export function stripStaleSnapshots(messages: ApiMessage[]): ApiMessage[] {
   return messages.map((m, i) => {
     if (!isRealUserTurn(m) || i === lastRealUserTurn) return m;
     const first = m.content[0];
-    if (first.type !== 'text' || !SNAPSHOT_RE.test(first.text)) return m;
+    if (first.type !== 'text') return m;
     SNAPSHOT_RE.lastIndex = 0;
+    REFERENCE_RE.lastIndex = 0;
+    SCOPE_RE.lastIndex = 0;
     const stripped = first.text.replace(
       SNAPSHOT_RE,
       '(project snapshot from this turn omitted — see the latest <project_state>)\n',
-    );
+    ).replace(REFERENCE_RE, '(reference example from this turn omitted)\n')
+      .replace(SCOPE_RE, '');
     return { ...m, content: [{ ...first, text: stripped }, ...m.content.slice(1)] };
   });
 }
