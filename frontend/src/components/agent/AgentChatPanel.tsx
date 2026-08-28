@@ -215,7 +215,7 @@ function SettingsView() {
           min={1000}
           step={1000}
           value={settings.contextLimitTokens ?? ''}
-          placeholder="100000"
+          placeholder="32000"
           onChange={(e) =>
             updateSettings({ contextLimitTokens: Number(e.target.value) || undefined })
           }
