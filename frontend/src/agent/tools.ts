@@ -985,8 +985,12 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
         const bContract = resolvePinContract(endpointBoards[1].board.boardKind, endpointBoards[1].pin);
         const aPower = aContract?.powerRole && aContract.powerRole !== 'gnd';
         const bPower = bContract?.powerRole && bContract.powerRole !== 'gnd';
-        const aGpio = aContract?.gpio !== undefined && !aContract.inputOnly;
-        const bGpio = bContract?.gpio !== undefined && !bContract.inputOnly;
+        // Input-only pads are still GPIO pads: a rail connected to GPIO34/36
+        // is a hard voltage injection and can damage the ESP32 even though
+        // firmware cannot drive that pad.  Keep them in the over-voltage
+        // guard; the separate contract check handles output capability.
+        const aGpio = aContract?.gpio !== undefined;
+        const bGpio = bContract?.gpio !== undefined;
         if ((aPower && bGpio) || (bPower && aGpio)) {
           throw new ToolError('Unsafe direct power-rail to GPIO connection. Route signals from a GPIO and power loads from a compatible supply; do not hard-drive a GPIO from 3.3V/5V.');
         }
