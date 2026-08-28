@@ -1,8 +1,11 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { useAgentStore } from '../store/useAgentStore';
 import type { ApiMessage, UiMessage } from '../agent/types';
-import { chatApi } from '../cloud/cloudApi';
+import { chatApi, projectApi } from '../cloud/cloudApi';
 import { useCloudStore } from '../cloud/useCloudStore';
+import type { VlxPayload } from '../utils/vlxFile';
+import { useProjectStore } from '../store/useProjectStore';
+import { useSimulatorStore } from '../store/useSimulatorStore';
 
 // The cloud auto-sync subscriber intentionally installs only in a browser.
 // This test file runs under Vitest's node environment, so provide the smallest
@@ -12,6 +15,13 @@ vi.hoisted(() => {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: {},
+    });
+  }
+  if (typeof (globalThis as { requestAnimationFrame?: unknown }).requestAnimationFrame !== 'function') {
+    Object.defineProperty(globalThis, 'requestAnimationFrame', {
+      configurable: true,
+      writable: true,
+      value: (callback: FrameRequestCallback) => setTimeout(() => callback(Date.now()), 0),
     });
   }
 });
@@ -139,5 +149,45 @@ describe('agent workspace context isolation', () => {
     expect(useCloudStore.getState().chatSyncState).toBe('idle');
     expect(useAgentStore.getState().workspaceScope).toBe('lesson:new');
     expect(useAgentStore.getState().messages).toEqual([]);
+  });
+
+  it('ignores a stale project load when a newer project load is requested', async () => {
+    let resolveA: ((value: { id: string; name: string; data: VlxPayload }) => void) | undefined;
+    let resolveB: ((value: { id: string; name: string; data: VlxPayload }) => void) | undefined;
+    const emptyPayload: VlxPayload = {
+      format: 'velxio-project',
+      version: 1,
+      exportedAt: new Date(0).toISOString(),
+      boards: [],
+      fileGroups: {},
+      components: [],
+      wires: [],
+      activeBoardId: null,
+    };
+    // Keep this race test focused on request ordering; simulator hydration
+    // schedules a browser animation frame unavailable in Vitest's node env.
+    vi.spyOn(useProjectStore.getState(), 'clearCurrentProject').mockImplementation(() => {});
+    vi.spyOn(useSimulatorStore.getState(), 'loadProjectState').mockImplementation(() => {});
+    const getProject = vi.spyOn(projectApi, 'get').mockImplementation((id) =>
+      new Promise((resolve) => {
+        if (id === 'project-a') resolveA = resolve;
+        else resolveB = resolve;
+      }),
+    );
+
+    const loadingA = useCloudStore.getState().loadProject('project-a');
+    const loadingB = useCloudStore.getState().loadProject('project-b');
+
+    // A resolves first, but must be ignored because B was requested later.
+    resolveA?.({ id: 'project-a', name: 'Project A', data: emptyPayload });
+    await loadingA;
+    expect(useAgentStore.getState().workspaceScope).toBe('scratch');
+    expect(useCloudStore.getState().currentCloudProjectId).not.toBe('project-a');
+
+    resolveB?.({ id: 'project-b', name: 'Project B', data: emptyPayload });
+    await loadingB;
+    expect(useAgentStore.getState().workspaceScope).toBe('project:project-b');
+    expect(useCloudStore.getState().currentCloudProjectId).toBe('project-b');
+    expect(getProject).toHaveBeenCalledTimes(2);
   });
 });

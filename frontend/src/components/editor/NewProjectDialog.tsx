@@ -176,6 +176,17 @@ async function findBlinkExample(kind: string): Promise<ExampleProject | undefine
   );
 }
 
+/** Every starter invocation is a fresh workspace, even when it happens to
+ * use the same built-in example as a previous lesson or direct example tab.
+ * Keep the nonce local to this transition so starter chats never reopen an
+ * unrelated `example:<id>` transcript. */
+function starterWorkspaceScope(kind: string): string {
+  const nonce =
+    globalThis.crypto?.randomUUID?.() ??
+    `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `starter:${kind}:${nonce}`;
+}
+
 /**
  * Replace the workspace with the chosen starter. 'blank' leaves an empty
  * canvas (boards are optional — the board-less analog examples rely on the
@@ -184,6 +195,7 @@ async function findBlinkExample(kind: string): Promise<ExampleProject | undefine
  * LED (createFileGroup picks the per-board/language blink content).
  */
 async function applyStarter(kind: string | 'blank'): Promise<void> {
+  const scope = starterWorkspaceScope(kind);
   clearWorkspaceForStarter();
 
   if (kind !== 'blank') {
@@ -194,7 +206,7 @@ async function applyStarter(kind: string | 'blank'): Promise<void> {
       example = undefined;
     }
     if (example) {
-      await loadExample(example);
+      await loadExample(example, undefined, scope);
     } else {
       const fresh = useSimulatorStore.getState();
       const newId = fresh.addBoard(

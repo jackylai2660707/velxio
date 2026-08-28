@@ -32,6 +32,10 @@ const CHAT_ID_STORAGE = 'velxio-cloud-chat-id';
 const PROJECT_ID_STORAGE = 'velxio-cloud-project-id';
 const CHAT_SYNC_DEBOUNCE_MS = 3000;
 let chatSyncGeneration = 0;
+// Monotonic request id prevents a slower project load from applying stale
+// project data after a newer load has been requested (for example, when a
+// teacher rapidly clicks project A then project B).
+let projectLoadGeneration = 0;
 
 function readLocal(key: string): string | null {
   try {
@@ -154,6 +158,7 @@ export const useCloudStore = create<CloudState>((set, get) => ({
 
   logout: () => {
     chatSyncGeneration += 1;
+    projectLoadGeneration += 1;
     setToken(null);
     writeLocal(CHAT_ID_STORAGE, null);
     writeLocal(PROJECT_ID_STORAGE, null);
@@ -201,7 +206,15 @@ export const useCloudStore = create<CloudState>((set, get) => ({
   },
 
   loadProject: async (id) => {
+    const requestGeneration = ++projectLoadGeneration;
+    const scopeAtRequest = useAgentStore.getState().workspaceScope;
     const { name, data } = await projectApi.get(id);
+    // A newer project request or an explicit workspace switch wins while the
+    // network request is in flight. Never apply stale data after either event.
+    if (
+      requestGeneration !== projectLoadGeneration ||
+      useAgentStore.getState().workspaceScope !== scopeAtRequest
+    ) return;
     // Project chat is isolated from the previous lesson/project before any
     // canvas mutation occurs. The agent's cloud-sync subscriber also detaches
     // the old chat id so new turns cannot overwrite it.

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getProjectById } from '../services/projectService';
 import { useSimulatorStore } from '../store/useSimulatorStore';
@@ -27,6 +27,10 @@ export const ProjectByIdPage: React.FC = () => {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [projectMeta, setProjectMeta] = useState<ProjectMeta | null>(null);
+  // A route can change from /project/A to /project/B while A's request is
+  // still in flight. The sequence + cleanup guard makes stale responses
+  // side-effect free, including their agent scope and simulator payload.
+  const loadSequence = useRef(0);
 
   // SEO: update once we have real project data; use generic noindex fallback until then.
   useSEO(
@@ -53,8 +57,17 @@ export const ProjectByIdPage: React.FC = () => {
     // right after saving) skip the fetch to avoid overwriting unsaved state.
     if (currentProject?.id === id && ready) return;
 
+    const sequence = ++loadSequence.current;
+    let cancelled = false;
+    // Do not keep rendering project A while project B is loading. This also
+    // prevents a student from sending an AI turn against the hidden old
+    // workspace during the transition.
+    setReady(false);
+    setError('');
+
     getProjectById(id)
       .then((project) => {
+        if (cancelled || loadSequence.current !== sequence || project.id !== id) return;
         const payload = buildLoadPayload(project);
         useAgentStore.getState().switchWorkspaceScope(`project:${project.id}`);
         // Per-board manifests ride in boards_json (buildLoadPayload migrates
@@ -76,12 +89,17 @@ export const ProjectByIdPage: React.FC = () => {
         setReady(true);
       })
       .catch((err) => {
+        if (cancelled || loadSequence.current !== sequence) return;
         const s = err?.response?.status;
         if (s === 404) setError('Project not found.');
         else if (s === 403) setError('This project is private.');
         else setError('Failed to load project.');
         clearCurrentProject();
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   if (error) {
