@@ -174,7 +174,7 @@ async function streamOneMessage(
           try {
             block.input = partialJson[idx] ? JSON.parse(partialJson[idx]) : {};
           } catch {
-            block.input = {};
+            block.input = { __parse_error: 'Malformed or truncated tool JSON' };
           }
           delete partialJson[idx];
         }
@@ -343,6 +343,17 @@ export async function runTurn(
     working.push(assistantMsg);
 
     const toolUses = msg.content.filter((b): b is ApiToolUseBlock => b.type === 'tool_use');
+    if (msg.stopReason === 'max_tokens' || msg.stopReason === 'length') {
+      if (toolUses.length === 0) return end({ appended, aborted: false, capped: true });
+      const failed: ApiContentBlock[] = toolUses.map((tu) => ({
+        type: 'tool_result', tool_use_id: tu.id,
+        content: 'Tool call was truncated by the model output limit and was not executed. Re-issue it with complete arguments.',
+        is_error: true,
+      }));
+      const failedMsg: ApiMessage = { role: 'user', content: failed };
+      appended.push(failedMsg); working.push(failedMsg);
+      continue;
+    }
     if (msg.stopReason !== 'tool_use' || toolUses.length === 0) {
       // The turn would end here. If the user queued messages while we worked,
       // promote them to a follow-up user turn and keep going.
@@ -371,6 +382,10 @@ export async function runTurn(
           content: 'Aborted by user before this tool executed.',
           is_error: true,
         });
+        continue;
+      }
+      if ('__parse_error' in tu.input) {
+        results.push({ type: 'tool_result', tool_use_id: tu.id, content: String(tu.input.__parse_error), is_error: true });
         continue;
       }
       onEvent({ type: 'tool_start', id: tu.id, name: tu.name, input: tu.input });

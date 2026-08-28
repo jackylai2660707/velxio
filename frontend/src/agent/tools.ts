@@ -831,7 +831,9 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
               .join(', ')}`,
           );
         }
-        if (!pins) warnings.push(`could not verify pin "${pin}" on "${cid}" (element not mounted)`);
+        if (!pins && typeof document !== 'undefined') {
+          throw new ToolError(`Cannot verify pin "${pin}" on "${cid}". Wait for the component to mount, call get_pins, then retry.`);
+        }
       }
 
       // Standard color by signal type when the model doesn't pick one; the
@@ -848,6 +850,7 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
         color,
         signalType,
         waypoints: [],
+        autoRouted: true,
       };
       sim().addWire(wire);
       await settleDom();
