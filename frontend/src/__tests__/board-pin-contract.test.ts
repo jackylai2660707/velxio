@@ -108,6 +108,7 @@ describe('board pin contracts', () => {
     expect(second.notes).not.toContain('MUTATED');
 
     const text = formatPinContract(resolvePinContract('esp32', 'GPIO34')!);
+    expect(text).toContain('gpio=34');
     expect(text).toContain('exposed');
     expect(text).toContain('input-only');
     expect(text).toContain('3.3V');

@@ -473,6 +473,7 @@ export function validatePinUse(
 /** Compact text safe to append to the agent's `get_pins` result. */
 export function formatPinContract(pin: BoardPinContract): string {
   const traits = [
+    pin.gpio === undefined ? null : `gpio=${pin.gpio}`,
     pin.exposed ? 'exposed' : 'not-exposed',
     pin.reserved ? 'reserved' : null,
     pin.strap ? 'strap' : null,
