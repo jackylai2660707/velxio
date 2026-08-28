@@ -26,6 +26,7 @@ import { useVersionStore } from '../versioning/useVersionStore';
 import { classifyWire } from './wireStandards';
 import { WIRE_COLORS } from '../utils/wireColors';
 import { BOARD_SIZE } from '../types/boardSizes';
+import { breadboardHoles, isBreadboard, resolveSeatPosition } from '../utils/breadboardSnap';
 import type { ToolDefinition } from './types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -374,6 +375,11 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: { breadboard_id: str('Breadboard component id'), include_free: { type: 'boolean' }, limit: { type: 'number' } },
       required: ['breadboard_id'],
     },
+  },
+  {
+    name: 'seat_component',
+    description: 'Atomically seat a component on an exact breadboard hole. Use inspect_breadboard first; never guess coordinates.',
+    input_schema: { type: 'object', properties: { component_id: str('Component id'), breadboard_id: str('Breadboard id'), anchor_pin: str('Component pin'), anchor_hole: str('Exact hole such as 10t.a') }, required: ['component_id', 'breadboard_id', 'anchor_pin', 'anchor_hole'] },
   },
   {
     name: 'remove_wire',
@@ -884,6 +890,24 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       });
       const groups = [...new Set(used.map((hole) => breadboardGroupKey(board.metadataId, hole)).filter(Boolean))];
       return JSON.stringify({ breadboard_id: id, type: board.metadataId, occupied_holes: used, occupied_groups: groups, visible_wires: sim().wires.filter((w) => !w.bb && (w.start.componentId === id || w.end.componentId === id)).map((w) => w.id), seating_wires: sim().wires.filter((w) => w.bb && (w.start.componentId === id || w.end.componentId === id)).map((w) => w.id), note: 'Seating wires are invisible internal leg-to-hole connections; connect external wires to holes/rails, not seated component legs.' }).slice(0, 12000);
+    }
+
+    case 'seat_component': {
+      const cid = String(input.component_id ?? ''), bid = String(input.breadboard_id ?? ''), pin = String(input.anchor_pin ?? ''), hole = String(input.anchor_hole ?? '');
+      const comp = sim().components.find((c) => c.id === cid);
+      const bb = sim().components.find((c) => c.id === bid);
+      if (!comp || !bb || !isBreadboard(bb.metadataId)) throw new ToolError('Component or breadboard not found.');
+      const target = breadboardHoles(bb.metadataId)?.find((h) => h.name === hole);
+      if (!target) throw new ToolError(`Unknown breadboard hole "${hole}".`);
+      if (sim().wires.some((w) => !w.bb && ((w.start.componentId === cid) || (w.end.componentId === cid)))) throw new ToolError('Component already has visible wires; remove/review them before seating.');
+      const pos = resolveSeatPosition(comp, bid, pin, target.x, target.y, sim().components);
+      if (!pos) throw new ToolError('Component pin geometry not mounted yet; retry after the canvas renders.');
+      sim().updateComponent(cid, { x: pos.x, y: pos.y });
+      await settleDom();
+      sim().reseatComponentOnBreadboard(cid);
+      const seated = sim().wires.filter((w) => w.bb && (w.start.componentId === cid || w.end.componentId === cid)).map((w) => `${w.start.pinName}->${w.end.pinName}`);
+      if (!seated.length) throw new ToolError('Seating could not be verified; no state was accepted.');
+      return JSON.stringify({ component_id: cid, breadboard_id: bid, anchor: `${pin}->${hole}`, position: pos, seating: seated, next: 'Connect external wires to returned breadboard holes/rails, never to seated component legs.' });
     }
 
     case 'remove_wire': {
