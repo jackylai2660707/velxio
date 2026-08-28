@@ -42,6 +42,7 @@ const SETTINGS_STORAGE = 'velxio-agent-settings';
 const LEGACY_KEY_STORAGE = 'velxio-agent-api-key';
 const PANEL_WIDTH_STORAGE = 'velxio-agent-panel-width';
 const CHAT_STORAGE = 'velxio-agent-chat';
+const SCOPED_CHAT_STORAGE = 'velxio-agent-chat-scoped-v1';
 const MAX_CHECKPOINTS = 10;
 const MAX_PERSISTED_UI_MESSAGES = 80;
 /** Stored API history cap. Wire-size is controlled per LLM call by
@@ -98,9 +99,56 @@ function agentProbeHeaders(settings: AgentSettings): Record<string, string> {
 }
 
 interface PersistedChat {
+  /** Workspace identity. Chats without this field are legacy global history
+   * and are intentionally not loaded into a new workspace. */
+  scope?: string;
   messages: UiMessage[];
   apiMessages: ApiMessage[];
   uiIdCounter: number;
+}
+
+type ScopedChatMap = Record<string, PersistedChat>;
+
+function readScopedChats(): ScopedChatMap {
+  try {
+    const raw = localStorage.getItem(SCOPED_CHAT_STORAGE);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as ScopedChatMap;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeScopedChats(chats: ScopedChatMap): void {
+  try {
+    // Keep browser storage bounded. Old sessions remain available in the
+    // signed-in cloud history; this map is only an offline continuity cache.
+    const entries = Object.entries(chats).slice(-24);
+    localStorage.setItem(SCOPED_CHAT_STORAGE, JSON.stringify(Object.fromEntries(entries)));
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+function persistScopedChat(scope: string, payload: PersistedChat): void {
+  if (!scope) return;
+  const chats = readScopedChats();
+  chats[scope] = { ...payload, scope };
+  writeScopedChats(chats);
+}
+
+function loadScopedChat(scope: string): PersistedChat {
+  const payload = readScopedChats()[scope];
+  if (!payload || !Array.isArray(payload.messages) || !Array.isArray(payload.apiMessages)) {
+    return { scope, messages: [], apiMessages: [], uiIdCounter: 0 };
+  }
+  return {
+    scope,
+    messages: payload.messages ?? [],
+    apiMessages: repairHistory(payload.apiMessages ?? []),
+    uiIdCounter: payload.uiIdCounter ?? 0,
+  };
 }
 
 function loadChat(): PersistedChat {
@@ -117,7 +165,12 @@ function loadChat(): PersistedChat {
           }
         }
       }
+      // Before workspace scoping existed, this key represented an arbitrary
+      // mixture of projects. Keep it in storage for manual/cloud migration,
+      // but never inject it into the first workspace after the upgrade.
+      if (!parsed.scope) return { scope: 'legacy', messages: [], apiMessages: [], uiIdCounter: 0 };
       return {
+        scope: parsed.scope,
         messages: parsed.messages ?? [],
         // A reload mid-run persists dangling tool_use blocks — repair them
         // or every request after the reload gets a 400 from the upstream.
@@ -138,11 +191,13 @@ function schedulePersistChat(get: () => AgentState): void {
     try {
       const { messages, apiMessages } = get();
       const payload: PersistedChat = {
+        scope: get().workspaceScope,
         messages: messages.slice(-MAX_PERSISTED_UI_MESSAGES),
         apiMessages: trimHistory(apiMessages, MAX_STORED_API_MESSAGES),
         uiIdCounter,
       };
       localStorage.setItem(CHAT_STORAGE, JSON.stringify(payload));
+      persistScopedChat(get().workspaceScope, payload);
     } catch {
       /* quota / private mode — persistence is best-effort */
     }
@@ -184,12 +239,14 @@ function tryCaptureCheckpoint(msgId: string, label: string): TurnCheckpoint | nu
  *  steering messages promoted to follow-up turns. */
 function buildUserTurnMessage(text: string): ApiMessage {
   const exampleHint = buildExampleHint(text);
+  const scope = useAgentStore.getState().workspaceScope;
   return {
     role: 'user',
     content: [
       {
         type: 'text',
         text:
+          `<workspace_scope>${scope}</workspace_scope>\n` +
           `<project_state>\n${buildProjectSnapshot()}\n</project_state>\n\n` +
           (exampleHint ? `${exampleHint}\n\n` : '') +
           text,
@@ -199,6 +256,8 @@ function buildUserTurnMessage(text: string): ApiMessage {
 }
 
 interface AgentState {
+  /** Stable identity of the loaded assignment/project/example workspace. */
+  workspaceScope: string;
   panelOpen: boolean;
   panelWidth: number;
   busy: boolean;
@@ -235,6 +294,8 @@ interface AgentState {
   fetchModels: () => Promise<{ ok: boolean; message?: string }>;
   testConnection: () => Promise<{ ok: boolean; message: string; latency_ms?: number }>;
   clearChat: () => void;
+  /** Switch conversation namespace when the loaded workspace changes. */
+  switchWorkspaceScope: (scope: string) => void;
   stop: () => void;
   send: (text: string) => Promise<void>;
   retry: () => void;
@@ -262,10 +323,19 @@ export function effectiveModel(state: Pick<AgentState, 'serverConfig' | 'setting
   return state.settings.model || state.serverConfig?.model || '';
 }
 
-const initialChat = typeof localStorage !== 'undefined' ? loadChat() : { messages: [], apiMessages: [], uiIdCounter: 0 };
-uiIdCounter = initialChat.uiIdCounter;
+const initialChat = typeof localStorage !== 'undefined' ? loadChat() : { scope: 'legacy', messages: [], apiMessages: [], uiIdCounter: 0 };
+// Route/project hydration happens after the app mounts. Do not render a
+// persisted conversation before that identity is known: `/editor` can be a
+// completely different workspace after a reload. Scoped history is restored
+// only by switchWorkspaceScope() once the route establishes the scope.
+const initialUiIdCounter = initialChat.uiIdCounter;
+uiIdCounter = initialUiIdCounter;
 
 export const useAgentStore = create<AgentState>((set, get) => ({
+  // A legacy unscoped chat is intentionally hidden. A scoped chat can survive
+  // a page refresh and will be replaced automatically when a different
+  // project/example is loaded.
+  workspaceScope: 'scratch',
   panelOpen: false,
   panelWidth: (() => {
     try {
@@ -280,8 +350,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   serverConfig: null,
   settings: typeof localStorage !== 'undefined' ? loadSettings() : {},
   modelList: [],
-  messages: initialChat.messages,
-  apiMessages: initialChat.apiMessages,
+  messages: [],
+  apiMessages: [],
   checkpoints: [],
   abortController: null,
   generation: 0,
@@ -392,6 +462,40 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     schedulePersistChat(get);
   },
 
+  switchWorkspaceScope: (scope: string) => {
+    const nextScope = scope.trim() || `scratch:${Date.now()}`;
+    const current = get();
+    if (current.workspaceScope === nextScope) return;
+    // Archive current conversation under its old workspace before replacing
+    // it. This preserves continuity when a student returns to the same
+    // assignment, while preventing any old turns from entering the new one.
+    persistScopedChat(current.workspaceScope, {
+      scope: current.workspaceScope,
+      messages: current.messages.slice(-MAX_PERSISTED_UI_MESSAGES),
+      apiMessages: trimHistory(current.apiMessages, MAX_STORED_API_MESSAGES),
+      uiIdCounter,
+    });
+    const next = loadScopedChat(nextScope);
+    uiIdCounter = Math.max(uiIdCounter, next.uiIdCounter ?? 0);
+    get().abortController?.abort();
+    set((s) => ({
+      workspaceScope: nextScope,
+      messages: next.messages,
+      apiMessages: next.apiMessages,
+      checkpoints: [],
+      busy: false,
+      abortController: null,
+      failedText: null,
+      cappedRun: false,
+      steeringQueue: null,
+      pendingSteering: [],
+      generation: s.generation + 1,
+      lastPromptTokens: 0,
+      totalTokens: { input: 0, output: 0 },
+    }));
+    schedulePersistChat(get);
+  },
+
   stop: () => {
     get().abortController?.abort();
   },
@@ -439,6 +543,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       if (Number.isFinite(n) && n > uiIdCounter) uiIdCounter = n;
     }
     set((s) => ({
+      // A cloud chat loaded explicitly by the user belongs to the currently
+      // selected workspace. Automatic workspace switches never hydrate old
+      // cloud sessions, so this remains an intentional action.
       messages,
       apiMessages: repairHistory(apiMessages),
       checkpoints: [], // they referenced the previous conversation's turns

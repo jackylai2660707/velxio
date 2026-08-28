@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getProjectById } from '../services/projectService';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import { useProjectStore } from '../store/useProjectStore';
+import { useAgentStore } from '../store/useAgentStore';
 import { useSEO } from '../utils/useSEO';
 import { EditorPage } from './EditorPage';
 import type { BoardInstance, BoardKind } from '../types/board';
@@ -55,6 +56,7 @@ export const ProjectByIdPage: React.FC = () => {
     getProjectById(id)
       .then((project) => {
         const payload = buildLoadPayload(project);
+        useAgentStore.getState().switchWorkspaceScope(`project:${project.id}`);
         // Per-board manifests ride in boards_json (buildLoadPayload migrates
         // pre-per-board projects), so loadProjectState restores each board's
         // compile scope directly.

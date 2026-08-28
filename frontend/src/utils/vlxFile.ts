@@ -34,6 +34,7 @@ import type { Wire } from '../types/wire';
 import { useEditorStore, chipFileGroupId } from '../store/useEditorStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import { useProjectStore } from '../store/useProjectStore';
+import { useAgentStore } from '../store/useAgentStore';
 
 const VLX_FORMAT = 'velxio-project';
 const VLX_VERSION = 1;
@@ -258,6 +259,8 @@ export async function parseVlxFile(file: File): Promise<VlxPayload> {
  */
 export async function importVlxFile(file: File): Promise<VlxPayload> {
   const payload = await parseVlxFile(file);
+  const importId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  useAgentStore.getState().switchWorkspaceScope(`import:vlx:${importId}`);
   // CRITICAL — sever the current project identity BEFORE mutating any store
   // (same guard as loadExample.ts). With a saved project open, the auto-save
   // hook would otherwise see the imported content as dirty edits on the OLD

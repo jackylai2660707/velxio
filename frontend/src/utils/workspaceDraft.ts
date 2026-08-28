@@ -16,6 +16,7 @@
 import type { BoardInstance } from '../types/board';
 import { useProjectStore } from '../store/useProjectStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
+import { useAgentStore } from '../store/useAgentStore';
 import { buildVlxPayload } from './vlxFile';
 
 const DRAFT_KEY = 'velxio_ws_draft';
@@ -62,6 +63,7 @@ export function restoreStashedWorkspace(): boolean {
   if (useProjectStore.getState().currentProject) return false;
   try {
     const payload = JSON.parse(raw);
+    useAgentStore.getState().switchWorkspaceScope(`draft:${Date.now()}`);
     useSimulatorStore.getState().loadProjectState({
       boards: payload.boards as unknown as BoardInstance[],
       fileGroups: payload.fileGroups,

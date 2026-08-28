@@ -150,6 +150,7 @@ export const EditorPage: React.FC = () => {
       },
     );
     if (!confirmed) return;
+    useAgentStore.getState().switchWorkspaceScope(`scratch:${Date.now()}`);
     const sim = useSimulatorStore.getState();
     sim.boards.forEach((b) => sim.stopBoard(b.id));
     const ids = sim.boards.map((b) => b.id);

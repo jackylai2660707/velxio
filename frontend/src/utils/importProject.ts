@@ -21,6 +21,7 @@
 
 import { importVlxFile, VlxParseError } from './vlxFile';
 import { importFromWokwiZip } from './wokwiZip';
+import { useAgentStore } from '../store/useAgentStore';
 import type { ImportResult } from './wokwiZip';
 
 /**
@@ -64,6 +65,7 @@ export async function importProjectFile(file: File): Promise<ProjectImportResult
 
   if (lower.endsWith('.zip')) {
     const result = await importFromWokwiZip(file);
+    useAgentStore.getState().switchWorkspaceScope(`import:zip:${Date.now()}`);
     return { kind: 'zip', ...result };
   }
 

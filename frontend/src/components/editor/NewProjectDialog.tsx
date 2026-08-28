@@ -34,6 +34,7 @@ import {
 } from '../../lib/proBoardRegistry';
 import { useSimulatorStore, DEFAULT_BOARD_POSITION } from '../../store/useSimulatorStore';
 import { useProjectStore } from '../../store/useProjectStore';
+import { useAgentStore } from '../../store/useAgentStore';
 import { useEditorStore } from '../../store/useEditorStore';
 import { getLocaleFromPath, localizedPath } from '../../i18n/path';
 import { loadExample } from '../../utils/loadExample';
@@ -114,6 +115,9 @@ export function clearWorkspaceForStarter(): void {
   // mutating the stores while a saved project is still "current" lets the
   // debounced PUT overwrite that project with the emptied content.
   useProjectStore.getState().clearCurrentProject();
+  // A new/blank starter is a new teaching context, even when it uses the
+  // same board kind as the previous assignment.
+  useAgentStore.getState().switchWorkspaceScope(`scratch:${Date.now()}`);
   const sim = useSimulatorStore.getState();
   sim.boards.forEach((b) => sim.stopBoard(b.id));
   sim.boards.map((b) => b.id).forEach((id) => sim.removeBoard(id));

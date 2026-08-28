@@ -144,7 +144,7 @@ export const LessonPage: React.FC = () => {
           </div>
 
           {lesson.exampleId && (
-            <Link to={localize(`/example/${lesson.exampleId}`)} className="lesson-open-example">
+            <Link to={localize(`/example/${lesson.exampleId}?lesson=${encodeURIComponent(key)}`)} className="lesson-open-example">
               ⚡ {t('learn.openExample', '開啟本課電路範例')}
             </Link>
           )}

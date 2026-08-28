@@ -478,7 +478,14 @@
     "compacted": "Earlier context was compacted into a summary",
     "contextLimit": "Context limit (tokens, for auto-compaction)",
     "usageLabel": "AI usage this week",
-    "usageTip": "Resets every Monday. When exhausted, the AI tutor pauses until an admin raises the quota."
+    "usageTip": "Resets every Monday. When exhausted, the AI tutor pauses until an admin raises the quota.",
+    "scope": {
+      "lesson": "Current lesson",
+      "example": "Current example",
+      "project": "Current project",
+      "scratch": "New workspace",
+      "isolated": "Chat context is isolated here"
+    }
   },
   "cloud": {
     "signIn": "Sign in",
@@ -506,7 +513,7 @@
     "chatHistory": "Chat history",
     "newChat": "New chat",
     "noChats": "No saved conversations yet",
-    "loadChatConfirm": "Open this conversation? The current chat panel content will be replaced (it stays saved in the cloud).",
+    "loadChatConfirm": "Open this saved conversation in the current workspace? Its earlier context may belong to another lesson or project. The current chat stays saved in the cloud.",
     "deleteChatConfirm": "Delete this conversation from the cloud?",
     "syncSaved": "Synced to cloud",
     "syncSaving": "Syncing…",

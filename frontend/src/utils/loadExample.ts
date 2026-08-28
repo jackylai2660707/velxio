@@ -11,6 +11,7 @@ import { useSimulatorStore, DEFAULT_BOARD_POSITION } from '../store/useSimulator
 import { useElectricalStore } from '../store/useElectricalStore';
 import { useProjectStore } from '../store/useProjectStore';
 import { useVfsStore } from '../store/useVfsStore';
+import { useAgentStore } from '../store/useAgentStore';
 import { isBoardComponent } from './boardPinMapping';
 import { getInstalledLibraries, installLibrary } from '../services/libraryService';
 import { trackOpenExample } from './analytics';
@@ -96,8 +97,14 @@ function seedChipProgramGroups(example: ExampleProject): {
 export async function loadExample(
   example: ExampleProject,
   onLibraryProgress?: (progress: LibraryInstallProgress | null) => void,
+  workspaceScope?: string,
 ): Promise<void> {
   trackOpenExample(example.title);
+
+  // Each example is an independent teaching context. Switch the agent scope
+  // before mutating the canvas so the previous lesson's turns cannot be sent
+  // alongside this example's fresh project snapshot.
+  useAgentStore.getState().switchWorkspaceScope(workspaceScope ?? `example:${example.id}`);
 
   // CRITICAL — clear currentProject FIRST, before touching any other store.
   //

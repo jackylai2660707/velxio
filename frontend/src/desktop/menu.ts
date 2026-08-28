@@ -26,6 +26,7 @@ import { listen } from './tauriBridge';
 import { dlog } from './log';
 import { triggerDownloadVlx, importVlxFile } from '../utils/vlxFile';
 import { useSimulatorStore } from '../store/useSimulatorStore';
+import { useAgentStore } from '../store/useAgentStore';
 import { useEditorStore } from '../store/useEditorStore';
 import { useProjectStore } from '../store/useProjectStore';
 import { useCompileLogsStore } from '../store/useCompileLogsStore';
@@ -188,6 +189,8 @@ function newProject(): void {
     );
     if (!ok) return;
   }
+
+  useAgentStore.getState().switchWorkspaceScope(`scratch:${Date.now()}`);
 
   // Stop any running simulation first so workers / bridges shut down
   // cleanly. Idempotent — no-op if nothing is running.

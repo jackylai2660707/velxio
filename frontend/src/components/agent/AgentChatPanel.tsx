@@ -418,6 +418,7 @@ export function AgentChatPanel() {
     retry,
     serverConfig,
     fetchConfig,
+    workspaceScope,
   } = store;
 
   const [draft, setDraft] = useState('');
@@ -484,6 +485,13 @@ export function AgentChatPanel() {
   const suggestions = i18n.language.toLowerCase().startsWith('zh')
     ? SUGGESTIONS_ZH
     : SUGGESTIONS_EN;
+  const workspaceKind = workspaceScope.startsWith('lesson:')
+    ? 'lesson'
+    : workspaceScope.startsWith('example:')
+      ? 'example'
+      : workspaceScope.startsWith('project:')
+        ? 'project'
+        : 'scratch';
 
   const handleSend = () => {
     if (!canSend) return;
@@ -589,6 +597,13 @@ export function AgentChatPanel() {
         <HistoryView onClose={() => setHistoryOpen(false)} />
       ) : (
         <>
+          <div className="agent-panel__scope" role="status">
+            <span className="agent-panel__scope-mark" aria-hidden="true">✓</span>
+            <span>
+              <strong>{t(`agent.scope.${workspaceKind}`)}</strong>
+              <small>{t('agent.scope.isolated')}</small>
+            </span>
+          </div>
           {keyMissing && (
             <div className="agent-panel__keybox">
               <Trans

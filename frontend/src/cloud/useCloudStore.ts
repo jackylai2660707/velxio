@@ -31,6 +31,7 @@ import type { BoardInstance } from '../types/board';
 const CHAT_ID_STORAGE = 'velxio-cloud-chat-id';
 const PROJECT_ID_STORAGE = 'velxio-cloud-project-id';
 const CHAT_SYNC_DEBOUNCE_MS = 3000;
+let chatSyncGeneration = 0;
 
 function readLocal(key: string): string | null {
   try {
@@ -103,7 +104,10 @@ export const useCloudStore = create<CloudState>((set, get) => ({
   chats: [],
   currentCloudProjectId: readLocal(PROJECT_ID_STORAGE),
   currentCloudProjectName: '',
-  currentChatId: readLocal(CHAT_ID_STORAGE),
+  // Never revive a global pre-scope chat on boot. The active workspace route
+  // will establish a fresh scoped conversation; old sessions remain in the
+  // cloud history list for explicit manual loading.
+  currentChatId: null,
   chatSyncState: 'idle',
 
   setAuthModalOpen: (open) => set({ authModalOpen: open }),
@@ -149,6 +153,7 @@ export const useCloudStore = create<CloudState>((set, get) => ({
   },
 
   logout: () => {
+    chatSyncGeneration += 1;
     setToken(null);
     writeLocal(CHAT_ID_STORAGE, null);
     writeLocal(PROJECT_ID_STORAGE, null);
@@ -197,6 +202,10 @@ export const useCloudStore = create<CloudState>((set, get) => ({
 
   loadProject: async (id) => {
     const { name, data } = await projectApi.get(id);
+    // Project chat is isolated from the previous lesson/project before any
+    // canvas mutation occurs. The agent's cloud-sync subscriber also detaches
+    // the old chat id so new turns cannot overwrite it.
+    useAgentStore.getState().switchWorkspaceScope(`project:${id}`);
     // Same identity guard as importVlxFile: clear the current project BEFORE
     // mutating stores so no auto-save hook writes over the old identity.
     useProjectStore.getState().clearCurrentProject();
@@ -233,7 +242,11 @@ export const useCloudStore = create<CloudState>((set, get) => ({
   },
 
   loadChat: async (id) => {
+    chatSyncGeneration += 1;
+    const generationAtStart = chatSyncGeneration;
+    const scopeAtStart = useAgentStore.getState().workspaceScope;
     const chat = await chatApi.get(id);
+    if (useAgentStore.getState().workspaceScope !== scopeAtStart || chatSyncGeneration !== generationAtStart) return;
     useAgentStore.getState().hydrateSession(chat.messages, chat.api_messages);
     writeLocal(CHAT_ID_STORAGE, id);
     set({ currentChatId: id });
@@ -249,6 +262,7 @@ export const useCloudStore = create<CloudState>((set, get) => ({
   },
 
   startNewChat: () => {
+    chatSyncGeneration += 1;
     useAgentStore.getState().clearChat();
     writeLocal(CHAT_ID_STORAGE, null);
     set({ currentChatId: null });
@@ -258,6 +272,8 @@ export const useCloudStore = create<CloudState>((set, get) => ({
     const { user, currentChatId } = get();
     if (!user) return;
     const agent = useAgentStore.getState();
+    const scopeAtStart = agent.workspaceScope;
+    const generationAtStart = chatSyncGeneration;
     if (agent.messages.length === 0) return;
 
     const firstUserText =
@@ -274,9 +290,21 @@ export const useCloudStore = create<CloudState>((set, get) => ({
         messages: agent.messages,
         api_messages: agent.apiMessages,
       });
+      // The request may outlive a project switch. Never let an old response
+      // reattach its chat id to the new lesson/workspace.
+      const latestAgent = useAgentStore.getState();
+      const latestCloud = get();
+      if (latestAgent.workspaceScope !== scopeAtStart || latestCloud.currentChatId !== currentChatId || chatSyncGeneration !== generationAtStart) {
+        return;
+      }
       writeLocal(CHAT_ID_STORAGE, id);
       set({ currentChatId: id, chatSyncState: 'saved' });
     } catch (err) {
+      if (
+        useAgentStore.getState().workspaceScope !== scopeAtStart ||
+        get().currentChatId !== currentChatId ||
+        chatSyncGeneration !== generationAtStart
+      ) return;
       if (err instanceof CloudApiError && err.status === 404 && currentChatId) {
         // Session deleted server-side — recreate on the next tick.
         writeLocal(CHAT_ID_STORAGE, null);
@@ -294,13 +322,41 @@ export const useCloudStore = create<CloudState>((set, get) => ({
 let chatSyncTimer: ReturnType<typeof setTimeout> | null = null;
 if (typeof window !== 'undefined') {
   useAgentStore.subscribe((state, prev) => {
+    // A project/example/import switch creates a new agent namespace. Detach
+    // the old cloud chat synchronously, otherwise the debounce from the
+    // previous lesson can upload the new workspace into the old chat.
+    if (state.workspaceScope !== prev.workspaceScope) {
+      chatSyncGeneration += 1;
+      if (chatSyncTimer) {
+        clearTimeout(chatSyncTimer);
+        chatSyncTimer = null;
+      }
+      writeLocal(CHAT_ID_STORAGE, null);
+      const scopedProjectId = state.workspaceScope.startsWith('project:')
+        ? state.workspaceScope.slice('project:'.length)
+        : null;
+      const currentProjectId = useCloudStore.getState().currentCloudProjectId;
+      const detachedProject = !scopedProjectId || currentProjectId !== scopedProjectId;
+      if (detachedProject) writeLocal(PROJECT_ID_STORAGE, null);
+      useCloudStore.setState({
+        currentChatId: null,
+        chatSyncState: 'idle',
+        ...(detachedProject ? { currentCloudProjectId: null, currentCloudProjectName: '' } : {}),
+      });
+      return;
+    }
     if (state.messages === prev.messages && state.apiMessages === prev.apiMessages) return;
     if (!useCloudStore.getState().user) return;
+    const scopeAtSchedule = state.workspaceScope;
+    const chatIdAtSchedule = useCloudStore.getState().currentChatId;
+    const generationAtSchedule = chatSyncGeneration;
     if (chatSyncTimer) clearTimeout(chatSyncTimer);
     chatSyncTimer = setTimeout(() => {
       const agent = useAgentStore.getState();
+      const cloud = useCloudStore.getState();
+      if (agent.workspaceScope !== scopeAtSchedule || cloud.currentChatId !== chatIdAtSchedule || chatSyncGeneration !== generationAtSchedule) return;
       if (agent.busy) return; // the end-of-turn update will re-trigger us
-      void useCloudStore.getState().syncCurrentChat();
+      void cloud.syncCurrentChat();
     }, CHAT_SYNC_DEBOUNCE_MS);
   });
 }

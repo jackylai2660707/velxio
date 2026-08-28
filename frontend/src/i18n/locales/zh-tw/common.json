@@ -478,7 +478,14 @@
     "compacted": "較早的上下文已壓縮為摘要",
     "contextLimit": "上下文上限(tokens,用於自動壓縮)",
     "usageLabel": "本週 AI 用量",
-    "usageTip": "每週一重置。用完後 AI 助教會暫停,需請管理員調整額度。"
+    "usageTip": "每週一重置。用完後 AI 助教會暫停,需請管理員調整額度。",
+    "scope": {
+      "lesson": "目前課堂",
+      "example": "目前範例",
+      "project": "目前專案",
+      "scratch": "新工作區",
+      "isolated": "AI 對話只使用這個工作區的上下文"
+    }
   },
   "cloud": {
     "signIn": "登入",
@@ -506,7 +513,7 @@
     "chatHistory": "對話歷史",
     "newChat": "新對話",
     "noChats": "還沒有儲存的對話",
-    "loadChatConfirm": "開啟這個對話?當前面板內容會被替換(它仍儲存在雲端)。",
+    "loadChatConfirm": "要在目前工作區開啟這段已儲存的對話嗎？較早的上下文可能屬於另一堂課或專案。目前對話仍會保留在雲端。",
     "deleteChatConfirm": "從雲端刪除這個對話?",
     "syncSaved": "已同步到雲端",
     "syncSaving": "同步中…",

@@ -22,7 +22,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { exampleProjects } from '../data/examples';
 import { loadExample, type LibraryInstallProgress } from '../utils/loadExample';
 import { EditorPage } from './EditorPage';
@@ -34,6 +34,8 @@ const DOMAIN = '';
 
 export const ExampleEditorPage: React.FC = () => {
   const { exampleId } = useParams<{ exampleId: string }>();
+  const location = useLocation();
+  const lessonScope = new URLSearchParams(location.search).get('lesson');
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
   const [installing, setInstalling] = useState<LibraryInstallProgress | null>(null);
@@ -66,15 +68,16 @@ export const ExampleEditorPage: React.FC = () => {
       setError(true);
       return;
     }
-    if (loadedIdRef.current === exampleId) return;
-    loadedIdRef.current = exampleId;
+    const loadKey = `${exampleId}:${lessonScope ?? ''}`;
+    if (loadedIdRef.current === loadKey) return;
+    loadedIdRef.current = loadKey;
 
     let cancelled = false;
     setReady(false);
     setError(false);
     (async () => {
       try {
-        await loadExample(example, setInstalling);
+        await loadExample(example, setInstalling, lessonScope ? `lesson:${lessonScope}:example:${example.id}` : undefined);
       } catch {
         // loadExample's internal failures (library install network errors)
         // are swallowed inside ensureLibraries — anything that DOES bubble
@@ -89,7 +92,7 @@ export const ExampleEditorPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [exampleId, example]);
+  }, [exampleId, example, lessonScope]);
 
   if (error) {
     return (
