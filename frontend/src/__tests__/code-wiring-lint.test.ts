@@ -99,5 +99,26 @@ describe('code ↔ wiring lint', () => {
     expect(result.references).toHaveLength(0);
     expect(result.issues).toHaveLength(0);
   });
-});
 
+  it('resolves pin constants declared in a board header file', () => {
+    const result = lintCodeWiring({
+      board: { id: 'arduino-uno', boardKind: 'arduino-uno' },
+      files: [
+        { name: 'pins.h', content: '#define SENSOR_PIN A0\n' },
+        { name: 'sketch.ino', content: 'void loop(){ analogRead(SENSOR_PIN); }' },
+      ],
+      components: [{ id: 'pot', metadataId: 'potentiometer' }],
+      wires: [wire('arduino-uno', 'A0', 'pot', 'SIG')],
+    });
+    expect(result.issues).toHaveLength(0);
+  });
+
+  it('flags one GPIO reused as input and push-pull output', () => {
+    const result = lintCodeWiring(
+      base('void setup(){ pinMode(4, INPUT); } void loop(){ digitalWrite(4, HIGH); }', {
+        wires: [wire('arduino-uno', '4', 'led-1', 'A')],
+      }),
+    );
+    expect(result.issues.some((issue) => issue.code === 'CODE_PIN_ROLE_CONFLICT')).toBe(true);
+  });
+});

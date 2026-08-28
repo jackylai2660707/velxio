@@ -521,7 +521,20 @@ function inferReferences(
     addReference(references, context, file.name, file.content, kind, call.name, expression, call.index, true);
   }
 
-  const servoCalls = extractCalls(masked, /\b[A-Za-z_]\w*\s*\.\s*attach\s*\(/g, () => 'Servo.attach');
+  // Restrict `.attach()` to objects declared as Servo where possible.  Many
+  // unrelated libraries expose an attach() method; treating every such call
+  // as a servo pin creates noisy false positives in otherwise valid sketches.
+  const servoObjects = new Set<string>();
+  for (const match of masked.matchAll(/\b(?:Servo|ServoTimer2|ESP32Servo)\s+([A-Za-z_]\w*)/g)) {
+    if (match[1]) servoObjects.add(match[1]);
+  }
+  const servoCalls = extractCalls(
+    masked,
+    servoObjects.size > 0
+      ? new RegExp(`\\b(${[...servoObjects].map((name) => name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')).join('|')})\\s*\\.\\s*attach\\s*\\(`, 'g')
+      : /\b[A-Za-z_]\w*\s*\.\s*attach\s*\(/g,
+    () => 'Servo.attach',
+  );
   for (const call of servoCalls) {
     if (call.args[0]) addReference(references, context, file.name, file.content, 'servo', 'Servo.attach', call.args[0], call.index, true);
   }
@@ -658,6 +671,39 @@ function lintFileReferences(
   return issues;
 }
 
+function addCodePinRoleConflicts(
+  references: CodePinReference[],
+  issues: CodeWiringIssue[],
+): void {
+  const groups = new Map<string, CodePinReference[]>();
+  for (const reference of references) {
+    if (reference.builtin || reference.numeric === null) continue;
+    const key = `n${reference.numeric}`;
+    groups.set(key, [...(groups.get(key) ?? []), reference]);
+  }
+  const isInput = (kind: CodeWiringReferenceKind) =>
+    kind === 'analog-input' || kind === 'digital-input' || kind === 'spi-miso';
+  const isOutput = (kind: CodeWiringReferenceKind) =>
+    kind === 'digital-output' || kind === 'servo' || kind === 'spi-mosi' || kind === 'spi-sck' || kind === 'spi-cs';
+  for (const refs of groups.values()) {
+    const inputs = refs.filter((reference) => isInput(reference.kind));
+    const outputs = refs.filter((reference) => isOutput(reference.kind));
+    if (inputs.length === 0 || outputs.length === 0) continue;
+    const first = refs[0];
+    if (!first) continue;
+    const names = [...new Set(refs.map((reference) => reference.api))].join(', ');
+    issues.push({
+      severity: 'error',
+      code: 'CODE_PIN_ROLE_CONFLICT',
+      message: `GPIO/pin ${first.numeric} is used as both input and output (${names}). Split the signals onto separate pins; shared push-pull drive can damage real hardware.`,
+      file: first.file,
+      line: first.line,
+      numeric: first.numeric,
+      expression: first.expression,
+    });
+  }
+}
+
 /** Run source-to-canvas lint without changing either Zustand store. */
 export function lintCodeWiring(input: CodeWiringLintInput): CodeWiringLintResult {
   // Headers often carry the pin contract (`pins.h` → `sketch.ino`).  Merge
@@ -672,6 +718,7 @@ export function lintCodeWiring(input: CodeWiringLintInput): CodeWiringLintResult
   }
   const references = input.files.flatMap((file) => inferReferences(file, input.board.boardKind, sharedSymbols));
   const issues = lintFileReferences(references, input.board, input.wires, input.components);
+  addCodePinRoleConflicts(references, issues);
   const summary = {
     errors: issues.filter((issue) => issue.severity === 'error').length,
     warnings: issues.filter((issue) => issue.severity === 'warning').length,
