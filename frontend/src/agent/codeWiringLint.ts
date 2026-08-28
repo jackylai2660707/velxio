@@ -548,6 +548,24 @@ function inferReferences(
     addReference(references, context, file.name, file.content, kind, call.name, expression, call.index, true);
   }
 
+  // ESP32 Arduino-core helpers do not always go through digitalWrite/
+  // analogRead.  Their first argument is still a concrete GPIO and should be
+  // checked against the canvas (ledcAttachPin/ledcAttach, ADC touch helpers,
+  // and DAC output).  `ledcWrite(channel, duty)` intentionally has no pin
+  // argument and is therefore not linted here.
+  const esp32PinCalls = extractCalls(
+    masked,
+    /\b(ledcAttachPin|ledcAttach|adcAttachPin|touchRead|dacWrite)\s*\(/gi,
+    (m) => m[1] ?? 'esp32-pin-api',
+  );
+  for (const call of esp32PinCalls) {
+    const expression = call.args[0];
+    if (!expression) continue;
+    const kind: CodeWiringReferenceKind =
+      /^(touchRead|adcAttachPin)$/i.test(call.name) ? 'analog-input' : 'digital-output';
+    addReference(references, context, file.name, file.content, kind, call.name, expression, call.index, true);
+  }
+
   // Restrict `.attach()` to objects declared as Servo where possible.  Many
   // unrelated libraries expose an attach() method; treating every such call
   // as a servo pin creates noisy false positives in otherwise valid sketches.

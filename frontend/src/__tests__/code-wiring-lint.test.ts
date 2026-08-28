@@ -97,6 +97,27 @@ describe('code ↔ wiring lint', () => {
     expect(result.issues.some((issue) => issue.code === 'PROTOCOL_PIN_MISMATCH')).toBe(false);
   });
 
+  it('checks ESP32 LEDC/touch/DAC helpers by their GPIO argument', () => {
+    const result = lintCodeWiring({
+      board: { id: 'esp32', boardKind: 'esp32' },
+      files: [{ name: 'sketch.ino', content: 'ledcAttachPin(2, 0); touchRead(4); dacWrite(25, 128);' }],
+      components: [
+        { id: 'led', metadataId: 'led' },
+        { id: 'touch', metadataId: 'touch' },
+        { id: 'dac', metadataId: 'dac' },
+      ],
+      wires: [
+        wire('esp32', '2', 'led', 'A'),
+        wire('esp32', '4', 'touch', 'TOUCH'),
+        wire('esp32', '25', 'dac', 'OUT'),
+      ],
+    });
+    expect(result.references.map((reference) => reference.api)).toEqual(
+      expect.arrayContaining(['ledcAttachPin', 'touchRead', 'dacWrite']),
+    );
+    expect(result.issues.some((issue) => issue.severity === 'error')).toBe(false);
+  });
+
   it('parses Servo.attach, DHT constructor, and SPI CS references', () => {
     const result = lintCodeWiring({
       board: { id: 'esp32', boardKind: 'esp32' },
