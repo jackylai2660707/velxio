@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest';
 import {
   routeAroundObstacles,
   collectWireSegments,
+  collectComponentObstacles,
   ROUTE_MARGIN,
   WIRE_SEPARATION,
   type ObstacleRect,
@@ -235,6 +236,46 @@ describe('collectWireSegments', () => {
     const segs = collectWireSegments(wires as never);
     // Diagonal endpoints render as an L: one horizontal + one vertical.
     expect(segs).toHaveLength(2);
+  });
+});
+
+describe('collectComponentObstacles — breadboard endpoint clearance', () => {
+  const originalDocument = (globalThis as { document?: Document }).document;
+
+  it('keeps the breadboard body as an obstacle when endpoint is a hole', () => {
+    const wrappers = new Map([
+      ['bb1', { offsetWidth: 760, offsetHeight: 360 }],
+      ['led1', { offsetWidth: 32, offsetHeight: 32 }],
+    ]);
+    (globalThis as { document?: Document }).document = {
+      querySelector: (selector: string) => {
+        const match = /data-component-id="([^"]+)"/.exec(selector);
+        const size = match ? wrappers.get(match[1]) : undefined;
+        if (!size) return null;
+        return {
+          ...size,
+          querySelector: () => null,
+        };
+      },
+    } as unknown as Document;
+
+    try {
+      const obstacles = collectComponentObstacles(
+        [
+          { id: 'bb1', x: 100, y: 80, metadataId: 'breadboard' },
+          { id: 'led1', x: 920, y: 160, metadataId: 'led' },
+        ],
+        ['bb1'],
+      );
+      // The routed wire starts at a breadboard hole.  Excluding the endpoint
+      // component wholesale would let the jumper cross the board artwork.
+      const boardObstacle = obstacles.find((rect) => rect.x === 100 && rect.y === 80);
+      expect(boardObstacle).toBeDefined();
+      expect(boardObstacle!.w).toBeGreaterThanOrEqual(760);
+      expect(boardObstacle!.h).toBeGreaterThanOrEqual(360);
+    } finally {
+      (globalThis as { document?: Document }).document = originalDocument;
+    }
   });
 });
 
