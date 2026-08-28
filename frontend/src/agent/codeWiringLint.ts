@@ -698,7 +698,7 @@ function addCodePinRoleConflicts(
       message: `GPIO/pin ${first.numeric} is used as both input and output (${names}). Split the signals onto separate pins; shared push-pull drive can damage real hardware.`,
       file: first.file,
       line: first.line,
-      numeric: first.numeric,
+      numeric: first.numeric ?? undefined,
       expression: first.expression,
     });
   }

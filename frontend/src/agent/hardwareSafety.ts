@@ -100,7 +100,7 @@ export function analyzeHardwareSafety(input: HardwareSafetyInput): HardwareIssue
     }
     if (gpio.length > 1) {
       const distinct = new Set(gpio.map((m) => `${m.id}:${m.pin}`));
-      if (distinct.size > 1) push({ severity: 'error', code: 'gpio-contention', componentIds: gpio.map((m) => m.id), message: `Multiple MCU GPIO pins share one net (${gpio.map((m) => `${m.id}:${m.pin}`).join(', ')}). Two push-pull outputs can fight and damage hardware; use separate pins or an open-drain/bus design.` });
+      if (distinct.size > 1) push({ severity: 'warning', code: 'gpio-contention', componentIds: gpio.map((m) => m.id), message: `Multiple MCU GPIO pins share one net (${gpio.map((m) => `${m.id}:${m.pin}`).join(', ')}). This may be a legitimate bus (I²C/SPI/UART), but verify input/output direction; two push-pull outputs can fight and damage hardware.` });
     }
     const loads = members.filter((m) => m.comp && /^(servo|motor|relay|dc-motor|stepper)/i.test(m.comp.metadataId));
     if (loads.length && gpio.length) {
