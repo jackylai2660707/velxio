@@ -253,4 +253,138 @@ describe('runTurn', () => {
       ),
     ).rejects.toThrow('overloaded');
   });
+
+  it('does not duplicate partial text when a retry replays a failed stream', async () => {
+    let calls = 0;
+    const encoder = new TextEncoder();
+    const partial = `data: ${JSON.stringify({
+      type: 'content_block_start',
+      index: 0,
+      content_block: { type: 'text', text: '' },
+    })}\n\n` +
+      `data: ${JSON.stringify({
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'text_delta', text: 'partial ' },
+      })}\n\n`;
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        calls += 1;
+        if (calls === 1) {
+          const body = new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(encoder.encode(partial));
+              controller.error(new Error('network failure'));
+            },
+          });
+          return new Response(body, { status: 200 });
+        }
+        return sse(finalRound);
+      }),
+    );
+
+    const events: AgentEvent[] = [];
+    const result = await runTurn(
+      [{ role: 'user', content: [{ type: 'text', text: 'retry me' }] }],
+      {},
+      new AbortController().signal,
+      (event) => events.push(event),
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(calls).toBe(2);
+    expect(events.filter((event) => event.type === 'text_delta').map((event) => event.delta)).toEqual([
+      '完成了!',
+    ]);
+    expect(result.appended.at(-1)?.content).toEqual([{ type: 'text', text: '完成了!' }]);
+  });
+
+  it('fails and retries when EOF arrives without a terminal stop reason', async () => {
+    const incomplete = [
+      { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+      { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'unfinished' } },
+      { type: 'content_block_stop', index: 0 },
+    ];
+    const fetchMock = vi.fn(async () => sse(incomplete));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      runTurn(
+        [{ role: 'user', content: [{ type: 'text', text: 'missing terminal' }] }],
+        {},
+        new AbortController().signal,
+        () => {},
+      ),
+    ).rejects.toThrow(/terminal event/i);
+    // Protocol EOF is retryable, but never allowed to become a successful
+    // assistant turn. Two retries means three total attempts.
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('pairs malformed tool input without executing the tool', async () => {
+    const malformedToolRound = [
+      { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'bad_1', name: 'remove_component', input: {} } },
+      { type: 'content_block_stop', index: 0 },
+      { type: 'message_delta', delta: { stop_reason: 'tool_use' } },
+    ];
+    let calls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        calls += 1;
+        return calls === 1 ? sse(malformedToolRound) : sse(finalRound);
+      }),
+    );
+    const events: AgentEvent[] = [];
+    const { appended } = await runTurn(
+      [{ role: 'user', content: [{ type: 'text', text: 'malformed tool' }] }],
+      {},
+      new AbortController().signal,
+      (event) => events.push(event),
+    );
+
+    expect(events.some((event) => event.type === 'tool_start')).toBe(false);
+    const result = appended[1]?.content[0];
+    expect(result?.type).toBe('tool_result');
+    if (result?.type === 'tool_result') {
+      expect(result.tool_use_id).toBe('bad_1');
+      expect(result.is_error).toBe(true);
+      expect(result.content).toContain('input.id is required');
+    }
+  });
+
+  it('never executes a truncated tool call and keeps its result paired', async () => {
+    const truncatedToolRound = [
+      { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'trunc_1', name: 'remove_component', input: {} } },
+      { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: '{"id":"component-1"' } },
+      { type: 'content_block_stop', index: 0 },
+      { type: 'message_delta', delta: { stop_reason: 'max_tokens' } },
+    ];
+    let calls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        calls += 1;
+        return calls === 1 ? sse(truncatedToolRound) : sse(finalRound);
+      }),
+    );
+    const events: AgentEvent[] = [];
+    const { appended } = await runTurn(
+      [{ role: 'user', content: [{ type: 'text', text: 'truncated tool' }] }],
+      {},
+      new AbortController().signal,
+      (event) => events.push(event),
+    );
+
+    expect(events.some((event) => event.type === 'tool_start')).toBe(false);
+    const result = appended[1]?.content[0];
+    expect(result?.type).toBe('tool_result');
+    if (result?.type === 'tool_result') {
+      expect(result.tool_use_id).toBe('trunc_1');
+      expect(result.is_error).toBe(true);
+      expect(result.content).toContain('truncated');
+    }
+  });
 });

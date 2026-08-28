@@ -30,7 +30,7 @@ function retryableStreamError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   // Retry transport/provider overloads only. Auth, validation, and tool
   // errors are deterministic and retrying them burns quota without helping.
-  return /(?:HTTP\s*(?:408|425|429|5\d\d)|fetch failed|network|timed? ?out|temporar|overload|rate limit|stream error)/i.test(message);
+  return /(?:HTTP\s*(?:408|425|429|5\d\d)|fetch failed|network|timed? ?out|temporar|overload|rate limit|stream error|stream ended|terminal event|incomplete stream)/i.test(message);
 }
 
 async function waitBeforeRetry(attempt: number, signal: AbortSignal): Promise<void> {
@@ -48,10 +48,32 @@ async function streamWithRetry(
   tools: ToolDefinition[] = TOOL_DEFINITIONS,
 ): Promise<StreamedMessage> {
   for (let attempt = 0; ; attempt++) {
+    // Text is transactional across retries. A provider can close a stream
+    // after sending half a sentence; forwarding that partial text immediately
+    // would make the UI show it twice when the retry replays the sentence.
+    // Keep text events until the attempt has a valid terminal frame. Thinking
+    // liveness and usage events remain immediate because they are not part of
+    // the assistant history and cannot be replayed as visible text.
+    const bufferedText: Parameters<AgentEventHandler>[0][] = [];
+    const attemptHandler: AgentEventHandler = (event) => {
+      if (event.type === 'text_block_start' || event.type === 'text_delta') {
+        bufferedText.push(event);
+      } else {
+        onEvent(event);
+      }
+    };
     try {
-      return await streamOneMessage(messages, settings, signal, onEvent, system, tools);
+      const message = await streamOneMessage(messages, settings, signal, attemptHandler, system, tools);
+      for (const event of bufferedText) onEvent(event);
+      return message;
     } catch (error) {
-      if (attempt >= MAX_STREAM_RETRIES || signal.aborted || !retryableStreamError(error)) throw error;
+      if (attempt >= MAX_STREAM_RETRIES || signal.aborted || !retryableStreamError(error)) {
+        // Preserve the useful partial response when no retry remains. It is
+        // intentionally not added to API history (the call did not complete),
+        // but users should still see why the turn stopped.
+        for (const event of bufferedText) onEvent(event);
+        throw error;
+      }
       await waitBeforeRetry(attempt, signal);
     }
   }
@@ -71,6 +93,90 @@ export interface AgentSettings {
 interface StreamedMessage {
   content: ApiContentBlock[];
   stopReason: string | null;
+}
+
+/** Minimal JSON-schema validator for model-produced tool arguments.
+ *
+ * The provider validates the schema on the way in only inconsistently (many
+ * OpenAI-compatible relays accept arbitrary JSON). Validate again immediately
+ * before a local mutation so missing/incorrect arguments become an explicit
+ * tool error instead of being coerced by `executeTool` into a destructive
+ * operation. This intentionally supports the small schema subset used by
+ * TOOL_DEFINITIONS and fails closed for malformed top-level values.
+ */
+type JsonSchema = {
+  type?: string;
+  enum?: unknown[];
+  required?: string[];
+  properties?: Record<string, JsonSchema>;
+  items?: JsonSchema;
+};
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function schemaTypeMatches(value: unknown, type: string | undefined): boolean {
+  if (!type) return true;
+  switch (type) {
+    case 'object':
+      return isJsonObject(value);
+    case 'array':
+      return Array.isArray(value);
+    case 'string':
+      return typeof value === 'string';
+    case 'number':
+      return typeof value === 'number' && Number.isFinite(value);
+    case 'integer':
+      return typeof value === 'number' && Number.isInteger(value);
+    case 'boolean':
+      return typeof value === 'boolean';
+    case 'null':
+      return value === null;
+    default:
+      // Unknown schema keywords/types are not a reason to execute untrusted
+      // input. The definition itself is local and covered by tests, so this
+      // branch mainly protects against a future malformed definition.
+      return false;
+  }
+}
+
+function validateSchema(value: unknown, schema: JsonSchema, path: string): string | null {
+  if (!schemaTypeMatches(value, schema.type)) {
+    return `${path} must be ${schema.type ?? 'a valid JSON value'}`;
+  }
+  if (schema.enum && !schema.enum.some((candidate) => candidate === value)) {
+    return `${path} must be one of: ${schema.enum.map(String).join(', ')}`;
+  }
+  if (schema.type === 'object' || schema.properties || schema.required) {
+    if (!isJsonObject(value)) return `${path} must be an object`;
+    for (const required of schema.required ?? []) {
+      if (!Object.prototype.hasOwnProperty.call(value, required) || value[required] === undefined) {
+        return `${path}.${required} is required`;
+      }
+    }
+    for (const [key, child] of Object.entries(schema.properties ?? {})) {
+      if (Object.prototype.hasOwnProperty.call(value, key) && value[key] !== undefined) {
+        const error = validateSchema(value[key], child, `${path}.${key}`);
+        if (error) return error;
+      }
+    }
+  }
+  if (schema.type === 'array' && schema.items && Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      const error = validateSchema(value[i], schema.items, `${path}[${i}]`);
+      if (error) return error;
+    }
+  }
+  return null;
+}
+
+function validateToolInput(name: string, input: unknown): string | null {
+  const definition = TOOL_DEFINITIONS.find((tool) => tool.name === name);
+  if (!definition) return `Unknown tool "${name}".`;
+  if (!isJsonObject(input)) return `Invalid input for ${name}: expected a JSON object.`;
+  const schema = definition.input_schema as JsonSchema;
+  return validateSchema(input, schema, 'input');
 }
 
 /** Parse one backend SSE stream into a complete assistant message. */
@@ -123,66 +229,127 @@ async function streamOneMessage(
   const content: ApiContentBlock[] = [];
   // Per-index accumulation scratch (tool_use input arrives as JSON deltas)
   const partialJson: Record<number, string> = {};
+  const partialJsonErrors: Record<number, string> = {};
+  const initialInputErrors: Record<number, string> = {};
+  const openBlocks = new Set<number>();
   let stopReason: string | null = null;
+  let sawTerminalDelta = false;
 
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
 
+  const eventIndex = (value: unknown): number => {
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+      throw new Error('Malformed stream event: content block index is invalid.');
+    }
+    return value;
+  };
+
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+
   const handleEvent = (ev: Record<string, unknown>) => {
     switch (ev.type) {
       case 'content_block_start': {
-        const idx = ev.index as number;
-        const block = ev.content_block as Record<string, unknown>;
+        const idx = eventIndex(ev.index);
+        if (openBlocks.has(idx)) {
+          throw new Error(`Malformed stream event: content block ${idx} started twice.`);
+        }
+        openBlocks.add(idx);
+        const block = isRecord(ev.content_block) ? ev.content_block : {};
         if (block.type === 'text') {
           content[idx] = { type: 'text', text: '' };
           onEvent({ type: 'text_block_start' });
         } else if (block.type === 'thinking') {
           content[idx] = { type: 'thinking', thinking: '' };
         } else if (block.type === 'tool_use') {
+          const initialInput = isRecord(block.input) ? block.input : {};
+          if (block.input !== undefined && !isRecord(block.input)) {
+            initialInputErrors[idx] = 'Malformed tool input (expected a JSON object).';
+          }
+          const rawId = block.id;
+          const rawName = block.name;
           content[idx] = {
             type: 'tool_use',
-            id: block.id as string,
-            name: block.name as string,
-            input: {},
+            // The backend normally supplies both. Keep the block pairable if
+            // an OpenAI relay omits an id, while schema validation below keeps
+            // an omitted/invalid name from executing anything.
+            id: typeof rawId === 'string' && rawId.trim() ? rawId : `malformed_tool_${idx}`,
+            name: typeof rawName === 'string' ? rawName : '',
+            input: initialInput,
           };
           partialJson[idx] = '';
         }
         break;
       }
       case 'content_block_delta': {
-        const idx = ev.index as number;
-        const delta = ev.delta as Record<string, unknown>;
+        const idx = eventIndex(ev.index);
+        const delta = isRecord(ev.delta) ? ev.delta : {};
         const block = content[idx];
-        if (!block) break;
+        if (!block || !openBlocks.has(idx)) {
+          throw new Error(`Malformed stream event: delta for unopened content block ${idx}.`);
+        }
         if (delta.type === 'text_delta' && block.type === 'text') {
-          block.text += delta.text as string;
-          onEvent({ type: 'text_delta', delta: delta.text as string });
+          if (typeof delta.text !== 'string') {
+            throw new Error(`Malformed stream event: text delta for block ${idx} is not a string.`);
+          }
+          block.text += delta.text;
+          onEvent({ type: 'text_delta', delta: delta.text });
         } else if (delta.type === 'thinking_delta' && block.type === 'thinking') {
-          block.thinking += (delta.thinking as string) ?? '';
+          if (typeof delta.thinking !== 'string') {
+            throw new Error(`Malformed stream event: thinking delta for block ${idx} is not a string.`);
+          }
+          block.thinking += delta.thinking;
         } else if (delta.type === 'signature_delta' && block.type === 'thinking') {
-          block.signature = ((block.signature ?? '') + (delta.signature as string)) as string;
+          if (typeof delta.signature !== 'string') {
+            throw new Error(`Malformed stream event: signature delta for block ${idx} is not a string.`);
+          }
+          block.signature = (block.signature ?? '') + delta.signature;
         } else if (delta.type === 'input_json_delta' && block.type === 'tool_use') {
-          partialJson[idx] += (delta.partial_json as string) ?? '';
+          if (typeof delta.partial_json !== 'string') {
+            partialJsonErrors[idx] = 'Malformed tool JSON delta (expected a string).';
+          } else {
+            partialJson[idx] += delta.partial_json;
+          }
         }
         break;
       }
       case 'content_block_stop': {
-        const idx = ev.index as number;
+        const idx = eventIndex(ev.index);
+        if (!openBlocks.has(idx)) {
+          throw new Error(`Malformed stream event: content block ${idx} stopped before it started.`);
+        }
+        openBlocks.delete(idx);
         const block = content[idx];
         if (block?.type === 'tool_use' && partialJson[idx] !== undefined) {
-          try {
-            block.input = partialJson[idx] ? JSON.parse(partialJson[idx]) : {};
-          } catch {
-            block.input = { __parse_error: 'Malformed or truncated tool JSON' };
+          if (partialJsonErrors[idx]) {
+            block.input = { __parse_error: partialJsonErrors[idx] };
+          } else if (partialJson[idx]) {
+            try {
+              block.input = JSON.parse(partialJson[idx]);
+            } catch {
+              block.input = { __parse_error: 'Malformed or truncated tool JSON' };
+            }
+          } else if (initialInputErrors[idx]) {
+            block.input = { __parse_error: initialInputErrors[idx] };
           }
           delete partialJson[idx];
+          delete partialJsonErrors[idx];
+          delete initialInputErrors[idx];
         }
         break;
       }
       case 'message_delta': {
-        const delta = ev.delta as Record<string, unknown> | undefined;
-        if (delta?.stop_reason) stopReason = delta.stop_reason as string;
+        const delta = isRecord(ev.delta) ? ev.delta : undefined;
+        if (typeof delta?.stop_reason === 'string' && delta.stop_reason.length > 0) {
+          stopReason = delta.stop_reason;
+          // message_delta carries the semantic terminal reason in the
+          // backend protocol. message_stop/velxio_done are advisory framing
+          // events; requiring this reason catches silent EOFs while retaining
+          // compatibility with minimal OpenAI relays used by compaction.
+          sawTerminalDelta = true;
+        }
         break;
       }
       case 'velxio_thinking':
@@ -202,26 +369,58 @@ async function streamOneMessage(
     }
   };
 
+  const consumeFrames = (final = false) => {
+    for (;;) {
+      const match = /\r?\n\r?\n/.exec(buffer);
+      if (!match || match.index === undefined) break;
+      const frame = buffer.slice(0, match.index);
+      buffer = buffer.slice(match.index + match[0].length);
+      dispatchFrame(frame);
+    }
+    // A few proxies close immediately after the final `data:` line without
+    // the usual blank separator. Parse that one trailing frame on EOF.
+    if (final && buffer.trim()) {
+      const frame = buffer;
+      buffer = '';
+      dispatchFrame(frame);
+    }
+  };
+
+  const dispatchFrame = (frame: string) => {
+    for (const line of frame.split(/\r?\n/)) {
+      if (!line.startsWith('data:')) continue;
+      const raw = line.slice(5).trimStart();
+      if (!raw) continue;
+      let ev: Record<string, unknown>;
+      try {
+        const parsed: unknown = JSON.parse(raw);
+        if (!isRecord(parsed)) continue;
+        ev = parsed;
+      } catch {
+        // A malformed intermediary line should not turn into an executable
+        // tool call. Keep waiting for a valid frame; terminal validation below
+        // rejects a stream that never supplies one.
+        continue;
+      }
+      handleEvent(ev);
+    }
+  };
+
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
-    // SSE frames are separated by a blank line; each frame is `data: {json}`
-    let sep: number;
-    while ((sep = buffer.indexOf('\n\n')) !== -1) {
-      const frame = buffer.slice(0, sep);
-      buffer = buffer.slice(sep + 2);
-      for (const line of frame.split('\n')) {
-        if (!line.startsWith('data: ')) continue;
-        let ev: Record<string, unknown>;
-        try {
-          ev = JSON.parse(line.slice(6));
-        } catch {
-          continue;
-        }
-        handleEvent(ev);
-      }
-    }
+    // SSE frames are separated by a blank line; support LF and CRLF.
+    consumeFrames();
+  }
+  buffer += decoder.decode();
+  consumeFrames(true);
+
+  if (openBlocks.size > 0) {
+    throw new Error('Stream ended before every content block was closed.');
+  }
+  if (!sawTerminalDelta || !stopReason) {
+    throw new Error('Stream ended before terminal event (missing stop reason).');
   }
 
   // Drop empty trailing text blocks / holes
@@ -343,7 +542,8 @@ export async function runTurn(
     working.push(assistantMsg);
 
     const toolUses = msg.content.filter((b): b is ApiToolUseBlock => b.type === 'tool_use');
-    if (msg.stopReason === 'max_tokens' || msg.stopReason === 'length') {
+    const truncated = msg.stopReason === 'max_tokens' || msg.stopReason === 'length';
+    if (truncated) {
       if (toolUses.length === 0) return end({ appended, aborted: false, capped: true });
       const failed: ApiContentBlock[] = toolUses.map((tu) => ({
         type: 'tool_result', tool_use_id: tu.id,
@@ -354,7 +554,17 @@ export async function runTurn(
       appended.push(failedMsg); working.push(failedMsg);
       continue;
     }
-    if (msg.stopReason !== 'tool_use' || toolUses.length === 0) {
+    if (toolUses.length === 0) {
+      if (msg.stopReason === 'tool_use') {
+        // Keep the history terminal and tell the caller why no tool work was
+        // performed. A malformed provider response must not be treated as a
+        // successful turn with an impossible tool-use stop reason.
+        return end({
+          appended,
+          aborted: false,
+          error: 'Model requested tool use but returned no tool calls.',
+        });
+      }
       // The turn would end here. If the user queued messages while we worked,
       // promote them to a follow-up user turn and keep going.
       const queued = options.steering?.drain() ?? [];
@@ -384,8 +594,20 @@ export async function runTurn(
         });
         continue;
       }
-      if ('__parse_error' in tu.input) {
-        results.push({ type: 'tool_result', tool_use_id: tu.id, content: String(tu.input.__parse_error), is_error: true });
+      if (isJsonObject(tu.input) && typeof tu.input.__parse_error === 'string') {
+        results.push({ type: 'tool_result', tool_use_id: tu.id, content: tu.input.__parse_error, is_error: true });
+        continue;
+      }
+      const inputError = validateToolInput(tu.name, tu.input);
+      if (inputError) {
+        // Pair every tool_use, but never invoke a local tool with malformed
+        // arguments. The model gets a precise correction and can re-issue it.
+        results.push({
+          type: 'tool_result',
+          tool_use_id: tu.id,
+          content: `Invalid tool input: ${inputError}`,
+          is_error: true,
+        });
         continue;
       }
       onEvent({ type: 'tool_start', id: tu.id, name: tu.name, input: tu.input });
