@@ -32,6 +32,7 @@ import { holeIsOccupied } from '../utils/breadboardOccupancy';
 import type { ToolDefinition } from './types';
 import { formatCodeWiringLint, lintCodeWiring } from './codeWiringLint';
 import { formatPinContract, resolvePinContract } from './boardPinContract';
+import { analyzeHardwareSafety } from './hardwareSafety';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -595,6 +596,15 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       'Run the electrical pre-flight check on the current circuit (SPICE worst-case analysis). ' +
       'Catches missing GND/VCC connections, LEDs without series resistors, shorts, reverse polarity, ' +
       'and overcurrent BEFORE running. Call this after wiring, and fix every error before writing code.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'check_hardware_safety',
+    description:
+      'Run a deterministic real-hardware safety audit on the current graph. Checks ESP32 3.3V-only GPIOs, ' +
+      '5V level-shifting hazards, multiple MCU outputs on one net, direct motor/servo/relay GPIO power, ' +
+      'HC-SR04 Echo level shifting, UART direction hints, and missing common ground. Read-only; run before ' +
+      'compile/run together with check_circuit and lint_code_wiring.',
     input_schema: { type: 'object', properties: {} },
   },
   {
@@ -1238,6 +1248,26 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       return parts.join('\n');
     }
 
+    case 'check_hardware_safety': {
+      const result = analyzeHardwareSafety({
+        boards: sim().boards.map((board) => ({ id: board.id, boardKind: board.boardKind })),
+        components: sim().components.map((component) => ({
+          id: component.id,
+          metadataId: component.metadataId,
+          properties: component.properties,
+        })),
+        wires: sim().wires,
+      });
+      if (result.length === 0) {
+        return 'HARDWARE SAFETY: no deterministic hazards detected. This is not a substitute for checking the physical parts, voltage source, and datasheets.';
+      }
+      return [
+        'HARDWARE SAFETY AUDIT (deterministic graph checks):',
+        ...result.map((issue) => `${issue.severity.toUpperCase()} [${issue.code}]${issue.componentIds?.length ? ` ${issue.componentIds.join(',')}:` : ''} ${issue.message}`),
+        'Physical review is still required for unknown modules and real power supplies.',
+      ].join('\n');
+    }
+
     case 'lint_code_wiring': {
       const board = resolveBoard(input.board_id ? String(input.board_id) : undefined);
       const files = editor()
@@ -1372,6 +1402,7 @@ const TOOL_VERBS: Record<string, { zh: string; en: string }> = {
   observe_simulation: { zh: '观察仿真状态', en: 'Observe simulation' },
   interact: { zh: '操作元件', en: 'Interact' },
   check_circuit: { zh: '检查电路', en: 'Check circuit' },
+  check_hardware_safety: { zh: '檢查硬體安全', en: 'Hardware safety audit' },
   lint_code_wiring: { zh: '檢查程式接線', en: 'Lint code wiring' },
   search_libraries: { zh: '搜索库', en: 'Search libraries' },
   search_examples: { zh: '搜索示例', en: 'Search examples' },

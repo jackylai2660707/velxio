@@ -70,7 +70,8 @@ export function analyzeHardwareSafety(input: HardwareSafetyInput): HardwareIssue
   const union = (a: string, b: string) => { const ra = find(a); const rb = find(b); if (ra !== rb) parent.set(ra, rb); };
   const node = (id: string, pin: string) => `${id}:${pin}`;
   for (const w of input.wires) {
-    if (w.bb) continue; // seating is represented by the same net elsewhere
+    // Seating wires are invisible only cosmetically; electrically they join
+    // the component leg to its breadboard hole and must participate here.
     union(node(w.start.componentId, w.start.pinName), node(w.end.componentId, w.end.pinName));
   }
   const nets = new Map<string, Array<{ id: string; pin: string; board?: { id: string; boardKind: string }; comp?: { id: string; metadataId: string; properties?: Record<string, unknown> } }>>();
