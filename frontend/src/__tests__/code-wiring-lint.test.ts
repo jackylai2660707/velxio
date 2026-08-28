@@ -73,7 +73,7 @@ describe('code ↔ wiring lint', () => {
     expect(result.references.map((reference) => reference.kind)).toEqual(
       expect.arrayContaining(['servo', 'dht-data', 'spi-cs']),
     );
-    expect(result.issues).toHaveLength(0);
+    expect(result.issues.some((issue) => issue.severity === 'error')).toBe(false);
   });
 
   it('follows invisible seating wires through a breadboard hole', () => {
@@ -120,5 +120,16 @@ describe('code ↔ wiring lint', () => {
       }),
     );
     expect(result.issues.some((issue) => issue.code === 'CODE_PIN_ROLE_CONFLICT')).toBe(true);
+  });
+
+  it('applies board pin contracts to reject ESP32 input-only outputs', () => {
+    const result = lintCodeWiring({
+      board: { id: 'esp32', boardKind: 'esp32' },
+      files: [{ name: 'sketch.ino', content: 'pinMode(34, OUTPUT); digitalWrite(34, HIGH);' }],
+      components: [{ id: 'led', metadataId: 'led' }],
+      wires: [wire('esp32', '34', 'led', 'A')],
+    });
+    expect(result.issues.some((issue) => issue.code === 'BOARD_PIN_UNSAFE')).toBe(true);
+    expect(result.ok).toBe(false);
   });
 });

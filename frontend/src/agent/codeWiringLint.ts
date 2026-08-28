@@ -14,6 +14,7 @@
 
 import { boardPinToNumber } from '../utils/boardPinMapping';
 import { breadboardGroupKey, isBreadboard } from '../utils/breadboardNets';
+import { validatePinUse } from './boardPinContract';
 import type { Wire } from '../types/wire';
 
 export interface CodeWiringBoard {
@@ -704,6 +705,63 @@ function addCodePinRoleConflicts(
   }
 }
 
+function addBoardContractIssues(
+  references: CodePinReference[],
+  board: CodeWiringBoard,
+  issues: CodeWiringIssue[],
+): void {
+  const seen = new Set<string>();
+  for (const reference of references) {
+    if (reference.builtin || reference.numeric === null) continue;
+    const use =
+      reference.kind === 'digital-input' || reference.kind === 'analog-input' || reference.kind === 'spi-miso'
+        ? 'input'
+        : reference.kind === 'digital-output' || reference.kind === 'servo' || reference.kind === 'spi-mosi' || reference.kind === 'spi-sck' || reference.kind === 'spi-cs'
+          ? 'output'
+          : 'wire';
+    // `resolvePin` already canonicalized aliases to a number.  Resolving that
+    // number against the board contract handles GPIO_NUM_x and D/A aliases
+    // uniformly; use the source expression first to preserve labels such as
+    // PB7 on STM32.
+    const validation = validatePinUse(board.boardKind, reference.expression, use);
+    const fallback = validation.pin ? validation : validatePinUse(board.boardKind, String(reference.numeric), use);
+    if (!fallback.pin) continue; // unknown/overlay board: stay conservative
+    const keyBase = `${reference.numeric}:${reference.kind}`;
+    for (const message of fallback.errors) {
+      const key = `error:${keyBase}:${message}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      issues.push({
+        severity: 'error',
+        code: 'BOARD_PIN_UNSAFE',
+        message: `${reference.api} uses ${reference.expression} on ${board.boardKind}: ${message}`,
+        file: reference.file,
+        line: reference.line,
+        api: reference.api,
+        expression: reference.expression,
+        kind: reference.kind,
+        numeric: reference.numeric,
+      });
+    }
+    for (const message of fallback.warnings) {
+      const key = `warning:${keyBase}:${message}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      issues.push({
+        severity: 'warning',
+        code: 'BOARD_PIN_CAUTION',
+        message: `${reference.api} uses ${reference.expression} on ${board.boardKind}: ${message}`,
+        file: reference.file,
+        line: reference.line,
+        api: reference.api,
+        expression: reference.expression,
+        kind: reference.kind,
+        numeric: reference.numeric,
+      });
+    }
+  }
+}
+
 /** Run source-to-canvas lint without changing either Zustand store. */
 export function lintCodeWiring(input: CodeWiringLintInput): CodeWiringLintResult {
   // Headers often carry the pin contract (`pins.h` → `sketch.ino`).  Merge
@@ -718,6 +776,7 @@ export function lintCodeWiring(input: CodeWiringLintInput): CodeWiringLintResult
   }
   const references = input.files.flatMap((file) => inferReferences(file, input.board.boardKind, sharedSymbols));
   const issues = lintFileReferences(references, input.board, input.wires, input.components);
+  addBoardContractIssues(references, input.board, issues);
   addCodePinRoleConflicts(references, issues);
   const summary = {
     errors: issues.filter((issue) => issue.severity === 'error').length,
