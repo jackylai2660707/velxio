@@ -43,6 +43,11 @@ describe('loadExample — board-less → board-based transition', () => {
     resetStores();
   });
 
+  it('loads declared Fade LED parts', async () => {
+    await loadExample(findExample('fade-led'));
+    expect(useSimulatorStore.getState().components.map((c) => c.metadataId)).toEqual(['led', 'resistor']);
+  });
+
   it('loads Arduino Uno code into the editor after a board-less ANALOG example', async () => {
     // 1. Board-less analog circuit
     await loadExample(findExample('an-voltage-divider'));

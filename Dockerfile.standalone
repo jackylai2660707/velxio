@@ -227,6 +227,9 @@ COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built frontend assets from builder stage
 COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
+# nginx workers run as www-data; generated assets must remain readable even
+# when the build context uses a restrictive umask (notably metadata JSON).
+RUN chmod -R a+rX /usr/share/nginx/html
 
 # Copy and configure entrypoint script (fix Windows CRLF → LF)
 COPY docker/entrypoint.sh /app/entrypoint.sh
