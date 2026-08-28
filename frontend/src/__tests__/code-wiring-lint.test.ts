@@ -81,6 +81,22 @@ describe('code ↔ wiring lint', () => {
     expect(formatCodeWiringLint(result)).toContain('repair errors');
   });
 
+  it('accepts a correctly mapped SPI bus without treating SCK as I2C SCL', () => {
+    const result = lintCodeWiring({
+      board: { id: 'esp32', boardKind: 'esp32' },
+      files: [{ name: 'sketch.ino', content: 'SPI.begin(18, 19, 23, 5);' }],
+      components: [{ id: 'tft', metadataId: 'ili9341' }],
+      wires: [
+        wire('esp32', '18', 'tft', 'SCK'),
+        wire('esp32', '19', 'tft', 'MISO'),
+        wire('esp32', '23', 'tft', 'MOSI'),
+        wire('esp32', '5', 'tft', 'CS'),
+      ],
+    });
+    expect(result.issues.some((issue) => issue.severity === 'error')).toBe(false);
+    expect(result.issues.some((issue) => issue.code === 'PROTOCOL_PIN_MISMATCH')).toBe(false);
+  });
+
   it('parses Servo.attach, DHT constructor, and SPI CS references', () => {
     const result = lintCodeWiring({
       board: { id: 'esp32', boardKind: 'esp32' },
