@@ -500,8 +500,6 @@ export const BrandLandingPage: React.FC = () => {
       {/* ── Footer ───────────────────────────────────────── */}
       <footer className="brand-footer">
         <span>{t('brand.name', 'AI物聯網實驗室')}</span>
-        <span className="brand-footer-sep">·</span>
-        <span>{t('brand.footer.oss', '開源軟體(AGPLv3 授權)')}</span>
       </footer>
     </div>
   );
