@@ -822,6 +822,14 @@ export function lintCodeWiring(input: CodeWiringLintInput): CodeWiringLintResult
   const issues = lintFileReferences(references, input.board, input.wires, input.components);
   addBoardContractIssues(references, input.board, issues);
   addCodePinRoleConflicts(references, issues);
+  const codeFiles = input.files.filter((file) => /\.(?:ino|cpp|cc|cxx|c|h|hpp|py)$/i.test(file.name));
+  if (codeFiles.length > 0 && references.length === 0 && codeFiles.some((file) => file.content.trim().length > 0)) {
+    issues.push({
+      severity: 'warning',
+      code: 'NO_PIN_REFERENCES',
+      message: 'No supported pin API was found in the board code files. This lint cannot prove code↔wiring consistency; review custom drivers, macros, and dynamic pin assignments manually.',
+    });
+  }
   const summary = {
     errors: issues.filter((issue) => issue.severity === 'error').length,
     warnings: issues.filter((issue) => issue.severity === 'warning').length,

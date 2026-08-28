@@ -145,7 +145,15 @@ describe('code ↔ wiring lint', () => {
       base('// analogRead(A0);\nSerial.println("digitalWrite(4, HIGH)");\nvoid loop(){}'),
     );
     expect(result.references).toHaveLength(0);
-    expect(result.issues).toHaveLength(0);
+    expect(result.issues.some((issue) => issue.code === 'NO_PIN_REFERENCES')).toBe(true);
+  });
+
+  it('does not claim a pass when code uses no supported pin API', () => {
+    const result = lintCodeWiring(
+      base('class CustomDriver { public: void begin(); };', { wires: [] }),
+    );
+    expect(result.issues.some((issue) => issue.code === 'NO_PIN_REFERENCES')).toBe(true);
+    expect(formatCodeWiringLint(result)).toContain('cannot prove');
   });
 
   it('resolves pin constants declared in a board header file', () => {
