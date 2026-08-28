@@ -409,8 +409,12 @@ function connectedTargets(
 
 function protocolRole(pinName: string): CodeWiringReferenceKind | null {
   const name = pinName.toUpperCase();
-  if (/^(SDA|DATA|DAT|SDI)$/.test(name) || /(^|[._-])SDA($|[._-])/.test(name)) return 'i2c-sda';
-  if (/^(SCL|CLK|CLOCK|SCK)$/.test(name) || /(^|[._-])SCL($|[._-])/.test(name)) return 'i2c-scl';
+  // Keep I²C names exact.  `SCK`/`CLK` are SPI names on most displays;
+  // treating them as SCL caused a valid SPI bus to be reported as an I²C
+  // mismatch.  Generic DATA/CLK labels remain deliberately unknown because
+  // they are used by both I²C breakouts and SPI displays.
+  if (/^SDA$/.test(name) || /(^|[._-])SDA($|[._-])/.test(name)) return 'i2c-sda';
+  if (/^SCL$/.test(name) || /(^|[._-])SCL($|[._-])/.test(name)) return 'i2c-scl';
   if (/^(MOSI|SDO|DIN)$/.test(name)) return 'spi-mosi';
   if (/^(MISO|SDI|DOUT)$/.test(name)) return 'spi-miso';
   if (/^(SCK|SCLK|CLK|CLOCK)$/.test(name)) return 'spi-sck';
@@ -459,9 +463,15 @@ function dedupeReferences(references: CodePinReference[]): CodePinReference[] {
   });
 }
 
-function inferReferences(file: CodeWiringFile, boardKind: string): CodePinReference[] {
+function inferReferences(
+  file: CodeWiringFile,
+  boardKind: string,
+  sharedSymbols?: ReadonlyMap<string, string>,
+): CodePinReference[] {
   const masked = maskSource(file.content);
-  const context: SourceContext = { boardKind, symbols: collectSymbols(masked) };
+  const symbols = new Map(sharedSymbols);
+  for (const [name, value] of collectSymbols(masked)) symbols.set(name, value);
+  const context: SourceContext = { boardKind, symbols };
   const references: CodePinReference[] = [];
   const defaults = defaultsFor(boardKind);
 
@@ -650,7 +660,17 @@ function lintFileReferences(
 
 /** Run source-to-canvas lint without changing either Zustand store. */
 export function lintCodeWiring(input: CodeWiringLintInput): CodeWiringLintResult {
-  const references = input.files.flatMap((file) => inferReferences(file, input.board.boardKind));
+  // Headers often carry the pin contract (`pins.h` → `sketch.ino`).  Merge
+  // declarations across the board's file group, then let declarations in the
+  // file containing the call override a shared value.  This remains static
+  // and read-only; no preprocessor execution is attempted.
+  const sharedSymbols = new Map<string, string>();
+  for (const file of input.files) {
+    for (const [name, value] of collectSymbols(maskSource(file.content))) {
+      sharedSymbols.set(name, value);
+    }
+  }
+  const references = input.files.flatMap((file) => inferReferences(file, input.board.boardKind, sharedSymbols));
   const issues = lintFileReferences(references, input.board, input.wires, input.components);
   const summary = {
     errors: issues.filter((issue) => issue.severity === 'error').length,

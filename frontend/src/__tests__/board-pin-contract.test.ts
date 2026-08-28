@@ -15,6 +15,7 @@ describe('board pin contracts', () => {
     const inputOnly = resolvePinContract('esp32', 'GPIO34');
     expect(inputOnly).toMatchObject({ gpio: 34, inputOnly: true, exposed: true });
     expect(inputOnly?.notes.join(' ')).toContain('input-only');
+    expect(inputOnly?.protocols).not.toContain('pwm-ledc');
 
     const flash = resolvePinContract('esp32', '6');
     expect(flash).toMatchObject({ gpio: 6, reserved: true, exposed: false });
@@ -53,6 +54,8 @@ describe('board pin contracts', () => {
       inputOnly: false,
     });
     expect(resolvePinContract('arduino-uno', 'A4')?.protocols).toContain('i2c0-sda');
+    expect(resolvePinContract('arduino-uno', '2')?.protocols).not.toContain('pwm');
+    expect(resolvePinContract('arduino-uno', '3')?.protocols).toContain('pwm');
     expect(resolvePinContract('arduino-nano', 'A6')).toMatchObject({ inputOnly: true, gpio: 20 });
     expect(resolvePinContract('arduino-mega', 'TX1')?.protocols).toContain('uart1-tx');
 
