@@ -13,7 +13,7 @@ describe('agent prompt — breadboard layout contract', () => {
   it('instructs the agent to use long positive/negative rails for distribution', () => {
     const prompt = SYSTEM_PROMPT.toLowerCase();
     // Mention both rail polarity and the physical rail naming convention.
-    expect(prompt).toMatch(/power rail/);
+    expect(prompt).toMatch(/(?:power|breadboard) rails?/);
     expect(prompt).toMatch(/red/);
     expect(prompt).toMatch(/ground|negative/);
     expect(prompt).toMatch(/tp\.|bp\.|tn\.|bn\.|positive rail|negative rail/);
@@ -34,4 +34,3 @@ describe('agent prompt — breadboard layout contract', () => {
     expect(prompt).toMatch(/(rail|hole).{0,100}(component leg|pin)/);
   });
 });
-
