@@ -2447,7 +2447,12 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
       // padding. On desktop, keep the existing behavior (pan only) so users
       // who set a custom zoom don't lose it on every load.
       let nextZoom = z;
-      if (isTouchDeviceRef.current) {
+      // CSS-responsive/mobile browsers are not always reported as coarse
+      // pointers (desktop DevTools emulation, keyboard tablets, embedded
+      // webviews). Use the actual canvas width as a second signal so a loaded
+      // example never places its right-hand components outside the viewport.
+      const compactViewport = rect.width < 600;
+      if (isTouchDeviceRef.current || compactViewport) {
         const PADDING = 32;
         const availW = Math.max(50, rect.width - PADDING * 2);
         const availH = Math.max(50, rect.height - PADDING * 2);
