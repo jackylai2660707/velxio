@@ -46,6 +46,7 @@ describe('loadExample — board-less → board-based transition', () => {
   it('loads declared Fade LED parts', async () => {
     await loadExample(findExample('fade-led'));
     expect(useSimulatorStore.getState().components.map((c) => c.metadataId)).toEqual(['led', 'resistor']);
+    expect(useSimulatorStore.getState().wires.every((wire) => wire.autoRouted)).toBe(true);
   });
 
   it('loads Arduino Uno code into the editor after a board-less ANALOG example', async () => {

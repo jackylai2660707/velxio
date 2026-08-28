@@ -258,6 +258,10 @@ export async function loadExample(
         end: { componentId: wire.end.componentId, pinName: wire.end.pinName, x: 0, y: 0 },
         color: wire.color,
         waypoints: [],
+        // Built-in examples provide pin endpoints, not hand-authored paths.
+        // Mark them system-owned so the obstacle router fans parallel wires
+        // into readable lanes instead of rendering every wire on one elbow.
+        autoRouted: true,
       })),
     );
     recalculateAllWirePositions();
@@ -415,6 +419,7 @@ export async function loadExample(
         },
         color: wire.color,
         waypoints: [],
+        autoRouted: true,
       })),
     );
     recalculateAllWirePositions();
