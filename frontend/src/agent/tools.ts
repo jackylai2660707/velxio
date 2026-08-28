@@ -31,7 +31,7 @@ import { breadboardGroupKey, isBreadboard } from '../utils/breadboardNets';
 import { holeIsOccupied } from '../utils/breadboardOccupancy';
 import type { ToolDefinition } from './types';
 import { formatCodeWiringLint, lintCodeWiring } from './codeWiringLint';
-import { formatPinContract, resolvePinContract } from './boardPinContract';
+import { formatPinContract, resolvePinContract, validatePinUse } from './boardPinContract';
 import { analyzeHardwareSafety } from './hardwareSafety';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -952,6 +952,20 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
               .join(', ')}`,
           );
         }
+        const board = sim().boards.find((candidate) => candidate.id === cid);
+        // Apply the conservative contract when this board family has one.
+        // Unknown overlay boards keep the existing DOM pin validation path;
+        // silently inventing a contract for them would be less safe.
+        if (board) {
+          const contract = resolvePinContract(board.boardKind, pin);
+          if (contract) {
+            const validation = validatePinUse(board.boardKind, pin, 'wire');
+            if (!validation.ok) {
+              throw new ToolError(`Unsafe board pin ${cid}:${pin}: ${validation.errors.join(' ')}`);
+            }
+            warnings.push(...validation.warnings);
+          }
+        }
         if (!pins && typeof document !== 'undefined') {
           throw new ToolError(`Cannot verify pin "${pin}" on "${cid}". Wait for the component to mount, call get_pins, then retry.`);
         }
@@ -1223,16 +1237,29 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
     }
 
     case 'check_circuit': {
+      const safetyIssues = analyzeHardwareSafety({
+        boards: sim().boards.map((board) => ({ id: board.id, boardKind: board.boardKind })),
+        components: sim().components.map((component) => ({
+          id: component.id,
+          metadataId: component.metadataId,
+          properties: component.properties,
+        })),
+        wires: sim().wires,
+      });
       const result = await verifyCircuitFromStore();
       if (!result) {
+        const safetyText = safetyIssues.length
+          ? `\nHARDWARE SAFETY:\n${safetyIssues.map((issue) => `- [${issue.code}] ${issue.message}`).join('\n')}`
+          : '';
         return (
           'Pre-flight check has nothing to analyse yet (no board or power source on the canvas), ' +
-          'or the solver could not run. Not a failure — continue, and verify behaviour after running.'
+          'or the solver could not run. Not a failure — continue, and verify behaviour after running.' +
+          safetyText
         );
       }
       const fmtIssue = (i: { code: string; componentId?: string; message: string }) =>
         `- [${i.code}]${i.componentId ? ` ${i.componentId}:` : ''} ${i.message}`;
-      if (result.errors.length === 0 && result.warnings.length === 0) {
+      if (result.errors.length === 0 && result.warnings.length === 0 && safetyIssues.length === 0) {
         return `Circuit passes pre-flight checks (${result.componentsChecked} components inspected).`;
       }
       const parts: string[] = [];
@@ -1244,6 +1271,13 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       }
       if (result.warnings.length > 0) {
         parts.push(`Warnings:\n${result.warnings.map(fmtIssue).join('\n')}`);
+      }
+      if (safetyIssues.length > 0) {
+        parts.push(
+          `HARDWARE SAFETY (deterministic checks):\n${safetyIssues
+            .map((issue) => `- [${issue.severity}] [${issue.code}] ${issue.message}`)
+            .join('\n')}`,
+        );
       }
       return parts.join('\n');
     }

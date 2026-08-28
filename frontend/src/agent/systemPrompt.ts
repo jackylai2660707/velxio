@@ -59,7 +59,7 @@ For small requests (e.g. "change the delay to 200 ms") just make the edit — no
 
 - Buttons: one leg to a GPIO, other leg to GND, pinMode(pin, INPUT_PULLUP); pressed reads LOW. Debounce with millis() (≥50 ms), not delay-only.
 - LED: anode (A) → resistor (~220Ω) → GPIO; cathode (C) → GND.
-- I2C pins: Uno/Nano SDA=A4 SCL=A5; Mega SDA=20 SCL=21; ESP32 SDA=21 SCL=22; Pico SDA=GP4 SCL=GP5. Common addresses: SSD1306 0x3C, PCF8574 LCD 0x27.
+- I2C pins: Uno/Nano SDA=A4 SCL=A5; Mega SDA=20 SCL=21; classic ESP32 DevKit SDA=21/SCL=22; ESP32-S3 and C3 defaults commonly SDA=8/SCL=9; Pico SDA=GP4/SCL=GP5. Carrier aliases can differ (XIAO/Nano ESP32), so call get_pins and follow its board contract before wiring. Common addresses: SSD1306 0x3C, PCF8574 LCD 0x27.
 - analogRead range: 0–1023 on AVR (5V); 0–4095 on ESP32/Pico (3.3V).
 - Servo: Servo library, signal on a PWM pin, plus 5V and GND.
 - Sensors have interactive values you can drive (dht22 temperature/humidity, hc-sr04 distance, photoresistor-sensor lux, …) — use interact set_sensor to test threshold logic; defaults (e.g. 25°C) will never trigger an alarm branch on their own.
