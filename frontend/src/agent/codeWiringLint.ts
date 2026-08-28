@@ -318,6 +318,19 @@ function defaultsFor(boardKind: string): {
   return {};
 }
 
+function i2cDefaultsForCall(
+  boardKind: string,
+  busName: string,
+  defaults: ReturnType<typeof defaultsFor>,
+): [string, string] | undefined {
+  const kind = boardKind.toLowerCase();
+  // RP2040 Wire1 is I2C1 on GP6 (SDA) / GP7 (SCL); Wire is I2C0 on GP4/GP5.
+  if ((kind === 'raspberry-pi-pico' || kind === 'pi-pico-w' || kind === 'nano-rp2040') && /^wire1$/i.test(busName)) {
+    return ['GP6', 'GP7'];
+  }
+  return defaults.i2c;
+}
+
 function targetNode(componentId: string, pinName: string): string {
   return `${componentId}\u0000${pinName}`;
 }
@@ -484,9 +497,11 @@ function inferReferences(
     if (call.args.length >= 2 && call.args[0] && call.args[1]) {
       addReference(references, context, file.name, file.content, 'i2c-sda', `${call.name}.begin`, call.args[0], call.index, true);
       addReference(references, context, file.name, file.content, 'i2c-scl', `${call.name}.begin`, call.args[1], call.index, true);
-    } else if (call.args.length === 0 && defaults.i2c) {
-      addReference(references, context, file.name, file.content, 'i2c-sda', `${call.name}.begin`, defaults.i2c[0], call.index, false);
-      addReference(references, context, file.name, file.content, 'i2c-scl', `${call.name}.begin`, defaults.i2c[1], call.index, false);
+    } else if (call.args.length === 0) {
+      const i2cDefaults = i2cDefaultsForCall(boardKind, call.name, defaults);
+      if (!i2cDefaults) continue;
+      addReference(references, context, file.name, file.content, 'i2c-sda', `${call.name}.begin`, i2cDefaults[0], call.index, false);
+      addReference(references, context, file.name, file.content, 'i2c-scl', `${call.name}.begin`, i2cDefaults[1], call.index, false);
     }
   }
 

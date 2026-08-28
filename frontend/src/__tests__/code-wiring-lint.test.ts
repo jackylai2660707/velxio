@@ -35,6 +35,17 @@ describe('code ↔ wiring lint', () => {
     expect(result.issues).toHaveLength(0);
   });
 
+  it('uses the RP2040 Wire1 default pins rather than reusing Wire0', () => {
+    const result = lintCodeWiring({
+      board: { id: 'raspberry-pi-pico', boardKind: 'raspberry-pi-pico' },
+      files: [{ name: 'sketch.ino', content: 'Wire1.begin();' }],
+      components: [{ id: 'oled', metadataId: 'ssd1306' }],
+      wires: [wire('raspberry-pi-pico', 'GP6', 'oled', 'SDA'), wire('raspberry-pi-pico', 'GP7', 'oled', 'SCL')],
+    });
+    expect(result.references.map((reference) => reference.numeric)).toEqual([6, 7]);
+    expect(result.issues.some((issue) => issue.severity === 'error')).toBe(false);
+  });
+
   it('flags an unresolved symbol and an unconnected analog input', () => {
     const result = lintCodeWiring(
       base(
