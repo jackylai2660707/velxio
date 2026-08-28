@@ -143,7 +143,36 @@ export class BreadboardElement extends HTMLElementBase {
     this.style.height = `${BREADBOARD_HEIGHT}px`;
     fetchArt().then((svg) => {
       if (!this.isConnected) return;
-      this.shadowRoot!.innerHTML = svg ?? buildFallbackSvg();
+      this.shadowRoot!.innerHTML = `${svg ?? buildFallbackSvg()}
+        <style>
+          :host { position: relative; }
+          .rail-label { position: absolute; left: 7px; z-index: 2; pointer-events: none;
+            font: 700 9px/1.1 ui-monospace, SFMono-Regular, Menlo, monospace;
+            letter-spacing: .02em; text-shadow: 0 1px 0 rgba(255,255,255,.8); }
+          .rail-label--positive { color: #b42318; }
+          .rail-label--ground { color: #2457a6; }
+          .rail-label--tp { top: 8px; }
+          .rail-label--tn { top: 18px; }
+          .rail-label--bp { top: 180px; }
+          .rail-label--bn { top: 170px; }
+          .rail-line { position: absolute; left: 34px; right: 8px; height: 2px;
+            border-radius: 2px; opacity: .78; pointer-events: none; z-index: 1;
+            box-shadow: 0 0 3px currentColor; }
+          .rail-line--positive { background: #e0312b; color: #e0312b; }
+          .rail-line--ground { background: #2f6fcb; color: #2f6fcb; }
+          .rail-line--tn { top: 8px; }
+          .rail-line--tp { top: 18px; }
+          .rail-line--bn { top: 181px; }
+          .rail-line--bp { top: 191px; }
+        </style>
+        <span class="rail-label rail-label--positive rail-label--tp">+ 5V</span>
+        <span class="rail-label rail-label--ground rail-label--tn">− GND</span>
+        <span class="rail-label rail-label--ground rail-label--bn">− GND</span>
+        <span class="rail-label rail-label--positive rail-label--bp">+ 5V</span>
+        <span class="rail-line rail-line--ground rail-line--tn"></span>
+        <span class="rail-line rail-line--positive rail-line--tp"></span>
+        <span class="rail-line rail-line--ground rail-line--bn"></span>
+        <span class="rail-line rail-line--positive rail-line--bp"></span>`;
       const el = this.shadowRoot!.querySelector('svg');
       if (el) {
         el.setAttribute('width', String(BREADBOARD_WIDTH));

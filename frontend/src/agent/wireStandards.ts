@@ -34,6 +34,11 @@ export interface ClassifiablePin {
 export function classifyByPinName(name: string, description = ''): WireSignalType | null {
   const n = name.toUpperCase();
   const d = description.toUpperCase();
+  // Full-size breadboards expose four long rails: tp/bp are positive (+)
+  // rails and tn/bn are ground (−) rails. Treat them as power even though
+  // their pinInfo intentionally has no signal metadata.
+  if (/^[TB]P\.\d+$/.test(n)) return 'power-vcc';
+  if (/^[TB]N\.\d+$/.test(n)) return 'power-gnd';
   if (n.startsWith('GND')) return 'power-gnd';
   if (/^(VCC|5V|3V3|3\.3V|VIN|VBUS|VDD|PWR)(\.\d+)?$/.test(n)) return 'power-vcc';
   if (/^(SDA|SCL)\d*$/.test(n) || /\b(SDA|SCL)\b/.test(d)) return 'i2c';

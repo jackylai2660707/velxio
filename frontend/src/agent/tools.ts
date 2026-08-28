@@ -231,6 +231,26 @@ const tail = (s: string, n: number) => (s.length > n ? `…${s.slice(-n)}` : s);
 const GRID = 20;
 const snap = (v: number) => Math.round(v / GRID) * GRID;
 
+/**
+ * Add-component placement search limits.  A model often emits the same
+ * coordinate for a resistor and its LED; searching a whole row first keeps
+ * those series parts side-by-side and readable instead of stacking them in a
+ * vertical pile.  The vertical limit matches the old downward bump guard,
+ * while the horizontal limit is wide enough to clear an Uno/ESP32 footprint
+ * plus a few neighbouring parts without allowing an unbounded search.
+ */
+const PLACEMENT_HORIZONTAL_STEPS = 24;
+const PLACEMENT_VERTICAL_STEPS = 200;
+
+/** Deterministic left/right offsets around a requested grid column. */
+function horizontalPlacementOffsets(): number[] {
+  const offsets = [0];
+  for (let step = 1; step <= PLACEMENT_HORIZONTAL_STEPS; step++) {
+    offsets.push(step * GRID, -step * GRID);
+  }
+  return offsets;
+}
+
 /** Real rendered size of a mounted canvas element (unscaled layout px). */
 function measureEl(id: string): { w: number; h: number } | null {
   if (typeof document === 'undefined') return null;
@@ -367,7 +387,9 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     description:
       'Add an electronic component to the canvas. Use list_component_types to find the type id. ' +
       'Place components on a 20px grid, at least 120px apart, and to the right of / below the board ' +
-      '(boards are roughly 300x220px). Returns the assigned component id.',
+      '(boards are roughly 300x220px). The placement safety net preserves a clear requested position, ' +
+      'then searches free horizontal grid columns before moving down, so series parts such as an LED ' +
+      'and resistor stay side-by-side instead of stacking. Returns the assigned component id.',
     input_schema: {
       type: 'object',
       properties: {
@@ -815,8 +837,10 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       ) {
         throw new ToolError(`Id "${id}" is already used on the canvas.`);
       }
-      const x = snap(Number(input.x));
-      let y = snap(Number(input.y));
+      const requestedX = snap(Number(input.x));
+      const requestedY = snap(Number(input.y));
+      let x = requestedX;
+      let y = requestedY;
       const properties = {
         ...(meta.defaultValues ?? {}),
         ...((input.properties as Record<string, unknown>) ?? {}),
@@ -826,26 +850,47 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
 
       // Size-aware collision safety net: the model can't know real element
       // footprints (an LCD1602 is ~205px wide). If the mounted element
-      // overlaps something, step it down (keeping the chosen column) to the
-      // first free spot and SAY so — the model learns the real size and
-      // corrects its next placement itself.
+      // overlaps something, search free grid columns on the same row before
+      // moving down and SAY so — the model learns the real size and corrects
+      // its next placement itself.
       const size = measureEl(id);
       let bumpNote = '';
       if (size) {
         const others = occupiedRects(id);
-        const originalY = y;
+        const offsets = horizontalPlacementOffsets();
+        const hitAt = (cx: number, cy: number) =>
+          others.find((r) => rectsOverlap({ id, x: cx, y: cy, ...size }, r));
+
+        // Search each row left/right around the requested column.  This is
+        // intentionally row-major: a free neighbouring column wins over a
+        // downward bump, keeping an LED/resistor pair readable in one row.
+        let placed: { x: number; y: number } | null = null;
         let bumpedBy: string | null = null;
-        for (let guard = 0; guard < 200; guard++) {
-          const hit = others.find((r) => rectsOverlap({ id, x, y, ...size }, r));
-          if (!hit) break;
-          bumpedBy = hit.id;
-          y += GRID;
+        for (let row = 0; row <= PLACEMENT_VERTICAL_STEPS && !placed; row++) {
+          const cy = requestedY + row * GRID;
+          for (const dx of offsets) {
+            const cx = requestedX + dx;
+            const hit = hitAt(cx, cy);
+            if (!hit) {
+              placed = { x: cx, y: cy };
+              break;
+            }
+            // Preserve useful diagnostics for the eventual note when every
+            // candidate is occupied (the final position then remains as
+            // requested, matching the old bounded-search behaviour).
+            bumpedBy ??= hit.id;
+          }
         }
-        if (y !== originalY) {
-          sim().updateComponent(id, { y });
+
+        if (placed) {
+          x = placed.x;
+          y = placed.y;
+        }
+        if (x !== requestedX || y !== requestedY) {
+          sim().updateComponent(id, { x, y });
           await settleDom();
           safeRecalcWires();
-          bumpNote = ` (moved down from y=${originalY} to avoid overlapping "${bumpedBy}")`;
+          bumpNote = ` (moved from (${requestedX}, ${requestedY}) to (${x}, ${y}) to avoid overlapping "${bumpedBy ?? 'another component'}")`;
         }
       }
 

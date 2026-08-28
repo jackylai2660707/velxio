@@ -25,6 +25,7 @@
  */
 
 import { expandOrthogonalPoints, previewElbow, simplifyOrthogonalPath } from './wireUtils';
+import { isBreadboard } from './breadboardNets';
 
 export interface ObstacleRect {
   x: number;
@@ -441,17 +442,23 @@ export function routeAroundObstacles(
 /**
  * Bounding boxes of every component except the wire's own endpoints,
  * measured from the rendered DOM (store coordinates + element size).
- * Boards are deliberately NOT obstacles: pins live on both board edges
- * and detouring around a board produces absurd routes. Returns [] in
+ * MCU boards are deliberately NOT obstacles: pins live on both board edges
+ * and detouring around a board produces absurd routes. Breadboards remain
+ * obstacles even for hole endpoints so jumpers escape around their edges.
+ * Returns [] in
  * non-DOM environments (tests) and for unmounted components.
  */
 export function collectComponentObstacles(
-  components: Array<{ id: string; x: number; y: number }>,
+  components: Array<{ id: string; x: number; y: number; metadataId?: string }>,
   excludeIds: Array<string | undefined>,
 ): ObstacleRect[] {
   const skip = new Set(excludeIds.filter(Boolean));
   return collectComponentRects(components)
-    .filter((r) => !skip.has(r.id))
+    // Keep the breadboard itself as an obstacle even when the endpoint is a
+    // hole on it. routeAroundObstacles then carves a small escape corridor
+    // from that hole to the nearest clear edge; excluding the whole board was
+    // the source of long jumpers drawn straight across the artwork.
+    .filter((r) => !skip.has(r.id) || isBreadboard(r.metadataId ?? ''))
     .map((r) => r.rect);
 }
 
@@ -461,20 +468,29 @@ export function collectComponentObstacles(
  * each wire's endpoint components in memory instead of re-querying.
  */
 export function collectComponentRects(
-  components: Array<{ id: string; x: number; y: number }>,
-): Array<{ id: string; rect: ObstacleRect }> {
+  components: Array<{ id: string; x: number; y: number; metadataId?: string }>,
+): Array<{ id: string; metadataId?: string; rect: ObstacleRect }> {
   if (typeof document === 'undefined') return [];
-  const out: Array<{ id: string; rect: ObstacleRect }> = [];
+  const out: Array<{ id: string; metadataId?: string; rect: ObstacleRect }> = [];
   for (const c of components) {
     const esc = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(c.id) : c.id;
-    const el = document.querySelector(
+    const wrapper = document.querySelector(
       `.dynamic-component-wrapper[data-component-id="${esc}"]`,
     ) as HTMLElement | null;
-    if (!el) continue;
-    const w = el.offsetWidth;
-    const hh = el.offsetHeight;
+    if (!wrapper) continue;
+    // Measure the actual part footprint, not the hover-only label. The label
+    // intentionally remains in wrapper flow for rotation math, but using its
+    // width/height as an obstacle makes routes detour far too widely and can
+    // funnel several breadboard jumpers into the same corner.
+    const el = wrapper.querySelector('.web-component-container') as HTMLElement | null;
+    const w = el?.offsetWidth || wrapper.offsetWidth;
+    const hh = el?.offsetHeight || wrapper.offsetHeight;
     if (!w || !hh) continue;
-    out.push({ id: c.id, rect: { x: c.x, y: c.y, w, h: hh } });
+    out.push({
+      id: c.id,
+      metadataId: c.metadataId,
+      rect: { x: c.x - 4, y: c.y - 4, w: w + 8, h: hh + 8 },
+    });
   }
   return out;
 }
