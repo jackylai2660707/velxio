@@ -783,6 +783,24 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
         }
       }
 
+      // A component seated on a breadboard already has invisible seating
+      // wires from each leg to its hole. Adding another visible wire from the
+      // same leg creates the classic AI-generated spaghetti: duplicate paths,
+      // crossed jumpers, and electrically confusing diagrams. Route external
+      // connections from the breadboard hole instead; the hole's internal
+      // strip/rail provides the connection to the seated leg.
+      for (const [cid, pin] of [[startComponent, startPin], [endComponent, endPin]] as const) {
+        const seated = sim().wires.some((w) => w.bb && (
+          (w.start.componentId === cid && w.start.pinName === pin) ||
+          (w.end.componentId === cid && w.end.pinName === pin)
+        ));
+        if (seated) {
+          throw new ToolError(
+            `Pin ${cid}:${pin} is seated on a breadboard. Connect the breadboard hole/rail instead of the component leg to keep wiring clear.`,
+          );
+        }
+      }
+
       await settleDom();
       const warnings: string[] = [];
       const endpointPins: (PinDescriptor[] | null)[] = [];
