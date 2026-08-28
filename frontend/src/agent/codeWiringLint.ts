@@ -39,6 +39,8 @@ export type CodeWiringReferenceKind =
   | 'spi-miso'
   | 'spi-mosi'
   | 'spi-cs'
+  | 'uart-rx'
+  | 'uart-tx'
   | 'servo'
   | 'analog-input'
   | 'digital-input'
@@ -610,6 +612,33 @@ function inferReferences(
     if (scl) addReference(references, context, file.name, file.content, 'i2c-scl', 'I2C', scl, call.index, true);
   }
 
+  // Explicit Arduino Serial/HardwareSerial pin form:
+  // `Serial2.begin(115200, SERIAL_8N1, RX_PIN, TX_PIN)`.  A one-argument
+  // `Serial.begin(baud)` leaves the board's fixed default pins untouched and
+  // is intentionally not guessed here.
+  const serialBegins = extractCalls(
+    masked,
+    /\b([A-Za-z_]\w*Serial\w*)\s*\.\s*begin\s*\(/gi,
+    (m) => m[1] ?? 'Serial.begin',
+  );
+  for (const call of serialBegins) {
+    if (call.args.length < 4) continue;
+    if (call.args[2]) addReference(references, context, file.name, file.content, 'uart-rx', `${call.name}.begin`, call.args[2], call.index, true);
+    if (call.args[3]) addReference(references, context, file.name, file.content, 'uart-tx', `${call.name}.begin`, call.args[3], call.index, true);
+  }
+
+  // SoftwareSerial constructor order is RX, TX.  This catches the common
+  // GPS/Bluetooth breakout setup without trying to infer baud-rate-only code.
+  const softwareSerial = extractCalls(
+    masked,
+    /\bSoftwareSerial\s+[A-Za-z_]\w*\s*\(/g,
+    () => 'SoftwareSerial',
+  );
+  for (const call of softwareSerial) {
+    if (call.args[0]) addReference(references, context, file.name, file.content, 'uart-rx', 'SoftwareSerial', call.args[0], call.index, true);
+    if (call.args[1]) addReference(references, context, file.name, file.content, 'uart-tx', 'SoftwareSerial', call.args[1], call.index, true);
+  }
+
   return dedupeReferences(references);
 }
 
@@ -745,9 +774,9 @@ function addCodePinRoleConflicts(
     groups.set(key, [...(groups.get(key) ?? []), reference]);
   }
   const isInput = (kind: CodeWiringReferenceKind) =>
-    kind === 'analog-input' || kind === 'digital-input' || kind === 'spi-miso';
+    kind === 'analog-input' || kind === 'digital-input' || kind === 'spi-miso' || kind === 'uart-rx';
   const isOutput = (kind: CodeWiringReferenceKind) =>
-    kind === 'digital-output' || kind === 'servo' || kind === 'spi-mosi' || kind === 'spi-sck' || kind === 'spi-cs';
+    kind === 'digital-output' || kind === 'servo' || kind === 'spi-mosi' || kind === 'spi-sck' || kind === 'spi-cs' || kind === 'uart-tx';
   for (const refs of groups.values()) {
     const inputs = refs.filter((reference) => isInput(reference.kind));
     const outputs = refs.filter((reference) => isOutput(reference.kind));

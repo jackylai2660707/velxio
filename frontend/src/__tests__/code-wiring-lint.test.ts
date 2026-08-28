@@ -118,6 +118,25 @@ describe('code ↔ wiring lint', () => {
     expect(result.issues.some((issue) => issue.severity === 'error')).toBe(false);
   });
 
+  it('checks explicit HardwareSerial and SoftwareSerial RX/TX pins', () => {
+    const result = lintCodeWiring({
+      board: { id: 'esp32', boardKind: 'esp32' },
+      files: [{ name: 'sketch.ino', content: 'HardwareSerial gpsSerial(1);\nSoftwareSerial bt(16, 17);\ngpsSerial.begin(9600, SERIAL_8N1, 16, 17);' }],
+      components: [
+        { id: 'gps', metadataId: 'gps' },
+        { id: 'bt', metadataId: 'hc-05' },
+      ],
+      wires: [
+        wire('esp32', '16', 'gps', 'RX'),
+        wire('esp32', '17', 'gps', 'TX'),
+      ],
+    });
+    expect(result.references.map((reference) => reference.kind)).toEqual(
+      expect.arrayContaining(['uart-rx', 'uart-tx']),
+    );
+    expect(result.issues.some((issue) => issue.severity === 'error')).toBe(false);
+  });
+
   it('parses Servo.attach, DHT constructor, and SPI CS references', () => {
     const result = lintCodeWiring({
       board: { id: 'esp32', boardKind: 'esp32' },
