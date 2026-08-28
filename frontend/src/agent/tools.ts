@@ -27,7 +27,7 @@ import { classifyWire } from './wireStandards';
 import { WIRE_COLORS } from '../utils/wireColors';
 import { BOARD_SIZE } from '../types/boardSizes';
 import { breadboardHoles, resolveSeatPosition } from '../utils/breadboardSnap';
-import { isBreadboard } from '../utils/breadboardNets';
+import { breadboardGroupKey, isBreadboard } from '../utils/breadboardNets';
 import type { ToolDefinition } from './types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -890,7 +890,18 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
         return out;
       });
       const groups = [...new Set(used.map((hole) => breadboardGroupKey(board.metadataId, hole)).filter(Boolean))];
-      return JSON.stringify({ breadboard_id: id, type: board.metadataId, occupied_holes: used, occupied_groups: groups, visible_wires: sim().wires.filter((w) => !w.bb && (w.start.componentId === id || w.end.componentId === id)).map((w) => w.id), seating_wires: sim().wires.filter((w) => w.bb && (w.start.componentId === id || w.end.componentId === id)).map((w) => w.id), note: 'Seating wires are invisible internal leg-to-hole connections; connect external wires to holes/rails, not seated component legs.' }).slice(0, 12000);
+      const visibleWires = sim().wires.filter((w) => !w.bb && (w.start.componentId === id || w.end.componentId === id)).map((w) => w.id);
+      const seatingWires = sim().wires.filter((w) => w.bb && (w.start.componentId === id || w.end.componentId === id)).map((w) => w.id);
+      return JSON.stringify({
+        breadboard_id: id,
+        type: board.metadataId,
+        occupied_holes: used.slice(0, limit),
+        occupied_groups: groups.slice(0, limit),
+        visible_wires: visibleWires.slice(0, limit),
+        seating_wires: seatingWires.slice(0, limit),
+        truncated: used.length > limit || groups.length > limit || visibleWires.length > limit || seatingWires.length > limit,
+        note: 'Seating wires are invisible internal leg-to-hole connections; connect external wires to holes/rails, not seated component legs.',
+      });
     }
 
     case 'seat_component': {

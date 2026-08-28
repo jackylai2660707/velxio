@@ -129,7 +129,6 @@ export function buildProjectSnapshot(): string {
       const seated = sim.wires
         .filter((w) => w.bb && ((w.start.componentId === c.id) || (w.end.componentId === c.id)))
         .map((w) => {
-          const pin = w.start.componentId === c.id ? w.start.pinName : w.end.pinName;
           const hole = w.start.componentId === c.id ? w.end.pinName : w.start.pinName;
           const bbId = w.start.componentId === c.id ? w.end.componentId : w.start.componentId;
           const bbType = sim.components.find((part) => part.id === bbId)?.metadataId ?? 'breadboard';
