@@ -367,6 +367,15 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     },
   },
   {
+    name: 'inspect_breadboard',
+    description: 'Inspect breadboard occupancy and internal groups before wiring. Read-only; use this before placing or connecting parts on a breadboard.',
+    input_schema: {
+      type: 'object',
+      properties: { breadboard_id: str('Breadboard component id'), include_free: { type: 'boolean' }, limit: { type: 'number' } },
+      required: ['breadboard_id'],
+    },
+  },
+  {
     name: 'remove_wire',
     description: 'Remove a wire by id (ids are listed in the project state).',
     input_schema: {
@@ -862,6 +871,21 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       );
     }
 
+    case 'inspect_breadboard': {
+      const id = String(input.breadboard_id ?? '');
+      const board = sim().components.find((c) => c.id === id && (c.metadataId === 'breadboard' || c.metadataId === 'breadboard-mini'));
+      if (!board) throw new ToolError(`Breadboard "${id}" not found.`);
+      const limit = Math.max(1, Math.min(100, Number(input.limit) || 30));
+      const used = sim().wires.flatMap((w) => {
+        const out: string[] = [];
+        if (w.start.componentId === id) out.push(w.start.pinName);
+        if (w.end.componentId === id) out.push(w.end.pinName);
+        return out;
+      });
+      const groups = [...new Set(used.map((hole) => breadboardGroupKey(board.metadataId, hole)).filter(Boolean))];
+      return JSON.stringify({ breadboard_id: id, type: board.metadataId, occupied_holes: used, occupied_groups: groups, visible_wires: sim().wires.filter((w) => !w.bb && (w.start.componentId === id || w.end.componentId === id)).map((w) => w.id), seating_wires: sim().wires.filter((w) => w.bb && (w.start.componentId === id || w.end.componentId === id)).map((w) => w.id), note: 'Seating wires are invisible internal leg-to-hole connections; connect external wires to holes/rails, not seated component legs.' }).slice(0, 12000);
+    }
+
     case 'remove_wire': {
       const id = String(input.id ?? '');
       if (!sim().wires.some((w) => w.id === id)) throw new ToolError(`Wire "${id}" not found.`);
@@ -1187,6 +1211,7 @@ const TOOL_VERBS: Record<string, { zh: string; en: string }> = {
   update_component: { zh: '更新元件', en: 'Update part' },
   remove_component: { zh: '移除元件', en: 'Remove part' },
   add_wire: { zh: '接线', en: 'Wire' },
+  inspect_breadboard: { zh: '檢查麵包板', en: 'Inspect breadboard' },
   remove_wire: { zh: '移除导线', en: 'Remove wire' },
   write_file: { zh: '写入文件', en: 'Write file' },
   edit_file: { zh: '编辑文件', en: 'Edit file' },
