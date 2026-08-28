@@ -140,6 +140,27 @@ describe('add_wire auto colors', () => {
     expect(wire.color).toBe(WIRE_COLORS['i2c']);
   });
 
+  it('uses red/black power classes for breadboard rail jumpers', async () => {
+    useSimulatorStore.getState().addComponent({
+      id: 'breadboard-rails', metadataId: 'breadboard', x: 300, y: 200, properties: {},
+    });
+
+    const vcc = await executeTool('add_wire', {
+      start_component: 'arduino-uno', start_pin: '5V',
+      end_component: 'breadboard-rails', end_pin: 'tp.1',
+    });
+    expect(vcc.isError).toBe(false);
+    const gnd = await executeTool('add_wire', {
+      start_component: 'arduino-uno', start_pin: 'GND.1',
+      end_component: 'breadboard-rails', end_pin: 'bn.1',
+    });
+    expect(gnd.isError).toBe(false);
+
+    const wires = useSimulatorStore.getState().wires;
+    expect(wires[0]).toMatchObject({ signalType: 'power-vcc', color: WIRE_COLORS['power-vcc'] });
+    expect(wires[1]).toMatchObject({ signalType: 'power-gnd', color: WIRE_COLORS['power-gnd'] });
+  });
+
   it('respects an explicit color but still records the signalType', async () => {
     await executeTool('add_wire', {
       start_component: 'led-1',
