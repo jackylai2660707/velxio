@@ -971,6 +971,27 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
         }
       }
 
+      // A direct board-rail → board-GPIO jumper is never a valid signal path:
+      // it permanently drives the GPIO at the rail voltage (often 5 V on
+      // mixed-board projects). Reject it before the store mutation; connecting
+      // a board rail to a component VCC remains valid and is handled by the
+      // circuit/hardware audits.
+      const endpointBoards = [
+        { board: sim().boards.find((candidate) => candidate.id === startComponent), pin: startPin, id: startComponent },
+        { board: sim().boards.find((candidate) => candidate.id === endComponent), pin: endPin, id: endComponent },
+      ];
+      if (endpointBoards[0].board && endpointBoards[1].board) {
+        const aContract = resolvePinContract(endpointBoards[0].board.boardKind, endpointBoards[0].pin);
+        const bContract = resolvePinContract(endpointBoards[1].board.boardKind, endpointBoards[1].pin);
+        const aPower = aContract?.powerRole && aContract.powerRole !== 'gnd';
+        const bPower = bContract?.powerRole && bContract.powerRole !== 'gnd';
+        const aGpio = aContract?.gpio !== undefined && !aContract.inputOnly;
+        const bGpio = bContract?.gpio !== undefined && !bContract.inputOnly;
+        if ((aPower && bGpio) || (bPower && aGpio)) {
+          throw new ToolError('Unsafe direct power-rail to GPIO connection. Route signals from a GPIO and power loads from a compatible supply; do not hard-drive a GPIO from 3.3V/5V.');
+        }
+      }
+
       // Standard color by signal type when the model doesn't pick one; the
       // classification is stored either way (feeds the electrical layer).
       const signalType = classifyWire(endpointPins[0], startPin, endpointPins[1], endPin);
