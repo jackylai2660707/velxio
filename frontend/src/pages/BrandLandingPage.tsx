@@ -502,15 +502,6 @@ export const BrandLandingPage: React.FC = () => {
         <span>{t('brand.name', 'AI物聯網實驗室')}</span>
         <span className="brand-footer-sep">·</span>
         <span>{t('brand.footer.oss', '開源軟體(AGPLv3 授權)')}</span>
-        <span className="brand-footer-sep">·</span>
-        {/* AGPLv3 §13: network users must be offered the source. */}
-        <a
-          href="https://github.com/jackylai2660707/velxio"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {t('brand.footer.source', '原始碼')}
-        </a>
       </footer>
     </div>
   );
