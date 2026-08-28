@@ -60,8 +60,15 @@ export const ExampleDetailPage: React.FC = () => {
     ? `${example.title} — 電路範例 — AI物聯網實驗室`
     : '找不到範例 — AI物聯網實驗室';
 
+  // Older examples use boardFilter/boards instead of boardType. Prefer the
+  // explicit boardType, then derive from the filter or first board so the
+  // detail badge never silently falls back to Arduino Uno (notably ESP32
+  // OLED and Pico examples).
+  const boardKey = example
+    ? (example.boardType ?? example.boardFilter ?? example.boards?.[0]?.boardKind ?? 'arduino-uno')
+    : '';
   const boardLabel = example
-    ? (BOARD_LABELS[example.boardType ?? 'arduino-uno'] ?? example.boardType ?? 'Arduino Uno')
+    ? (BOARD_LABELS[boardKey] ?? boardKey)
     : '';
 
   const seoDescription = example
