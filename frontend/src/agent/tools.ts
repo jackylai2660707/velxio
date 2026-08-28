@@ -30,6 +30,8 @@ import { breadboardHoles, resolveSeatPosition } from '../utils/breadboardSnap';
 import { breadboardGroupKey, isBreadboard } from '../utils/breadboardNets';
 import { holeIsOccupied } from '../utils/breadboardOccupancy';
 import type { ToolDefinition } from './types';
+import { formatCodeWiringLint, lintCodeWiring } from './codeWiringLint';
+import { formatPinContract, resolvePinContract } from './boardPinContract';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -596,6 +598,22 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     input_schema: { type: 'object', properties: {} },
   },
   {
+    name: 'lint_code_wiring',
+    description:
+      'Read-only code↔wiring consistency check for the selected board. Parses common Arduino/ESP32 ' +
+      'calls (Wire.begin, SPI.begin/CS, Servo.attach, analogRead, digitalRead/digitalWrite/pinMode, ' +
+      'DHT constructors and MicroPython I2C) and verifies each resolved pin reaches a canvas part, ' +
+      'including through breadboard seating wires. Reports unresolved constants and likely SDA/SCL or ' +
+      'SPI role swaps. Run after writing code and wiring, before compile/run; this complements check_circuit ' +
+      'and never mutates the project.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        board_id: str('Board id (default: active board)'),
+      },
+    },
+  },
+  {
     name: 'search_libraries',
     description:
       'Search the Arduino library registry for the exact installable name. Use when install_library ' +
@@ -707,11 +725,24 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       if (!pins) {
         throw new ToolError(
           `Cannot determine pins for "${target}". If it is a catalog type, add it to the canvas ` +
-            `first and call get_pins with the canvas id.`,
+          `first and call get_pins with the canvas id.`,
         );
       }
+      // A rendered pin name alone cannot tell the agent that ESP32 GPIO34 is
+      // input-only, GPIO6 is flash-reserved, or an Arduino rail is 5V. Add
+      // the board contract beside each live pin so code/wiring decisions use
+      // deterministic hardware facts rather than model memory. Components
+      // have no board contract and keep their existing compact output.
+      const boardInstance = sim().boards.find((board) => board.id === target);
+      const boardKind =
+        boardInstance?.boardKind ??
+        (Object.prototype.hasOwnProperty.call(BOARD_KIND_LABELS, target) ? target : undefined);
       return pins
-        .map((p) => `${p.name}${p.description ? ` — ${p.description}` : ''}`)
+        .map((p) => {
+          const contract = boardKind ? resolvePinContract(boardKind, p.name) : null;
+          const contractText = contract ? `; ${formatPinContract(contract)}` : '';
+          return `${p.name}${p.description ? ` — ${p.description}` : ''}${contractText}`;
+        })
         .join('\n');
     }
 
@@ -1207,6 +1238,23 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       return parts.join('\n');
     }
 
+    case 'lint_code_wiring': {
+      const board = resolveBoard(input.board_id ? String(input.board_id) : undefined);
+      const files = editor()
+        .getGroupFiles(board.activeFileGroupId)
+        .map((file) => ({ name: file.name, content: file.content }));
+      const result = lintCodeWiring({
+        board: { id: board.id, boardKind: board.boardKind },
+        files,
+        components: sim().components.map((component) => ({
+          id: component.id,
+          metadataId: component.metadataId,
+        })),
+        wires: sim().wires,
+      });
+      return formatCodeWiringLint(result);
+    }
+
     case 'search_libraries': {
       const query = String(input.query ?? '').trim();
       if (!query) throw new ToolError('query is required');
@@ -1324,6 +1372,7 @@ const TOOL_VERBS: Record<string, { zh: string; en: string }> = {
   observe_simulation: { zh: '观察仿真状态', en: 'Observe simulation' },
   interact: { zh: '操作元件', en: 'Interact' },
   check_circuit: { zh: '检查电路', en: 'Check circuit' },
+  lint_code_wiring: { zh: '檢查程式接線', en: 'Lint code wiring' },
   search_libraries: { zh: '搜索库', en: 'Search libraries' },
   search_examples: { zh: '搜索示例', en: 'Search examples' },
   get_example: { zh: '读取示例', en: 'Load example' },
@@ -1343,6 +1392,7 @@ function toolArg(name: string, input: ToolInput): string {
       return String(input.board_kind ?? '');
     case 'remove_board':
     case 'set_active_board':
+    case 'lint_code_wiring':
       return String(input.board_id ?? '');
     case 'set_board_language':
       return String(input.mode ?? '');
