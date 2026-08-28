@@ -601,6 +601,24 @@ function lintFileReferences(
       // unresolved symbol should be made visible rather than silently treated
       // as a valid wire.
       if (reference.canonical === reference.expression.toUpperCase() && !/^P[A-G]\d{1,2}$/.test(reference.canonical)) {
+        // Indexed arrays and arithmetic expressions are common for LED
+        // matrices (`ledPins[i]`) but cannot be mapped to one physical pin
+        // without executing the loop.  Keep the finding visible while
+        // avoiding a false hard failure; the deterministic hardware checks
+        // still guard any concrete wires the student drew.
+        if (!PIN_NAME_RE.test(reference.expression)) {
+          issues.push({
+            severity: 'warning',
+            code: 'DYNAMIC_PIN_EXPRESSION',
+            message: `${reference.api} uses dynamic pin expression ${reference.expression}; static lint cannot map it to one canvas pin. Check every array element/branch against the wiring manually.`,
+            file: reference.file,
+            line: reference.line,
+            api: reference.api,
+            expression: reference.expression,
+            kind: reference.kind,
+          });
+          continue;
+        }
         issues.push({
           severity: 'error',
           code: 'UNRESOLVED_PIN',

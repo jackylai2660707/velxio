@@ -132,4 +132,14 @@ describe('code ↔ wiring lint', () => {
     expect(result.issues.some((issue) => issue.code === 'BOARD_PIN_UNSAFE')).toBe(true);
     expect(result.ok).toBe(false);
   });
+
+  it('downgrades indexed pin arrays to a review warning instead of guessing', () => {
+    const result = lintCodeWiring(
+      base('const int ledPins[] = {2, 3}; void loop(){ digitalWrite(ledPins[i], HIGH); }', {
+        wires: [wire('arduino-uno', '2', 'led-1', 'A'), wire('arduino-uno', '3', 'led-1', 'C')],
+      }),
+    );
+    expect(result.issues.some((issue) => issue.code === 'DYNAMIC_PIN_EXPRESSION')).toBe(true);
+    expect(result.issues.some((issue) => issue.severity === 'error')).toBe(false);
+  });
 });
