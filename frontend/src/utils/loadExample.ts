@@ -104,7 +104,9 @@ export async function loadExample(
   // Each example is an independent teaching context. Switch the agent scope
   // before mutating the canvas so the previous lesson's turns cannot be sent
   // alongside this example's fresh project snapshot.
-  useAgentStore.getState().switchWorkspaceScope(workspaceScope ?? `example:${example.id}`);
+  useAgentStore
+    .getState()
+    .switchWorkspaceScope(workspaceScope ?? createExampleWorkspaceScope(example.id));
 
   // CRITICAL — clear currentProject FIRST, before touching any other store.
   //
@@ -441,4 +443,19 @@ export async function loadExample(
       example.libraries && example.libraries.length ? example.libraries : undefined;
     for (const b of sim.boards) sim.updateBoard(b.id, { libraries: libs });
   }
+}
+
+/**
+ * Create a fresh conversation namespace for a browser example session.
+ * Example ids identify the circuit template, not a student's chat run: using
+ * the id alone would silently restore the previous visit's transcript.
+ */
+export function createExampleWorkspaceScope(exampleId: string, lesson?: string | null): string {
+  const nonce =
+    globalThis.crypto?.randomUUID?.() ??
+    `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const prefix = lesson
+    ? `lesson:${lesson}:example:${exampleId}`
+    : `example:${exampleId}`;
+  return `${prefix}:session:${nonce}`;
 }

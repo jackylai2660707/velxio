@@ -24,7 +24,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { exampleProjects } from '../data/examples';
-import { loadExample, type LibraryInstallProgress } from '../utils/loadExample';
+import { createExampleWorkspaceScope, loadExample, type LibraryInstallProgress } from '../utils/loadExample';
 import { EditorPage } from './EditorPage';
 import { AppHeader } from '../components/layout/AppHeader';
 import { useSEO } from '../utils/useSEO';
@@ -77,7 +77,7 @@ export const ExampleEditorPage: React.FC = () => {
     setError(false);
     (async () => {
       try {
-        await loadExample(example, setInstalling, lessonScope ? `lesson:${lessonScope}:example:${example.id}` : undefined);
+        await loadExample(example, setInstalling, createExampleWorkspaceScope(example.id, lessonScope));
       } catch {
         // loadExample's internal failures (library install network errors)
         // are swallowed inside ensureLibraries — anything that DOES bubble

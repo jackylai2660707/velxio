@@ -3,6 +3,7 @@ import { useAgentStore } from '../store/useAgentStore';
 import type { ApiMessage, UiMessage } from '../agent/types';
 import { chatApi, projectApi } from '../cloud/cloudApi';
 import { useCloudStore } from '../cloud/useCloudStore';
+import { createExampleWorkspaceScope } from '../utils/loadExample';
 import type { VlxPayload } from '../utils/vlxFile';
 import { useProjectStore } from '../store/useProjectStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
@@ -86,6 +87,16 @@ describe('agent workspace context isolation', () => {
     expect(useAgentStore.getState().workspaceScope).toBe(lessonTwo);
     expect(useAgentStore.getState().messages).toEqual([]);
     expect(useAgentStore.getState().apiMessages).toEqual([]);
+  });
+
+  it('starts a fresh session when reopening the same example route', () => {
+    const first = createExampleWorkspaceScope('fade-led');
+    const second = createExampleWorkspaceScope('fade-led');
+    expect(first).not.toBe(second);
+    expect(first).toMatch(/^example:fade-led:session:/);
+    expect(createExampleWorkspaceScope('fade-led', 'arduino-basics\/intro')).toMatch(
+      /^lesson:arduino-basics\/intro:example:fade-led:session:/,
+    );
   });
 
   it('does not reset again when the same workspace is reloaded', () => {
