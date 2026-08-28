@@ -328,6 +328,10 @@ function i2cDefaultsForCall(
   if ((kind === 'raspberry-pi-pico' || kind === 'pi-pico-w' || kind === 'nano-rp2040') && /^wire1$/i.test(busName)) {
     return ['GP6', 'GP7'];
   }
+  // Other `WireN` instances are carrier/core-specific (ESP32 Wire1 defaults
+  // differ across Arduino-core versions and custom boards).  Do not invent a
+  // pair of GPIOs; explicit `Wire1.begin(sda, scl)` calls remain fully linted.
+  if (!/^wire$/i.test(busName)) return undefined;
   return defaults.i2c;
 }
 
