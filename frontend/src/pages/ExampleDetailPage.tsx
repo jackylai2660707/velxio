@@ -437,9 +437,9 @@ export const ExampleDetailPage: React.FC = () => {
             <p style={{ color: '#8f9ba1', fontSize: 13, margin: '0 0 22px' }}>
               Save or export your current project first if you want to keep it. / 如需保留目前專案，請先儲存或匯出。
             </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button type="button" onClick={() => setConfirmOpen(false)} style={{ border: '1px solid #56616a', background: 'transparent', color: '#d8e0e3', borderRadius: 6, padding: '10px 16px', cursor: 'pointer' }}>Cancel / 取消</button>
-              <button type="button" onClick={applyExample} autoFocus style={{ border: 0, background: '#0e88a8', color: '#fff', borderRadius: 6, padding: '10px 18px', cursor: 'pointer', fontWeight: 700 }}>Apply and open / 套用並開啟</button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 10 }}>
+              <button type="button" onClick={() => setConfirmOpen(false)} style={{ border: '1px solid #56616a', background: 'transparent', color: '#d8e0e3', borderRadius: 6, padding: '10px 16px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Cancel / 取消</button>
+              <button type="button" onClick={applyExample} autoFocus style={{ border: 0, background: '#0e88a8', color: '#fff', borderRadius: 6, padding: '10px 18px', cursor: 'pointer', fontWeight: 700, whiteSpace: 'nowrap' }}>Apply and open / 套用並開啟</button>
             </div>
           </div>
         </div>
