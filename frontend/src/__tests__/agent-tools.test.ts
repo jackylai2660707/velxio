@@ -80,6 +80,23 @@ describe('agent tools — boards', () => {
     );
   });
 
+  it('exposes deterministic hardware safety findings as a tool', async () => {
+    const boardId = useSimulatorStore.getState().addBoard('esp32', 40, 60);
+    useSimulatorStore.getState().setWires([
+      {
+        id: 'unsafe-5v-gpio',
+        start: { componentId: boardId, pinName: '5V', x: 0, y: 0 },
+        end: { componentId: boardId, pinName: '21', x: 0, y: 0 },
+        waypoints: [],
+        color: '#f00',
+      },
+    ]);
+    const result = await executeTool('check_hardware_safety', {});
+    expect(result.isError).toBe(false);
+    expect(result.result).toContain('gpio-overvoltage');
+    expect(result.result).toContain('3.3 V-only');
+  });
+
   it('advertises all supported language modes and rejects invalid values', async () => {
     const definition = TOOL_DEFINITIONS.find((tool) => tool.name === 'set_board_language');
     expect(definition?.input_schema.properties.mode).toMatchObject({
