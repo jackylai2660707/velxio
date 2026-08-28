@@ -453,12 +453,33 @@ export function collectComponentObstacles(
   excludeIds: Array<string | undefined>,
 ): ObstacleRect[] {
   const skip = new Set(excludeIds.filter(Boolean));
+  // A jumper whose two endpoints are holes on the same breadboard must be
+  // allowed to travel through the terminal field; only the board edge is an
+  // obstacle for routes entering/leaving the board. Retaining the board for
+  // that internal case would force every short jumper around the full outer
+  // perimeter, making dense layouts worse than the original overlap.
+  const endpointCounts = new Map<string, number>();
+  for (const endpointId of excludeIds.filter(Boolean) as string[]) {
+    endpointCounts.set(endpointId, (endpointCounts.get(endpointId) ?? 0) + 1);
+  }
+  const internalBreadboardIds = new Set(
+    components
+      .filter(
+        (c) =>
+          endpointCounts.get(c.id) === 2 && isBreadboard(c.metadataId ?? ''),
+      )
+      .map((c) => c.id),
+  );
   return collectComponentRects(components)
     // Keep the breadboard itself as an obstacle even when the endpoint is a
     // hole on it. routeAroundObstacles then carves a small escape corridor
     // from that hole to the nearest clear edge; excluding the whole board was
     // the source of long jumpers drawn straight across the artwork.
-    .filter((r) => !skip.has(r.id) || isBreadboard(r.metadataId ?? ''))
+    .filter(
+      (r) =>
+        !skip.has(r.id) ||
+        (isBreadboard(r.metadataId ?? '') && !internalBreadboardIds.has(r.id)),
+    )
     .map((r) => r.rect);
 }
 
@@ -489,7 +510,7 @@ export function collectComponentRects(
     out.push({
       id: c.id,
       metadataId: c.metadataId,
-      rect: { x: c.x - 4, y: c.y - 4, w: w + 8, h: hh + 8 },
+      rect: { x: c.x, y: c.y, w: w + 8, h: hh + 8 },
     });
   }
   return out;

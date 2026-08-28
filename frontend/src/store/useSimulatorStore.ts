@@ -51,7 +51,6 @@ import {
 import {
   routeAroundObstacles,
   collectComponentObstacles,
-  collectComponentRects,
   collectWireSegments,
 } from '../utils/wireAutoRoute';
 import { isBreadboard } from '../utils/breadboardNets';
@@ -3525,13 +3524,18 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
       // of the ones before it, which is what lays parallel runs out as a
       // tidy side-by-side bus instead of a shuffle of overlaps.
       if (updatedWires.some((w) => w.autoRouted && !w.bb)) {
-        const rectsById = collectComponentRects(state.components);
         for (let i = 0; i < updatedWires.length; i++) {
           const wire = updatedWires[i];
           if (!wire.autoRouted || wire.bb) continue;
-          const rects = rectsById
-            .filter((r) => r.id !== wire.start.componentId && r.id !== wire.end.componentId)
-            .map((r) => r.rect);
+          // Keep a breadboard body as an obstacle for external wires so they
+          // escape around its edge; same-board hole jumpers remain internal
+          // and are allowed to use the terminal field. The shared helper
+          // applies this endpoint-aware distinction consistently with first
+          // creation routing.
+          const rects = collectComponentObstacles(state.components, [
+            wire.start.componentId,
+            wire.end.componentId,
+          ]);
           const routed = routeAroundObstacles(
             { x: wire.start.x, y: wire.start.y },
             { x: wire.end.x, y: wire.end.y },
