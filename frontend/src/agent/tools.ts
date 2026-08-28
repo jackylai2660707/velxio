@@ -783,6 +783,20 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
         }
       }
 
+      if (startComponent === endComponent && startPin === endPin) {
+        throw new ToolError(`Cannot connect a pin to itself: ${startComponent}:${startPin}.`);
+      }
+      const endpointKey = (component: string, pin: string) => `${component}\u0000${pin}`;
+      const requested = [endpointKey(startComponent, startPin), endpointKey(endComponent, endPin)].sort().join('\u0001');
+      const duplicate = sim().wires.find((w) => {
+        if (w.bb) return false;
+        const existing = [endpointKey(w.start.componentId, w.start.pinName), endpointKey(w.end.componentId, w.end.pinName)].sort().join('\u0001');
+        return existing === requested;
+      });
+      if (duplicate) {
+        return `Wire already exists (${duplicate.id}); no duplicate wire created.`;
+      }
+
       // A component seated on a breadboard already has invisible seating
       // wires from each leg to its hole. Adding another visible wire from the
       // same leg creates the classic AI-generated spaghetti: duplicate paths,

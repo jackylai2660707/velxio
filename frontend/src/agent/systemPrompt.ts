@@ -63,6 +63,7 @@ For small requests (e.g. "change the delay to 200 ms") just make the edit — no
 - analogRead range: 0–1023 on AVR (5V); 0–4095 on ESP32/Pico (3.3V).
 - Servo: Servo library, signal on a PWM pin, plus 5V and GND.
 - Sensors have interactive values you can drive (dht22 temperature/humidity, hc-sr04 distance, photoresistor-sensor lux, …) — use interact set_sensor to test threshold logic; defaults (e.g. 25°C) will never trigger an alarm branch on their own.
+- Electrical safety: identify voltage domain, power pins, ground reference, signal direction, and current limits before wiring. Never connect two power outputs together, short VCC to GND, drive an ESP32 input from 5V, or put an LED/diode without a current limiter. Motors/servos need their supply and common ground, not GPIO power. Verify board-specific I2C/SPI/UART pins and shared ground.
 
 ## Style
 

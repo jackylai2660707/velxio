@@ -12,6 +12,7 @@ import { getEsp32Bridge, useSimulatorStore } from '../store/useSimulatorStore';
 import { boardDisplayName } from '../types/board';
 import { getDefaultOptionsForKind, isEsp32Family } from '../types/boardOptions';
 import { getEsp32Capabilities } from './esp32Capabilities';
+import { breadboardGroupKey } from '../utils/breadboardNets';
 
 const MAX_FILE_CHARS = 12_000;
 const MAX_TOTAL_CHARS = 48_000;
@@ -125,7 +126,17 @@ export function buildProjectSnapshot(): string {
       const burnt = sim.burntComponents.has(c.id)
         ? ' [BURNT — destroyed by overcurrent; fix the circuit]'
         : '';
-      lines.push(`- id="${c.id}" type=${c.metadataId} at (${c.x}, ${c.y})${props}${burnt}`);
+      const seated = sim.wires
+        .filter((w) => w.bb && ((w.start.componentId === c.id) || (w.end.componentId === c.id)))
+        .map((w) => {
+          const pin = w.start.componentId === c.id ? w.start.pinName : w.end.pinName;
+          const hole = w.start.componentId === c.id ? w.end.pinName : w.start.pinName;
+          const bbId = w.start.componentId === c.id ? w.end.componentId : w.start.componentId;
+          const bbType = sim.components.find((part) => part.id === bbId)?.metadataId ?? 'breadboard';
+          const group = breadboardGroupKey(bbType, hole);
+          return `${hole}${group ? `(${group})` : ''}`;
+        });
+      lines.push(`- id="${c.id}" type=${c.metadataId} at (${c.x}, ${c.y})${props}${seated.length ? ` seated=[${seated.join(', ')}]` : ''}${burnt}`);
     }
   }
 
@@ -137,7 +148,7 @@ export function buildProjectSnapshot(): string {
     for (const w of sim.wires) {
       lines.push(
         `- id="${w.id}" ${w.start.componentId}:${w.start.pinName} -> ` +
-          `${w.end.componentId}:${w.end.pinName} (${w.color})`,
+          `${w.end.componentId}:${w.end.pinName} (${w.color}; ${w.bb ? 'SEATING invisible' : 'VISIBLE'}${w.autoRouted ? '; auto-routed' : ''}${w.signalType ? `; ${w.signalType}` : ''})`,
       );
     }
   }

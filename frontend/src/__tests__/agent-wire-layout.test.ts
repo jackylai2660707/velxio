@@ -131,6 +131,29 @@ describe('add_wire auto colors', () => {
     expect(wire.color).toBe('yellow');
     expect(wire.signalType).toBe('power-gnd');
   });
+
+  it('does not create duplicate visible wires on replay', async () => {
+    const first = await executeTool('add_wire', {
+      start_component: 'led-1', start_pin: 'A', end_component: 'arduino-uno', end_pin: '13',
+    });
+    expect(first.isError).toBe(false);
+    const second = await executeTool('add_wire', {
+      start_component: 'arduino-uno', start_pin: '13', end_component: 'led-1', end_pin: 'A',
+    });
+    expect(second.isError).toBe(false);
+    expect(second.result).toContain('already exists');
+    expect(useSimulatorStore.getState().wires).toHaveLength(1);
+  });
+
+  it('blocks a visible wire from a seated breadboard leg', async () => {
+    useSimulatorStore.getState().addComponent({ id: 'breadboard-1', metadataId: 'breadboard', x: 300, y: 200, properties: {} });
+    useSimulatorStore.setState({ wires: [{ id: 'seat', start: { componentId: 'led-1', pinName: 'A', x: 0, y: 0 }, end: { componentId: 'breadboard-1', pinName: '1t.a', x: 0, y: 0 }, waypoints: [], color: '#000', bb: true }] } as never);
+    const result = await executeTool('add_wire', {
+      start_component: 'led-1', start_pin: 'A', end_component: 'arduino-uno', end_pin: '13',
+    });
+    expect(result.isError).toBe(true);
+    expect(result.result).toContain('seated on a breadboard');
+  });
 });
 
 describe('add_component grid snap', () => {
