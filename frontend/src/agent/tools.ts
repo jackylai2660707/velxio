@@ -26,7 +26,8 @@ import { useVersionStore } from '../versioning/useVersionStore';
 import { classifyWire } from './wireStandards';
 import { WIRE_COLORS } from '../utils/wireColors';
 import { BOARD_SIZE } from '../types/boardSizes';
-import { breadboardHoles, isBreadboard, resolveSeatPosition } from '../utils/breadboardSnap';
+import { breadboardHoles, resolveSeatPosition } from '../utils/breadboardSnap';
+import { isBreadboard } from '../utils/breadboardNets';
 import type { ToolDefinition } from './types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
