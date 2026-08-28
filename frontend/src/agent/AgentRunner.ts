@@ -24,6 +24,38 @@ import type {
 } from './types';
 
 const MAX_ITERATIONS = 40;
+const MAX_STREAM_RETRIES = 2;
+
+function retryableStreamError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  // Retry transport/provider overloads only. Auth, validation, and tool
+  // errors are deterministic and retrying them burns quota without helping.
+  return /(?:HTTP\s*(?:408|425|429|5\d\d)|fetch failed|network|timed? ?out|temporar|overload|rate limit|stream error)/i.test(message);
+}
+
+async function waitBeforeRetry(attempt: number, signal: AbortSignal): Promise<void> {
+  const delay = 400 * 2 ** attempt;
+  await new Promise<void>((resolve, reject) => {
+    if (signal.aborted) { const error = new Error('Aborted'); error.name = 'AbortError'; return reject(error); }
+    const timer = setTimeout(resolve, delay);
+    signal.addEventListener('abort', () => { clearTimeout(timer); const error = new Error('Aborted'); error.name = 'AbortError'; reject(error); }, { once: true });
+  });
+}
+
+async function streamWithRetry(
+  messages: ApiMessage[], settings: AgentSettings, signal: AbortSignal,
+  onEvent: AgentEventHandler, system = SYSTEM_PROMPT,
+  tools: ToolDefinition[] = TOOL_DEFINITIONS,
+): Promise<StreamedMessage> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await streamOneMessage(messages, settings, signal, onEvent, system, tools);
+    } catch (error) {
+      if (attempt >= MAX_STREAM_RETRIES || signal.aborted || !retryableStreamError(error)) throw error;
+      await waitBeforeRetry(attempt, signal);
+    }
+  }
+}
 
 /** Endpoint settings from the panel (all optional — server env fills gaps).
  *  OpenAI-compatible endpoints only. */
@@ -213,7 +245,7 @@ export async function streamText(
   signal: AbortSignal,
   system: string,
 ): Promise<string> {
-  const msg = await streamOneMessage(messages, settings, signal, () => {}, system, []);
+  const msg = await streamWithRetry(messages, settings, signal, () => {}, system, []);
   return msg.content
     .filter((b): b is Extract<ApiContentBlock, { type: 'text' }> => b.type === 'text')
     .map((b) => b.text)
@@ -293,7 +325,7 @@ export async function runTurn(
     let msg: StreamedMessage;
     try {
       const wire = options.transformContext ? options.transformContext(working) : working;
-      msg = await streamOneMessage(wire, settings, signal, onEvent);
+      msg = await streamWithRetry(wire, settings, signal, onEvent);
     } catch (err) {
       if (signal.aborted) return end({ appended, aborted: true });
       const message = err instanceof Error ? err.message : String(err);
