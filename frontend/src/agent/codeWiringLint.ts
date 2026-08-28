@@ -221,7 +221,10 @@ function resolvePin(
 ): ResolvedPin {
   const raw = cleanExpression(expression);
   const upper = raw.toUpperCase();
-  if (BUILTIN_PINS.has(upper)) {
+  // A user may intentionally override LED_BUILTIN (`#define LED_BUILTIN 2`)
+  // for an external LED.  Resolve an explicit symbol declaration first; only
+  // an undeclared core macro is treated as an internal board connection.
+  if (BUILTIN_PINS.has(upper) && !context.symbols.has(raw)) {
     return { raw, numeric: null, canonical: upper, builtin: true, unresolved: false };
   }
   if (depth < 8 && PIN_NAME_RE.test(raw) && context.symbols.has(raw)) {

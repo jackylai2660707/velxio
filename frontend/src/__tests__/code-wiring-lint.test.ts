@@ -25,6 +25,16 @@ describe('code ↔ wiring lint', () => {
     expect(result.ok).toBe(true);
   });
 
+  it('honours an explicit LED_BUILTIN override instead of hiding it as internal', () => {
+    const result = lintCodeWiring(
+      base('#define LED_BUILTIN 4\nvoid setup(){ pinMode(LED_BUILTIN, OUTPUT); }', {
+        wires: [wire('arduino-uno', '4', 'led-1', 'A')],
+      }),
+    );
+    expect(result.references.find((reference) => reference.expression === 'LED_BUILTIN')?.builtin).toBe(false);
+    expect(result.issues).toHaveLength(0);
+  });
+
   it('flags an unresolved symbol and an unconnected analog input', () => {
     const result = lintCodeWiring(
       base(
