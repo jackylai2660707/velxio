@@ -117,7 +117,7 @@ const PIN_NAME_RE = /^[A-Za-z_]\w*$/;
 /** Replace comments, quoted strings, and character literals with spaces while
  * preserving newlines and source offsets.  Regex scans can then not mistake
  * documentation or Serial strings for executable calls. */
-function maskSource(source: string): string {
+function maskSource(source: string, pythonComments = false): string {
   const chars = source.split('');
   let state: 'code' | 'line-comment' | 'block-comment' | 'string' | 'char' = 'code';
   let escaped = false;
@@ -135,6 +135,9 @@ function maskSource(source: string): string {
         chars[i + 1] = ' ';
         i++;
         state = 'block-comment';
+      } else if (pythonComments && ch === '#') {
+        chars[i] = ' ';
+        state = 'line-comment';
       } else if (ch === '"') {
         chars[i] = ' ';
         state = 'string';
@@ -489,7 +492,8 @@ function inferReferences(
   boardKind: string,
   sharedSymbols?: ReadonlyMap<string, string>,
 ): CodePinReference[] {
-  const masked = maskSource(file.content);
+  const isPython = /\.py$/i.test(file.name);
+  const masked = maskSource(file.content, isPython);
   const symbols = new Map(sharedSymbols);
   for (const [name, value] of collectSymbols(masked)) symbols.set(name, value);
   const context: SourceContext = { boardKind, symbols };
@@ -810,7 +814,7 @@ export function lintCodeWiring(input: CodeWiringLintInput): CodeWiringLintResult
   // and read-only; no preprocessor execution is attempted.
   const sharedSymbols = new Map<string, string>();
   for (const file of input.files) {
-    for (const [name, value] of collectSymbols(maskSource(file.content))) {
+    for (const [name, value] of collectSymbols(maskSource(file.content, /\.py$/i.test(file.name)))) {
       sharedSymbols.set(name, value);
     }
   }

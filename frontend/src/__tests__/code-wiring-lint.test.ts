@@ -46,6 +46,17 @@ describe('code ↔ wiring lint', () => {
     expect(result.issues.some((issue) => issue.severity === 'error')).toBe(false);
   });
 
+  it('parses MicroPython I2C while ignoring hash comments', () => {
+    const result = lintCodeWiring({
+      board: { id: 'esp32', boardKind: 'esp32' },
+      files: [{ name: 'main.py', content: '# I2C(0, sda=Pin(4), scl=Pin(5))\nfrom machine import I2C, Pin\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))' }],
+      components: [{ id: 'oled', metadataId: 'ssd1306' }],
+      wires: [wire('esp32', '21', 'oled', 'SDA'), wire('esp32', '22', 'oled', 'SCL')],
+    });
+    expect(result.references.map((reference) => reference.numeric)).toEqual([21, 22]);
+    expect(result.issues).toHaveLength(0);
+  });
+
   it('flags an unresolved symbol and an unconnected analog input', () => {
     const result = lintCodeWiring(
       base(
