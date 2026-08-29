@@ -482,10 +482,11 @@ const CAP_WARNING_NOTE =
  * A model sometimes sees a valid blink trace, then starts a fresh rebuild in
  * the same turn. The lock is scoped to one runTurn call, so a later user turn
  * can still intentionally edit the project. */
-const PROJECT_MUTATION_TOOLS = new Set([
+const POST_VERIFICATION_BLOCKED_TOOLS = new Set([
   'add_board', 'remove_board', 'set_board_language', 'install_library',
   'add_component', 'update_component', 'remove_component', 'add_wire',
   'remove_wire', 'seat_component', 'write_file', 'edit_file',
+  'run_simulation', 'observe_simulation',
 ]);
 
 function observationProvesRunning(result: string): boolean {
@@ -641,7 +642,7 @@ export async function runTurn(
       const repeatCount = (repeatedToolCalls.get(fingerprint) ?? 0) + 1;
       repeatedToolCalls.set(fingerprint, repeatCount);
       onEvent({ type: 'tool_start', id: tu.id, name: tu.name, input: tu.input });
-      if (verificationPassed && PROJECT_MUTATION_TOOLS.has(tu.name)) {
+      if (verificationPassed && POST_VERIFICATION_BLOCKED_TOOLS.has(tu.name)) {
         const message = `Verification already passed with live simulation evidence. ` +
           `Do not ${tu.name} or rebuild the project in this turn; summarize the result. ` +
           'Wait for a new user request before making changes.';
