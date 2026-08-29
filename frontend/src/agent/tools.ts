@@ -202,7 +202,7 @@ function validateBreadboardWireEndpoints(
     if (holeIsOccupied(state.wires, endpoint.componentId, endpoint.pinName)) {
       throw new ToolError(
         `Breadboard hole ${endpoint.componentId}:${endpoint.pinName} is already occupied. ` +
-          'Use a different free hole in the same group or remove/review the existing connection.',
+          'The whole strip/rail is electrically shared: use a DIFFERENT FREE sibling hole in the same group (for example 10t.c → 10t.d), not the occupied hole. Do not wire directly to a seated component leg.',
       );
     }
   }
@@ -434,7 +434,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     name: 'add_wire',
     description:
       'Connect two pins with a wire. Endpoints reference canvas ids (board or component) plus a pin ' +
-      'name exactly as reported by get_pins. Every circuit needs complete power paths — do not forget ' +
+      'name exactly as reported by get_pins. Breadboard external wires must use a different free sibling hole in the same strip or rail, never an occupied leg hole. Every circuit needs complete power paths — do not forget ' +
       'GND and VCC/5V/3V3 connections. OMIT color to get the standard signal-type color automatically ' +
       '(power red, GND black, digital green, analog blue, PWM purple, I2C gold, SPI orange, UART cyan) ' +
       '— only pass color for a deliberate look, e.g. matching a yellow LED with a yellow wire.',
@@ -461,7 +461,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   },
   {
     name: 'seat_component',
-    description: 'Seat a component on a requested breadboard hole. Use inspect_breadboard first; the physical solver may shift to the nearest free hole/strip so parts do not overlap or short. Never guess coordinates.',
+    description: 'Seat a component on the requested breadboard hole. Use inspect_breadboard first and choose an intentional strip; the requested anchor is kept stable. After seating, connect external wires to a different free sibling hole in that same strip/rail, never to the component leg.',
     input_schema: { type: 'object', properties: { component_id: str('Component id'), breadboard_id: str('Breadboard id'), anchor_pin: str('Component pin'), anchor_hole: str('Exact hole such as 10t.a') }, required: ['component_id', 'breadboard_id', 'anchor_pin', 'anchor_hole'] },
   },
   {
