@@ -23,6 +23,34 @@ import type {
   ToolDefinition,
 } from './types';
 
+/** Keep full definitions for local validation, but compact explanatory prose
+ * sent to the model on every loop. Names, required fields and schema types are
+ * unchanged; only repetitive descriptions are shortened. */
+const MODEL_TOOL_DESCRIPTION_LIMIT = 260;
+const MODEL_PROPERTY_DESCRIPTION_LIMIT = 110;
+function compactModelTools(tools: ToolDefinition[]): ToolDefinition[] {
+  return tools.map((tool) => {
+    const properties = Object.fromEntries(
+      Object.entries(tool.input_schema.properties ?? {}).map(([key, value]) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return [key, value];
+        const property = value as Record<string, unknown>;
+        const description = typeof property.description === 'string'
+          ? property.description.slice(0, MODEL_PROPERTY_DESCRIPTION_LIMIT)
+          : property.description;
+        return [key, { ...property, ...(description ? { description } : {}) }];
+      }),
+    );
+    return {
+      ...tool,
+      description: tool.description.length > MODEL_TOOL_DESCRIPTION_LIMIT
+        ? `${tool.description.slice(0, MODEL_TOOL_DESCRIPTION_LIMIT)}…`
+        : tool.description,
+      input_schema: { ...tool.input_schema, properties },
+    };
+  });
+}
+const MODEL_TOOL_DEFINITIONS = compactModelTools(TOOL_DEFINITIONS);
+
 // Keep a generous budget for multi-part ESP32 tasks, while preventing a
 // finished project from entering a repeated edit/simulate loop. The model is
 // instructed to stop after one evidence pass; this cap is the final safety net.
@@ -48,7 +76,7 @@ async function waitBeforeRetry(attempt: number, signal: AbortSignal): Promise<vo
 async function streamWithRetry(
   messages: ApiMessage[], settings: AgentSettings, signal: AbortSignal,
   onEvent: AgentEventHandler, system = SYSTEM_PROMPT,
-  tools: ToolDefinition[] = TOOL_DEFINITIONS,
+  tools: ToolDefinition[] = MODEL_TOOL_DEFINITIONS,
 ): Promise<StreamedMessage> {
   for (let attempt = 0; ; attempt++) {
     // Text is transactional across retries. A provider can close a stream
@@ -189,7 +217,7 @@ async function streamOneMessage(
   signal: AbortSignal,
   onEvent: AgentEventHandler,
   system: string = SYSTEM_PROMPT,
-  tools: ToolDefinition[] = TOOL_DEFINITIONS,
+  tools: ToolDefinition[] = MODEL_TOOL_DEFINITIONS,
 ): Promise<StreamedMessage> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (settings.apiKey) headers['x-agent-key'] = settings.apiKey;
