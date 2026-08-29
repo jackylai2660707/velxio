@@ -26,7 +26,7 @@ import { useVersionStore } from '../versioning/useVersionStore';
 import { classifyWire } from './wireStandards';
 import { WIRE_COLORS } from '../utils/wireColors';
 import { BOARD_SIZE } from '../types/boardSizes';
-import { breadboardHoles, resolveSeatPosition } from '../utils/breadboardSnap';
+import { breadboardHoles, resolveSeatPosition, seatOnDrop } from '../utils/breadboardSnap';
 import { breadboardGroupKey, isBreadboard } from '../utils/breadboardNets';
 import { holeIsOccupied, resolveFreeHole } from '../utils/breadboardOccupancy';
 import type { ToolDefinition } from './types';
@@ -1139,7 +1139,15 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       const target = breadboardHoles(bb.metadataId)?.find((h) => h.name === hole);
       if (!target) throw new ToolError(`Unknown breadboard hole "${hole}".`);
       if (sim().wires.some((w) => !w.bb && ((w.start.componentId === cid) || (w.end.componentId === cid)))) throw new ToolError('Component already has visible wires; remove/review them before seating.');
-      const pos = resolveSeatPosition(comp, bid, pin, target.x, target.y, sim().components);
+      let pos = resolveSeatPosition(comp, bid, pin, target.x, target.y, sim().components);
+      if (!pos) {
+        // A slightly wrong bank/column or DOM-measurement residual should not
+        // cost a full LLM retry. Fall back to the nearest valid full-footprint
+        // placement, preserving the requested area while keeping every leg
+        // electrically valid.
+        const solved = seatOnDrop(comp, comp.x, comp.y, sim().components);
+        if (solved) pos = { x: solved.x, y: solved.y };
+      }
       if (!pos) throw new ToolError('Component pin geometry not mounted yet; retry after the canvas renders.');
       // Keep the requested anchor translation stable. Breadboard hole/strip
       // semantics are handled by the explicit anchor the agent inspected;
