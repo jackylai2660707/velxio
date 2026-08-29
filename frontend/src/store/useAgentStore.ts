@@ -360,13 +360,12 @@ interface TurnCheckpoint {
   state: ProjectCheckpoint;
 }
 
-/** Best-effort project checkpoint for a user turn — never blocks a send.
- *  The same snapshot also lands in the durable version history (fire and
- *  forget), so every AI turn is a restorable version even after a reload. */
+/** Capture the project before an AI turn. Persistence is awaited by the
+ * initial send before any AI mutation starts, so a reload cannot race and
+ * leave students without a recoverable version. */
 function tryCaptureCheckpoint(msgId: string, label: string): TurnCheckpoint | null {
   try {
     const state = captureCheckpoint();
-    void useVersionStore.getState().saveVersionFromCheckpoint(state, label.slice(0, 40), 'ai');
     return { msgId, label: label.slice(0, 40), state };
   } catch {
     return null;
@@ -728,6 +727,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     // can be rolled back from the message bubble.
     const userUi: UiMessage = { id: nextUiId(), role: 'user', segments: [{ kind: 'text', text }] };
     const checkpoint = tryCaptureCheckpoint(userUi.id, text);
+    const checkpointSave = checkpoint
+      ? useVersionStore.getState().saveVersionFromCheckpoint(checkpoint.state, checkpoint.label, 'ai')
+      : Promise.resolve(null);
 
     const assistantUi: UiMessage = { id: nextUiId(), role: 'assistant', segments: [] };
     // Steering promotes new user+assistant bubble pairs mid-run; events always
@@ -753,6 +755,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     // trimming happens per LLM call via defaultTransformContext.
     const userMsg = buildUserTurnMessage(text);
 
+    // Durable AI-before snapshot must finish before the first model request;
+    // this is the student's recovery point if the AI or browser crashes.
+    await checkpointSave;
+
     const patchAssistant = (fn: (msg: UiMessage) => UiMessage) =>
       set((s) => ({
         messages: s.messages.map((m) => (m.id === assistantRef.id ? fn(m) : m)),
@@ -771,6 +777,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           segments: [{ kind: 'text', text: ev.text }],
         };
         const cp = tryCaptureCheckpoint(newUser.id, ev.text);
+        if (cp) void useVersionStore.getState().saveVersionFromCheckpoint(cp.state, cp.label, 'ai');
         const newAssistant: UiMessage = { id: nextUiId(), role: 'assistant', segments: [] };
         assistantRef.id = newAssistant.id;
         runAssistantIds.add(newAssistant.id);
