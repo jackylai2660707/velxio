@@ -374,7 +374,34 @@
     "installing": "Installing libraries ({{done}}/{{total}})",
     "loadingExample": "Loading example...",
     "notFound": "Example \"{{id}}\" not found.",
-    "browseAll": "Browse all examples"
+    "browseAll": "Browse all examples",
+    "detail": {
+      "projectBrief": "Project brief",
+      "board": "Board",
+      "level": "Level",
+      "parts": "Parts",
+      "interactiveParts": "interactive parts",
+      "practice": "Practice",
+      "practiceFlow": "Run → observe → edit",
+      "circuitMap": "Circuit map",
+      "connections": "connections",
+      "partsCount": "parts",
+      "andMore": "…and more",
+      "tryThis": "Try this",
+      "whatSimulate": "What you'll simulate",
+      "boardEmulation": "Real {{board}} emulation — cycle-accurate, no hardware needed",
+      "interactiveComponents": "{{count}} interactive component{{suffix}} on the canvas",
+      "interactiveCanvas": "Interactive simulation canvas",
+      "autoInstalls": "Auto-installs: {{libraries}}",
+      "serialMonitor": "Serial Monitor included — see output in real time",
+      "openSimulator": "Open in Simulator",
+      "backToExamples": "← Back to examples",
+      "applyExample": "Apply example",
+      "replaceWarning": "This will replace the current editor workspace.",
+      "saveFirst": "Save or export your current project first if you want to keep it.",
+      "cancel": "Cancel",
+      "applyAndOpen": "Apply and open"
+    }
   },
   "auth": {
     "login": {

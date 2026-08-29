@@ -374,7 +374,34 @@
     "installing": "正在安裝庫（{{done}}/{{total}}）",
     "loadingExample": "正在載入範例...",
     "notFound": "未找到範例 \"{{id}}\"。",
-    "browseAll": "瀏覽所有範例"
+    "browseAll": "瀏覽所有範例",
+    "detail": {
+      "projectBrief": "專案簡介",
+      "board": "開發板",
+      "level": "難度",
+      "parts": "元件",
+      "interactiveParts": "個互動元件",
+      "practice": "練習",
+      "practiceFlow": "執行 → 觀察 → 修改",
+      "circuitMap": "接線摘要",
+      "connections": "條接線",
+      "partsCount": "個元件",
+      "andMore": "…以及其他元件",
+      "tryThis": "動手試試",
+      "whatSimulate": "你將模擬的內容",
+      "boardEmulation": "{{board}} 真實仿真——精確模擬硬體週期，無需實體硬體",
+      "interactiveComponents": "畫布上的 {{count}} 個互動元件",
+      "interactiveCanvas": "互動式仿真畫布",
+      "autoInstalls": "自動安裝：{{libraries}}",
+      "serialMonitor": "內建序列埠監控器——即時查看輸出",
+      "openSimulator": "在仿真器中開啟",
+      "backToExamples": "← 返回範例",
+      "applyExample": "套用範例",
+      "replaceWarning": "套用後會取代目前工作區中的電路、接線與程式碼。",
+      "saveFirst": "如需保留目前專案，請先儲存或匯出。",
+      "cancel": "取消",
+      "applyAndOpen": "套用並開啟"
+    }
   },
   "auth": {
     "login": {

@@ -16,6 +16,7 @@ import { subscribeProBoards, getProBoardsVersion } from '../../lib/proBoardRegis
 import { BOARD_KIND_LABELS } from '../../types/board';
 import { ExampleThumbnail } from './ExampleThumbnail';
 import './ExamplesGallery.css';
+import { localizeExample, localizedBoardLabel } from '../../data/exampleLocalization';
 
 interface ExamplesGalleryProps {
   onLoadExample: (example: ExampleProject) => void;
@@ -68,7 +69,8 @@ function getBoardFilter(example: ExampleProject): string {
 }
 
 export const ExamplesGallery: React.FC<ExamplesGalleryProps> = ({ onLoadExample }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language;
   const [selectedBoard, setSelectedBoard] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<ExampleProject['category'] | 'all'>(
     'all',
@@ -98,13 +100,16 @@ export const ExamplesGallery: React.FC<ExamplesGalleryProps> = ({ onLoadExample 
       known.add(bf);
       extra.push({
         id: bf,
-        label: (BOARD_KIND_LABELS as Record<string, string>)[bf] ?? bf,
+        label: localizedBoardLabel(bf, locale, (BOARD_KIND_LABELS as Record<string, string>)[bf] ?? bf),
         color: '#ffffff',
         bg: '#4a5568',
       });
     }
     extra.sort((a, b) => a.label.localeCompare(b.label));
-    return [...BOARD_TABS, ...extra];
+    return [...BOARD_TABS, ...extra].map((tab) => ({
+      ...tab,
+      label: localizedBoardLabel(tab.id, locale, tab.label),
+    }));
   })();
 
   const handleCopyLink = useCallback((e: React.MouseEvent, exampleId: string) => {
@@ -258,7 +263,7 @@ export const ExamplesGallery: React.FC<ExamplesGalleryProps> = ({ onLoadExample 
     const bf = getBoardFilter(example);
     const tab = boardTabs.find((t) => t.id === bf);
     if (!tab || tab.id === 'all') return null;
-    return { label: tab.label, color: tab.color, bg: tab.bg };
+    return { label: localizedBoardLabel(tab.id, locale, tab.label), color: tab.color, bg: tab.bg };
   };
 
   const CATEGORIES = [
@@ -368,7 +373,7 @@ export const ExamplesGallery: React.FC<ExamplesGalleryProps> = ({ onLoadExample 
         >
           {boardTabs.map((tab) => (
             <option key={tab.id} value={tab.id}>
-              {tab.id === 'all' ? t('examples.filters.allBoards', 'All boards') : tab.label}
+              {tab.id === 'all' ? localizedBoardLabel('all', locale, t('examples.filters.allBoards', 'All boards')) : tab.label}
               {boardCounts[tab.id] != null ? ` (${boardCounts[tab.id]})` : ''}
             </option>
           ))}
@@ -434,6 +439,7 @@ export const ExamplesGallery: React.FC<ExamplesGalleryProps> = ({ onLoadExample 
       <div className="examples-grid">
         {filteredExamples.map((example) => {
           const boardBadge = getBoardBadge(example);
+          const localized = localizeExample(example, locale);
           return (
             <div key={example.id} className="example-card" onClick={() => onLoadExample(example)}>
               <div className="example-thumbnail">
@@ -446,17 +452,17 @@ export const ExamplesGallery: React.FC<ExamplesGalleryProps> = ({ onLoadExample 
                 />
               </div>
               <div className="example-info">
-                <h3 className="example-title">{example.title}</h3>
-                <p className="example-description">{example.description}</p>
+                <h3 className="example-title">{localized.title}</h3>
+                <p className="example-description">{localized.description}</p>
                 <div className="example-meta">
                   <span
                     className="example-difficulty"
                     style={{ backgroundColor: getDifficultyColor(example.difficulty) }}
                   >
-                    {example.difficulty}
+                    {t(`examples.filters.difficulty.${example.difficulty}`, example.difficulty)}
                   </span>
                   <span className="example-category">
-                    {getCategoryIcon(example.category)} {example.category}
+                    {getCategoryIcon(example.category)} {t(`examples.filters.category.${example.category}`, example.category)}
                   </span>
                   {boardBadge && (
                     <span

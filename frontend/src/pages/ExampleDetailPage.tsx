@@ -16,6 +16,9 @@ import { exampleProjects, subscribeProExamples, getProExamplesVersion } from '..
 import { AppHeader } from '../components/layout/AppHeader';
 import { ExampleThumbnail } from '../components/examples/ExampleThumbnail';
 import { useSEO } from '../utils/useSEO';
+import { useTranslation } from 'react-i18next';
+import { localizeExample, localizedBoardLabel } from '../data/exampleLocalization';
+import { useLocalizedHref } from '../i18n/useLocalizedNavigate';
 
 // Relative canonical/JSON-LD URLs — this deployment has no fixed domain.
 const DOMAIN = '';
@@ -51,13 +54,17 @@ export const ExampleDetailPage: React.FC = () => {
 
   const { exampleId } = useParams<{ exampleId: string }>();
   const navigate = useNavigate();
+  const localize = useLocalizedHref();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language;
 
   const example = exampleId ? exampleProjects.find((e) => e.id === exampleId) : null;
 
   // SEO — called unconditionally (hooks must not be inside conditionals).
+  const localized = example ? localizeExample(example, locale) : null;
   const seoTitle = example
-    ? `${example.title} — 電路範例 — AI物聯網實驗室`
+    ? `${localized?.title ?? example.title} — ${locale.toLowerCase().startsWith('zh') ? '電路範例' : 'Circuit example'} — AI物聯網實驗室`
     : '找不到範例 — AI物聯網實驗室';
 
   // Older examples use boardFilter/boards instead of boardType. Prefer the
@@ -68,11 +75,11 @@ export const ExampleDetailPage: React.FC = () => {
     ? (example.boardType ?? example.boardFilter ?? example.boards?.[0]?.boardKind ?? 'arduino-uno')
     : '';
   const boardLabel = example
-    ? (BOARD_LABELS[boardKey] ?? boardKey)
+    ? localizedBoardLabel(boardKey, locale, BOARD_LABELS[boardKey] ?? boardKey)
     : '';
 
   const seoDescription = example
-    ? `${example.description}. Run this ${boardLabel} example free in your browser — no install, no account required.`
+    ? `${localized?.description ?? example.description}. ${locale.toLowerCase().startsWith('zh') ? '可在瀏覽器免費執行，不需安裝或帳號。' : `Run this ${boardLabel} example free in your browser — no install, no account required.`}`
     : 'This example was not found.';
 
   useSEO({
@@ -89,7 +96,7 @@ export const ExampleDetailPage: React.FC = () => {
   const applyExample = () => {
     if (!example) return;
     setConfirmOpen(false);
-    navigate(`/example/${example.id}`);
+    navigate(localize(`/example/${example.id}`));
   };
 
   // ── 404 state ───────────────────────────────────────────────────────────────
@@ -115,9 +122,9 @@ export const ExampleDetailPage: React.FC = () => {
           }}
         >
           <div style={{ fontSize: 48, color: '#555' }}>404</div>
-          <div style={{ fontSize: 16, color: '#999' }}>Example "{exampleId}" not found.</div>
+          <div style={{ fontSize: 16, color: '#999' }}>{t('examples.notFound', { id: exampleId })}</div>
           <Link
-            to="/examples"
+            to={localize('/examples')}
             style={{
               color: '#4fc3f7',
               textDecoration: 'none',
@@ -127,7 +134,7 @@ export const ExampleDetailPage: React.FC = () => {
               fontSize: 14,
             }}
           >
-            Browse all examples
+            {t('examples.browseAll')}
           </Link>
         </div>
       </div>
@@ -135,7 +142,7 @@ export const ExampleDetailPage: React.FC = () => {
   }
 
   const diffColor = DIFFICULTY_COLOR[example.difficulty] ?? '#999';
-  const categoryLabel = CATEGORY_LABELS[example.category] ?? example.category;
+  const categoryLabel = t(`examples.filters.category.${example.category}`, CATEGORY_LABELS[example.category] ?? example.category);
 
   return (
     <div
@@ -161,15 +168,15 @@ export const ExampleDetailPage: React.FC = () => {
         <nav
           style={{ width: '100%', maxWidth: 760, marginBottom: 32, fontSize: 13, color: '#666' }}
         >
-          <Link to="/" style={{ color: '#666', textDecoration: 'none' }}>
+          <Link to={localize('/')} style={{ color: '#666', textDecoration: 'none' }}>
             AI物聯網實驗室
           </Link>
           {' / '}
-          <Link to="/examples" style={{ color: '#666', textDecoration: 'none' }}>
-            Examples
+          <Link to={localize('/examples')} style={{ color: '#666', textDecoration: 'none' }}>
+            {t('examples.heading')}
           </Link>
           {' / '}
-          <span style={{ color: '#aaa' }}>{example.title}</span>
+          <span style={{ color: '#aaa' }}>{localized?.title ?? example.title}</span>
         </nav>
 
         {/* Card */}
@@ -258,48 +265,44 @@ export const ExampleDetailPage: React.FC = () => {
               lineHeight: 1.3,
             }}
           >
-            {example.title}
+            {localized?.title ?? example.title}
           </h1>
 
           {/* Description */}
           <p style={{ fontSize: 16, color: '#9d9d9d', lineHeight: 1.7, margin: '0 0 32px' }}>
-            {example.description}
+            {localized?.description ?? example.description}
           </p>
 
           <section style={{ marginBottom: 32, padding: '18px 20px', background: '#202b33', border: '1px solid #314552', borderRadius: 8 }}>
             <h2 style={{ margin: '0 0 12px', color: '#f0f6f8', fontSize: 15 }}>
-              Project brief / 專案簡介
+              {t('examples.detail.projectBrief')}
             </h2>
             <p style={{ margin: '0 0 10px', color: '#c7d5da', fontSize: 14, lineHeight: 1.65 }}>
-              Learn by running a complete circuit, reading the source, and changing one part at a time.
-              <br />透過完整電路開始學習：先執行、再閱讀程式，最後一次只修改一個部分。
+              {localized?.overview}
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10, color: '#9fb5bd', fontSize: 13 }}>
-              <div><strong style={{ color: '#69d0e8' }}>Board / 開發板</strong><br />{boardLabel}</div>
-              <div><strong style={{ color: '#69d0e8' }}>Level / 難度</strong><br />{example.difficulty}</div>
-              <div><strong style={{ color: '#69d0e8' }}>Parts / 元件</strong><br />{example.components?.length ?? 0} interactive parts / 個互動元件</div>
-              <div><strong style={{ color: '#69d0e8' }}>Practice / 練習</strong><br />Run → observe → edit / 執行 → 觀察 → 修改</div>
+              <div><strong style={{ color: '#69d0e8' }}>{t('examples.detail.board')}</strong><br />{boardLabel}</div>
+              <div><strong style={{ color: '#69d0e8' }}>{t('examples.detail.level')}</strong><br />{t(`examples.filters.difficulty.${example.difficulty}`, example.difficulty)}</div>
+              <div><strong style={{ color: '#69d0e8' }}>{t('examples.detail.parts')}</strong><br />{example.components?.length ?? 0} {t('examples.detail.interactiveParts')}</div>
+              <div><strong style={{ color: '#69d0e8' }}>{t('examples.detail.practice')}</strong><br />{t('examples.detail.practiceFlow')}</div>
             </div>
           </section>
 
           <section style={{ marginBottom: 36, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 14 }}>
             <div style={{ padding: '16px 18px', background: '#202020', border: '1px solid #353535', borderRadius: 8 }}>
-              <h2 style={{ margin: '0 0 10px', color: '#e5eaec', fontSize: 14 }}>Circuit map / 接線摘要</h2>
+              <h2 style={{ margin: '0 0 10px', color: '#e5eaec', fontSize: 14 }}>{t('examples.detail.circuitMap')}</h2>
               <p style={{ margin: '0 0 10px', color: '#8f9ba1', fontSize: 13, lineHeight: 1.55 }}>
-                {example.wires?.length ?? 0} connections / 條接線 · {example.components?.length ?? 0} parts / 個元件
+              {example.wires?.length ?? 0} {t('examples.detail.connections')} · {example.components?.length ?? 0} {t('examples.detail.partsCount')}
               </p>
               <ul style={{ margin: 0, paddingLeft: 18, color: '#b8c4c9', fontSize: 12, lineHeight: 1.65 }}>
                 {(example.components ?? []).slice(0, 4).map((component) => <li key={component.id}>{component.type}</li>)}
-                {(example.components?.length ?? 0) > 4 && <li>…and more / 以及其他元件</li>}
+                {(example.components?.length ?? 0) > 4 && <li>{t('examples.detail.andMore')}</li>}
               </ul>
             </div>
             <div style={{ padding: '16px 18px', background: '#202020', border: '1px solid #353535', borderRadius: 8 }}>
-              <h2 style={{ margin: '0 0 10px', color: '#e5eaec', fontSize: 14 }}>Try this / 動手試試</h2>
+              <h2 style={{ margin: '0 0 10px', color: '#e5eaec', fontSize: 14 }}>{t('examples.detail.tryThis')}</h2>
               <ol style={{ margin: 0, paddingLeft: 18, color: '#b8c4c9', fontSize: 12, lineHeight: 1.75 }}>
-                <li>Run the project / 執行專案</li>
-                <li>Watch Serial Monitor / 觀察序列埠</li>
-                <li>Change one value or wire / 修改一個數值或接線</li>
-                <li>Ask Agent to explain the result / 請 Agent 解釋結果</li>
+                {localized?.goals.map((goal) => <li key={goal}>{goal}</li>)}
               </ol>
             </div>
           </section>
@@ -316,7 +319,7 @@ export const ExampleDetailPage: React.FC = () => {
                 margin: '0 0 12px',
               }}
             >
-              What you'll simulate
+              {t('examples.detail.whatSimulate')}
             </h2>
             <ul
               style={{
@@ -338,7 +341,7 @@ export const ExampleDetailPage: React.FC = () => {
                 }}
               >
                 <span style={{ color: '#4fc3f7', fontWeight: 700 }}>✓</span>
-                Real {boardLabel} emulation — cycle-accurate, no hardware needed
+                {t('examples.detail.boardEmulation', { board: boardLabel })}
               </li>
               <li
                 style={{
@@ -351,8 +354,8 @@ export const ExampleDetailPage: React.FC = () => {
               >
                 <span style={{ color: '#4fc3f7', fontWeight: 700 }}>✓</span>
                 {(example.components?.length ?? 0) > 0
-                  ? `${example.components.length} interactive component${example.components.length > 1 ? 's' : ''} on the canvas`
-                  : 'Interactive simulation canvas'}
+                  ? t('examples.detail.interactiveComponents', { count: example.components.length, suffix: example.components.length > 1 ? 's' : '' })
+                  : t('examples.detail.interactiveCanvas')}
               </li>
               {example.libraries && example.libraries.length > 0 && (
                 <li
@@ -365,7 +368,7 @@ export const ExampleDetailPage: React.FC = () => {
                   }}
                 >
                   <span style={{ color: '#4fc3f7', fontWeight: 700 }}>✓</span>
-                  Auto-installs: {example.libraries.join(', ')}
+                  {t('examples.detail.autoInstalls', { libraries: example.libraries.join(', ') })}
                 </li>
               )}
               <li
@@ -378,7 +381,7 @@ export const ExampleDetailPage: React.FC = () => {
                 }}
               >
                 <span style={{ color: '#4fc3f7', fontWeight: 700 }}>✓</span>
-                Serial Monitor included — see output in real time
+                {t('examples.detail.serialMonitor')}
               </li>
             </ul>
           </section>
@@ -399,10 +402,10 @@ export const ExampleDetailPage: React.FC = () => {
                 letterSpacing: '0.02em',
               }}
             >
-              Open in Simulator
+              {t('examples.detail.openSimulator')}
             </button>
-            <Link to="/examples" style={{ color: '#666', textDecoration: 'none', fontSize: 14 }}>
-              ← Back to examples
+            <Link to={localize('/examples')} style={{ color: '#666', textDecoration: 'none', fontSize: 14 }}>
+              {t('examples.detail.backToExamples')}
             </Link>
           </div>
         </article>
@@ -429,17 +432,17 @@ export const ExampleDetailPage: React.FC = () => {
       {confirmOpen && (
         <div role="presentation" onClick={() => setConfirmOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'grid', placeItems: 'center', padding: 20, background: 'rgba(0,0,0,.72)' }}>
           <div role="dialog" aria-modal="true" aria-labelledby="apply-example-title" onClick={(event) => event.stopPropagation()} style={{ width: 'min(100%, 470px)', background: '#252526', border: '1px solid #46515a', borderRadius: 12, padding: 28, boxShadow: '0 24px 80px rgba(0,0,0,.5)' }}>
-            <div style={{ color: '#69d0e8', fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Apply example / 套用範例</div>
-            <h2 id="apply-example-title" style={{ color: '#f4f7f8', fontSize: 21, margin: '8px 0 12px' }}>{example.title}</h2>
+            <div style={{ color: '#69d0e8', fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>{t('examples.detail.applyExample')}</div>
+            <h2 id="apply-example-title" style={{ color: '#f4f7f8', fontSize: 21, margin: '8px 0 12px' }}>{localized?.title ?? example.title}</h2>
             <p style={{ color: '#c3c8cb', lineHeight: 1.65, margin: '0 0 8px' }}>
-              This will replace the current editor workspace.<br />套用後會取代目前工作區中的電路、接線與程式碼。
+              {t('examples.detail.replaceWarning')}
             </p>
             <p style={{ color: '#8f9ba1', fontSize: 13, margin: '0 0 22px' }}>
-              Save or export your current project first if you want to keep it. / 如需保留目前專案，請先儲存或匯出。
+              {t('examples.detail.saveFirst')}
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 10 }}>
-              <button type="button" onClick={() => setConfirmOpen(false)} style={{ border: '1px solid #56616a', background: 'transparent', color: '#d8e0e3', borderRadius: 6, padding: '10px 16px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Cancel / 取消</button>
-              <button type="button" onClick={applyExample} autoFocus style={{ border: 0, background: '#0e88a8', color: '#fff', borderRadius: 6, padding: '10px 18px', cursor: 'pointer', fontWeight: 700, whiteSpace: 'nowrap' }}>Apply and open / 套用並開啟</button>
+              <button type="button" onClick={() => setConfirmOpen(false)} style={{ border: '1px solid #56616a', background: 'transparent', color: '#d8e0e3', borderRadius: 6, padding: '10px 16px', cursor: 'pointer', whiteSpace: 'nowrap' }}>{t('examples.detail.cancel')}</button>
+              <button type="button" onClick={applyExample} autoFocus style={{ border: 0, background: '#0e88a8', color: '#fff', borderRadius: 6, padding: '10px 18px', cursor: 'pointer', fontWeight: 700, whiteSpace: 'nowrap' }}>{t('examples.detail.applyAndOpen')}</button>
             </div>
           </div>
         </div>
