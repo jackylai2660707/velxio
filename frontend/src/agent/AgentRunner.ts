@@ -478,6 +478,22 @@ const CAP_WARNING_NOTE =
   'important remaining action, then summarize what is done and what remains. Stop repeating ' +
   'simulation or edits when the checklist already has evidence.';
 
+/** Project-changing tools that must not run after a successful observation.
+ * A model sometimes sees a valid blink trace, then starts a fresh rebuild in
+ * the same turn. The lock is scoped to one runTurn call, so a later user turn
+ * can still intentionally edit the project. */
+const PROJECT_MUTATION_TOOLS = new Set([
+  'add_board', 'remove_board', 'set_board_language', 'install_library',
+  'add_component', 'update_component', 'remove_component', 'add_wire',
+  'remove_wire', 'seat_component', 'write_file', 'edit_file',
+]);
+
+function observationProvesRunning(result: string): boolean {
+  return /Simulation running on:/i.test(result) &&
+    /COMPONENTS:\s*\n- /i.test(result) &&
+    !/SIMULATION IS NOT RUNNING|BURNT COMPONENTS|none observable/i.test(result);
+}
+
 export interface RunTurnOptions {
   /** Steering queue — drained after each tool batch and at turn end. */
   steering?: { drain(): string[] };
@@ -515,6 +531,7 @@ export async function runTurn(
 
   let iteration = 0; // resets when steering promotes a follow-up turn
   let totalCalls = 0;
+  let verificationPassed = false;
   // A common failure mode is the model issuing the exact same inspection or
   // simulation call forever after the project is already correct. Keep a
   // small per-turn fingerprint guard; two executions are enough for a valid
@@ -624,6 +641,14 @@ export async function runTurn(
       const repeatCount = (repeatedToolCalls.get(fingerprint) ?? 0) + 1;
       repeatedToolCalls.set(fingerprint, repeatCount);
       onEvent({ type: 'tool_start', id: tu.id, name: tu.name, input: tu.input });
+      if (verificationPassed && PROJECT_MUTATION_TOOLS.has(tu.name)) {
+        const message = `Verification already passed with live simulation evidence. ` +
+          `Do not ${tu.name} or rebuild the project in this turn; summarize the result. ` +
+          'Wait for a new user request before making changes.';
+        onEvent({ type: 'tool_end', id: tu.id, result: message, isError: true });
+        results.push({ type: 'tool_result', tool_use_id: tu.id, content: message, is_error: true });
+        continue;
+      }
       if (repeatCount > 2) {
         const message = `Repeated identical ${tu.name} call detected with unchanged input. ` +
           'Do not repeat verification; use the existing result and summarize the completed work.';
@@ -637,6 +662,9 @@ export async function runTurn(
         onUpdate: (detail) => onEvent({ type: 'tool_update', id: tu.id, detail }),
       });
       onEvent({ type: 'tool_end', id: tu.id, result, isError, diff });
+      if (tu.name === 'observe_simulation' && !isError && observationProvesRunning(result)) {
+        verificationPassed = true;
+      }
       results.push({
         type: 'tool_result',
         tool_use_id: tu.id,
