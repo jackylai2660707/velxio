@@ -197,7 +197,7 @@ describe('add_wire auto colors', () => {
     expect(result.result).toContain('seated on a breadboard');
   });
 
-  it('rejects an agent wire endpoint on an occupied breadboard hole', async () => {
+  it('shifts an occupied breadboard endpoint to a free sibling hole', async () => {
     useSimulatorStore.getState().addComponent({ id: 'breadboard-1', metadataId: 'breadboard', x: 300, y: 200, properties: {} });
     useSimulatorStore.setState({
       wires: [{
@@ -212,9 +212,11 @@ describe('add_wire auto colors', () => {
       start_component: 'breadboard-1', start_pin: '1t.a',
       end_component: 'arduino-uno', end_pin: '13',
     });
-    expect(result.isError).toBe(true);
-    expect(result.result).toContain('already occupied');
-    expect(useSimulatorStore.getState().wires).toHaveLength(1);
+    expect(result.isError).toBe(false);
+    const wires = useSimulatorStore.getState().wires;
+    expect(wires).toHaveLength(2);
+    expect(wires[1].start.pinName).toBe('1t.b');
+    expect(wires[1].end.pinName).toBe('13');
   });
 
   it('rejects a visible jumper between holes in one breadboard group', async () => {

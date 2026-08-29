@@ -28,7 +28,7 @@ import { WIRE_COLORS } from '../utils/wireColors';
 import { BOARD_SIZE } from '../types/boardSizes';
 import { breadboardHoles, resolveSeatPosition } from '../utils/breadboardSnap';
 import { breadboardGroupKey, isBreadboard } from '../utils/breadboardNets';
-import { holeIsOccupied } from '../utils/breadboardOccupancy';
+import { holeIsOccupied, resolveFreeHole } from '../utils/breadboardOccupancy';
 import type { ToolDefinition } from './types';
 import { formatCodeWiringLint, lintCodeWiring } from './codeWiringLint';
 import { formatPinContract, resolvePinContract, validatePinUse } from './boardPinContract';
@@ -224,6 +224,17 @@ function validateBreadboardWireEndpoints(
       }
     }
   }
+}
+
+/** Shift an occupied breadboard endpoint to the nearest free sibling hole.
+ * The group is one electrical node, so this preserves intent and avoids an
+ * unnecessary failed LLM round-trip. Non-breadboard endpoints pass through. */
+function resolveAgentBreadboardHole(componentId: string, pinName: string): string {
+  const state = useSimulatorStore.getState();
+  const component = state.components.find((candidate) => candidate.id === componentId);
+  if (!component || !isBreadboard(component.metadataId)) return pinName;
+  const allPins = breadboardHoles(component.metadataId)?.map((hole) => hole.name) ?? [];
+  return resolveFreeHole(component.metadataId, componentId, pinName, state.wires, allPins);
 }
 
 const tail = (s: string, n: number) => (s.length > n ? `…${s.slice(-n)}` : s);
@@ -926,9 +937,9 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
 
     case 'add_wire': {
       const startComponent = String(input.start_component ?? '');
-      const startPin = String(input.start_pin ?? '');
+      let startPin = String(input.start_pin ?? '');
       const endComponent = String(input.end_component ?? '');
-      const endPin = String(input.end_pin ?? '');
+      let endPin = String(input.end_pin ?? '');
 
       const knownIds = new Set([
         ...sim().components.map((c) => c.id),
@@ -954,6 +965,21 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       });
       if (duplicate) {
         return `Wire already exists (${duplicate.id}); no duplicate wire created.`;
+      }
+
+      // Agent often targets the exact hole occupied by a seated leg. Resolve
+      // that request locally to a free sibling in the same strip/rail rather
+      // than wasting another model call on a deterministic correction.
+      startPin = resolveAgentBreadboardHole(startComponent, startPin);
+      endPin = resolveAgentBreadboardHole(endComponent, endPin);
+      const resolvedRequest = [endpointKey(startComponent, startPin), endpointKey(endComponent, endPin)].sort().join('\u0001');
+      const resolvedDuplicate = sim().wires.find((wire) => {
+        if (wire.bb) return false;
+        const existing = [endpointKey(wire.start.componentId, wire.start.pinName), endpointKey(wire.end.componentId, wire.end.pinName)].sort().join('\u0001');
+        return existing === resolvedRequest;
+      });
+      if (resolvedDuplicate) {
+        return `Wire already exists (${resolvedDuplicate.id}); no duplicate wire created.`;
       }
 
       // A component seated on a breadboard already has invisible seating
@@ -1110,9 +1136,24 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       sim().updateComponent(cid, finalPos);
       await settleDom();
       sim().reseatComponentOnBreadboard(cid);
-      const seated = sim().wires.filter((w) => w.bb && (w.start.componentId === cid || w.end.componentId === cid)).map((w) => `${w.start.pinName}->${w.end.pinName}`);
+      const seatingWires = sim().wires.filter((w) => w.bb && (w.start.componentId === cid || w.end.componentId === cid));
+      const seated = seatingWires.map((w) => `${w.start.pinName}->${w.end.pinName}`);
       if (!seated.length) throw new ToolError('Seating could not be verified; no state was accepted.');
-      return JSON.stringify({ component_id: cid, breadboard_id: bid, anchor: `${pin}->${hole}`, position: finalPos, seating: seated, next: 'Connect external wires to returned breadboard holes/rails, never to seated component legs.' });
+      const externalHoles: Record<string, string> = {};
+      for (const wire of seatingWires) {
+        const componentEnd = wire.start.componentId === cid ? wire.start : wire.end;
+        const breadboardEnd = wire.start.componentId === bid ? wire.start : wire.end;
+        externalHoles[componentEnd.pinName] = resolveAgentBreadboardHole(bid, breadboardEnd.pinName);
+      }
+      return JSON.stringify({
+        component_id: cid,
+        breadboard_id: bid,
+        anchor: `${pin}->${hole}`,
+        position: finalPos,
+        seating: seated,
+        external_connection_holes: externalHoles,
+        next: 'Use external_connection_holes exactly for board/rail wires. They are free sibling holes in the same electrical strips; never guess top/bottom bank or wire to seated component legs.',
+      });
     }
 
     case 'remove_wire': {
