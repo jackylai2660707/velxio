@@ -26,7 +26,7 @@ import { useVersionStore } from '../versioning/useVersionStore';
 import { classifyWire } from './wireStandards';
 import { WIRE_COLORS } from '../utils/wireColors';
 import { BOARD_SIZE } from '../types/boardSizes';
-import { breadboardHoles, resolveSeatPosition } from '../utils/breadboardSnap';
+import { breadboardHoles, resolveSeatPosition, seatOnDrop } from '../utils/breadboardSnap';
 import { breadboardGroupKey, isBreadboard } from '../utils/breadboardNets';
 import { holeIsOccupied } from '../utils/breadboardOccupancy';
 import type { ToolDefinition } from './types';
@@ -461,7 +461,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   },
   {
     name: 'seat_component',
-    description: 'Atomically seat a component on an exact breadboard hole. Use inspect_breadboard first; never guess coordinates.',
+    description: 'Seat a component on a requested breadboard hole. Use inspect_breadboard first; the physical solver may shift to the nearest free hole/strip so parts do not overlap or short. Never guess coordinates.',
     input_schema: { type: 'object', properties: { component_id: str('Component id'), breadboard_id: str('Breadboard id'), anchor_pin: str('Component pin'), anchor_hole: str('Exact hole such as 10t.a') }, required: ['component_id', 'breadboard_id', 'anchor_pin', 'anchor_hole'] },
   },
   {
@@ -1103,12 +1103,18 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       if (sim().wires.some((w) => !w.bb && ((w.start.componentId === cid) || (w.end.componentId === cid)))) throw new ToolError('Component already has visible wires; remove/review them before seating.');
       const pos = resolveSeatPosition(comp, bid, pin, target.x, target.y, sim().components);
       if (!pos) throw new ToolError('Component pin geometry not mounted yet; retry after the canvas renders.');
-      sim().updateComponent(cid, { x: pos.x, y: pos.y });
+      // Treat the requested anchor as a preference, then run the same full
+      // seating solver used by physical drag/drop. This avoids putting an LED
+      // and resistor on an occupied strip or stacking their bodies when the
+      // model chose a visually convenient but physically impossible hole.
+      const solved = seatOnDrop(comp, pos.x, pos.y, sim().components);
+      const finalPos = solved ? { x: solved.x, y: solved.y } : pos;
+      sim().updateComponent(cid, finalPos);
       await settleDom();
       sim().reseatComponentOnBreadboard(cid);
       const seated = sim().wires.filter((w) => w.bb && (w.start.componentId === cid || w.end.componentId === cid)).map((w) => `${w.start.pinName}->${w.end.pinName}`);
       if (!seated.length) throw new ToolError('Seating could not be verified; no state was accepted.');
-      return JSON.stringify({ component_id: cid, breadboard_id: bid, anchor: `${pin}->${hole}`, position: pos, seating: seated, next: 'Connect external wires to returned breadboard holes/rails, never to seated component legs.' });
+      return JSON.stringify({ component_id: cid, breadboard_id: bid, requested_anchor: `${pin}->${hole}`, position: finalPos, adjusted: finalPos.x !== pos.x || finalPos.y !== pos.y, seating: seated, next: 'Connect external wires to returned breadboard holes/rails, never to seated component legs.' });
     }
 
     case 'remove_wire': {
