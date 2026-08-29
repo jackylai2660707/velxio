@@ -238,6 +238,12 @@ export const AdminPage: React.FC = () => {
     const a = document.createElement('a'); a.href = url; a.download = `velxio-users-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
   };
 
+  const downloadImportTemplate = () => {
+    const csv = '\ufeffemail,name,role,password,class_code\nstudent01@example.com,學生1,student,,\nteacher01@example.com,教師1,teacher,,\n';
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a'); a.href = url; a.download = 'velxio-user-import-template.csv'; a.click(); URL.revokeObjectURL(url);
+  };
+
   const parseCsv = (text: string): Array<Record<string, string>> => {
     const lines = text.replace(/^\ufeff/, '').split(/\r?\n/).filter((line) => line.trim());
     if (lines.length < 2) return [];
@@ -407,6 +413,7 @@ export const AdminPage: React.FC = () => {
               />
               <button onClick={exportUsers}>⬇ 匯出 CSV</button>
               <button onClick={() => importInputRef.current?.click()} disabled={importBusy}>⬆ 匯入 CSV</button>
+              <button onClick={downloadImportTemplate}>模板</button>
               <input ref={importInputRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void importUsers(f); }} />
               {selectedUsers.size > 0 && <button className="admin-danger" onClick={() => void bulkDelete()}>刪除選取 ({selectedUsers.size})</button>}
             </div>
