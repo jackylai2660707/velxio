@@ -535,6 +535,7 @@ export async function runTurn(
   const iterationLimit = MAX_ITERATIONS;
   const totalCallLimit = MAX_TOTAL_CALLS;
   let verificationPassed = false;
+  const turnMemory = { removedWireFingerprints: new Set<string>() };
   // A common failure mode is the model issuing the exact same inspection or
   // simulation call forever after the project is already correct. Keep a
   // small per-turn fingerprint guard; two executions are enough for a valid
@@ -662,6 +663,7 @@ export async function runTurn(
       const { result, isError, diff } = await executeTool(tu.name, tu.input, {
         toolCallId: tu.id,
         signal,
+        turnMemory,
         onUpdate: (detail) => onEvent({ type: 'tool_update', id: tu.id, detail }),
       });
       onEvent({ type: 'tool_end', id: tu.id, result, isError, diff });

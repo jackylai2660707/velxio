@@ -734,6 +734,12 @@ export interface ToolContext {
   signal?: AbortSignal;
   /** Streaming progress for the running chip (compile log tail, …). */
   onUpdate?: (detail: string) => void;
+  /** Per-run mutation memory used to stop remove→re-add oscillation. */
+  turnMemory?: { removedWireFingerprints: Set<string> };
+}
+
+function wireTopologyFingerprint(startComponent: string, startPin: string, endComponent: string, endPin: string): string {
+  return [`${startComponent}\u0000${startPin}`, `${endComponent}\u0000${endPin}`].sort().join('\u0001');
 }
 
 async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promise<string> {
@@ -972,6 +978,12 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       // than wasting another model call on a deterministic correction.
       startPin = resolveAgentBreadboardHole(startComponent, startPin);
       endPin = resolveAgentBreadboardHole(endComponent, endPin);
+      const topology = wireTopologyFingerprint(startComponent, startPin, endComponent, endPin);
+      if (ctx.turnMemory?.removedWireFingerprints.has(topology)) {
+        throw new ToolError(
+          'This exact wire topology was removed earlier in the same turn. Do not re-add it; keep the corrected layout and continue to the next requirement.',
+        );
+      }
       const resolvedRequest = [endpointKey(startComponent, startPin), endpointKey(endComponent, endPin)].sort().join('\u0001');
       const resolvedDuplicate = sim().wires.find((wire) => {
         if (wire.bb) return false;
@@ -1158,7 +1170,13 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
 
     case 'remove_wire': {
       const id = String(input.id ?? '');
-      if (!sim().wires.some((w) => w.id === id)) throw new ToolError(`Wire "${id}" not found.`);
+      const target = sim().wires.find((w) => w.id === id);
+      if (!target) throw new ToolError(`Wire "${id}" not found.`);
+      if (!target.bb) {
+        ctx.turnMemory?.removedWireFingerprints.add(
+          wireTopologyFingerprint(target.start.componentId, target.start.pinName, target.end.componentId, target.end.pinName),
+        );
+      }
       sim().removeWire(id);
       return `Removed wire "${id}".`;
     }

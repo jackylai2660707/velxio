@@ -187,6 +187,23 @@ describe('add_wire auto colors', () => {
     expect(useSimulatorStore.getState().wires).toHaveLength(1);
   });
 
+  it('blocks remove-then-readd oscillation within one agent turn', async () => {
+    const memory = { removedWireFingerprints: new Set<string>() };
+    const first = await executeTool('add_wire', {
+      start_component: 'arduino-uno', start_pin: '13', end_component: 'led-1', end_pin: 'A',
+    }, { turnMemory: memory });
+    expect(first.isError).toBe(false);
+    const id = useSimulatorStore.getState().wires[0].id;
+    const removed = await executeTool('remove_wire', { id }, { turnMemory: memory });
+    expect(removed.isError).toBe(false);
+    const readded = await executeTool('add_wire', {
+      start_component: 'arduino-uno', start_pin: '13', end_component: 'led-1', end_pin: 'A',
+    }, { turnMemory: memory });
+    expect(readded.isError).toBe(true);
+    expect(readded.result).toContain('removed earlier in the same turn');
+    expect(useSimulatorStore.getState().wires).toHaveLength(0);
+  });
+
   it('blocks a visible wire from a seated breadboard leg', async () => {
     useSimulatorStore.getState().addComponent({ id: 'breadboard-1', metadataId: 'breadboard', x: 300, y: 200, properties: {} });
     useSimulatorStore.setState({ wires: [{ id: 'seat', start: { componentId: 'led-1', pinName: 'A', x: 0, y: 0 }, end: { componentId: 'breadboard-1', pinName: '1t.a', x: 0, y: 0 }, waypoints: [], color: '#000', bb: true }] } as never);
