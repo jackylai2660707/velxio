@@ -23,7 +23,10 @@ import type {
   ToolDefinition,
 } from './types';
 
-const MAX_ITERATIONS = 40;
+// Keep a generous budget for multi-part ESP32 tasks, while preventing a
+// finished project from entering a repeated edit/simulate loop. The model is
+// instructed to stop after one evidence pass; this cap is the final safety net.
+const MAX_ITERATIONS = 24;
 const MAX_STREAM_RETRIES = 2;
 
 function retryableStreamError(error: unknown): boolean {
@@ -468,11 +471,12 @@ export interface RunTurnResult {
 /** How many LLM calls before the cap to warn the model to wrap up. */
 const CAP_WARNING_MARGIN = 4;
 /** Hard ceiling on LLM calls per run, across steering-promoted turns. */
-const MAX_TOTAL_CALLS = 120;
+const MAX_TOTAL_CALLS = 64;
 
 const CAP_WARNING_NOTE =
   '[system note] You are approaching the per-turn step limit. Wrap up: finish the most ' +
-  'important remaining action, then summarize what is done and what remains.';
+  'important remaining action, then summarize what is done and what remains. Stop repeating ' +
+  'simulation or edits when the checklist already has evidence.';
 
 export interface RunTurnOptions {
   /** Steering queue — drained after each tool batch and at turn end. */
@@ -511,6 +515,12 @@ export async function runTurn(
 
   let iteration = 0; // resets when steering promotes a follow-up turn
   let totalCalls = 0;
+  // A common failure mode is the model issuing the exact same inspection or
+  // simulation call forever after the project is already correct. Keep a
+  // small per-turn fingerprint guard; two executions are enough for a valid
+  // retry, a third identical request becomes a non-mutating tool error that
+  // tells the model to stop and summarize.
+  const repeatedToolCalls = new Map<string, number>();
 
   for (;;) {
     if (iteration >= MAX_ITERATIONS || totalCalls >= MAX_TOTAL_CALLS) {
@@ -610,7 +620,17 @@ export async function runTurn(
         });
         continue;
       }
+      const fingerprint = `${tu.name}:${JSON.stringify(tu.input)}`;
+      const repeatCount = (repeatedToolCalls.get(fingerprint) ?? 0) + 1;
+      repeatedToolCalls.set(fingerprint, repeatCount);
       onEvent({ type: 'tool_start', id: tu.id, name: tu.name, input: tu.input });
+      if (repeatCount > 2) {
+        const message = `Repeated identical ${tu.name} call detected with unchanged input. ` +
+          'Do not repeat verification; use the existing result and summarize the completed work.';
+        onEvent({ type: 'tool_end', id: tu.id, result: message, isError: true });
+        results.push({ type: 'tool_result', tool_use_id: tu.id, content: message, is_error: true });
+        continue;
+      }
       const { result, isError, diff } = await executeTool(tu.name, tu.input, {
         toolCallId: tu.id,
         signal,

@@ -3368,7 +3368,13 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
       // the post-move pass keeps it clean when parts move; the moment the
       // user drags a segment the flag is cleared and the shape is theirs.
       let routed: { x: number; y: number }[] | null = null;
-      if (waypoints.length === 0) {
+      const touchesBreadboard = [startEndpoint.componentId, endpoint.componentId].some((id) =>
+        isBreadboard(state.components.find((c) => c.id === id)?.metadataId ?? ''),
+      );
+      // Breadboard holes already encode physical strip geometry. Keep their
+      // short direct elbow (the original readable behavior) instead of
+      // sending a hole-to-rail jumper through the generic obstacle router.
+      if (waypoints.length === 0 && !touchesBreadboard) {
         routed = routeAroundObstacles(
           { x: startEndpoint.x, y: startEndpoint.y },
           { x: endpoint.x, y: endpoint.y },
@@ -3527,6 +3533,10 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
         for (let i = 0; i < updatedWires.length; i++) {
           const wire = updatedWires[i];
           if (!wire.autoRouted || wire.bb) continue;
+          const touchesBreadboard = [wire.start.componentId, wire.end.componentId].some((id) =>
+            isBreadboard(state.components.find((c) => c.id === id)?.metadataId ?? ''),
+          );
+          if (touchesBreadboard) continue;
           // Keep a breadboard body as an obstacle for external wires so they
           // escape around its edge; same-board hole jumpers remain internal
           // and are allowed to use the terminal field. The shared helper
