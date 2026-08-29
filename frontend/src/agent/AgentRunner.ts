@@ -27,6 +27,7 @@ import type {
 // finished project from entering a repeated edit/simulate loop. The model is
 // instructed to stop after one evidence pass; this cap is the final safety net.
 const MAX_ITERATIONS = 24;
+const SIMPLE_MAX_ITERATIONS = 12;
 const MAX_STREAM_RETRIES = 2;
 
 function retryableStreamError(error: unknown): boolean {
@@ -472,6 +473,21 @@ export interface RunTurnResult {
 const CAP_WARNING_MARGIN = 4;
 /** Hard ceiling on LLM calls per run, across steering-promoted turns. */
 const MAX_TOTAL_CALLS = 64;
+const SIMPLE_MAX_TOTAL_CALLS = 32;
+
+/** Single-output beginner tasks have a short deterministic path. Detect them
+ * from the current user request so they cannot consume the full ESP32-sized
+ * budget when the model hesitates after a valid blink/LED result. */
+function isSimpleLedTask(history: ApiMessage[]): boolean {
+  const latest = [...history].reverse().find((message) =>
+    message.role === 'user' && message.content[0]?.type === 'text',
+  );
+  if (!latest || latest.content[0]?.type !== 'text') return false;
+  const text = latest.content[0].text.toLowerCase();
+  const led = /(\bled\b|發光二極體|閃燈|闪烁|blink)/i.test(text);
+  const complex = /(esp32|pico|stm32|sensor|感測器|传感器|oled|lcd|display|顯示|wifi|藍牙|蓝牙|servo|舵機|motor|馬達|電機|app|手機|手機|http|mqtt)/i.test(text);
+  return led && !complex;
+}
 
 const CAP_WARNING_NOTE =
   '[system note] You are approaching the per-turn step limit. Wrap up: finish the most ' +
@@ -532,6 +548,9 @@ export async function runTurn(
 
   let iteration = 0; // resets when steering promotes a follow-up turn
   let totalCalls = 0;
+  const simpleTask = isSimpleLedTask(history);
+  const iterationLimit = simpleTask ? SIMPLE_MAX_ITERATIONS : MAX_ITERATIONS;
+  const totalCallLimit = simpleTask ? SIMPLE_MAX_TOTAL_CALLS : MAX_TOTAL_CALLS;
   let verificationPassed = false;
   // A common failure mode is the model issuing the exact same inspection or
   // simulation call forever after the project is already correct. Keep a
@@ -541,7 +560,7 @@ export async function runTurn(
   const repeatedToolCalls = new Map<string, number>();
 
   for (;;) {
-    if (iteration >= MAX_ITERATIONS || totalCalls >= MAX_TOTAL_CALLS) {
+    if (iteration >= iterationLimit || totalCalls >= totalCallLimit) {
       // Cap reached — return what we have; the store surfaces a notice.
       return end({ appended, aborted: false, capped: true });
     }
@@ -687,7 +706,7 @@ export async function runTurn(
 
     // Nearing the cap: tell the model (as part of the tool-result turn) so it
     // wraps up instead of getting cut off mid-plan.
-    if (iteration === MAX_ITERATIONS - CAP_WARNING_MARGIN) {
+    if (iteration === iterationLimit - CAP_WARNING_MARGIN) {
       onEvent({ type: 'turn_limit_warning', remaining: CAP_WARNING_MARGIN });
       results.push({ type: 'text', text: CAP_WARNING_NOTE });
     }
