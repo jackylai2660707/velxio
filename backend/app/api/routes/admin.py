@@ -36,6 +36,7 @@ _PW_ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"
 _PREFIX_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,29}$")
 
 MAX_BATCH = 200
+MAX_IMPORT = 500
 
 
 def require_admin(authorization: str | None) -> dict:
@@ -82,6 +83,22 @@ class SettingsPatch(BaseModel):
 class PasswordReset(BaseModel):
     # Omit to have the server generate a readable one (returned once).
     password: str = ""
+
+
+class ImportUser(BaseModel):
+    email: str
+    name: str = ""
+    role: str = "student"
+    password: str = ""
+    class_code: str = ""
+
+
+class UsersImport(BaseModel):
+    users: list[ImportUser] = Field(min_length=1, max_length=MAX_IMPORT)
+
+
+class UsersDelete(BaseModel):
+    user_ids: list[str] = Field(min_length=1, max_length=MAX_BATCH)
 
 
 @router.get("/overview")
@@ -152,6 +169,44 @@ async def users_batch(
     return {"created": created, "skipped": skipped, "joined_class": joined}
 
 
+@router.post("/users/import")
+async def users_import(
+    req: UsersImport, authorization: str | None = Header(default=None)
+) -> dict:
+    """Import arbitrary student/teacher rows from a CSV parsed by the UI.
+
+    Existing emails are skipped, never overwritten. Generated passwords are
+    returned once, matching batch creation semantics.
+    """
+    require_admin(authorization)
+    created: list[dict] = []
+    skipped: list[str] = []
+    invalid: list[dict] = []
+    joined = 0
+    for row in req.users:
+        email = row.email.strip().lower()
+        role = row.role.strip().lower() if row.role.strip().lower() in ("student", "teacher") else "student"
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+            invalid.append({"email": row.email, "reason": "invalid email"})
+            continue
+        password = row.password.strip() or _gen_password()
+        if len(password) < 6:
+            invalid.append({"email": email, "reason": "password must be at least 6 characters"})
+            continue
+        user = cloud_db.create_user(email, password, row.name.strip() or email.split("@")[0], role=role)
+        if user is None:
+            skipped.append(email)
+            continue
+        if row.class_code.strip() and role == "student":
+            try:
+                if cloud_db.join_class(user["id"], row.class_code.strip()):
+                    joined += 1
+            except ValueError:
+                pass
+        created.append({"email": email, "password": password, "name": user["name"], "role": role})
+    return {"created": created, "skipped": skipped, "invalid": invalid, "joined_class": joined}
+
+
 @router.post("/users/{user_id}/quota")
 async def user_quota(
     user_id: str, req: QuotaSet, authorization: str | None = Header(default=None)
@@ -185,3 +240,21 @@ async def user_delete(
     if not cloud_db.admin_delete_user(user_id):
         raise HTTPException(status_code=404, detail="User not found")
     return {"ok": True}
+
+
+@router.post("/users/bulk-delete")
+async def users_bulk_delete(
+    req: UsersDelete, authorization: str | None = Header(default=None)
+) -> dict:
+    admin = require_admin(authorization)
+    deleted = 0
+    skipped: list[str] = []
+    for user_id in req.user_ids:
+        if user_id == admin["id"]:
+            skipped.append(user_id)
+            continue
+        if cloud_db.admin_delete_user(user_id):
+            deleted += 1
+        else:
+            skipped.append(user_id)
+    return {"ok": True, "deleted": deleted, "skipped": skipped}

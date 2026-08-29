@@ -119,6 +119,13 @@ export interface AdminBatchResult {
   joined_class: number;
 }
 
+export interface AdminImportResult {
+  created: { email: string; password: string; name: string; role: string }[];
+  skipped: string[];
+  invalid: { email: string; reason: string }[];
+  joined_class: number;
+}
+
 export interface PlatformSettings {
   ai_model: string;
   ai_effort: 'low' | 'medium' | 'high';
@@ -155,6 +162,8 @@ export const adminApi = {
     class_code?: string;
     weekly_token_limit?: number | null;
   }) => request<AdminBatchResult>('POST', '/admin/users/batch', payload),
+  importUsers: (users: { email: string; name?: string; role?: string; password?: string; class_code?: string }[]) =>
+    request<AdminImportResult>('POST', '/admin/users/import', { users }),
   setQuota: (userId: string, weeklyTokenLimit: number | null) =>
     request<{ ok: boolean } & AiUsage>('POST', `/admin/users/${userId}/quota`, {
       weekly_token_limit: weeklyTokenLimit,
@@ -164,6 +173,8 @@ export const adminApi = {
       password,
     }),
   deleteUser: (userId: string) => request<{ ok: boolean }>('DELETE', `/admin/users/${userId}`),
+  bulkDeleteUsers: (userIds: string[]) =>
+    request<{ ok: boolean; deleted: number; skipped: string[] }>('POST', '/admin/users/bulk-delete', { user_ids: userIds }),
 };
 
 // ── Projects ───────────────────────────────────────────────────────────────

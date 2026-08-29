@@ -7,7 +7,7 @@
  * editable quota, password reset, delete.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppHeader } from '../components/layout/AppHeader';
 import { useSEO } from '../utils/useSEO';
@@ -152,6 +152,10 @@ export const AdminPage: React.FC = () => {
   const [batchResult, setBatchResult] = useState<AdminBatchResult | null>(null);
   const [quotaDrafts, setQuotaDrafts] = useState<Record<string, string>>({});
   const [resetShown, setResetShown] = useState<Record<string, string>>({});
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [importBusy, setImportBusy] = useState(false);
+  const [importNotice, setImportNotice] = useState('');
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = user?.role === 'admin';
 
@@ -225,6 +229,46 @@ export const AdminPage: React.FC = () => {
     if (!window.confirm(`確定刪除「${u.name}」(${u.email})?其專案、進度與成績將一併刪除,無法復原。`)) return;
     await adminApi.deleteUser(u.id).catch(() => {});
     await refresh(query);
+  };
+
+  const exportUsers = () => {
+    const rows = [['email', 'name', 'role', 'created_at', 'used_this_week', 'weekly_token_limit'], ...users.map((u) => [u.email, u.name, u.role, new Date(u.created_at * 1000).toISOString(), String(u.used_this_week), u.weekly_token_limit === null ? '' : String(u.weekly_token_limit)])];
+    const csv = '\ufeff' + rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a'); a.href = url; a.download = `velxio-users-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+  };
+
+  const parseCsv = (text: string): Array<Record<string, string>> => {
+    const lines = text.replace(/^\ufeff/, '').split(/\r?\n/).filter((line) => line.trim());
+    if (lines.length < 2) return [];
+    const parse = (line: string) => {
+      const cells: string[] = []; let cell = ''; let quoted = false;
+      for (let i = 0; i < line.length; i++) { const ch = line[i]; if (ch === '"' && line[i + 1] === '"') { cell += '"'; i++; } else if (ch === '"') quoted = !quoted; else if (ch === ',' && !quoted) { cells.push(cell.trim()); cell = ''; } else cell += ch; }
+      cells.push(cell.trim()); return cells;
+    };
+    const headers = parse(lines[0]).map((h) => h.toLowerCase().replace(/\s+/g, '_'));
+    return lines.slice(1).map((line) => Object.fromEntries(parse(line).map((v, i) => [headers[i], v])));
+  };
+
+  const importUsers = async (file: File) => {
+    if (importBusy) return;
+    setImportBusy(true); setImportNotice('');
+    try {
+      const rows = parseCsv(await file.text()).slice(0, 500);
+      const payload = rows.map((row) => ({ email: row.email ?? row.username ?? '', name: row.name ?? row.display_name ?? '', role: row.role ?? 'student', password: row.password ?? '', class_code: row.class_code ?? '' })).filter((row) => row.email);
+      if (!payload.length) { setImportNotice('CSV 沒有有效 email。欄位需要 email,name,role,password,class_code。'); return; }
+      const result = await adminApi.importUsers(payload);
+      setImportNotice(`已匯入 ${result.created.length} 個；略過 ${result.skipped.length} 個；無效 ${result.invalid.length} 個。`);
+      setBatchResult({ created: result.created.map((u) => ({ email: u.email, password: u.password, name: u.name })), skipped: result.skipped, joined_class: result.joined_class });
+      await refresh(query);
+    } catch (error) { setImportNotice(error instanceof Error ? error.message : '匯入失敗'); }
+    finally { setImportBusy(false); if (importInputRef.current) importInputRef.current.value = ''; }
+  };
+
+  const bulkDelete = async () => {
+    if (!selectedUsers.size || !window.confirm(`確定刪除選取的 ${selectedUsers.size} 個帳號？專案、進度、成績會一併刪除。`)) return;
+    await adminApi.bulkDeleteUsers([...selectedUsers]);
+    setSelectedUsers(new Set()); await refresh(query);
   };
 
   if (sessionStatus !== 'signed-in') {
@@ -350,8 +394,8 @@ export const AdminPage: React.FC = () => {
 
         {/* ── Users ────────────────────────────────────── */}
         <section className="admin-card">
-          <div className="admin-users-head">
-            <h2>帳號管理</h2>
+            <div className="admin-users-head">
+              <h2>帳號管理</h2>
             <input
               className="admin-search"
               value={query}
@@ -359,14 +403,19 @@ export const AdminPage: React.FC = () => {
               onChange={(e) => {
                 setQuery(e.target.value);
                 void refresh(e.target.value).catch(() => {});
-              }}
-            />
-          </div>
-          <div className="admin-table-scroll">
+                }}
+              />
+              <button onClick={exportUsers}>⬇ 匯出 CSV</button>
+              <button onClick={() => importInputRef.current?.click()} disabled={importBusy}>⬆ 匯入 CSV</button>
+              <input ref={importInputRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void importUsers(f); }} />
+              {selectedUsers.size > 0 && <button className="admin-danger" onClick={() => void bulkDelete()}>刪除選取 ({selectedUsers.size})</button>}
+            </div>
+            {importNotice && <p className="admin-hint" role="status">{importNotice}</p>}
+            <div className="admin-table-scroll">
             <table>
               <thead>
                 <tr>
-                  <th>帳號</th><th>名稱</th><th>身分</th>
+                  <th><input type="checkbox" aria-label="全選帳號" checked={users.length > 0 && users.every((u) => selectedUsers.has(u.id))} onChange={(e) => setSelectedUsers(e.target.checked ? new Set(users.map((u) => u.id)) : new Set())} /></th><th>帳號</th><th>名稱</th><th>身分</th>
                   <th>本週用量</th><th>週額度</th><th>額度設定</th><th>操作</th>
                 </tr>
               </thead>
@@ -375,6 +424,7 @@ export const AdminPage: React.FC = () => {
                   const pct = Math.min(100, Math.round((u.used_this_week / Math.max(1, u.effective_limit)) * 100));
                   return (
                     <tr key={u.id}>
+                      <td><input type="checkbox" aria-label={`選取 ${u.email}`} checked={selectedUsers.has(u.id)} onChange={(e) => setSelectedUsers((current) => { const next = new Set(current); if (e.target.checked) next.add(u.id); else next.delete(u.id); return next; })} /></td>
                       <td className="admin-mono">{u.email}</td>
                       <td>{u.name}</td>
                       <td><span className={`admin-role admin-role-${u.role}`}>{ROLE_LABEL[u.role] ?? u.role}</span></td>
