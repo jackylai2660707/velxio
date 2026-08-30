@@ -135,6 +135,15 @@ export function buildProjectSnapshot(): string {
           const group = breadboardGroupKey(bbType, hole);
           return `${hole}${group ? `(${group})` : ''}`;
         });
+      const isTactileButton = c.metadataId === 'pushbutton' || c.metadataId === 'pushbutton-6mm';
+      if (isTactileButton) {
+        const angle = ((Number(c.properties?.rotation) || 0) % 360 + 360) % 360;
+        lines.push(
+          `  tactile_button: rotation=${angle}°; terminal-1=(1.l=1.r), terminal-2=(2.l=2.r); ` +
+          `required breadboard layout: rotate 90°/270° and straddle centre trench; ` +
+          `wire GPIO to terminal-1 and GND to terminal-2 (never same terminal)`,
+        );
+      }
       lines.push(`- id="${c.id}" type=${c.metadataId} at (${c.x}, ${c.y})${props}${seated.length ? ` seated=[${seated.join(', ')}]` : ''}${burnt}`);
     }
   }

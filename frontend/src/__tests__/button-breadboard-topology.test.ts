@@ -359,4 +359,123 @@ describe('geometry solver — physical button orientation', () => {
       wires: previous.wires,
     } as never);
   });
+
+  it('rejects GPIO and GND wires that reuse the exact same button leg', async () => {
+    const previous = useSimulatorStore.getState();
+    const button = [
+      { name: '1.l', x: 0, y: 13 },
+      { name: '2.l', x: 0, y: 32 },
+      { name: '1.r', x: 67, y: 13 },
+      { name: '2.r', x: 67, y: 32 },
+    ];
+    mountButton('button-short', button);
+    const boardElement = document.createElement('div') as HTMLDivElement & { pinInfo?: unknown };
+    boardElement.id = 'uno-short';
+    boardElement.pinInfo = [
+      { name: '2', x: 0, y: 0 },
+      { name: 'GND.1', x: 20, y: 0 },
+    ];
+    document.body.appendChild(boardElement);
+    useSimulatorStore.setState({
+      boards: [{
+        id: 'uno-short',
+        boardKind: 'arduino-uno',
+        x: 0,
+        y: 0,
+        activeFileGroupId: 'g-short',
+        languageMode: 'arduino',
+      }],
+      activeBoardId: 'uno-short',
+      components: [{ id: 'button-short', metadataId: 'pushbutton', x: 160, y: 80, properties: { rotation: 90 } }],
+      wires: [],
+    } as never);
+
+    const first = await executeTool('add_wire', {
+      start_component: 'button-short',
+      start_pin: '1.l',
+      end_component: 'uno-short',
+      end_pin: '2',
+    });
+    expect(first.isError).toBe(false);
+    const second = await executeTool('add_wire', {
+      start_component: 'button-short',
+      start_pin: '1.l',
+      end_component: 'uno-short',
+      end_pin: 'GND.1',
+    });
+    expect(second.isError).toBe(true);
+    expect(second.result).toMatch(/same (?:numbered )?terminal|already has a visible wire/i);
+
+    useSimulatorStore.setState({
+      boards: previous.boards,
+      activeBoardId: previous.activeBoardId,
+      components: previous.components,
+      wires: previous.wires,
+    } as never);
+  });
+
+  it('rejects GPIO/GND drops on opposite breadboard banks of one button terminal', async () => {
+    const previous = useSimulatorStore.getState();
+    mountButton('button-bank-short', [
+      { name: '1.l', x: 0, y: 13 },
+      { name: '2.l', x: 0, y: 32 },
+      { name: '1.r', x: 67, y: 13 },
+      { name: '2.r', x: 67, y: 32 },
+    ]);
+    const breadboardElement = document.createElement('div') as HTMLDivElement & { pinInfo?: unknown };
+    breadboardElement.id = 'bb-bank-short';
+    breadboardElement.pinInfo = BREADBOARD_PINS;
+    document.body.appendChild(breadboardElement);
+    const boardElement = document.createElement('div') as HTMLDivElement & { pinInfo?: unknown };
+    boardElement.id = 'uno-bank-short';
+    boardElement.pinInfo = [{ name: '2', x: 0, y: 0 }, { name: 'GND.1', x: 20, y: 0 }];
+    document.body.appendChild(boardElement);
+    useSimulatorStore.setState({
+      boards: [{
+        id: 'uno-bank-short',
+        boardKind: 'arduino-uno',
+        x: 0,
+        y: 0,
+        activeFileGroupId: 'g-bank-short',
+        languageMode: 'arduino',
+      }],
+      activeBoardId: 'uno-bank-short',
+      components: [
+        { id: 'bb-bank-short', metadataId: 'breadboard', x: 0, y: 0, properties: {} },
+        { id: 'button-bank-short', metadataId: 'pushbutton', x: 320, y: 180, properties: {} },
+      ],
+      wires: [],
+    } as never);
+
+    const seat = await executeTool('seat_component', {
+      component_id: 'button-bank-short',
+      breadboard_id: 'bb-bank-short',
+      anchor_pin: '1.l',
+      anchor_hole: '20t.e',
+    });
+    expect(seat.isError).toBe(false);
+    const payload = JSON.parse(seat.result) as { external_connection_holes: Record<string, string> };
+    const first = await executeTool('add_wire', {
+      start_component: 'uno-bank-short',
+      start_pin: '2',
+      end_component: 'bb-bank-short',
+      end_pin: payload.external_connection_holes['1.l'],
+    });
+    expect(first.isError).toBe(false);
+    const second = await executeTool('add_wire', {
+      start_component: 'uno-bank-short',
+      start_pin: 'GND.1',
+      end_component: 'bb-bank-short',
+      end_pin: payload.external_connection_holes['1.r'],
+    });
+    expect(second.isError).toBe(true);
+    expect(second.result).toMatch(/same electrical contact|terminal 1|same .*terminal/i);
+
+    useSimulatorStore.setState({
+      boards: previous.boards,
+      activeBoardId: previous.activeBoardId,
+      components: previous.components,
+      wires: previous.wires,
+    } as never);
+  });
 });
