@@ -26,7 +26,7 @@ import { useVersionStore } from '../versioning/useVersionStore';
 import { classifyWire } from './wireStandards';
 import { WIRE_COLORS } from '../utils/wireColors';
 import { BOARD_SIZE } from '../types/boardSizes';
-import { breadboardHoles, resolveSeatPosition, seatOnDrop, validateTactileButtonSeating } from '../utils/breadboardSnap';
+import { breadboardHoles, isOverBreadboard, resolveSeatPosition, seatOnDrop, validateTactileButtonSeating } from '../utils/breadboardSnap';
 import { breadboardGroupKey, isBreadboard } from '../utils/breadboardNets';
 import { holeIsOccupied, resolveFreeHole } from '../utils/breadboardOccupancy';
 import type { ToolDefinition } from './types';
@@ -250,6 +250,93 @@ function resolveAgentBreadboardHole(componentId: string, pinName: string): strin
   if (!component || !isBreadboard(component.metadataId)) return pinName;
   const allPins = breadboardHoles(component.metadataId)?.map((hole) => hole.name) ?? [];
   return resolveFreeHole(component.metadataId, componentId, pinName, state.wires, allPins);
+}
+
+/** A tactile switch's two legs on each numbered side are one metal terminal.
+ * Connecting two visible wires to 1.l + 1.r (or 2.l + 2.r) is almost always
+ * the classic GPIO-to-GND short. Keep the agent on one leg per terminal and
+ * make the conflict explicit instead of letting a misleading diagram pass. */
+function tactileTerminalAtEndpoint(componentId: string, pinName: string): { buttonId: string; terminal: '1' | '2' } | null {
+  const state = useSimulatorStore.getState();
+  const direct = state.components.find((component) => component.id === componentId);
+  const terminal = /^(1|2)\./.exec(pinName)?.[1] as '1' | '2' | undefined;
+  if (terminal && (direct?.metadataId === 'pushbutton' || direct?.metadataId === 'pushbutton-6mm')) {
+    return { buttonId: componentId, terminal };
+  }
+  if (!direct || !isBreadboard(direct.metadataId)) return null;
+  const targetGroup = breadboardGroupKey(direct.metadataId, pinName);
+  if (!targetGroup) return null;
+  for (const wire of state.wires) {
+    if (!wire.bb) continue;
+    const bbEnd = wire.start.componentId === componentId ? wire.start : wire.end.componentId === componentId ? wire.end : null;
+    if (!bbEnd || breadboardGroupKey(direct.metadataId, bbEnd.pinName) !== targetGroup) continue;
+    const partEnd = bbEnd === wire.start ? wire.end : wire.start;
+    const part = state.components.find((component) => component.id === partEnd.componentId);
+    const seatedTerminal = /^(1|2)\./.exec(partEnd.pinName)?.[1] as '1' | '2' | undefined;
+    if (seatedTerminal && (part?.metadataId === 'pushbutton' || part?.metadataId === 'pushbutton-6mm')) {
+      return { buttonId: part.id, terminal: seatedTerminal };
+    }
+  }
+  return null;
+}
+
+function validateTactileTerminalWire(componentId: string, pinName: string): void {
+  const target = tactileTerminalAtEndpoint(componentId, pinName);
+  if (!target) return;
+  const sibling = useSimulatorStore.getState().wires.find((wire) => {
+    if (wire.bb) return false;
+    const start = tactileTerminalAtEndpoint(wire.start.componentId, wire.start.pinName);
+    const end = tactileTerminalAtEndpoint(wire.end.componentId, wire.end.pinName);
+    return [start, end].some((candidate) =>
+      candidate?.buttonId === target.buttonId && candidate.terminal === target.terminal,
+    );
+  });
+  if (sibling) {
+    throw new ToolError(
+      `Pushbutton terminal ${target.terminal} already has a visible wire on the same electrical contact. ` +
+      `Pins ${target.terminal}.l and ${target.terminal}.r are internally identical; use terminal 1 for GPIO and terminal 2 for GND, never both sides of one terminal.`,
+    );
+  }
+}
+
+function tactileTerminalConflicts(): string[] {
+  const state = useSimulatorStore.getState();
+  const parts = state.components.filter((component) => component.metadataId === 'pushbutton' || component.metadataId === 'pushbutton-6mm');
+  const errors: string[] = [];
+  for (const button of parts) {
+    const groupToTerminal = new Map<string, '1' | '2'>();
+    for (const wire of state.wires) {
+      if (!wire.bb) continue;
+      const partEnd = wire.start.componentId === button.id ? wire.start : wire.end.componentId === button.id ? wire.end : null;
+      const bbEnd = partEnd === wire.start ? wire.end : partEnd === wire.end ? wire.start : null;
+      const terminal = partEnd && /^(1|2)\./.exec(partEnd.pinName)?.[1] as '1' | '2' | undefined;
+      const board = bbEnd && state.components.find((component) => component.id === bbEnd.componentId);
+      const group = board && bbEnd ? breadboardGroupKey(board.metadataId, bbEnd.pinName) : null;
+      if (terminal && group) groupToTerminal.set(`${bbEnd!.componentId}:${group}`, terminal);
+    }
+    const wiresByTerminal = new Map<'1' | '2', Set<string>>();
+    for (const wire of state.wires) {
+      if (wire.bb) continue;
+      const endpoints = [wire.start, wire.end];
+      for (const endpoint of endpoints) {
+        let terminal: '1' | '2' | undefined = /^(1|2)\./.exec(endpoint.pinName)?.[1] as '1' | '2' | undefined;
+        if (endpoint.componentId !== button.id) {
+          const part = state.components.find((component) => component.id === endpoint.componentId);
+          const group = part && breadboardGroupKey(part.metadataId, endpoint.pinName);
+          terminal = group ? groupToTerminal.get(`${endpoint.componentId}:${group}`) : undefined;
+        }
+        if (terminal) {
+          const set = wiresByTerminal.get(terminal) ?? new Set<string>();
+          set.add(wire.id);
+          wiresByTerminal.set(terminal!, set);
+        }
+      }
+    }
+    for (const [terminal, ids] of wiresByTerminal) {
+      if (ids.size > 1) errors.push(`${button.id}: terminal ${terminal} has ${ids.size} visible connections; 1.l/1.r and 2.l/2.r are each one terminal`);
+    }
+  }
+  return errors;
 }
 
 const tail = (s: string, n: number) => (s.length > n ? `…${s.slice(-n)}` : s);
@@ -809,13 +896,18 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       const boardKind =
         boardInstance?.boardKind ??
         (Object.prototype.hasOwnProperty.call(BOARD_KIND_LABELS, target) ? target : undefined);
-      return pins
+      const pinList = pins
         .map((p) => {
           const contract = boardKind ? resolvePinContract(boardKind, p.name) : null;
           const contractText = contract ? `; ${formatPinContract(contract)}` : '';
           return `${p.name}${p.description ? ` — ${p.description}` : ''}${contractText}`;
         })
         .join('\n');
+      const targetComponent = sim().components.find((component) => component.id === target);
+      if (targetComponent?.metadataId === 'pushbutton' || targetComponent?.metadataId === 'pushbutton-6mm') {
+        return `${pinList}\nPHYSICAL TOPOLOGY: terminal 1 = 1.l + 1.r (internally identical); terminal 2 = 2.l + 2.r (internally identical). On a breadboard rotate 90°/270° and straddle the centre trench. After seat_component, wire GPIO only to terminal_1.connection_hole and GND only to terminal_2.connection_hole.`;
+      }
+      return pinList;
     }
 
     case 'add_board': {
@@ -957,6 +1049,30 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       }
       sim().updateComponent(id, updates);
       await settleDom();
+      // Tactile buttons have one physically valid breadboard orientation.
+      // Agents sometimes use update_component directly instead of the more
+      // explicit seat_component; normalize that path too so a button cannot
+      // remain parallel to the trench or half-seat at rotation 0/180.
+      const moved = sim().components.find((c) => c.id === id);
+      const isTactileButton = moved?.metadataId === 'pushbutton' || moved?.metadataId === 'pushbutton-6mm';
+      if (
+        moved && isTactileButton &&
+        (typeof input.x === 'number' || typeof input.y === 'number') &&
+        isOverBreadboard(moved, moved.x, moved.y, sim().components)
+      ) {
+        const angle = ((Number(moved.properties?.rotation) || 0) % 360 + 360) % 360;
+        if (angle !== 90 && angle !== 270) {
+          sim().updateComponent(id, { properties: { ...(moved.properties ?? {}), rotation: 90 } });
+          await settleDom();
+        }
+        const current = sim().components.find((c) => c.id === id)!;
+        const placement = seatOnDrop(current, current.x, current.y, sim().components);
+        if (placement) {
+          sim().updateComponent(id, { x: placement.x, y: placement.y });
+          await settleDom();
+          sim().reseatComponentOnBreadboard(id);
+        }
+      }
       safeRecalcWires();
       return `Updated component "${id}".`;
     }
@@ -1047,6 +1163,18 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       if (semanticDuplicate) {
         return `Wire already exists on the same breadboard node (${semanticDuplicate.id}); no duplicate wire created.`;
       }
+
+      // Resolve both direct button pins and free breadboard sibling holes back
+      // to the seated switch terminal. This catches the subtle hard short
+      // where GPIO uses the strip under 1.l and GND uses the strip under 1.r:
+      // those look like different breadboard nodes but are one metal contact.
+      const startTerminal = tactileTerminalAtEndpoint(startComponent, startPin);
+      const endTerminal = tactileTerminalAtEndpoint(endComponent, endPin);
+      if (startTerminal && endTerminal && startTerminal.buttonId === endTerminal.buttonId && startTerminal.terminal !== endTerminal.terminal) {
+        throw new ToolError('Do not jumper the two terminals of a tactile pushbutton. Route GPIO to terminal 1 and GND to terminal 2 through the circuit; the button itself is the switch.');
+      }
+      validateTactileTerminalWire(startComponent, startPin);
+      validateTactileTerminalWire(endComponent, endPin);
 
       // A component seated on a breadboard already has invisible seating
       // wires from each leg to its hole. Adding another visible wire from the
@@ -1302,6 +1430,19 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
         position: finalPos,
         seating: seated,
         external_connection_holes: externalHoles,
+        ...(isTactileButton ? {
+          terminal_1: {
+            pins: ['1.l', '1.r'],
+            connection_hole: externalHoles['1.l'] ?? externalHoles['1.r'],
+            use_for: 'GPIO input',
+          },
+          terminal_2: {
+            pins: ['2.l', '2.r'],
+            connection_hole: externalHoles['2.l'] ?? externalHoles['2.r'],
+            use_for: 'GND',
+          },
+          wiring_rule: '1.l and 1.r are the same terminal; 2.l and 2.r are the same terminal. Connect GPIO only to terminal_1 and GND only to terminal_2.',
+        } : {}),
         next: 'Use external_connection_holes exactly for board/rail wires. They are free sibling holes in the same electrical strips; never guess top/bottom bank or wire to seated component legs.',
       });
     }
@@ -1518,6 +1659,10 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
     }
 
     case 'check_circuit': {
+      const tactileErrors = tactileTerminalConflicts();
+      if (tactileErrors.length) {
+        throw new ToolError(`Tactile pushbutton topology error: ${tactileErrors.join(' | ')}`);
+      }
       const safetyIssues = analyzeHardwareSafety({
         boards: sim().boards.map((board) => ({ id: board.id, boardKind: board.boardKind })),
         components: sim().components.map((component) => ({

@@ -115,6 +115,25 @@ describe('breadboard seating via updateComponent', () => {
  * geometry comes from the element's `pinInfo`, so no part is special-cased.
  */
 describe('seatOnDrop', () => {
+  it('seats the real full-size tactile footprint across the trench', () => {
+    mountFakeElement('btn-real', [
+      { name: '1.l', x: 0, y: 13, signals: [] },
+      { name: '2.l', x: 0, y: 32, signals: [] },
+      { name: '1.r', x: 67, y: 13, signals: [] },
+      { name: '2.r', x: 67, y: 32, signals: [] },
+    ]);
+    const button = document.getElementById('btn-real')!;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'dynamic-component-wrapper';
+    Object.defineProperty(wrapper, 'offsetWidth', { value: 79 });
+    Object.defineProperty(wrapper, 'offsetHeight', { value: 57 });
+    button.parentElement?.replaceChild(wrapper, button);
+    wrapper.appendChild(button);
+    const comp = { id: 'btn-real', metadataId: 'pushbutton', x: 120, y: 80, properties: { rotation: 90 } };
+    const placed = seatOnDrop(comp as never, comp.x, comp.y, [bb, comp] as never);
+    expect(placed).not.toBeNull();
+    expect(validateTactileButtonSeating('pushbutton', placed!.holes)).toBeNull();
+  });
   /** Real wokwi 1-digit 7segment pinInfo (pins='top'), mm*3.78 -> CSS px. */
   const SEG7_PIN_INFO = [
     { name: 'COM.1', x: 23.72, y: 71.82, signals: [] },

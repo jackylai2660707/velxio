@@ -233,6 +233,57 @@ describe('agent tools — components & wires', () => {
     expect(res.result).toContain('not on the canvas');
   });
 
+  it('rejects wiring both sides of one tactile terminal', async () => {
+    const before = useSimulatorStore.getState();
+    useSimulatorStore.setState({
+      components: [{ id: 'btn-guard', metadataId: 'pushbutton', x: 0, y: 0, properties: {} }],
+      wires: [{
+        id: 'btn-existing',
+        start: { componentId: 'btn-guard', pinName: '1.l', x: 0, y: 0 },
+        end: { componentId: 'arduino-uno', pinName: '2', x: 0, y: 0 },
+      }],
+    } as never);
+    const res = await executeTool('add_wire', {
+      start_component: 'btn-guard', start_pin: '1.r',
+      end_component: 'arduino-uno', end_pin: 'GND.1',
+    });
+    expect(res.isError).toBe(true);
+    expect(res.result).toContain('internally identical');
+    useSimulatorStore.setState({
+      boards: before.boards,
+      activeBoardId: before.activeBoardId,
+      components: before.components,
+      wires: before.wires,
+    } as never);
+  });
+
+  it('rejects GPIO and GND through opposite breadboard strips of the same button terminal', async () => {
+    const before = useSimulatorStore.getState();
+    useSimulatorStore.setState({
+      components: [
+        { id: 'bb-button', metadataId: 'breadboard', x: 0, y: 0, properties: {} },
+        { id: 'btn-seated', metadataId: 'pushbutton', x: 0, y: 0, properties: { rotation: 90 } },
+      ],
+      wires: [
+        { id: 'seat-1l', bb: true, start: { componentId: 'btn-seated', pinName: '1.l', x: 0, y: 0 }, end: { componentId: 'bb-button', pinName: '10t.e', x: 0, y: 0 } },
+        { id: 'seat-1r', bb: true, start: { componentId: 'btn-seated', pinName: '1.r', x: 0, y: 0 }, end: { componentId: 'bb-button', pinName: '10b.j', x: 0, y: 0 } },
+        { id: 'gpio-terminal-1', start: { componentId: 'arduino-uno', pinName: '2', x: 0, y: 0 }, end: { componentId: 'bb-button', pinName: '10t.a', x: 0, y: 0 } },
+      ],
+    } as never);
+    const res = await executeTool('add_wire', {
+      start_component: 'arduino-uno', start_pin: 'GND.1',
+      end_component: 'bb-button', end_pin: '10b.f',
+    });
+    expect(res.isError).toBe(true);
+    expect(res.result).toContain('terminal 1 already has a visible wire');
+    useSimulatorStore.setState({
+      boards: before.boards,
+      activeBoardId: before.activeBoardId,
+      components: before.components,
+      wires: before.wires,
+    } as never);
+  });
+
   it('adds a wire between existing parts and recalculates', async () => {
     const boardId = useSimulatorStore.getState().activeBoardId!;
     const res = await executeTool('add_wire', {
@@ -337,6 +388,23 @@ describe('project snapshot', () => {
     expect(snap).toContain('sketch.ino');
     expect(snap).toContain('digitalWrite(13, HIGH);');
     expect(snap).toContain('WIRES:');
+  });
+
+  it('spells out tactile button terminal equivalence and trench rule', () => {
+    const before = useSimulatorStore.getState();
+    useSimulatorStore.setState({
+      components: [{ id: 'btn-snapshot', metadataId: 'pushbutton', x: 10, y: 20, properties: { rotation: 90 } }],
+    } as never);
+    const snap = buildProjectSnapshot();
+    expect(snap).toContain('terminal-1=(1.l=1.r)');
+    expect(snap).toContain('terminal-2=(2.l=2.r)');
+    expect(snap).toContain('straddle centre trench');
+    useSimulatorStore.setState({
+      boards: before.boards,
+      activeBoardId: before.activeBoardId,
+      components: before.components,
+      wires: before.wires,
+    } as never);
   });
 });
 
