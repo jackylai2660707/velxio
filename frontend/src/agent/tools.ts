@@ -280,16 +280,21 @@ function tactileTerminalAtEndpoint(componentId: string, pinName: string): { butt
   return null;
 }
 
-function validateTactileTerminalWire(componentId: string, pinName: string): void {
+function validateTactileTerminalWire(componentId: string, pinName: string, otherComponentId: string): void {
   const target = tactileTerminalAtEndpoint(componentId, pinName);
   if (!target) return;
+  const otherPart = useSimulatorStore.getState().components.find((component) => component.id === otherComponentId);
+  if (otherPart?.metadataId.startsWith('resistor')) return; // legal external pull-up/down
   const sibling = useSimulatorStore.getState().wires.find((wire) => {
     if (wire.bb) return false;
     const start = tactileTerminalAtEndpoint(wire.start.componentId, wire.start.pinName);
     const end = tactileTerminalAtEndpoint(wire.end.componentId, wire.end.pinName);
-    return [start, end].some((candidate) =>
-      candidate?.buttonId === target.buttonId && candidate.terminal === target.terminal,
-    );
+    const startMatches = start?.buttonId === target.buttonId && start.terminal === target.terminal;
+    const endMatches = end?.buttonId === target.buttonId && end.terminal === target.terminal;
+    if (!startMatches && !endMatches) return false;
+    const far = startMatches ? wire.end : wire.start;
+    const farPart = useSimulatorStore.getState().components.find((component) => component.id === far.componentId);
+    return !farPart?.metadataId.startsWith('resistor');
   });
   if (sibling) {
     throw new ToolError(
@@ -326,6 +331,9 @@ function tactileTerminalConflicts(): string[] {
           terminal = group ? groupToTerminal.get(`${endpoint.componentId}:${group}`) : undefined;
         }
         if (terminal) {
+          const far = endpoint === wire.start ? wire.end : wire.start;
+          const farPart = state.components.find((component) => component.id === far.componentId);
+          if (farPart?.metadataId.startsWith('resistor')) continue;
           const set = wiresByTerminal.get(terminal) ?? new Set<string>();
           set.add(wire.id);
           wiresByTerminal.set(terminal!, set);
@@ -1173,8 +1181,8 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       if (startTerminal && endTerminal && startTerminal.buttonId === endTerminal.buttonId && startTerminal.terminal !== endTerminal.terminal) {
         throw new ToolError('Do not jumper the two terminals of a tactile pushbutton. Route GPIO to terminal 1 and GND to terminal 2 through the circuit; the button itself is the switch.');
       }
-      validateTactileTerminalWire(startComponent, startPin);
-      validateTactileTerminalWire(endComponent, endPin);
+      validateTactileTerminalWire(startComponent, startPin, endComponent);
+      validateTactileTerminalWire(endComponent, endPin, startComponent);
 
       // A component seated on a breadboard already has invisible seating
       // wires from each leg to its hole. Adding another visible wire from the
