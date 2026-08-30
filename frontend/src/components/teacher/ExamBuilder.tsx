@@ -28,6 +28,7 @@ interface ExamBuilderProps {
   settings: ExamSettingsDraft;
   onQuestionsChange: (questions: ExamQuestionDraft[]) => void;
   onSettingsChange: (settings: ExamSettingsDraft) => void;
+  onGenerateAndPublish?: (questions: ExamQuestionDraft[]) => Promise<void>;
 }
 
 const INITIAL_OPTIONS = ['', '', '', ''];
@@ -50,6 +51,7 @@ export function ExamBuilder({
   settings,
   onQuestionsChange,
   onSettingsChange,
+  onGenerateAndPublish,
 }: ExamBuilderProps) {
   const zh = language.toLowerCase().startsWith('zh');
   const [aiTopic, setAiTopic] = useState('');
@@ -57,6 +59,7 @@ export function ExamBuilder({
   const [aiDifficulty, setAiDifficulty] = useState<'easy' | 'medium' | 'hard' | 'mixed'>('medium');
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState('');
+  const [selectedTypes, setSelectedTypes] = useState<ExamQuestionKind[]>(['single', 'multiple', 'true_false', 'short', 'code', 'circuit']);
   const copy = useMemo(
     () => zh
       ? {
@@ -114,7 +117,7 @@ export function ExamBuilder({
         </div>
         <button type="button" className="exam-builder-add" onClick={() => onQuestionsChange([...questions, newQuestion()])}>
           {copy.add}
-        </button>
+          </button>
       </header>
 
       <div className="exam-ai-generator" aria-label={zh ? 'AI 產生題目' : 'AI question generator'}>
@@ -131,13 +134,27 @@ export function ExamBuilder({
           <button type="button" className="exam-builder-add" disabled={aiBusy || !aiTopic.trim()} onClick={async () => {
             setAiBusy(true); setAiError('');
             try {
-              const result = await lmsApi.generateExamQuestions({ topic: aiTopic.trim(), count: Math.min(20, Math.max(1, Number(aiCount) || 5)), difficulty: aiDifficulty, language: zh ? 'zh-TW' : 'en', question_types: ['single', 'multiple', 'true_false', 'short', 'code', 'circuit'] });
+              if (selectedTypes.length === 0) throw new Error(zh ? '至少選擇一種題型' : 'Select at least one question type');
+              const result = await lmsApi.generateExamQuestions({ topic: aiTopic.trim(), count: Math.min(20, Math.max(1, Number(aiCount) || 5)), difficulty: aiDifficulty, language: zh ? 'zh-TW' : 'en', question_types: selectedTypes });
               const generated = result.questions.map((q) => ({ id: q.id, type: q.type, question: q.question, options: q.options, answer: q.answer, points: q.points, rubric: q.rubric || q.explanation }));
               onQuestionsChange([...questions, ...generated]);
             } catch (error) {
               setAiError(error instanceof Error ? error.message : (zh ? 'AI 出題失敗' : 'AI generation failed'));
             } finally { setAiBusy(false); }
           }}>{aiBusy ? (zh ? '產生中…' : 'Generating…') : (zh ? 'AI 產生草稿' : 'Generate draft')}</button>
+          {onGenerateAndPublish && <button type="button" className="exam-builder-publish-ai" disabled={aiBusy || !aiTopic.trim()} onClick={async () => {
+            setAiBusy(true); setAiError('');
+            try {
+              if (selectedTypes.length === 0) throw new Error(zh ? '至少選擇一種題型' : 'Select at least one question type');
+              const result = await lmsApi.generateExamQuestions({ topic: aiTopic.trim(), count: Math.min(20, Math.max(1, Number(aiCount) || 5)), difficulty: aiDifficulty, language: zh ? 'zh-TW' : 'en', question_types: selectedTypes });
+              const generated = result.questions.map((q) => ({ id: q.id, type: q.type, question: q.question, options: q.options, answer: q.answer, points: q.points, rubric: q.rubric || q.explanation }));
+              await onGenerateAndPublish(generated);
+            } catch (error) { setAiError(error instanceof Error ? error.message : (zh ? 'AI 出題失敗' : 'AI generation failed')); }
+            finally { setAiBusy(false); }
+          }}>{zh ? '產生並立即發布' : 'Generate & publish'}</button>}
+        </div>
+        <div className="exam-ai-types" role="group" aria-label={zh ? '題型' : 'Question types'}>
+          {(Object.keys(copy.types) as ExamQuestionKind[]).map((kind) => <label key={kind}><input type="checkbox" checked={selectedTypes.includes(kind)} onChange={(e) => setSelectedTypes((current) => e.target.checked ? [...current, kind] : current.filter((item) => item !== kind))} />{copy.types[kind]}</label>)}
         </div>
         {aiError && <p className="exam-ai-error" role="alert">{aiError}</p>}
       </div>

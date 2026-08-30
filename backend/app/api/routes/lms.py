@@ -10,6 +10,8 @@ Classes
   POST   /api/lms/classes/join          {code} → class        (any signed-in user)
   GET    /api/lms/classes/{id}/report   → members + per-student progress/quiz
                                           (owning teacher only)
+  GET    /api/lms/teacher/export.csv|json → roster-complete grade rows
+                                           (teacher-scoped; class/assignment filters)
 
 Progress & quizzes (per signed-in user)
   GET    /api/lms/progress              → {done:[lesson_id…], quiz:{lesson_id:{…}}}

@@ -13,6 +13,9 @@
 .exam-ai-controls { display: flex; gap: .5rem; align-items: center; margin-top: .75rem; flex-wrap: wrap; }
 .exam-ai-controls input:first-child { flex: 1 1 320px; }
 .exam-ai-controls input, .exam-ai-controls select { min-height: 2.35rem; padding: .4rem .55rem; border: 1px solid var(--teacher-border, #cbd5e1); border-radius: 7px; background: var(--teacher-surface, #fff); }
+.exam-ai-types { display: flex; flex-wrap: wrap; gap: .45rem .8rem; margin-top: .7rem; }
+.exam-ai-types label { display: inline-flex; align-items: center; gap: .3rem; font-size: .82rem; }
+.exam-builder-publish-ai { background: #1f9d63; border-color: #36c982; }
 .exam-ai-error { color: #b42318; margin-top: .5rem !important; }
 .exam-builder-heading { align-items: flex-start; display: flex; gap: 18px; justify-content: space-between; }
 .exam-builder-heading h3 { font-size: 18px; margin: 3px 0 5px; }

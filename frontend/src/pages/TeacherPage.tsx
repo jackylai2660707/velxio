@@ -271,9 +271,10 @@ export const TeacherPage: React.FC = () => {
     };
   }, [selectedId]);
 
-  const createAssignment = async (publishImmediately = false) => {
+  const createAssignment = async (publishImmediately = false, questionsOverride?: ExamQuestionDraft[]) => {
     if (!selectedId || !assignmentForm.title.trim() || assignmentBusy) return;
-    if (assignmentForm.assignment_type === 'quiz' && !assignmentForm.lesson_id && examQuestions.length === 0) {
+    const questionsToSave = questionsOverride ?? examQuestions;
+    if (assignmentForm.assignment_type === 'quiz' && !assignmentForm.lesson_id && questionsToSave.length === 0) {
       setAssignmentNotice(i18n.language.toLowerCase().startsWith('zh')
         ? '小測驗需要連結一課，系統才可以自動評分。'
         : 'A quiz must link to a lesson so it has questions to auto-grade.');
@@ -285,8 +286,8 @@ export const TeacherPage: React.FC = () => {
       const [courseId, lessonId] = assignmentForm.lesson_id.split('/');
       const linkedLesson = courseId && lessonId ? getLesson(courseId, lessonId) : null;
       const quiz = assignmentForm.assignment_type === 'quiz'
-        ? examQuestions.length > 0
-          ? examQuestions.map((question) => ({
+        ? questionsToSave.length > 0
+          ? questionsToSave.map((question) => ({
               id: question.id,
               type: question.type,
               question: question.question.trim(),
@@ -306,8 +307,8 @@ export const TeacherPage: React.FC = () => {
         auto_grade: assignmentForm.auto_grade,
         assignment_type: assignmentForm.assignment_type,
         quiz,
-        rubric: examQuestions.length > 0
-          ? JSON.stringify(examQuestions.map((question) => ({ id: question.id, points: question.points, rubric: question.rubric })))
+        rubric: questionsToSave.length > 0
+          ? JSON.stringify(questionsToSave.map((question) => ({ id: question.id, points: question.points, rubric: question.rubric })))
           : undefined,
         opens_at: assignmentForm.opens_at ? new Date(assignmentForm.opens_at).toISOString() : undefined,
         duration_minutes: assignmentForm.duration_minutes ? Math.max(1, Number(assignmentForm.duration_minutes)) : undefined,
@@ -825,6 +826,9 @@ export const TeacherPage: React.FC = () => {
                     language={i18n.language}
                     questions={examQuestions}
                     onQuestionsChange={setExamQuestions}
+                    onGenerateAndPublish={async (generated) => {
+                      await createAssignment(true, [...examQuestions, ...generated]);
+                    }}
                     settings={{
                       opens_at: assignmentForm.opens_at,
                       duration_minutes: assignmentForm.duration_minutes,
