@@ -673,7 +673,7 @@ def _teacher_export_csv(
         [
             "class_id", "class_name", "assignment_id", "assignment_title",
             "assignment_type", "assignment_status", "lesson_id", "student_id",
-            "student_name", "student_email", "status", "attempt_no", "submitted",
+            "student_name", "student_email", "student", "status", "attempt_no", "attempt", "submitted",
             "attempt_count", "submitted_at", "graded_at", "is_late", "score", "max_score", "feedback",
             "ai_grade_status", "ai_confidence", "ai_suggested_score",
             "opens_at", "closes_at", "time_limit", "max_attempts", "late_policy",
@@ -693,8 +693,10 @@ def _teacher_export_csv(
                 _csv_cell(row.get("student_id")),
                 _csv_cell(row.get("student_name")),
                 _csv_cell(row.get("student_email")),
+                _csv_cell(row.get("student_name") or row.get("student_email") or row.get("student_id")),
                 _csv_cell(row.get("status")),
                 _csv_cell(row.get("attempt_no")),
+                _csv_cell(row.get("attempt_no", 0)),
                 _csv_cell(row.get("submitted")),
                 _csv_cell(row.get("attempt_count")),
                 _csv_cell(row.get("submitted_at")),
@@ -762,6 +764,23 @@ def _teacher_export_json(
         sort=sort,
         order=order,
     )
+    ai_results: dict[str, dict[str, Any]] = {}
+    try:
+        from app.services import ai_grade_store
+        ai_results = ai_grade_store.latest_results(
+            [str(row["id"]) for row in rows if row.get("id")]
+        )
+        for row in rows:
+            submission_id = row.get("id")
+            if not submission_id:
+                continue
+            result = ai_results.get(str(submission_id))
+            if result and int(result.get("attempt_no") or 0) == int(row.get("attempt_no") or 0):
+                continue
+            ai_results.pop(str(submission_id), None)
+    except Exception:
+        # Keep JSON exports available while an older database is upgrading.
+        ai_results = {}
     # Keep a small, explicit metadata envelope so consumers can verify which
     # filters produced a file without having to infer them from the first row.
     payload = {
@@ -775,7 +794,17 @@ def _teacher_export_json(
             "sort": sort or "updated_at",
             "order": order or "desc",
         },
-        "rows": rows,
+        "rows": [
+            {
+                **row,
+                "student": row.get("student_name") or row.get("student_email") or row.get("student_id"),
+                "attempt": row.get("attempt_no", 0),
+                "ai_grade_status": ai_results.get(str(row.get("id") or ""), {}).get("status"),
+                "ai_confidence": ai_results.get(str(row.get("id") or ""), {}).get("confidence"),
+                "ai_suggested_score": ai_results.get(str(row.get("id") or ""), {}).get("suggested_score"),
+            }
+            for row in rows
+        ],
     }
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), default=str)
     return Response(
