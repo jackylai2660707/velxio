@@ -577,7 +577,12 @@ export async function runTurn(
   const iterationLimit = MAX_ITERATIONS;
   const totalCallLimit = MAX_TOTAL_CALLS;
   let verificationPassed = false;
-  const turnMemory = { removedWireFingerprints: new Set<string>(), mutationEpoch: 0, runEpoch: -1 };
+  const turnMemory = {
+    removedWireFingerprints: new Set<string>(),
+    createdWireIds: new Set<string>(),
+    mutationEpoch: 0,
+    runEpoch: -1,
+  };
   // A common failure mode is the model issuing the exact same inspection or
   // simulation call forever after the project is already correct. Keep a
   // small per-turn fingerprint guard; two executions are enough for a valid

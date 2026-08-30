@@ -753,6 +753,7 @@ export interface ToolContext {
   /** Per-run mutation memory used to stop remove→re-add oscillation. */
   turnMemory?: {
     removedWireFingerprints: Set<string>;
+    createdWireIds?: Set<string>;
     /** Incremented by AgentRunner after code/wiring changes; used to decide
      * whether an already-running board needs a fresh run. */
     mutationEpoch?: number;
@@ -1149,6 +1150,7 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
         autoRouted: true,
       };
       sim().addWire(wire);
+      ctx.turnMemory?.createdWireIds?.add(id);
       await settleDom();
       safeRecalcWires();
       return (
@@ -1308,6 +1310,9 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       const id = String(input.id ?? '');
       const target = sim().wires.find((w) => w.id === id);
       if (!target) throw new ToolError(`Wire "${id}" not found.`);
+      if (ctx.turnMemory?.createdWireIds?.has(id)) {
+        return `Wire "${id}" was created successfully earlier in this turn; keep it and continue. Start a new turn if you explicitly need to change it.`;
+      }
       if (!target.bb) {
         ctx.turnMemory?.removedWireFingerprints.add(
           wireTopologyFingerprint(target.start.componentId, target.start.pinName, target.end.componentId, target.end.pinName),

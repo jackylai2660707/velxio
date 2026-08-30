@@ -163,6 +163,32 @@ describe('agent tools — components & wires', () => {
     useSimulatorStore.setState({ components: [], wires: [] } as never);
   });
 
+  it('does not remove a wire that succeeded earlier in the same agent turn', async () => {
+    const memory = { removedWireFingerprints: new Set<string>(), createdWireIds: new Set<string>() };
+    const before = useSimulatorStore.getState();
+    useSimulatorStore.setState({
+      boards: [{ id: 'uno-keep', boardKind: 'arduino-uno', x: 0, y: 0, activeFileGroupId: 'g', languageMode: 'arduino' }],
+      activeBoardId: 'uno-keep', components: [], wires: [],
+    } as never);
+    const added = await executeTool('add_wire', {
+      start_component: 'uno-keep', start_pin: '13', end_component: 'uno-keep', end_pin: 'GND.1',
+    }, { turnMemory: memory });
+    const wireId = useSimulatorStore.getState().wires[0]?.id;
+    expect(added.isError).toBe(false);
+    expect(wireId).toBeTruthy();
+    const removed = await executeTool('remove_wire', { id: wireId }, { turnMemory: memory });
+    expect(removed.isError).toBe(false);
+    expect(removed.result).toContain('created successfully earlier');
+    expect(useSimulatorStore.getState().wires.some((wire) => wire.id === wireId)).toBe(true);
+    // Restore shared simulator state for the following mutation/file tests.
+    useSimulatorStore.setState({
+      boards: before.boards,
+      activeBoardId: before.activeBoardId,
+      components: before.components,
+      wires: before.wires,
+    } as never);
+  });
+
   it('rejects unknown component types with suggestions', async () => {
     const res = await executeTool('add_component', { type: 'red-led', x: 0, y: 0 });
     expect(res.isError).toBe(true);
