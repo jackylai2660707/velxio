@@ -1451,7 +1451,11 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       const id = String(input.id ?? '');
       const target = sim().wires.find((w) => w.id === id);
       if (!target) throw new ToolError(`Wire "${id}" not found.`);
-      if (ctx.turnMemory?.createdWireIds?.has(id)) {
+      const tactileRepairWire = Boolean(
+        tactileTerminalAtEndpoint(target.start.componentId, target.start.pinName) ||
+        tactileTerminalAtEndpoint(target.end.componentId, target.end.pinName),
+      );
+      if (ctx.turnMemory?.createdWireIds?.has(id) && !tactileRepairWire) {
         return `Wire "${id}" was created successfully earlier in this turn; keep it and continue. Start a new turn if you explicitly need to change it.`;
       }
       if (!target.bb) {
