@@ -153,6 +153,7 @@ def main() -> None:
     }
     assert all({"student_name", "status", "score", "submitted_at", "attempt_no"} <= row.keys()
                for row in json_payload["rows"])
+    assert all("project_data" not in row and "answers" not in row for row in json_payload["rows"])
     csv_assignment = client.get(
         f"/api/lms/teacher/export.csv?assignment_id={second_aid}", headers=th
     )

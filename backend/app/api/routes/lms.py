@@ -768,8 +768,8 @@ def _teacher_export_json(
         "generated_at": time.time(),
         "count": len(rows),
         "filters": {
-            "class_ids": cloud_db._split_filter_values(selected),
-            "assignment_ids": cloud_db._split_filter_values(selected_assignments),
+            "class_ids": _query_class_ids(selected),
+            "assignment_ids": _query_class_ids(selected_assignments),
             "status": status or "",
             "q": q or "",
             "sort": sort or "updated_at",
