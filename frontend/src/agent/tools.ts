@@ -47,6 +47,21 @@ function settleDom(): Promise<void> {
   });
 }
 
+/** Custom elements can upgrade a little after React mounts them. Wait briefly
+ * for pinInfo before seating instead of returning a deterministic geometry
+ * error that forces the model into another turn. */
+async function waitForMountedPins(id: string, timeoutMs = 2200): Promise<PinDescriptor[] | null> {
+  if (typeof document === 'undefined') return null;
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const pins = resolvePins(id);
+    if (pins && pins.length > 0) return pins;
+    if (Date.now() >= deadline) return null;
+    await settleDom();
+    await new Promise<void>((resolve) => setTimeout(resolve, 50));
+  }
+}
+
 interface PinDescriptor {
   name: string;
   description?: string;
@@ -397,10 +412,11 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     name: 'add_component',
     description:
       'Add an electronic component to the canvas. Use list_component_types to find the type id. ' +
-      'Place components on a 20px grid, at least 120px apart, and to the right of / below the board ' +
-      '(boards are roughly 300x220px). The placement safety net preserves a clear requested position, ' +
-      'then searches free horizontal grid columns before moving down, so series parts such as an LED ' +
-      'and resistor stay side-by-side instead of stacking. Returns the assigned component id.',
+      'Place components on a 20px grid, to the right of / below the board (boards are roughly 300x220px). ' +
+      'For free-floating parts keep clear spacing; on a breadboard, use separate channel bands and let ' +
+      'seat_component align the legs to exact holes. The placement safety net preserves a clear requested ' +
+      'position, then searches free horizontal grid columns before moving down, so series parts such as an ' +
+      'LED and resistor stay side-by-side instead of stacking. Returns the assigned component id.',
     input_schema: {
       type: 'object',
       properties: {
@@ -463,7 +479,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   },
   {
     name: 'inspect_breadboard',
-    description: 'Inspect breadboard occupancy and internal groups before wiring. Read-only; use this before placing or connecting parts on a breadboard.',
+    description: 'Inspect breadboard occupancy, electrical strips, and FREE holes before wiring. Read-only; call once with include_free=true, then use only the returned exact hole names (never invent t/b bank or column names).',
     input_schema: {
       type: 'object',
       properties: { breadboard_id: str('Breadboard component id'), include_free: { type: 'boolean' }, limit: { type: 'number' } },
@@ -554,7 +570,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'run_simulation',
     description:
-      'Compile if needed and start the simulation for the active board (same as the Run button).',
+      'Compile if needed and start the simulation for the active board (same as the Run button). If it is already running, return its status without restarting it.',
     input_schema: { type: 'object', properties: {} },
   },
   {
@@ -735,7 +751,13 @@ export interface ToolContext {
   /** Streaming progress for the running chip (compile log tail, …). */
   onUpdate?: (detail: string) => void;
   /** Per-run mutation memory used to stop remove→re-add oscillation. */
-  turnMemory?: { removedWireFingerprints: Set<string> };
+  turnMemory?: {
+    removedWireFingerprints: Set<string>;
+    /** Incremented by AgentRunner after code/wiring changes; used to decide
+     * whether an already-running board needs a fresh run. */
+    mutationEpoch?: number;
+    runEpoch?: number;
+  };
 }
 
 function wireTopologyFingerprint(startComponent: string, startPin: string, endComponent: string, endPin: string): string {
@@ -862,6 +884,12 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
         ...(meta.defaultValues ?? {}),
         ...((input.properties as Record<string, unknown>) ?? {}),
       };
+      // Match the canvas drag path: axial resistors are vertical by default
+      // so their leads bridge breadboard rows cleanly instead of lying across
+      // adjacent channels. An explicit model/user rotation still wins.
+      if ((type.startsWith('resistor') || type === 'wokwi-resistor') && properties.rotation === undefined) {
+        properties.rotation = 90;
+      }
       sim().addComponent({ id, metadataId: type, x, y, properties });
       await settleDom();
 
@@ -993,6 +1021,31 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       if (resolvedDuplicate) {
         return `Wire already exists (${resolvedDuplicate.id}); no duplicate wire created.`;
       }
+      // A seated-leg request can resolve to a different free sibling on each
+      // retry (1t.a → 1t.b, then 1t.c). Compare breadboard endpoints by their
+      // internal strip/rail group as well as exact names, so replaying the
+      // original request remains idempotent instead of creating parallel
+      // wires on the same electrical node.
+      const endpointEquivalent = (a: { componentId: string; pinName: string }, b: { componentId: string; pinName: string }) => {
+        if (a.componentId !== b.componentId) return false;
+        if (a.pinName === b.pinName) return true;
+        const component = sim().components.find((candidate) => candidate.id === a.componentId);
+        if (!component || !isBreadboard(component.metadataId)) return false;
+        const ga = breadboardGroupKey(component.metadataId, a.pinName);
+        const gb = breadboardGroupKey(component.metadataId, b.pinName);
+        return !!ga && ga === gb;
+      };
+      const semanticDuplicate = sim().wires.find((wire) => {
+        if (wire.bb) return false;
+        const direct = endpointEquivalent(wire.start, { componentId: startComponent, pinName: startPin }) &&
+          endpointEquivalent(wire.end, { componentId: endComponent, pinName: endPin });
+        const reverse = endpointEquivalent(wire.start, { componentId: endComponent, pinName: endPin }) &&
+          endpointEquivalent(wire.end, { componentId: startComponent, pinName: startPin });
+        return direct || reverse;
+      });
+      if (semanticDuplicate) {
+        return `Wire already exists on the same breadboard node (${semanticDuplicate.id}); no duplicate wire created.`;
+      }
 
       // A component seated on a breadboard already has invisible seating
       // wires from each leg to its hole. Adding another visible wire from the
@@ -1110,6 +1163,7 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       const board = sim().components.find((c) => c.id === id && (c.metadataId === 'breadboard' || c.metadataId === 'breadboard-mini'));
       if (!board) throw new ToolError(`Breadboard "${id}" not found.`);
       const limit = Math.max(1, Math.min(100, Number(input.limit) || 30));
+      const includeFree = input.include_free === true;
       const used = sim().wires.flatMap((w) => {
         const out: string[] = [];
         if (w.start.componentId === id) out.push(w.start.pinName);
@@ -1119,7 +1173,21 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       const groups = [...new Set(used.map((hole) => breadboardGroupKey(board.metadataId, hole)).filter(Boolean))];
       const visibleWires = sim().wires.filter((w) => !w.bb && (w.start.componentId === id || w.end.componentId === id)).map((w) => w.id);
       const seatingWires = sim().wires.filter((w) => w.bb && (w.start.componentId === id || w.end.componentId === id)).map((w) => w.id);
-      return JSON.stringify({
+      const holes = breadboardHoles(board.metadataId) ?? [];
+      const occupied = new Set(used);
+      const free = holes.filter((hole) => !occupied.has(hole.name));
+      const freeByGroup = new Map<string, string[]>();
+      if (includeFree) {
+        for (const hole of free) {
+          const group = breadboardGroupKey(board.metadataId, hole.name);
+          if (!group) continue;
+          const list = freeByGroup.get(group) ?? [];
+          if (list.length < 5) list.push(hole.name);
+          freeByGroup.set(group, list);
+          if (freeByGroup.size >= limit && list.length >= 5) break;
+        }
+      }
+      const report: Record<string, unknown> = {
         breadboard_id: id,
         type: board.metadataId,
         occupied_holes: used.slice(0, limit),
@@ -1127,8 +1195,14 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
         visible_wires: visibleWires.slice(0, limit),
         seating_wires: seatingWires.slice(0, limit),
         truncated: used.length > limit || groups.length > limit || visibleWires.length > limit || seatingWires.length > limit,
-        note: 'Seating wires are invisible internal leg-to-hole connections; connect external wires to holes/rails, not seated component legs.',
-      });
+        note: 'Seating wires are invisible internal leg-to-hole connections; connect external wires to holes/rails, not seated component legs. A listed group is one electrical node; choose a different FREE hole in that group for each external wire.',
+      };
+      if (includeFree) {
+        report.free_holes = free.slice(0, limit).map((hole) => hole.name);
+        report.free_by_group = Object.fromEntries([...freeByGroup.entries()].slice(0, limit));
+        report.free_holes_truncated = free.length > limit;
+      }
+      return JSON.stringify(report);
     }
 
     case 'seat_component': {
@@ -1139,6 +1213,8 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       const target = breadboardHoles(bb.metadataId)?.find((h) => h.name === hole);
       if (!target) throw new ToolError(`Unknown breadboard hole "${hole}".`);
       if (sim().wires.some((w) => !w.bb && ((w.start.componentId === cid) || (w.end.componentId === cid)))) throw new ToolError('Component already has visible wires; remove/review them before seating.');
+      const mountedPins = await waitForMountedPins(cid);
+      if (!mountedPins) throw new ToolError('Component pin geometry is still mounting; no changes were made. Retry seating after the part appears on the canvas.');
       let pos = resolveSeatPosition(comp, bid, pin, target.x, target.y, sim().components);
       if (!pos) {
         // A slightly wrong bank/column or DOM-measurement residual should not
@@ -1153,12 +1229,44 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       // semantics are handled by the explicit anchor the agent inspected;
       // do not re-solve into a different column and create extra jumpers.
       const finalPos = pos;
+      const beforePosition = { x: comp.x, y: comp.y };
       sim().updateComponent(cid, finalPos);
       await settleDom();
       sim().reseatComponentOnBreadboard(cid);
       const seatingWires = sim().wires.filter((w) => w.bb && (w.start.componentId === cid || w.end.componentId === cid));
       const seated = seatingWires.map((w) => `${w.start.pinName}->${w.end.pinName}`);
-      if (!seated.length) throw new ToolError('Seating could not be verified; no state was accepted.');
+      const pinInfo = mountedPins ?? resolvePins(cid);
+      const expectedPins = pinInfo ? [...new Set(pinInfo.map((p) => p.name))] : [];
+      const seatedPins = new Set(seatingWires.map((w) => w.start.componentId === cid ? w.start.pinName : w.end.pinName));
+      const missingPins = pinInfo
+        ? expectedPins.filter((name) => !seatedPins.has(name))
+        : ['<pin geometry unavailable>'];
+      const holeKeys = new Set<string>();
+      const conflictingHoles: string[] = [];
+      for (const wire of seatingWires) {
+        const bbEnd = wire.start.componentId === bid ? wire.start : wire.end;
+        const key = `${bbEnd.componentId}:${bbEnd.pinName}`;
+        if (holeKeys.has(key)) conflictingHoles.push(key);
+        holeKeys.add(key);
+        const occupiedByOther = sim().wires.some((other) =>
+          other !== wire && other.start.componentId !== cid && other.end.componentId !== cid &&
+          ((other.start.componentId === bbEnd.componentId && other.start.pinName === bbEnd.pinName) ||
+            (other.end.componentId === bbEnd.componentId && other.end.pinName === bbEnd.pinName)));
+        if (occupiedByOther) conflictingHoles.push(key);
+      }
+      if (!seated.length || missingPins.length > 0 || conflictingHoles.length > 0) {
+        // Do not leave a half-seated part behind after a bad anchor. Roll back
+        // before returning the deterministic error so the model can choose a
+        // different listed free hole without rebuilding the whole circuit.
+        sim().updateComponent(cid, beforePosition);
+        await settleDom();
+        sim().reseatComponentOnBreadboard(cid);
+        const detail = [
+          missingPins.length ? `missing pins: ${missingPins.join(', ')}` : '',
+          conflictingHoles.length ? `occupied/duplicate holes: ${[...new Set(conflictingHoles)].join(', ')}` : '',
+        ].filter(Boolean).join('; ');
+        throw new ToolError(`Seating rejected and rolled back (${detail || 'no valid seating'}). Choose a different exact free hole/group from inspect_breadboard.`);
+      }
       const externalHoles: Record<string, string> = {};
       for (const wire of seatingWires) {
         const componentEnd = wire.start.componentId === cid ? wire.start : wire.end;
@@ -1315,6 +1423,13 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
     case 'run_simulation': {
       const actions = getToolbarActions();
       if (!actions) throw new ToolError('Editor toolbar not mounted — cannot run right now.');
+      const activeBeforeRun = sim().boards.find((b) => b.id === sim().activeBoardId);
+      const memory = ctx.turnMemory;
+      const alreadyRanThisEpoch = memory && memory.runEpoch === (memory.mutationEpoch ?? 0);
+      if (activeBeforeRun?.running && alreadyRanThisEpoch) {
+        return `Simulation is already running on board "${activeBeforeRun.id}"; do not restart it. Use observe_simulation once.`;
+      }
+      if (memory) memory.runEpoch = memory.mutationEpoch ?? 0;
       // Timestamp capture — see the `compile` case for why index slicing is wrong.
       const startedAt = new Date(Date.now() - 1);
       const unsubProgress = ctx.onUpdate

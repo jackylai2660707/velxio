@@ -33,4 +33,12 @@ describe('agent prompt — breadboard layout contract', () => {
     expect(prompt).toMatch(/(seat|place).{0,100}(distinct|different).{0,100}(strip|rail|hole)/);
     expect(prompt).toMatch(/(rail|hole).{0,100}(component leg|pin)/);
   });
+
+  it('forces deterministic free-hole selection and a single verification pass', () => {
+    const prompt = SYSTEM_PROMPT.toLowerCase();
+    expect(prompt).toContain('include_free=true');
+    expect(prompt).toContain('never invent a t/b bank');
+    expect(prompt).toMatch(/successful (?:tool result|placement|tool).{0,120}authoritative/);
+    expect(prompt).toContain('run simulation once and observe once');
+  });
 });

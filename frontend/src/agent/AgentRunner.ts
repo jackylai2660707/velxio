@@ -517,10 +517,24 @@ const POST_VERIFICATION_BLOCKED_TOOLS = new Set([
   'run_simulation', 'observe_simulation',
 ]);
 
+// A fresh compile or project mutation invalidates an earlier running binary.
+// Track this per turn so run_simulation remains idempotent on retries, while
+// still restarting once after the student/agent changes code or wiring.
+const RUN_INVALIDATING_TOOLS = new Set([
+  'add_board', 'remove_board', 'set_board_language', 'install_library',
+  'add_component', 'update_component', 'remove_component', 'add_wire',
+  'remove_wire', 'seat_component', 'write_file', 'edit_file', 'compile',
+]);
+
 function observationProvesRunning(result: string): boolean {
-  return /Simulation running on:/i.test(result) &&
-    /COMPONENTS:\s*\n- /i.test(result) &&
-    !/SIMULATION IS NOT RUNNING|BURNT COMPONENTS|none observable/i.test(result);
+  // A running board is already authoritative for the one-pass guard. Some
+  // valid projects expose no scalar DOM output (breadboard-only wiring,
+  // custom chips, or a component still mounting), and requiring a
+  // `COMPONENTS: -` line let the model re-run/rebuild those projects forever.
+  // If observation reports burnt parts, keep the lock open so the model can
+  // make one focused repair; otherwise a second run/observe is never useful in
+  // the same turn.
+  return /Simulation running on:/i.test(result) && !/BURNT COMPONENTS/i.test(result);
 }
 
 export interface RunTurnOptions {
@@ -563,7 +577,7 @@ export async function runTurn(
   const iterationLimit = MAX_ITERATIONS;
   const totalCallLimit = MAX_TOTAL_CALLS;
   let verificationPassed = false;
-  const turnMemory = { removedWireFingerprints: new Set<string>() };
+  const turnMemory = { removedWireFingerprints: new Set<string>(), mutationEpoch: 0, runEpoch: -1 };
   // A common failure mode is the model issuing the exact same inspection or
   // simulation call forever after the project is already correct. Keep a
   // small per-turn fingerprint guard; two executions are enough for a valid
@@ -688,6 +702,7 @@ export async function runTurn(
         results.push({ type: 'tool_result', tool_use_id: tu.id, content: message, is_error: true });
         continue;
       }
+      if (RUN_INVALIDATING_TOOLS.has(tu.name)) turnMemory.mutationEpoch++;
       const { result, isError, diff } = await executeTool(tu.name, tu.input, {
         toolCallId: tu.id,
         signal,

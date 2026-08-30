@@ -208,6 +208,23 @@ function isProjectSnapshotResult(block: ApiMessage['content'][number]): boolean 
   return block.type === 'tool_result' && PROJECT_SNAPSHOT_RE.test(block.content);
 }
 
+/** Refresh the authoritative snapshot before every model call. A long
+ * breadboard turn can exceed the current-turn wire window; without replacing
+ * the initial snapshot, dropped add/seat results leave the model with stale
+ * ids and it may rebuild an already-correct circuit. */
+function refreshLatestProjectState(message: ApiMessage): ApiMessage {
+  const fresh = buildProjectSnapshot();
+  let changed = false;
+  const content = message.content.map((block) => {
+    if (block.type !== 'text' || !block.text.includes('<project_state>')) return block;
+    const next = block.text.replace(/<project_state>[\s\S]*?<\/project_state>/, `<project_state>${fresh}</project_state>`);
+    if (next === block.text) return block;
+    changed = true;
+    return { ...block, text: next };
+  });
+  return changed ? { ...message, content } : message;
+}
+
 /** Keep the beginning (scope/diagnostic heading) and end (latest detail) of
  * an old text block.  Never apply this to the current project snapshot: the
  * latest user turn is deliberately kept byte-for-byte intact. */
@@ -272,7 +289,7 @@ function buildWireContext(messages: ApiMessage[]): ApiMessage[] {
   // inserts a structural summary whenever it drops anything, preserving old
   // user intent without replaying stale project snapshots.
   const prefix = trimHistory(transformed.slice(0, latestUserIndex), MAX_WIRE_HISTORY_MESSAGES);
-  const latestUser = transformed[latestUserIndex];
+  const latestUser = refreshLatestProjectState(transformed[latestUserIndex]);
   const currentTail = transformed.slice(latestUserIndex + 1);
   let keptTail = currentTail;
   if (currentTail.length > MAX_WIRE_CURRENT_TURN_MESSAGES) {

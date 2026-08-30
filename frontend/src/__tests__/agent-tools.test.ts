@@ -110,6 +110,59 @@ describe('agent tools — boards', () => {
 });
 
 describe('agent tools — components & wires', () => {
+  it('inspect_breadboard returns exact free holes and groups for deterministic seating', async () => {
+    useSimulatorStore.setState({
+      components: [{ id: 'bb-test', metadataId: 'breadboard', x: 0, y: 0, properties: {} }],
+      wires: [{
+        id: 'occupied-hole',
+        start: { componentId: 'bb-test', pinName: '10t.a', x: 0, y: 0 },
+        end: { componentId: 'arduino-test', pinName: '5V', x: 0, y: 0 },
+      }],
+    } as never);
+    const res = await executeTool('inspect_breadboard', {
+      breadboard_id: 'bb-test',
+      include_free: true,
+      limit: 30,
+    });
+    expect(res.isError).toBe(false);
+    const report = JSON.parse(res.result) as {
+      occupied_holes: string[];
+      free_holes: string[];
+      free_by_group: Record<string, string[]>;
+    };
+    expect(report.occupied_holes).toContain('10t.a');
+    expect(report.free_holes).not.toContain('10t.a');
+    expect(report.free_by_group['col10t']).toEqual(expect.arrayContaining(['10t.b', '10t.c']));
+    // Keep this read-only contract test from changing the shared store used by
+    // the mutation tests below.
+    useSimulatorStore.setState({ components: [], wires: [] } as never);
+  });
+
+  it('treats retries that resolve to sibling holes as the same wire', async () => {
+    const boardId = useSimulatorStore.getState().boards[0]?.id;
+    expect(boardId).toBeTruthy();
+    useSimulatorStore.setState({
+      components: [{ id: 'bb-retry', metadataId: 'breadboard', x: 0, y: 0, properties: {} }],
+      wires: [{
+        id: 'seat-led-a', bb: true,
+        start: { componentId: 'led-retry', pinName: 'A', x: 0, y: 0 },
+        end: { componentId: 'bb-retry', pinName: '1t.a', x: 0, y: 0 },
+      }],
+    } as never);
+    const first = await executeTool('add_wire', {
+      start_component: 'bb-retry', start_pin: '1t.a',
+      end_component: boardId, end_pin: '13',
+    });
+    expect(first.isError).toBe(false);
+    const second = await executeTool('add_wire', {
+      start_component: 'bb-retry', start_pin: '1t.a',
+      end_component: boardId, end_pin: '13',
+    });
+    expect(second.isError).toBe(false);
+    expect(second.result).toContain('same breadboard node');
+    useSimulatorStore.setState({ components: [], wires: [] } as never);
+  });
+
   it('rejects unknown component types with suggestions', async () => {
     const res = await executeTool('add_component', { type: 'red-led', x: 0, y: 0 });
     expect(res.isError).toBe(true);
@@ -134,6 +187,13 @@ describe('agent tools — components & wires', () => {
     expect(res.isError).toBe(false);
     const comp = useSimulatorStore.getState().components.find((c) => c.id === 'resistor-1');
     expect(comp!.properties.value).toBe('330');
+  });
+
+  it('uses the same vertical resistor default as manual canvas placement', async () => {
+    const res = await executeTool('add_component', { type: 'resistor', x: 720, y: 100 });
+    expect(res.isError).toBe(false);
+    const resistor = useSimulatorStore.getState().components.find((c) => c.metadataId === 'resistor');
+    expect(resistor?.properties.rotation).toBe(90);
   });
 
   it('rejects wires to ids that are not on the canvas', async () => {
