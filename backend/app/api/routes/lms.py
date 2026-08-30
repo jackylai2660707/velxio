@@ -24,10 +24,12 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 from datetime import datetime, timezone
 import math
+import os
 import time
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Header, HTTPException, Response
 from pydantic import BaseModel, Field
@@ -61,6 +63,35 @@ class QuizSubmit(BaseModel):
     score: int = Field(ge=0)
     total: int = Field(gt=0)
     answers: list[Any] = Field(default_factory=list)
+
+
+# ── Exam Studio AI generation ─────────────────────────────────────────────
+
+
+class ExamGenerationRequest(BaseModel):
+    """Teacher-only request for a reviewed, unsaved question draft."""
+
+    topic: str = Field(min_length=1, max_length=12_000)
+    context: str = Field(default="", max_length=12_000)
+    count: int = Field(default=5, ge=1, le=50)
+    difficulty: Literal["easy", "medium", "hard", "mixed"] = "medium"
+    language: Literal["zh-TW", "en", "bilingual"] = "zh-TW"
+    question_types: list[
+        Literal["single", "multiple", "true_false", "short", "long", "code", "circuit"]
+    ] = Field(
+        default_factory=lambda: [
+            "single",
+            "multiple",
+            "true_false",
+            "short",
+            "long",
+            "code",
+            "circuit",
+        ],
+        min_length=1,
+        max_length=7,
+    )
+    points_per_question: int = Field(default=10, ge=1, le=1_000)
 
 
 # ── Assignment models ─────────────────────────────────────────────────────
@@ -590,6 +621,8 @@ def _teacher_export_csv(
     *,
     class_ids: str | None = None,
     class_id: str | None = None,
+    assignment_ids: str | None = None,
+    assignment_id: str | None = None,
     status: str | None = None,
     sort: str | None = None,
     order: str | None = None,
@@ -598,6 +631,7 @@ def _teacher_export_csv(
     """Build a safe UTF-8 CSV from exactly the dashboard's filtered rows."""
     user = _require_teacher(authorization)
     selected = class_ids if class_ids is not None else class_id
+    selected_assignments = assignment_ids if assignment_ids is not None else assignment_id
     if status:
         statuses = {item.strip().casefold() for item in status.split(",") if item.strip()}
         allowed = _DASHBOARD_STATUSES
@@ -610,6 +644,7 @@ def _teacher_export_csv(
     rows = cloud_db.get_teacher_submission_rows(
         user["id"],
         _query_class_ids(selected),
+        assignment_ids=_query_class_ids(selected_assignments),
         status=status,
         q=q,
         sort=sort,
@@ -688,6 +723,68 @@ def _teacher_export_csv(
     )
 
 
+def _teacher_export_json(
+    authorization: str | None,
+    *,
+    class_ids: str | None = None,
+    class_id: str | None = None,
+    assignment_ids: str | None = None,
+    assignment_id: str | None = None,
+    status: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    q: str | None = None,
+) -> Response:
+    """Build a teacher-scoped JSON download using the same filters as CSV.
+
+    JSON is useful when grades need to be imported into a spreadsheet or
+    school MIS.  Rows are roster-complete (missing work is represented with a
+    null score and ``status=missing``), and private answer/project payloads
+    are never included by ``get_teacher_submission_rows``.
+    """
+    user = _require_teacher(authorization)
+    selected = class_ids if class_ids is not None else class_id
+    selected_assignments = assignment_ids if assignment_ids is not None else assignment_id
+    if status:
+        statuses = {item.strip().casefold() for item in status.split(",") if item.strip()}
+        if statuses - _DASHBOARD_STATUSES:
+            raise HTTPException(status_code=422, detail="Unknown dashboard status")
+    if order and str(order).casefold() not in (
+        "asc", "ascending", "desc", "descending", "up", "down"
+    ):
+        raise HTTPException(status_code=422, detail="order must be asc or desc")
+    rows = cloud_db.get_teacher_submission_rows(
+        user["id"],
+        _query_class_ids(selected),
+        assignment_ids=_query_class_ids(selected_assignments),
+        status=status,
+        q=q,
+        sort=sort,
+        order=order,
+    )
+    # Keep a small, explicit metadata envelope so consumers can verify which
+    # filters produced a file without having to infer them from the first row.
+    payload = {
+        "generated_at": time.time(),
+        "count": len(rows),
+        "filters": {
+            "class_ids": cloud_db._split_filter_values(selected),
+            "assignment_ids": cloud_db._split_filter_values(selected_assignments),
+            "status": status or "",
+            "q": q or "",
+            "sort": sort or "updated_at",
+            "order": order or "desc",
+        },
+        "rows": rows,
+    }
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), default=str)
+    return Response(
+        content=body,
+        media_type="application/json; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="velxio-lms-submissions.json"'},
+    )
+
+
 # These routes intentionally live before ``/classes/{class_id}`` and
 # ``/assignments/{assignment_id}`` so FastAPI treats the dotted/static paths as
 # routes rather than IDs.  ``/reports/*`` and ``/assignments/export.csv`` are
@@ -745,6 +842,8 @@ async def teacher_student_report(
 async def teacher_export_csv(
     class_ids: str | None = None,
     class_id: str | None = None,
+    assignment_ids: str | None = None,
+    assignment_id: str | None = None,
     status: str | None = None,
     sort: str | None = None,
     order: str | None = None,
@@ -755,6 +854,8 @@ async def teacher_export_csv(
         authorization,
         class_ids=class_ids,
         class_id=class_id,
+        assignment_ids=assignment_ids,
+        assignment_id=assignment_id,
         status=status,
         sort=sort,
         order=order,
@@ -766,6 +867,8 @@ async def teacher_export_csv(
 async def teacher_reports_export_csv(
     class_ids: str | None = None,
     class_id: str | None = None,
+    assignment_ids: str | None = None,
+    assignment_id: str | None = None,
     status: str | None = None,
     sort: str | None = None,
     order: str | None = None,
@@ -776,6 +879,59 @@ async def teacher_reports_export_csv(
         authorization,
         class_ids=class_ids,
         class_id=class_id,
+        assignment_ids=assignment_ids,
+        assignment_id=assignment_id,
+        status=status,
+        sort=sort,
+        order=order,
+        q=q,
+    )
+
+
+@router.get("/teacher/export.json")
+@router.get("/assignments/export.json")
+async def teacher_export_json(
+    class_ids: str | None = None,
+    class_id: str | None = None,
+    assignment_ids: str | None = None,
+    assignment_id: str | None = None,
+    status: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    q: str | None = None,
+    authorization: str | None = Header(default=None),
+) -> Response:
+    return _teacher_export_json(
+        authorization,
+        class_ids=class_ids,
+        class_id=class_id,
+        assignment_ids=assignment_ids,
+        assignment_id=assignment_id,
+        status=status,
+        sort=sort,
+        order=order,
+        q=q,
+    )
+
+
+@router.get("/reports/export.json")
+async def teacher_reports_export_json(
+    class_ids: str | None = None,
+    class_id: str | None = None,
+    assignment_ids: str | None = None,
+    assignment_id: str | None = None,
+    status: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    q: str | None = None,
+    authorization: str | None = Header(default=None),
+) -> Response:
+    return _teacher_export_json(
+        authorization,
+        class_ids=class_ids,
+        class_id=class_id,
+        assignment_ids=assignment_ids,
+        assignment_id=assignment_id,
         status=status,
         sort=sort,
         order=order,
@@ -888,6 +1044,67 @@ async def quiz_submit(
     except ValueError:
         raise HTTPException(status_code=413, detail="Answers payload too large")
     return {"id": attempt_id}
+
+
+# ── Exam Studio AI generation ─────────────────────────────────────────────
+
+
+def _exam_generation_quota_gate(user_id: str) -> None:
+    """Apply the platform server-key quota before a provider request."""
+
+    if not os.environ.get("VELXIO_OPENAI_API_KEY", ""):
+        return
+    usage = cloud_db.get_ai_usage(user_id)
+    if usage["used"] >= usage["limit"]:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"AI weekly quota reached ({usage['limit']:,} tokens); "
+                "ask an administrator to increase it."
+            ),
+        )
+
+
+@router.post("/exam-studio/generate")
+@router.post("/exams/generate")
+async def exam_studio_generate(
+    req: ExamGenerationRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Generate a validated Exam Studio draft for a teacher/admin.
+
+    The endpoint intentionally does not create an assignment.  The caller
+    must review/edit the returned questions and submit them through the
+    regular assignment-create API.  This prevents one model response from
+    silently changing a published exam.
+    """
+
+    user = _require_staff(authorization)
+    _exam_generation_quota_gate(str(user["id"]))
+    from app.services import ai_exam_generation
+
+    try:
+        result = await ai_exam_generation.generate_questions(
+            topic=req.topic,
+            context=req.context,
+            count=req.count,
+            difficulty=req.difficulty,
+            language=req.language,
+            question_types=req.question_types,
+            points_per_question=req.points_per_question,
+        )
+    except ai_exam_generation.ExamGenerationError as exc:
+        status = 422 if exc.kind == "input" else 503 if exc.kind == "config" else 502
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
+    usage_tokens = int(result.get("usage_tokens") or 0)
+    if os.environ.get("VELXIO_OPENAI_API_KEY", "") and usage_tokens > 0:
+        try:
+            cloud_db.add_ai_usage(str(user["id"]), usage_tokens)
+        except Exception:
+            # Accounting must not discard an otherwise valid draft. The next
+            # request still goes through the normal quota gate.
+            pass
+    return result
 
 
 # ── Assignments ────────────────────────────────────────────────────────────

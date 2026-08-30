@@ -396,6 +396,51 @@ export interface LmsAssignmentCreate {
   show_score_immediately?: boolean;
 }
 
+/** Request/response for the teacher-only Exam Studio AI authoring helper.
+ * The endpoint returns an unsaved draft; teachers can edit it before passing
+ * the questions to `createAssignment`. */
+export type ExamGenerationDifficulty = 'easy' | 'medium' | 'hard' | 'mixed';
+export type ExamGenerationLanguage = 'zh-TW' | 'en' | 'bilingual';
+export type ExamGenerationQuestionType =
+  | 'single'
+  | 'multiple'
+  | 'true_false'
+  | 'short'
+  | 'long'
+  | 'code'
+  | 'circuit';
+
+export interface ExamGenerationRequest {
+  topic: string;
+  context?: string;
+  count?: number;
+  difficulty?: ExamGenerationDifficulty;
+  language?: ExamGenerationLanguage;
+  question_types?: ExamGenerationQuestionType[];
+  points_per_question?: number;
+}
+
+export interface ExamGeneratedQuestion {
+  id: string;
+  type: ExamGenerationQuestionType;
+  question: string;
+  options: string[];
+  answer: number | number[] | string;
+  points: number;
+  rubric: string;
+  explanation: string;
+}
+
+export interface ExamGenerationResult {
+  questions: ExamGeneratedQuestion[];
+  count: number;
+  difficulty: ExamGenerationDifficulty;
+  language: ExamGenerationLanguage;
+  question_types: ExamGenerationQuestionType[];
+  model?: string;
+  usage_tokens?: number;
+}
+
 export interface LmsAssignmentSubmitPayload {
   answers?: unknown[];
   content?: string;
@@ -416,6 +461,53 @@ export interface LmsAttemptPayload {
   content?: string;
   project_data?: VlxPayload | Record<string, unknown>;
   files?: Record<string, string>;
+}
+
+export type LmsGradeExportFormat = 'csv' | 'json';
+
+/** Filters shared by the teacher CSV/JSON grade exports. */
+export interface LmsGradeExportParams {
+  classId?: string;
+  classIds?: string[];
+  assignmentId?: string;
+  assignmentIds?: string[];
+  status?: string;
+  sort?: string;
+  order?: 'asc' | 'desc' | string;
+  q?: string;
+}
+
+async function downloadTeacherGradeExport(
+  format: LmsGradeExportFormat,
+  params: LmsGradeExportParams = {},
+): Promise<Blob> {
+  const query = new URLSearchParams();
+  const classIds = params.classIds?.length
+    ? params.classIds
+    : params.classId
+      ? [params.classId]
+      : [];
+  const assignmentIds = params.assignmentIds?.length
+    ? params.assignmentIds
+    : params.assignmentId
+      ? [params.assignmentId]
+      : [];
+  if (classIds.length) query.set('class_ids', classIds.join(','));
+  if (assignmentIds.length) query.set('assignment_ids', assignmentIds.join(','));
+  if (params.status) query.set('status', params.status);
+  if (params.sort) query.set('sort', params.sort);
+  if (params.order) query.set('order', params.order);
+  if (params.q) query.set('q', params.q);
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  const token = getToken();
+  const response = await fetch(`${getApiBase()}/lms/teacher/export.${format}${suffix}`, {
+    credentials: 'include',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!response.ok) {
+    throw new CloudApiError(response.status, (await response.text()) || 'Export failed');
+  }
+  return response.blob();
 }
 
 export const lmsApi = {
@@ -453,6 +545,12 @@ export const lmsApi = {
       total,
       answers,
     }),
+  /** Generate a reviewed, unsaved question draft with the platform AI. */
+  generateExamQuestions: (payload: ExamGenerationRequest) =>
+    request<ExamGenerationResult>('POST', '/lms/exam-studio/generate', payload),
+  /** Alias retained for callers that use the shorter authoring name. */
+  generateQuestions: (payload: ExamGenerationRequest) =>
+    request<ExamGenerationResult>('POST', '/lms/exam-studio/generate', payload),
   /** Published assignments for all classes the current student joined. */
   listAssignments: (classId?: string) =>
     request<{ assignments: LmsAssignment[] }>(
@@ -487,19 +585,15 @@ export const lmsApi = {
       'GET',
       `/lms/submissions/${encodeURIComponent(submissionId)}/attempts`,
     ),
-  /** Download teacher-scoped submissions as a CSV (optionally filtered by class). */
-  exportAssignmentsCsv: (classId?: string) => {
-    const query = classId ? `?class_ids=${encodeURIComponent(classId)}` : '';
-    const token = getToken();
-    const base = getApiBase();
-    return fetch(`${base}/lms/teacher/export.csv${query}`, {
-      credentials: 'include',
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    }).then(async (response) => {
-      if (!response.ok) throw new CloudApiError(response.status, (await response.text()) || 'Export failed');
-      return response.blob();
-    });
-  },
+  /** Download teacher-scoped grades as CSV (optionally filtered by class/assignment). */
+  exportAssignmentsCsv: (classId?: string, assignmentId?: string) =>
+    downloadTeacherGradeExport('csv', { classId, assignmentId }),
+  /** Download teacher-scoped grades as JSON (same filters as CSV). */
+  exportAssignmentsJson: (classId?: string, assignmentId?: string) =>
+    downloadTeacherGradeExport('json', { classId, assignmentId }),
+  /** Generic export helper for multi-class or multi-assignment selections. */
+  exportTeacherGrades: (format: LmsGradeExportFormat, params?: LmsGradeExportParams) =>
+    downloadTeacherGradeExport(format, params),
   getAssignment: (assignmentId: string) =>
     request<LmsAssignment>('GET', `/lms/assignments/${encodeURIComponent(assignmentId)}`),
   submitAssignment: (assignmentId: string, payload: LmsAssignmentSubmitPayload) =>

@@ -128,9 +128,14 @@ export const TeacherPage: React.FC = () => {
             sortRecent: '最近建立',
             sortName: '名稱排序',
             sortStudents: '學生人數',
-            exportCsv: '匯出全部提交 CSV',
+            exportCsv: '匯出全部成績 CSV',
+            exportJson: '匯出全部成績 JSON',
+            exportClassCsv: '匯出本班 CSV',
+            exportClassJson: '匯出本班 JSON',
+            exportAssignmentCsv: '匯出此作業 CSV',
+            exportAssignmentJson: '匯出此作業 JSON',
             exporting: '正在匯出…',
-            exportSuccess: 'CSV 已下載',
+            exportSuccess: '成績檔案已下載',
             exportFailed: '匯出失敗，請稍後再試',
             window: '開放',
             duration: '限時',
@@ -186,9 +191,14 @@ export const TeacherPage: React.FC = () => {
             sortRecent: 'Recently created',
             sortName: 'Name',
             sortStudents: 'Student count',
-            exportCsv: 'Export all submissions CSV',
+            exportCsv: 'Export all grades CSV',
+            exportJson: 'Export all grades JSON',
+            exportClassCsv: 'Export class CSV',
+            exportClassJson: 'Export class JSON',
+            exportAssignmentCsv: 'Export assignment CSV',
+            exportAssignmentJson: 'Export assignment JSON',
             exporting: 'Exporting…',
-            exportSuccess: 'CSV downloaded',
+            exportSuccess: 'Grade file downloaded',
             exportFailed: 'Export failed. Try again.',
             window: 'Opens',
             duration: 'Time limit',
@@ -431,15 +441,22 @@ export const TeacherPage: React.FC = () => {
       });
   }, [classes, classFilter, classQuery, classSort, i18n.language]);
 
-  const exportCsv = async () => {
+  const exportGradeFile = async (
+    format: 'csv' | 'json',
+    classId?: string,
+    assignmentId?: string,
+  ) => {
     if (exportBusy) return;
     setExportBusy(true);
     try {
-      const blob = await lmsApi.exportAssignmentsCsv();
+      const blob = format === 'csv'
+        ? await lmsApi.exportAssignmentsCsv(classId, assignmentId)
+        : await lmsApi.exportAssignmentsJson(classId, assignmentId);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `velxio-submissions-${new Date().toISOString().slice(0, 10)}.csv`;
+      const scope = assignmentId ? 'assignment' : classId ? 'class' : 'all';
+      anchor.download = `velxio-grades-${scope}-${new Date().toISOString().slice(0, 10)}.${format}`;
       anchor.click();
       URL.revokeObjectURL(url);
       setAssignmentNotice(copy.exportSuccess);
@@ -449,6 +466,9 @@ export const TeacherPage: React.FC = () => {
       setExportBusy(false);
     }
   };
+
+  const exportCsv = () => exportGradeFile('csv');
+  const exportJson = () => exportGradeFile('json');
 
   // ── Gates ────────────────────────────────────────────────
   if (sessionStatus !== 'signed-in') {
@@ -520,9 +540,14 @@ export const TeacherPage: React.FC = () => {
             <strong>{classes.reduce((sum, item) => sum + item.member_count, 0)}</strong>
             <span>{copy.studentsTotal}</span>
           </div>
-          <button className="teacher-secondary" type="button" onClick={() => void exportCsv()} disabled={exportBusy}>
-            {exportBusy ? copy.exporting : copy.exportCsv}
-          </button>
+          <div className="teacher-export-actions" role="group" aria-label={copy.exportCsv}>
+            <button className="teacher-secondary" type="button" onClick={() => void exportCsv()} disabled={exportBusy}>
+              {exportBusy ? copy.exporting : copy.exportCsv}
+            </button>
+            <button className="teacher-secondary" type="button" onClick={() => void exportJson()} disabled={exportBusy}>
+              {exportBusy ? copy.exporting : copy.exportJson}
+            </button>
+          </div>
         </section>
 
         {classes.length > 0 && (
@@ -652,6 +677,22 @@ export const TeacherPage: React.FC = () => {
                 onClick={() => setOpenComposer((value) => !value)}
               >
                 {openComposer ? copy.close : copy.createAssignment}
+              </button>
+              <button
+                className="teacher-secondary"
+                type="button"
+                onClick={() => void exportGradeFile('csv', selectedId)}
+                disabled={exportBusy}
+              >
+                {exportBusy ? copy.exporting : copy.exportClassCsv}
+              </button>
+              <button
+                className="teacher-secondary"
+                type="button"
+                onClick={() => void exportGradeFile('json', selectedId)}
+                disabled={exportBusy}
+              >
+                {exportBusy ? copy.exporting : copy.exportClassJson}
               </button>
             </div>
 
@@ -876,6 +917,22 @@ export const TeacherPage: React.FC = () => {
                         onClick={() => void reviewAssignment(assignment)}
                       >
                         {copy.review}
+                      </button>
+                      <button
+                        className="teacher-text-button"
+                        type="button"
+                        onClick={() => void exportGradeFile('csv', selectedId, assignment.id)}
+                        disabled={exportBusy}
+                      >
+                        {copy.exportAssignmentCsv}
+                      </button>
+                      <button
+                        className="teacher-text-button"
+                        type="button"
+                        onClick={() => void exportGradeFile('json', selectedId, assignment.id)}
+                        disabled={exportBusy}
+                      >
+                        {copy.exportAssignmentJson}
                       </button>
                     </div>
                   </article>

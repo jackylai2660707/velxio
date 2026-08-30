@@ -449,6 +449,8 @@
   font-weight: 400;
 }
 
+.teacher-export-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+
 @media (max-width: 680px) {
   .teacher-container { padding: 28px 16px 56px; }
   .teacher-overview { align-items: stretch; grid-template-columns: 1fr 1fr; }

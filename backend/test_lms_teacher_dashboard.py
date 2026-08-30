@@ -121,6 +121,43 @@ def main() -> None:
         f"/api/lms/assignments/export.csv?class_id={first_class['id']}", headers=th
     )
     assert alias.status_code == 200 and alias.content.startswith(b"\xef\xbb\xbf")
+
+    # Assignment-scoped JSON exports are roster-complete and carry the fields
+    # needed by a gradebook importer, including a zero attempt for missing work.
+    second_assignment = client.post(
+        f"/api/lms/classes/{first_class['id']}/assignments",
+        json={
+            "title": "Assignment-only JSON export",
+            "assignment_type": "quiz",
+            "max_score": 10,
+            "status": "published",
+            "publish": True,
+            "quiz": [{"id": "q1", "question": "1+1?", "options": ["2"], "answer": 0}],
+        },
+        headers=th,
+    )
+    assert second_assignment.status_code == 200, second_assignment.text
+    second_aid = second_assignment.json()["id"]
+    json_export = client.get(
+        f"/api/lms/teacher/export.json?class_id={first_class['id']}&assignment_id={second_aid}",
+        headers=th,
+    )
+    assert json_export.status_code == 200, json_export.text
+    assert json_export.headers["content-type"].startswith("application/json")
+    assert "attachment" in json_export.headers.get("content-disposition", "")
+    json_payload = json_export.json()
+    assert json_payload["count"] == 2
+    assert {row["assignment_id"] for row in json_payload["rows"]} == {second_aid}
+    assert {row["student_email"] for row in json_payload["rows"]} == {
+        "alpha@student.test", "beta@student.test"
+    }
+    assert all({"student_name", "status", "score", "submitted_at", "attempt_no"} <= row.keys()
+               for row in json_payload["rows"])
+    csv_assignment = client.get(
+        f"/api/lms/teacher/export.csv?assignment_id={second_aid}", headers=th
+    )
+    assert csv_assignment.status_code == 200
+    assert csv_assignment.content.decode("utf-8-sig").count(second_aid) == 2
     assert client.get("/api/lms/teacher/dashboard", headers=h1).status_code == 403
     assert client.get("/api/lms/teacher/dashboard", headers=oth).status_code == 200
     # Another teacher may view their own empty dashboard but receives no rows

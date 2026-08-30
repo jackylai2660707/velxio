@@ -7,6 +7,13 @@
   grid-column: 1 / -1;
   padding: 18px;
 }
+
+.exam-ai-generator { margin: 1rem 0; padding: 1rem; border: 1px solid var(--teacher-border, #d9e2ec); border-radius: 12px; background: color-mix(in srgb, #4f8cff 8%, transparent); }
+.exam-ai-generator p { margin: .25rem 0 0; font-size: .88rem; opacity: .78; }
+.exam-ai-controls { display: flex; gap: .5rem; align-items: center; margin-top: .75rem; flex-wrap: wrap; }
+.exam-ai-controls input:first-child { flex: 1 1 320px; }
+.exam-ai-controls input, .exam-ai-controls select { min-height: 2.35rem; padding: .4rem .55rem; border: 1px solid var(--teacher-border, #cbd5e1); border-radius: 7px; background: var(--teacher-surface, #fff); }
+.exam-ai-error { color: #b42318; margin-top: .5rem !important; }
 .exam-builder-heading { align-items: flex-start; display: flex; gap: 18px; justify-content: space-between; }
 .exam-builder-heading h3 { font-size: 18px; margin: 3px 0 5px; }
 .exam-builder-heading p { color: #a9b8c6; font-size: 13px; line-height: 1.55; margin: 0; max-width: 670px; }

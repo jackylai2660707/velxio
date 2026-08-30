@@ -2143,6 +2143,7 @@ def get_teacher_dashboard(
     teacher_id: str,
     class_ids: str | list[str] | tuple[str, ...] | None = None,
     *,
+    assignment_ids: str | list[str] | tuple[str, ...] | None = None,
     status: str | None = None,
     q: str | None = None,
     sort: str | None = None,
@@ -2156,7 +2157,7 @@ def get_teacher_dashboard(
     compact per-class progress response.  This report is the richer, bounded
     view used by a teacher managing several classes: every member × assignment
     pair is represented, including ``missing`` rows for students that have not
-    submitted yet.  ``class_ids``, ``status`` and ``q`` are applied before
+    submitted yet.  ``class_ids``, ``assignment_ids``, ``status`` and ``q`` are applied before
     pagination; ``rows`` and ``submissions`` are aliases to ease consumption by
     existing dashboards.
 
@@ -2164,6 +2165,7 @@ def get_teacher_dashboard(
     ignored (rather than revealing whether another teacher owns one).
     """
     requested_classes = _split_filter_values(class_ids)
+    requested_assignments = _split_filter_values(assignment_ids)
     statuses = {s.casefold() for s in _split_filter_values(status)}
     # Keep report filters forward-compatible with richer grading states used
     # by newer clients.  The current storage has draft/submitted/graded/
@@ -2225,7 +2227,8 @@ def get_teacher_dashboard(
                     "completion_rate": 0,
                 },
                 "filters": {
-                    "class_ids": requested_classes, "status": sorted(statuses),
+                    "class_ids": requested_classes, "assignment_ids": requested_assignments,
+                    "status": sorted(statuses),
                     "q": q or "", "sort": sort_key, "order": "desc" if descending else "asc",
                 },
                 "pagination": {"offset": row_offset, "limit": row_limit, "total": 0},
@@ -2238,15 +2241,29 @@ def get_teacher_dashboard(
             f"WHERE m.class_id IN ({ids_placeholder}) ORDER BY u.name COLLATE NOCASE, u.email",
             selected_ids,
         ).fetchall()
+        assignment_where = [f"a.class_id IN ({ids_placeholder})"]
+        assignment_params: list[Any] = list(selected_ids)
+        if requested_assignments:
+            assignment_placeholders = ",".join("?" for _ in requested_assignments)
+            assignment_where.append(f"a.id IN ({assignment_placeholders})")
+            assignment_params.extend(requested_assignments)
         assignments = conn.execute(
             _assignment_select()
-            + f"WHERE a.class_id IN ({ids_placeholder}) ORDER BY a.created_at DESC",
-            selected_ids,
+            + "WHERE " + " AND ".join(assignment_where)
+            + " ORDER BY a.created_at DESC",
+            assignment_params,
         ).fetchall()
+        submission_where = ["a.class_id IN (" + ids_placeholder + ")"]
+        submission_params: list[Any] = list(selected_ids)
+        if requested_assignments:
+            submission_placeholders = ",".join("?" for _ in requested_assignments)
+            submission_where.append(f"a.id IN ({submission_placeholders})")
+            submission_params.extend(requested_assignments)
         submissions = conn.execute(
             _submission_select()
-            + "WHERE a.class_id IN (" + ids_placeholder + ") ORDER BY s.updated_at DESC",
-            selected_ids,
+            + "WHERE " + " AND ".join(submission_where)
+            + " ORDER BY s.updated_at DESC",
+            submission_params,
         ).fetchall()
 
         member_rows = [dict(row) for row in members]
@@ -2511,6 +2528,7 @@ def get_teacher_dashboard(
         },
         "filters": {
             "class_ids": selected_ids,
+            "assignment_ids": requested_assignments,
             "status": sorted(statuses),
             "q": q or "",
             "sort": sort_key,
@@ -2524,12 +2542,13 @@ def get_teacher_submission_rows(
     teacher_id: str,
     class_ids: str | list[str] | tuple[str, ...] | None = None,
     *,
+    assignment_ids: str | list[str] | tuple[str, ...] | None = None,
     status: str | None = None,
     q: str | None = None,
     sort: str | None = None,
     order: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Return unpaginated dashboard rows for CSV export.
+    """Return unpaginated dashboard rows for CSV/JSON export.
 
     The export deliberately reuses dashboard filtering/sorting so what a
     teacher downloads is exactly what was visible in the report.  Payload-heavy
@@ -2538,6 +2557,7 @@ def get_teacher_submission_rows(
     report = get_teacher_dashboard(
         teacher_id,
         class_ids,
+        assignment_ids=assignment_ids,
         status=status,
         q=q,
         sort=sort,

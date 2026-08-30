@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import './ExamBuilder.css';
+import { lmsApi } from '../../cloud/cloudApi';
 
 export type ExamQuestionKind = 'single' | 'multiple' | 'true_false' | 'short' | 'long' | 'code' | 'circuit';
 
@@ -51,6 +52,11 @@ export function ExamBuilder({
   onSettingsChange,
 }: ExamBuilderProps) {
   const zh = language.toLowerCase().startsWith('zh');
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiCount, setAiCount] = useState('5');
+  const [aiDifficulty, setAiDifficulty] = useState<'easy' | 'medium' | 'hard' | 'mixed'>('medium');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState('');
   const copy = useMemo(
     () => zh
       ? {
@@ -110,6 +116,31 @@ export function ExamBuilder({
           {copy.add}
         </button>
       </header>
+
+      <div className="exam-ai-generator" aria-label={zh ? 'AI 產生題目' : 'AI question generator'}>
+        <div>
+          <strong>{zh ? 'AI 自動出題' : 'Generate with AI'}</strong>
+          <p>{zh ? '輸入主題與要求，先產生草稿；確認後才會加入考卷。' : 'Describe the topic. AI creates an editable draft; nothing is added until you accept it.'}</p>
+        </div>
+        <div className="exam-ai-controls">
+          <input value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} placeholder={zh ? '例如：Arduino 按鈕控制 LED' : 'e.g. Arduino button-controlled LED'} maxLength={12000} />
+          <input type="number" min="1" max="20" value={aiCount} onChange={(e) => setAiCount(e.target.value)} aria-label={zh ? '題數' : 'Question count'} />
+          <select value={aiDifficulty} onChange={(e) => setAiDifficulty(e.target.value as typeof aiDifficulty)} aria-label={zh ? '難度' : 'Difficulty'}>
+            <option value="easy">{zh ? '簡單' : 'Easy'}</option><option value="medium">{zh ? '中等' : 'Medium'}</option><option value="hard">{zh ? '困難' : 'Hard'}</option><option value="mixed">{zh ? '混合' : 'Mixed'}</option>
+          </select>
+          <button type="button" className="exam-builder-add" disabled={aiBusy || !aiTopic.trim()} onClick={async () => {
+            setAiBusy(true); setAiError('');
+            try {
+              const result = await lmsApi.generateExamQuestions({ topic: aiTopic.trim(), count: Math.min(20, Math.max(1, Number(aiCount) || 5)), difficulty: aiDifficulty, language: zh ? 'zh-TW' : 'en', question_types: ['single', 'multiple', 'true_false', 'short', 'code', 'circuit'] });
+              const generated = result.questions.map((q) => ({ id: q.id, type: q.type, question: q.question, options: q.options, answer: q.answer, points: q.points, rubric: q.rubric || q.explanation }));
+              onQuestionsChange([...questions, ...generated]);
+            } catch (error) {
+              setAiError(error instanceof Error ? error.message : (zh ? 'AI 出題失敗' : 'AI generation failed'));
+            } finally { setAiBusy(false); }
+          }}>{aiBusy ? (zh ? '產生中…' : 'Generating…') : (zh ? 'AI 產生草稿' : 'Generate draft')}</button>
+        </div>
+        {aiError && <p className="exam-ai-error" role="alert">{aiError}</p>}
+      </div>
 
       <div className="exam-builder-timing">
         <strong>{copy.timing}</strong>
