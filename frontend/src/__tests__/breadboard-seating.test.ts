@@ -7,13 +7,42 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import { BREADBOARD_PINS } from '../velxio-elements/breadboard-element';
-import { computeSeating, resolveSeatPosition, seatOnDrop } from '../utils/breadboardSnap';
+import { computeSeating, resolveSeatPosition, seatOnDrop, validateTactileButtonSeating } from '../utils/breadboardSnap';
 
 const RES_PIN_INFO = [
   { name: '1', x: 0, y: 5.65, signals: [] },
   { name: '2', x: 58.8, y: 5.65, signals: [] },
 ];
 const INSET = 6; // DynamicComponent wrapper border+padding
+
+describe('tactile pushbutton breadboard orientation', () => {
+  it('accepts a button straddling the centre trench with paired contacts aligned', () => {
+    expect(validateTactileButtonSeating('pushbutton', [
+      { pinName: '1.l', holeName: '10t.e' },
+      { pinName: '2.l', holeName: '12t.e' },
+      { pinName: '1.r', holeName: '10b.j' },
+      { pinName: '2.r', holeName: '12b.j' },
+    ])).toBeNull();
+  });
+
+  it('accepts the 6mm button only across the e/f trench rows', () => {
+    expect(validateTactileButtonSeating('pushbutton-6mm', [
+      { pinName: '1.l', holeName: '10t.e' },
+      { pinName: '2.l', holeName: '12t.e' },
+      { pinName: '1.r', holeName: '10b.f' },
+      { pinName: '2.r', holeName: '12b.f' },
+    ])).toBeNull();
+  });
+
+  it('rejects a button whose four legs stay on one side of the trench', () => {
+    expect(validateTactileButtonSeating('pushbutton', [
+      { pinName: '1.l', holeName: '10t.a' },
+      { pinName: '2.l', holeName: '12t.a' },
+      { pinName: '1.r', holeName: '10t.e' },
+      { pinName: '2.r', holeName: '12t.e' },
+    ])).toMatch(/centre trench/);
+  });
+});
 
 function mountFakeElement(id: string, pinInfo: unknown): void {
   document.getElementById(id)?.remove();

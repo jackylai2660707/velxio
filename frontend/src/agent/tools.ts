@@ -26,7 +26,7 @@ import { useVersionStore } from '../versioning/useVersionStore';
 import { classifyWire } from './wireStandards';
 import { WIRE_COLORS } from '../utils/wireColors';
 import { BOARD_SIZE } from '../types/boardSizes';
-import { breadboardHoles, resolveSeatPosition, seatOnDrop } from '../utils/breadboardSnap';
+import { breadboardHoles, resolveSeatPosition, seatOnDrop, validateTactileButtonSeating } from '../utils/breadboardSnap';
 import { breadboardGroupKey, isBreadboard } from '../utils/breadboardNets';
 import { holeIsOccupied, resolveFreeHole } from '../utils/breadboardOccupancy';
 import type { ToolDefinition } from './types';
@@ -1207,14 +1207,30 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
 
     case 'seat_component': {
       const cid = String(input.component_id ?? ''), bid = String(input.breadboard_id ?? ''), pin = String(input.anchor_pin ?? ''), hole = String(input.anchor_hole ?? '');
-      const comp = sim().components.find((c) => c.id === cid);
+      let comp = sim().components.find((c) => c.id === cid);
       const bb = sim().components.find((c) => c.id === bid);
       if (!comp || !bb || !isBreadboard(bb.metadataId)) throw new ToolError('Component or breadboard not found.');
       const target = breadboardHoles(bb.metadataId)?.find((h) => h.name === hole);
       if (!target) throw new ToolError(`Unknown breadboard hole "${hole}".`);
+      const isTactileButton = comp.metadataId === 'pushbutton' || comp.metadataId === 'pushbutton-6mm';
+      if (isTactileButton && !/^\d+[tb]\.[a-j]$/.test(hole)) {
+        throw new ToolError('A tactile pushbutton must anchor in a terminal-strip hole, never a power rail; it will be rotated to straddle the centre trench.');
+      }
       if (sim().wires.some((w) => !w.bb && ((w.start.componentId === cid) || (w.end.componentId === cid)))) throw new ToolError('Component already has visible wires; remove/review them before seating.');
       const mountedPins = await waitForMountedPins(cid);
       if (!mountedPins) throw new ToolError('Component pin geometry is still mounting; no changes were made. Retry seating after the part appears on the canvas.');
+      const beforePosition = { x: comp.x, y: comp.y };
+      const beforeProperties = { ...(comp.properties ?? {}) };
+      // A 4-pin tactile switch must straddle the breadboard's centre trench:
+      // its left/right contact pairs become the top/bottom banks at 90°.
+      // Match the manual drag behaviour and preserve an explicit user angle.
+      const currentRotation = ((Number(comp.properties?.rotation) || 0) % 360 + 360) % 360;
+      if (isTactileButton && currentRotation !== 90 && currentRotation !== 270) {
+        const rotated = { ...comp.properties, rotation: 90 };
+        sim().updateComponent(cid, { properties: rotated });
+        comp = sim().components.find((c) => c.id === cid) ?? comp;
+        await settleDom();
+      }
       let pos = resolveSeatPosition(comp, bid, pin, target.x, target.y, sim().components);
       if (!pos) {
         // A slightly wrong bank/column or DOM-measurement residual should not
@@ -1229,7 +1245,6 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
       // semantics are handled by the explicit anchor the agent inspected;
       // do not re-solve into a different column and create extra jumpers.
       const finalPos = pos;
-      const beforePosition = { x: comp.x, y: comp.y };
       sim().updateComponent(cid, finalPos);
       await settleDom();
       sim().reseatComponentOnBreadboard(cid);
@@ -1243,8 +1258,11 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
         : ['<pin geometry unavailable>'];
       const holeKeys = new Set<string>();
       const conflictingHoles: string[] = [];
+      const pinHoles: Array<{ pinName: string; holeName: string }> = [];
       for (const wire of seatingWires) {
+        const componentEnd = wire.start.componentId === cid ? wire.start : wire.end;
         const bbEnd = wire.start.componentId === bid ? wire.start : wire.end;
+        pinHoles.push({ pinName: componentEnd.pinName, holeName: bbEnd.pinName });
         const key = `${bbEnd.componentId}:${bbEnd.pinName}`;
         if (holeKeys.has(key)) conflictingHoles.push(key);
         holeKeys.add(key);
@@ -1254,16 +1272,18 @@ async function execTool(name: string, input: ToolInput, ctx: ToolContext): Promi
             (other.end.componentId === bbEnd.componentId && other.end.pinName === bbEnd.pinName)));
         if (occupiedByOther) conflictingHoles.push(key);
       }
-      if (!seated.length || missingPins.length > 0 || conflictingHoles.length > 0) {
+      const buttonLayoutError = validateTactileButtonSeating(comp.metadataId, pinHoles);
+      if (!seated.length || missingPins.length > 0 || conflictingHoles.length > 0 || buttonLayoutError) {
         // Do not leave a half-seated part behind after a bad anchor. Roll back
         // before returning the deterministic error so the model can choose a
         // different listed free hole without rebuilding the whole circuit.
-        sim().updateComponent(cid, beforePosition);
+        sim().updateComponent(cid, { ...beforePosition, properties: beforeProperties });
         await settleDom();
         sim().reseatComponentOnBreadboard(cid);
         const detail = [
           missingPins.length ? `missing pins: ${missingPins.join(', ')}` : '',
           conflictingHoles.length ? `occupied/duplicate holes: ${[...new Set(conflictingHoles)].join(', ')}` : '',
+          buttonLayoutError ?? '',
         ].filter(Boolean).join('; ');
         throw new ToolError(`Seating rejected and rolled back (${detail || 'no valid seating'}). Choose a different exact free hole/group from inspect_breadboard.`);
       }

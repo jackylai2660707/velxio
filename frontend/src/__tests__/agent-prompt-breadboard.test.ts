@@ -41,4 +41,12 @@ describe('agent prompt — breadboard layout contract', () => {
     expect(prompt).toMatch(/successful (?:tool result|placement|tool).{0,120}authoritative/);
     expect(prompt).toContain('run simulation once and observe once');
   });
+
+  it('teaches the physical four-pin button trench orientation', () => {
+    const prompt = SYSTEM_PROMPT.toLowerCase();
+    expect(prompt).toMatch(/pushbuttons?.{0,120}straddle.{0,60}(centre|center) trench/);
+    expect(prompt).toContain('1.l/1.r');
+    expect(prompt).toContain('2.l/2.r');
+    expect(prompt).toContain('internally the same terminal');
+  });
 });

@@ -144,6 +144,51 @@ export interface Seat {
   holeY: number;
 }
 
+/** Validate the real-world placement of a 4-pin tactile pushbutton. Its body
+ * must straddle the centre trench: `.l` legs in one terminal bank and `.r`
+ * legs in the other, with each numbered contact pair sharing a column across
+ * the trench. Otherwise two legs can land in one 5-hole strip and the button
+ * is permanently shorted or electrically meaningless. */
+export function validateTactileButtonSeating(
+  metadataId: string,
+  seats: Array<{ pinName: string; holeName: string }>,
+): string | null {
+  if (metadataId !== 'pushbutton' && metadataId !== 'pushbutton-6mm') return null;
+  const byPin = new Map(seats.map((seat) => [seat.pinName, seat.holeName]));
+  const parsed = (pin: string) => {
+    const hole = byPin.get(pin);
+    const match = hole && /^(\d+)([tb])\.([a-j])$/.exec(hole);
+    return match ? { column: Number(match[1]), bank: match[2], row: match[3] } : null;
+  };
+  const pins = ['1.l', '2.l', '1.r', '2.r'];
+  const positions = Object.fromEntries(pins.map((pin) => [pin, parsed(pin)])) as Record<string, { column: number; bank: string; row: string } | null>;
+  if (pins.some((pin) => !positions[pin])) return 'all four tactile-button legs must occupy terminal-strip holes';
+  const leftBank = positions['1.l']!.bank;
+  const rightBank = positions['1.r']!.bank;
+  if (positions['2.l']!.bank !== leftBank || positions['2.r']!.bank !== rightBank || leftBank === rightBank) {
+    return 'pushbutton must straddle the centre trench: both .l legs on one bank and both .r legs on the opposite bank';
+  }
+  if (positions['1.l']!.column !== positions['1.r']!.column || positions['2.l']!.column !== positions['2.r']!.column) {
+    return 'matching pushbutton contact pairs (1.l/1.r and 2.l/2.r) must align across the trench';
+  }
+  const rowPair = (a: { bank: string; row: string }, b: { bank: string; row: string }) => {
+    const top = a.bank === 't' ? a.row : b.row;
+    const bottom = a.bank === 'b' ? a.row : b.row;
+    if (metadataId === 'pushbutton-6mm') return top === 'e' && bottom === 'f';
+    const map: Record<string, string> = { a: 'f', b: 'g', c: 'h', d: 'i', e: 'j' };
+    return map[top] === bottom;
+  };
+  if (!rowPair(positions['1.l']!, positions['1.r']!) || !rowPair(positions['2.l']!, positions['2.r']!)) {
+    return metadataId === 'pushbutton-6mm'
+      ? '6mm pushbutton contacts must cross the centre trench from row e to row f'
+      : 'pushbutton contacts must align across the trench (a↔f, b↔g, c↔h, d↔i, or e↔j)';
+  }
+  if (positions['1.l']!.column === positions['2.l']!.column) {
+    return 'the two switch contacts must use different breadboard columns';
+  }
+  return null;
+}
+
 /**
  * Compute the per-pin seating of a component at its CURRENT position:
  * every pin within SEAT_TOLERANCE of a hole. Returns null when geometry
