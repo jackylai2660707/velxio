@@ -488,7 +488,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   },
   {
     name: 'seat_component',
-    description: 'Seat a component on the requested breadboard hole. Use inspect_breadboard first and choose an intentional strip; the requested anchor is kept stable. After seating, connect external wires to a different free sibling hole in that same strip/rail, never to the component leg.',
+    description: 'Seat a component on the requested breadboard hole. Use inspect_breadboard first and choose an intentional free strip; the anchor is kept stable. The tool accepts only a FULL seating (every pin→hole) and rolls back partial/occupied placements. After success, connect external wires to a different free sibling hole in that same strip/rail, never to the component leg.',
     input_schema: { type: 'object', properties: { component_id: str('Component id'), breadboard_id: str('Breadboard id'), anchor_pin: str('Component pin'), anchor_hole: str('Exact hole such as 10t.a') }, required: ['component_id', 'breadboard_id', 'anchor_pin', 'anchor_hole'] },
   },
   {
